@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Replace these with your actual Supabase credentials from your project settings
 // These are injected by Vite via the define config or process.env
-const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project-id.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
