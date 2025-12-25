@@ -3,7 +3,14 @@
 A high-performance Unified Operating System designed for Catering, Finance, and AI-driven Service Management.
 
 ## Repository Fix
-To resolve the "Failed to load file differences" error, run the automated repair script in your terminal:
+To resolve the "Failed to load file differences" error, run the automated repair script for your operating system:
+
+### Windows (Command Prompt)
+```cmd
+SYNC_REPO.bat
+```
+
+### Mac / Linux / Git Bash
 ```bash
 bash SYNC_REPO.sh
 ```

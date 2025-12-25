@@ -1,4 +1,3 @@
-
 import { Employee, PayrollItem } from '../types';
 
 /**
@@ -10,11 +9,11 @@ import { Employee, PayrollItem } from '../types';
 const PENSION_RATE_EMPLOYEE = 0.08;
 const PENSION_RATE_EMPLOYER = 0.10;
 const NHF_RATE = 0.025;
-const MINIMUM_WAGE = 70000; // Updated 2024 Baseline
+const MINIMUM_WAGE = 70000 * 100; // Updated 2024 Baseline in Cents
 
 // Consolidated Relief Allowance (CRA) Rules
 const calculateCRA = (grossIncome: number, consolidatedPension: number) => {
-  const fixedRelief = 200000;
+  const fixedRelief = 200000 * 100;
   const variableRelief = 0.01 * grossIncome;
   const higherRelief = Math.max(fixedRelief, variableRelief);
   
@@ -27,16 +26,16 @@ const calculateCRA = (grossIncome: number, consolidatedPension: number) => {
 
 // Annual Tax Bands
 const TAX_BANDS = [
-  { limit: 300000, rate: 0.07 },
-  { limit: 300000, rate: 0.11 },
-  { limit: 500000, rate: 0.15 },
-  { limit: 500000, rate: 0.19 },
-  { limit: 1600000, rate: 0.21 },
+  { limit: 300000 * 100, rate: 0.07 },
+  { limit: 300000 * 100, rate: 0.11 },
+  { limit: 500000 * 100, rate: 0.15 },
+  { limit: 500000 * 100, rate: 0.19 },
+  { limit: 1600000 * 100, rate: 0.21 },
   { limit: Infinity, rate: 0.24 }
 ];
 
 export const calculatePayrollForEmployee = (employee: Employee): PayrollItem => {
-  const annualGross = employee.salary;
+  const annualGross = employee.salaryCents;
   const monthlyGross = annualGross / 12;
 
   // 1. Break down Gross (Simplification: 50% Basic, 30% Housing, 20% Transport)
@@ -79,9 +78,6 @@ export const calculatePayrollForEmployee = (employee: Employee): PayrollItem => 
       annualTax += taxableAtBand * band.rate;
       remainingTaxable -= taxableAtBand;
     }
-    
-    // Minimum Tax Rule: 1% of Gross if calculated tax is lower (usually for high earners with massive reliefs, but statutory for all)
-    // Simplified: Use calculated tax for standard Payroll demo
   }
 
   const monthlyTax = annualTax / 12;
@@ -99,15 +95,15 @@ export const calculatePayrollForEmployee = (employee: Employee): PayrollItem => 
     id: `pay-${Date.now()}-${employee.id}`,
     employeeId: employee.id,
     employeeName: `${employee.firstName} ${employee.lastName}`,
-    gross: monthlyGross,
-    basic,
-    housing,
-    transport,
-    pensionEmployee,
-    pensionEmployer,
-    tax: monthlyTax,
-    nhf,
-    net: netPay,
+    grossCents: monthlyGross,
+    basicCents: basic,
+    housingCents: housing,
+    transportCents: transport,
+    pensionEmployeeCents: pensionEmployee,
+    pensionEmployerCents: pensionEmployer,
+    taxCents: monthlyTax,
+    nhfCents: nhf,
+    netCents: netPay,
     anomalies
   };
 };

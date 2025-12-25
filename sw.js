@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'pxi-crm-cache-v1';
+const CACHE_NAME = 'pxi-os-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html',

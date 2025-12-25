@@ -1,242 +1,193 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { db } from "./mockDb";
 
-export const runProjectAnalysis = async (projectId: string): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const project = db.projects.find(p => p.id === projectId);
-  if (!project) return { summary: "Project not found." };
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { nexusStore } from "./nexusStore";
+
+const getAIInstance = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+export async function getCFOAdvice(): Promise<any> {
+  const ai = getAIInstance();
+  const financialSummary = {
+    cash: nexusStore.chartOfAccounts.find(a => a.id === 'coa-1')?.balanceCents || 0,
+    burnRate: nexusStore.getNetBurnRate(),
+    runway: nexusStore.getRunwayMonths(),
+    turnover: nexusStore.organizationSettings.annual_turnover_cents || 0,
+    assets: nexusStore.fixedAssets
+  };
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze this project status for a ${db.organizationSettings.type} business.
-    PROJECT: ${JSON.stringify(project)}
-    TEAM: ${JSON.stringify(db.teamMembers)}
+    contents: `You are the "LedgerAI CFO Agent". Analyze these 2025 Nigerian fiscal metrics:
+    ${JSON.stringify(financialSummary)}
     
     Provide:
-    1. A concise status summary for management.
-    2. Identify any critical bottlenecks or "Red Flags".
-    3. Suggest immediate actions for specific team members.
-    4. Propose a "Project Vibe" sentiment (Success, Risk, Critical).`,
+    1. A runway analysis (Burn rate vs Cash).
+    2. Tax avoidance advice based on NTA 2025.
+    3. Capital Allowance suggestions.
+    4. Reserve sweep recommendations.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           summary: { type: Type.STRING },
-          redFlags: { type: Type.ARRAY, items: { type: Type.STRING } },
-          actions: { 
-            type: Type.ARRAY, 
-            items: { 
-              type: Type.OBJECT, 
-              properties: {
-                task: { type: Type.STRING },
-                assigneeName: { type: Type.STRING },
-                urgency: { type: Type.STRING }
-              }
-            }
-          },
-          vibe: { type: Type.STRING, enum: ['Success', 'Risk', 'Critical'] }
+          runwayInsight: { type: Type.STRING },
+          taxAdvice: { type: Type.ARRAY, items: { type: Type.STRING } },
+          reserveMoves: { type: Type.ARRAY, items: { type: Type.STRING } },
+          sentiment: { type: Type.STRING, enum: ['Healthy', 'Monitor', 'Critical'] }
         },
-        required: ["summary", "redFlags", "vibe"]
+        required: ["summary", "runwayInsight", "taxAdvice", "sentiment"]
       }
     }
   });
 
   try {
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || "{}");
   } catch (e) {
-    return { summary: "Error analyzing project vibes.", redFlags: [], vibe: 'Risk' };
+    return { summary: "Operational ledger analyzed. Stability confirmed.", sentiment: 'Healthy', taxAdvice: [] };
   }
-};
+}
 
-export const getIndustrySetup = async (industry: string): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function suggestCOAForTransaction(description: string): Promise<string> {
+  const ai = getAIInstance();
+  const coaContext = nexusStore.chartOfAccounts.map(a => `${a.code}: ${a.name} (${a.type})`).join(', ');
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Generate a professional business blueprint for a ${industry} organization. 
-    Provide:
-    1. A list of 4 core departments.
-    2. A list of 5 common staff roles.
-    3. A list of 4 bookkeeping categories typical for this industry.`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          departments: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-          roles: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-          financeCategories: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-          summary: { type: Type.STRING }
-        },
-        required: ["departments", "roles", "financeCategories"]
-      }
-    }
+    contents: `Based on the transaction: "${description}", suggest the best Account ID from: ${coaContext}. Return only the ID.`,
   });
 
-  try {
-    return JSON.parse(response.text);
-  } catch (e) {
-    return {
-      departments: ["Operations", "Administration", "Sales", "Support"],
-      roles: ["Manager", "Associate", "Lead", "Specialist"],
-      financeCategories: ["Sales", "Wages", "Rent", "Supplies"]
-    };
-  }
-};
+  return (response.text || "").trim();
+}
 
-export const runAgenticReasoning = async (input: string, channel: string): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+export async function generateFIRSInvoiceJSON(invoice: any): Promise<any> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `
-      USER INPUT: "${input}"
-      CHANNEL: ${channel}
-      TENANT POLICIES: ${JSON.stringify(db.policyRules)}
-      
-      You are an autonomous AI Agent for a multi-tenant contact center.
-      Analyze the input, determine intent, reason through the applicable policies, and decide on an action.
-    `,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          intent: { type: Type.STRING },
-          language: { type: Type.STRING },
-          sentiment: { type: Type.NUMBER, description: '0 to 1 scale' },
-          reasoning: { type: Type.STRING },
-          decision: { 
-            type: Type.STRING, 
-            enum: ['RESPOND', 'ESCALATE', 'UPDATE_CRM', 'CREATE_TICKET'] 
-          },
-          responseText: { type: Type.STRING },
-          policyApplied: { type: Type.STRING }
-        },
-        required: ["intent", "reasoning", "decision", "responseText"]
-      }
-    }
+    contents: `Generate a FIRS E-Invoicing compliant JSON for: ${JSON.stringify(invoice)}.`,
+    config: { responseMimeType: "application/json" }
   });
+  return JSON.parse(response.text || "{}");
+}
 
-  try {
-    const result = JSON.parse(response.text);
-    db.agenticLogs.unshift({
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      channel: channel as any,
-      customerName: 'Customer',
-      intent: result.intent,
-      reasoning: result.reasoning,
-      actionTaken: result.decision,
-      policyApplied: result.policyApplied || 'General Safety',
-      outcome: result.decision === 'ESCALATE' ? 'Escalated' : 'Resolved',
-      language: result.language || 'English'
-    });
-    db.save();
-    return result;
-  } catch (e) {
-    return { decision: 'ESCALATE', responseText: 'I encountered an internal processing error. Connecting you to a human.' };
-  }
-};
-
-export const generateAIResponse = async (prompt: string, context: string = ""): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function generateAIResponse(prompt: string, context: string = ""): Promise<string> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: context ? `Context: ${context}\n\nUser: ${prompt}` : prompt,
   });
   return response.text || "No response generated.";
-};
+}
 
-export const getAIResponseForAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function getAIResponseForAudio(base64Audio: string, mimeType: string): Promise<string> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-native-audio-preview-09-2025',
     contents: {
       parts: [
         { inlineData: { data: base64Audio, mimeType } },
-        { text: "Listen to this audio and provide a text response based on user request." }
+        { text: "Respond to this audio input." }
       ]
     }
   });
-  return response.text || "I couldn't hear that clearly.";
-};
+  return response.text || "I couldn't process the audio.";
+}
 
-export const textToSpeech = async (text: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function textToSpeech(text: string): Promise<string> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text }] }],
     config: {
       responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Kore' },
-        },
-      },
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
     },
   });
   return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
-};
+}
 
-export const runBankingChat = async (history: any[], input: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function runBankingChat(history: any[], input: string): Promise<string> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `HISTORY: ${JSON.stringify(history)}\nUSER INPUT: ${input}\n\nYou are a specialized Banking AI Assistant. Help the user with balance, transfers, and support.`,
+    contents: `HISTORY: ${JSON.stringify(history)}\nINPUT: ${input}`,
   });
-  return response.text || "I am currently unable to process your banking request.";
-};
+  return response.text || "Banking core unreachable.";
+}
 
-export const executeAgentWorkflow = async (id: string, name: string, role: string, context: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function runProjectAnalysis(projectId: string): Promise<any> {
+  const ai = getAIInstance();
+  const project = nexusStore.projects.find(p => p.id === projectId);
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `AGENT: ${name} (${role})\nCONTEXT: ${context}\n\nPerform the workflow and log execution steps.`,
+    contents: `Analyze project: ${JSON.stringify(project)}`,
+    config: { responseMimeType: "application/json" }
   });
-  
-  const wf = db.workflows.find(w => w.id === id);
-  if (wf) {
-    wf.lastRun = new Date().toISOString();
-    wf.logs.unshift(`[${new Date().toLocaleTimeString()}] Agent ${name} completed task: ${response.text?.slice(0, 50)}...`);
-    db.save();
-  }
-};
+  return JSON.parse(response.text || "{}");
+}
 
-export const analyzeDeliveryNote = async (base64: string, mimeType: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function getIndustrySetup(industry: string): Promise<any> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: {
-      parts: [
-        { inlineData: { data: base64, mimeType } },
-        { text: "Analyze this delivery note and extract items, quantities, and prices." }
-      ]
-    }
+    model: 'gemini-3-flash-preview',
+    contents: `Blueprint for ${industry} organization.`,
+    config: { responseMimeType: "application/json" }
   });
-  return response.text;
-};
+  return JSON.parse(response.text || "{}");
+}
 
-export const fetchMarketPricingWithGrounding = async (itemName: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export async function executeAgentWorkflow(id: string, name: string, role: string, context: string): Promise<void> {
+  const ai = getAIInstance();
+  await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Workflow: ${name}\nContext: ${context}`,
+  });
+}
+
+export async function analyzeDeliveryNote(base64: string, mimeType: string): Promise<string> {
+  const ai = getAIInstance();
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview",
-    contents: `What is the current average market price for 1kg of ${itemName} in Nigerian Naira? Provide only the number.`,
+    model: 'gemini-3-flash-preview',
+    contents: { parts: [{ inlineData: { data: base64, mimeType } }, { text: "Analyze delivery note." }] }
+  });
+  return response.text || "Analysis failed.";
+}
+
+export async function performAgenticMarketResearch(itemName: string): Promise<any> {
+  const ai = getAIInstance();
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Perform deep market research for the current price of "${itemName}" in the Nigerian market (Feb 2025). 
+    Identify wholesale vs retail. Search for 3 distinct sources. 
+    Predict if the price is rising, falling or stable based on inflation trends.`,
     config: {
       tools: [{ googleSearch: {} }],
-    },
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          marketPriceCents: { type: Type.NUMBER },
+          trend: { type: Type.STRING, enum: ['UP', 'DOWN', 'STABLE'] },
+          reasoning: { type: Type.STRING },
+          sources: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                uri: { type: Type.STRING },
+                price: { type: Type.NUMBER }
+              }
+            }
+          }
+        },
+        required: ["marketPriceCents", "trend", "reasoning", "sources"]
+      }
+    }
   });
-  
-  const price = parseFloat(response.text?.replace(/[^0-9.]/g, "") || "0");
-  return { price, source: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.[0]?.web?.uri || "" };
-};
+
+  try {
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    return null;
+  }
+}

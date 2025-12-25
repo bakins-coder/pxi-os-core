@@ -1,0 +1,16 @@
+
+CRITICAL: If you have a Terminal tab in this IDE, run these 3 commands:
+
+1. Remove the ghost of the old repo:
+   git remote remove origin
+
+2. Force a new local identity:
+   git init
+
+3. Link to your ACTUAL new repository (replace [URL] with your new repo link):
+   git remote add origin [URL]
+
+If you do NOT have a terminal:
+1. Hard Refresh your browser (Ctrl + Shift + R or Cmd + Shift + R).
+2. Click the 'Share' or 'Export' button instead of the GitHub icon.
+3. Choose 'Export to GitHub' and select 'Create New Repository'.

@@ -19,7 +19,7 @@ import { ProjectManagement } from './components/ProjectManagement';
 import { AgentHub } from './components/AgentHub';
 import { AuthPage } from './components/Auth';
 import { SetupWizard } from './components/SetupWizard';
-import { db } from './services/mockDb';
+import { nexusStore } from './services/nexusStore';
 import { Role, User } from './types';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -39,29 +39,27 @@ const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], 
 };
 
 function AppContent() {
-  const [user, setUser] = useState<User | null>(db.currentUser);
-  const [setupComplete, setSetupComplete] = useState(db.organizationSettings.setupComplete);
+  const [user, setUser] = useState<User | null>(nexusStore.currentUser);
+  const [setupComplete, setSetupComplete] = useState(nexusStore.organizationSettings.setupComplete);
   const [isInitializing, setIsInitializing] = useState(true);
   
   useEffect(() => {
     const checkAuth = async () => {
-      // Short artificial delay to let splash screen show and verify identity
       await new Promise(r => setTimeout(r, 600));
-      setUser(db.currentUser);
+      setUser(nexusStore.currentUser);
       setIsInitializing(false);
     };
     checkAuth();
 
-    const unsubscribe = db.subscribe(() => {
-        setUser(db.currentUser);
-        setSetupComplete(db.organizationSettings.setupComplete);
-        const brandColor = db.organizationSettings.brandColor || '#00ff9d';
+    const unsubscribe = nexusStore.subscribe(() => {
+        setUser(nexusStore.currentUser);
+        setSetupComplete(nexusStore.organizationSettings.setupComplete);
+        const brandColor = nexusStore.organizationSettings.brandColor || '#00ff9d';
         document.documentElement.style.setProperty('--brand-primary', brandColor);
     });
     return unsubscribe;
   }, []);
 
-  // Show a themed loader instead of null during transitions or initialization
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white p-10">
@@ -77,7 +75,6 @@ function AppContent() {
     );
   }
 
-  // Handle Unauthorized users
   if (!user) {
     return (
       <Routes>
@@ -87,7 +84,6 @@ function AppContent() {
     );
   }
 
-  // Handle Incomplete Setup
   if (!setupComplete) {
     return (
       <SetupWizard onComplete={() => setSetupComplete(true)} />

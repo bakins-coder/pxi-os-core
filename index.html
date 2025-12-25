@@ -3,92 +3,135 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-    <title>PXI UNIFIED OS</title>
+    <title>Paradigm-Xi OS</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" content="#00ff9d">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        --brand-primary: #4f46e5;
-        --brand-vibrant: #7c3aed;
+        --brand-primary: #00ff9d;
+        --brand-dark: #020617;
+        --brand-slate: #0f172a;
+        --neon-glow: 0 0 15px rgba(0, 255, 157, 0.4);
       }
       body { 
         font-family: 'Plus Jakarta Sans', sans-serif; 
-        background-color: #f8fafc; 
-        color: #0f172a;
-        background-attachment: fixed;
+        background-color: var(--brand-dark); 
+        color: #f8fafc;
+        overflow-x: hidden;
       }
-      .page-gradient {
-        background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.05), transparent 400px),
-                    radial-gradient(circle at bottom left, rgba(124, 58, 237, 0.05), transparent 400px);
-      }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-      .vibrant-gradient {
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
-      }
-      .glass-card {
-        background: rgba(255, 255, 255, 0.7);
+      .mono { font-family: 'JetBrains Mono', monospace; }
+      
+      .neon-border { border: 1px solid rgba(0, 255, 157, 0.3); }
+      .neon-text { color: var(--brand-primary); text-shadow: var(--neon-glow); }
+      .neon-bg { background-color: var(--brand-primary); box-shadow: var(--neon-glow); }
+      
+      .glass-obsidian {
+        background: rgba(15, 23, 42, 0.7);
         backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.05);
       }
-      .hide-scrollbar::-webkit-scrollbar { display: none; }
-      @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
-        100% { transform: translateY(0px); }
+
+      @keyframes neon-pulse {
+        0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(0, 255, 157, 0.5)); }
+        50% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(0, 255, 157, 0.8)); }
       }
-      .animate-float {
-        animation: float 4s ease-in-out infinite;
+      .animate-neon { animation: neon-pulse 3s infinite ease-in-out; }
+
+      #splash-root {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: var(--brand-dark);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.8s ease-out, visibility 0.8s;
       }
-      button, a {
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      .splash-logo {
+        width: 120px;
+        height: 120px;
+        position: relative;
+        transform-style: preserve-3d;
+        animation: rotate-cube 10s infinite linear;
       }
-      button:hover { transform: translateY(-1px); }
-      button:active { transform: translateY(1px) scale(0.98); }
-      .btn-vibrant {
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+      @keyframes rotate-cube {
+        from { transform: rotateX(0deg) rotateY(0deg); }
+        to { transform: rotateX(360deg) rotateY(360deg); }
       }
-      .btn-vibrant:hover {
-        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
-        filter: brightness(1.1);
+      .cube-face {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 2px solid var(--brand-primary);
+        box-shadow: inset 0 0 20px rgba(0, 255, 157, 0.2);
+        background: rgba(0, 255, 157, 0.05);
       }
-      .top-nav-blur {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
-      }
+      
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: var(--brand-dark); }
+      ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--brand-primary); }
     </style>
-    <!-- REMARKED OUT TO PREVENT VITE CONFLICTS
-    <script type="importmap">
-    {
-      "imports": {
-        "react/": "https://esm.sh/react@^19.2.3/",
-        "react": "https://esm.sh/react@^19.2.3",
-        "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-        "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-        "recharts": "https://esm.sh/recharts@^3.6.0",
-        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
-        "vite": "https://esm.sh/vite@^7.3.0",
-        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-        "xlsx": "https://esm.sh/xlsx@^0.18.5"
-      }
-    }
-    </script>
-    -->
-  <link rel="stylesheet" href="/index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
 </head>
-  <body class="page-gradient">
+  <body>
+    <div id="splash-root">
+      <div class="splash-logo mb-12">
+        <div class="cube-face" style="transform: translateZ(60px)"></div>
+        <div class="cube-face" style="transform: rotateY(180deg) translateZ(60px)"></div>
+        <div class="cube-face" style="transform: rotateY(90deg) translateZ(60px)"></div>
+        <div class="cube-face" style="transform: rotateY(-90deg) translateZ(60px)"></div>
+        <div class="cube-face" style="transform: rotateX(90deg) translateZ(60px)"></div>
+        <div class="cube-face" style="transform: rotateX(-90deg) translateZ(60px)"></div>
+      </div>
+      <div class="text-center space-y-4">
+        <h1 class="text-4xl font-black tracking-tighter uppercase neon-text">Paradigm-Xi</h1>
+        <div class="w-64 h-1 bg-slate-900 rounded-full overflow-hidden mx-auto">
+          <div id="splash-progress" class="h-full bg-[#00ff9d] w-0 transition-all duration-300"></div>
+        </div>
+        <p class="mono text-[10px] text-slate-500 uppercase tracking-[0.4em]">Initializing Core Systems...</p>
+      </div>
+    </div>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+    <script type="module" src="./index.tsx"></script>
+    <script>
+      const progress = document.getElementById('splash-progress');
+      const splash = document.getElementById('splash-root');
+      let p = 0;
+      const interval = setInterval(() => {
+        p += Math.random() * 15;
+        if(progress) progress.style.width = Math.min(p, 100) + '%';
+        if(p >= 110) {
+          clearInterval(interval);
+          if(splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => splash.style.visibility = 'hidden', 800);
+          }
+        }
+      }, 150);
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

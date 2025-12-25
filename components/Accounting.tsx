@@ -1,28 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
-import { db } from '../services/mockDb';
+import { nexusStore } from '../services/nexusStore';
 import { getCFOAdvice, suggestCOAForTransaction } from '../services/ai';
 import { 
-  BookOpen, TrendingUp, ShieldCheck, Download, Plus, 
-  Bot, Sparkles, Activity, Landmark, 
-  RefreshCw, FileText, Calculator, Lock, ChevronRight, CheckCircle2, AlertTriangle, ShieldAlert, Zap
+  BookOpen, Bot, Landmark, RefreshCw, 
+  Plus, ShieldCheck, ShieldAlert, AlertTriangle, Zap, 
+  CheckCircle2, ChevronRight, Activity, Cloud
 } from 'lucide-react';
 
 export const Accounting = () => {
-  const [activeTab, setActiveTab] = useState<'ledger' | 'advisor' | 'reconcile' | 'firs' | 'watchdog'>('ledger');
-  const [coa, setCoa] = useState(db.chartOfAccounts);
+  const [activeTab, setActiveTab] = useState<'ledger' | 'advisor' | 'reconcile' | 'watchdog'>('ledger');
+  const [coa, setCoa] = useState(nexusStore.chartOfAccounts);
   const [cfoInsight, setCfoInsight] = useState<any>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [bankLines, setBankLines] = useState(db.bankStatementLines);
+  const [bankLines, setBankLines] = useState(nexusStore.bankStatementLines);
   const [selectedLine, setSelectedLine] = useState<any>(null);
   const [aiMatchId, setAiMatchId] = useState<string | null>(null);
-
-  // Watchdog State
   const [anomalies, setAnomalies] = useState<{id: string, type: string, message: string, severity: 'Medium' | 'High'}[]>([]);
 
   useEffect(() => {
-    const unsubscribe = db.subscribe(() => {
-      setCoa([...db.chartOfAccounts]);
-      setBankLines([...db.bankStatementLines]);
+    const unsubscribe = nexusStore.subscribe(() => {
+      setCoa([...nexusStore.chartOfAccounts]);
+      setBankLines([...nexusStore.bankStatementLines]);
     });
     fetchAdvisor();
     runWatchdog();
@@ -31,56 +30,79 @@ export const Accounting = () => {
 
   const fetchAdvisor = async () => {
     setIsSyncing(true);
-    const insight = await getCFOAdvice();
-    setCfoInsight(insight);
-    setIsSyncing(false);
+    try {
+      const insight = await getCFOAdvice();
+      setCfoInsight(insight);
+    } catch (e) {
+      console.error("CFO Advisor Error:", e);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const runWatchdog = () => {
-    const findings: any[] = [];
-    // 1. Detect Duplicates
+    const findings: {id: string, type: string, message: string, severity: 'Medium' | 'High'}[] = [];
     const seen = new Set();
-    db.bankStatementLines.forEach(l => {
+    
+    nexusStore.bankStatementLines.forEach(l => {
       const key = `${l.description}-${l.amountCents}-${l.type}`;
       if (seen.has(key)) {
-        findings.push({ id: `dup-${l.id}`, type: 'Duplicate Record', message: `Possible duplicate entry detected for "${l.description}" (₦${(l.amountCents/100).toLocaleString()})`, severity: 'Medium' });
+        findings.push({ 
+          id: `dup-${l.id}`, 
+          type: 'Duplicate Entry', 
+          message: `Detected possible duplicate record: "${l.description}" (₦${(l.amountCents/100).toLocaleString()})`, 
+          severity: 'Medium' 
+        });
       }
       seen.add(key);
     });
-    // 2. Large Cash Outflows
-    db.bankStatementLines.filter(l => l.type === 'Debit' && l.amountCents > 100000000).forEach(l => {
-       findings.push({ id: `high-${l.id}`, type: 'Large Outflow', message: `Unusual large outflow of ₦${(l.amountCents/100).toLocaleString()} to "${l.description}"`, severity: 'High' });
+
+    nexusStore.bankStatementLines.filter(l => l.type === 'Debit' && l.amountCents > 100000000).forEach(l => {
+       findings.push({ 
+         id: `high-${l.id}`, 
+         type: 'High Volume Outflow', 
+         message: `Anomalous outflow of ₦${(l.amountCents/100).toLocaleString()} detected for vendor "${l.description}"`, 
+         severity: 'High' 
+       });
     });
     setAnomalies(findings);
   };
 
   const handleMatch = (lineId: string, accountId: string) => {
-    db.reconcileMatch(lineId, accountId);
+    nexusStore.reconcileMatch(lineId, accountId);
     setSelectedLine(null);
     setAiMatchId(null);
   };
 
   const runMatchAI = async (line: any) => {
     setIsSyncing(true);
-    const suggestion = await suggestCOAForTransaction(line.description);
-    setAiMatchId(suggestion);
-    setIsSyncing(false);
+    try {
+      const suggestion = await suggestCOAForTransaction(line.description);
+      setAiMatchId(suggestion);
+    } catch (e) {
+      console.error("AI Match Error:", e);
+    } finally {
+      setIsSyncing(false);
+    }
   };
+
+  const brandColor = nexusStore.organizationSettings.brandColor || '#00ff9d';
 
   return (
     <div className="space-y-8 animate-in fade-in pb-24">
-      <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#00ff9d]/20 rounded-full blur-[100px] -mr-40 -mt-40"></div>
+      <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/5">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[#00ff9d]/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
           <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-gradient-to-tr from-[#00ff9d] to-emerald-600 rounded-3xl flex items-center justify-center shadow-2xl animate-float">
+                <div className="w-16 h-16 bg-[#00ff9d] rounded-3xl flex items-center justify-center shadow-2xl animate-float">
                    <BookOpen size={36} className="text-slate-950" />
                 </div>
                 <div>
                    <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">LedgerAI Central</h1>
                    <div className="flex items-center gap-3 mt-1">
                       <span className="flex items-center gap-1.5 bg-[#00ff9d]/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-[#00ff9d]/20">
-                         <ShieldCheck size={12}/> Double-Entry Engine Verified
+                         {nexusStore.cloudEnabled && !nexusStore.isDemoMode ? <Cloud size={12} className="animate-pulse"/> : <ShieldCheck size={12}/>} 
+                         {nexusStore.cloudEnabled && !nexusStore.isDemoMode ? 'Cloud Nexus Link Live' : 'Double-Entry Engine Active'}
                       </span>
                    </div>
                 </div>
@@ -88,11 +110,10 @@ export const Accounting = () => {
 
              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                 {[
-                  { id: 'ledger', label: 'GL', icon: BookOpen },
+                  { id: 'ledger', label: 'General Ledger', icon: BookOpen },
                   { id: 'advisor', label: 'CFO Advisor', icon: Bot },
                   { id: 'reconcile', label: 'Reconcile', icon: Landmark },
-                  { id: 'watchdog', label: 'The Watchdog', icon: ShieldAlert },
-                  { id: 'firs', label: 'FIRS Filing', icon: FileText }
+                  { id: 'watchdog', label: 'Watchdog', icon: ShieldAlert }
                 ].map(tab => (
                    <button 
                       key={tab.id} 
@@ -157,11 +178,11 @@ export const Accounting = () => {
                  <div className="space-y-6">
                     <div>
                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Estimated Runway</p>
-                       <h4 className="text-4xl font-black text-white tracking-tighter">{db.getRunwayMonths()} Months</h4>
+                       <h4 className="text-4xl font-black text-white tracking-tighter">{nexusStore.getRunwayMonths()} Months</h4>
                     </div>
                     <div className="pt-6 border-t border-white/10">
                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Burn Rate (Monthly)</p>
-                       <h4 className="text-xl font-bold text-rose-400">₦{(db.getNetBurnRate() / 100).toLocaleString()}</h4>
+                       <h4 className="text-xl font-bold text-rose-400">₦{(nexusStore.getNetBurnRate() / 100).toLocaleString()}</h4>
                     </div>
                  </div>
               </div>

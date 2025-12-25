@@ -1,29 +1,51 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Replace these with your actual Supabase credentials from your project settings
-// These are injected by Vite via the define config or process.env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize client only if credentials exist
+export const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
 
 /**
- * PRODUCTION HELPER: Auth & Session
+ * Check connectivity to the Supabase Cloud
  */
-export const getSession = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  return { session, error };
+export const checkCloudHealth = async () => {
+  if (!supabase) return { status: 'Disconnected', error: 'Missing Credentials' };
+  try {
+    const { data, error } = await supabase.from('_health').select('*').limit(1);
+    if (error && error.code !== 'PGRST116') throw error; 
+    return { status: 'Connected', latency: 'Stable' };
+  } catch (e) {
+    return { status: 'Error', error: (e as Error).message };
+  }
 };
 
 /**
- * PRODUCTION HELPER: Organization Data Fetching
+ * Synchronize local data block to a remote table
  */
-export const fetchOrgData = async (table: string, orgId: string) => {
+export const syncTableToCloud = async (tableName: string, data: any[]) => {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from(tableName)
+    .upsert(data, { onConflict: 'id' });
+  
+  if (error) {
+    console.error(`Cloud Sync Failed [${tableName}]:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Pull cloud state to local storage
+ */
+export const pullCloudState = async (tableName: string) => {
+  if (!supabase) return null;
   const { data, error } = await supabase
-    .from(table)
-    .select('*')
-    .eq('organization_id', orgId);
+    .from(tableName)
+    .select('*');
   
   if (error) throw error;
   return data;

@@ -1,6 +1,7 @@
+
 {
-  "name": "pxi-os-core",
-  "description": "PXI UNIFIED OS - Comprehensive Business Intelligence & Operations",
+  "name": "paradigm-vibe-core",
+  "description": "Paradigm-Xi OS - Vibe-Powered Neural Operations Engine",
   "requestFramePermissions": [
     "microphone",
     "camera"

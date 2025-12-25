@@ -7,9 +7,9 @@ import {
   Deal, MarketingPost, SocialInteraction, Workflow, Project, Ticket, AgenticLog,
   InventoryMovement, Supplier, ProjectTask, ProjectAIAlert, EventTask, DealItem
 } from '../types';
-import { supabase, syncTableToCloud } from './supabase';
+import { supabase, syncTableToCloud, pullCloudState } from './supabase';
 
-class MockDB {
+class NexusStore {
   private listeners: (() => void)[] = [];
   public isSyncing: boolean = false;
   public lastCloudSync: string | null = null;
@@ -95,16 +95,38 @@ class MockDB {
       this.currentUser = this.teamMembers[0];
     }
     if (this.cloudEnabled && !this.isDemoMode) {
-      this.pushToCloud();
+      this.initCloudSync();
     }
   }
 
   /**
-   * Initializes high-fidelity simulated data for prospects.
+   * Performs an initial pull from the Cloud Nexus if live.
    */
+  private async initCloudSync() {
+    if (!supabase) return;
+    this.isSyncing = true;
+    try {
+      // Pull critical reference data from Supabase
+      const cloudOrgs = await pullCloudState('organizations');
+      if (cloudOrgs && cloudOrgs.length > 0) {
+        this.organizationSettings = cloudOrgs[0];
+      }
+      
+      const cloudUsers = await pullCloudState('users');
+      if (cloudUsers) this.teamMembers = cloudUsers;
+
+      this.lastCloudSync = new Date().toISOString();
+    } catch (e) {
+      console.warn("Cloud connection limited. Using local neural cache.");
+    } finally {
+      this.isSyncing = false;
+      this.notify();
+    }
+  }
+
   async enterSandbox() {
     this.isDemoMode = true;
-    this.cloudEnabled = false; // Hard lock cloud off in demo
+    this.cloudEnabled = false; 
     
     this.organizationSettings = {
       ...this.organizationSettings,
@@ -121,7 +143,6 @@ class MockDB {
       companyId: 'sandbox-org'
     };
 
-    // Inject simulated operations
     this.contacts = [
       { id: 'dc1', name: 'Future Clients Ltd', type: 'Company', companyId: 's1', email: 'leads@future.com', phone: '0800-DEMO', sentimentScore: 0.9, industry: 'Technology' },
       { id: 'dc2', name: 'Global Catering Partners', type: 'Company', companyId: 's2', email: 'info@gcp.com', phone: '0811-DEMO', sentimentScore: 0.7, industry: 'Hospitality' }
@@ -150,13 +171,13 @@ class MockDB {
 
   load(): boolean {
     try {
-      const saved = localStorage.getItem('ledger_ai_db_v1');
+      const saved = localStorage.getItem('nexus_os_db_v4');
       if (saved) {
         Object.assign(this, JSON.parse(saved));
         return true;
       }
     } catch (e) {
-      console.error("Failed to load state", e);
+      console.error("Failed to load neural cache", e);
     }
     return false;
   }
@@ -198,7 +219,7 @@ class MockDB {
       cloudEnabled: this.cloudEnabled,
       isDemoMode: this.isDemoMode
     };
-    localStorage.setItem('ledger_ai_db_v1', JSON.stringify(state));
+    localStorage.setItem('nexus_os_db_v4', JSON.stringify(state));
 
     if (this.cloudEnabled && !this.isDemoMode && supabase) {
       this.pushToCloud();
@@ -215,7 +236,7 @@ class MockDB {
       await syncTableToCloud('contacts', this.contacts);
       this.lastCloudSync = new Date().toISOString();
     } catch (e) {
-      console.warn("Auto-Sync deferred: Cloud Node unreachable.");
+      console.warn("Nexus Push Deferred: Cloud link throttled.");
     } finally {
       this.isSyncing = false;
       this.listeners.forEach(l => l());
@@ -223,7 +244,7 @@ class MockDB {
   }
 
   resetInstance() {
-    localStorage.removeItem('ledger_ai_db_v1');
+    localStorage.removeItem('nexus_os_db_v4');
     window.location.reload();
   }
 
@@ -279,7 +300,7 @@ class MockDB {
     this.isDemoMode = false;
     this.organizationSettings = {
       id: `org-${Date.now()}`,
-      name: 'Unconfigured Entity',
+      name: 'Unified Entity',
       type: 'General',
       currency: 'NGN',
       setupComplete: false,
@@ -309,11 +330,7 @@ class MockDB {
     this.teamMembers = [this.currentUser];
     
     if (this.cloudEnabled && supabase) {
-      try {
-        await this.pushToCloud();
-      } catch (e) {
-        console.error("Signup cloud push failed:", e);
-      }
+      await this.pushToCloud();
     }
     
     this.notify(); 
@@ -397,4 +414,4 @@ class MockDB {
   saveMeeting(m: any) { this.notify(); }
 }
 
-export const db = new MockDB();
+export const nexusStore = new NexusStore();
