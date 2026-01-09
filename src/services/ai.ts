@@ -1,0 +1,439 @@
+
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { useDataStore } from "../store/useDataStore";
+import { Ingredient, CateringEvent, Recipe } from "../types";
+
+const getAIInstance = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
+export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Promise<void> {
+    const ai = getAIInstance();
+    const { updateIngredientPrice } = useDataStore.getState();
+
+    for (const ing of ingredients) {
+        if (!ing.priceSourceQuery) continue;
+        try {
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-pro-preview',
+                contents: `Determine current commercial wholesale price in NGN (Naira) for "${ing.name}" based on this specific query: "${ing.priceSourceQuery}". Focus on Lagos/Mile 12 or Major markets. Provide a brief 1-sentence summary. Return the price as a number in NAIRA per UNIT specified in the query.`,
+                config: { tools: [{ googleSearch: {} }] }
+            });
+            const text = response.text || "";
+            const priceMatch = text.match(/(\d+[,.]?\d*)/);
+            let extractedPrice = priceMatch ? parseFloat(priceMatch[0].replace(',', '')) : 0;
+            const marketPriceCents = extractedPrice * 100;
+            const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
+                ?.map((chunk: any) => chunk.web ? { title: chunk.web.title, uri: chunk.web.uri } : null)
+                .filter(Boolean) || [];
+
+            updateIngredientPrice(ing.id, marketPriceCents, { marketPriceCents, groundedSummary: text, sources });
+        } catch (e) { console.error(`Grounding failed for ${ing.name}:`, e); }
+    }
+}
+
+export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Record<string, number>> {
+    const ai = getAIInstance();
+    const ingredientList = recipe.ingredients.map(i => `${i.name} (Unit: ${i.unit})`).join(', ');
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: `Search for current market prices in Lagos, Nigeria (2025 data) for the following food ingredients: ${ingredientList}. 
+            For each item, return the WHOLESALE market price in NAIRA per UNIT specified.
+            IMPORTANT: Return exactly the original ingredient names as keys in the JSON array objects. 
+            Respond ONLY with the JSON.`,
+            config: {
+                tools: [{ googleSearch: {} }],
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING, description: "The exact name of the ingredient from the provided list." },
+                            price: { type: Type.NUMBER, description: "Wholesale market price in Naira." }
+                        },
+                        required: ["name", "price"]
+                    }
+                }
+            }
+        });
+
+        let cleanedText = response.text || "[]";
+        cleanedText = cleanedText.replace(/```json|```/g, '');
+
+        const dataArray = JSON.parse(cleanedText);
+        const priceMap: Record<string, number> = {};
+        dataArray.forEach((item: { name: string, price: number }) => {
+            priceMap[item.name.toLowerCase().trim()] = item.price;
+        });
+        return priceMap;
+    } catch (e) {
+        console.error("Live BoQ Grounding Failed:", e);
+        return {};
+    }
+}
+
+export async function performAgenticMarketResearch(itemName: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: `Determine current commercial wholesale price in NGN (Naira) for "${itemName}" in major Nigerian food markets (e.g. Mile 12, Lagos, or Abuja Wuse). Provide a brief summary of current trends. Return the market price (as a number representing Naira) and a summary.`,
+        config: { tools: [{ googleSearch: {} }] }
+    });
+    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
+        ?.map((chunk: any) => chunk.web ? { title: chunk.web.title, uri: chunk.web.uri } : null)
+        .filter(Boolean) || [];
+    const text = response.text || "";
+    const priceMatch = text.match(/(\d+[,.]?\d*)/);
+    const marketPriceCents = priceMatch ? parseFloat(priceMatch[0].replace(',', '')) * 100 : 0;
+    return { marketPriceCents, groundedSummary: text, sources };
+}
+
+export async function runInventoryReconciliation(event: CateringEvent): Promise<any> {
+    const ai = getAIInstance();
+    const payload = JSON.stringify(event.hardwareChecklist);
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze this catering event inventory recovery log: ${payload}. 
+        Identify if there is a 'Shortage' (unaccounted items where Out > Returned + Broken + Lost). 
+        Calculate total financial impact of lost/broken items (assume prices: Plate=500, Fork=150, Glass=1200, Linen=12000, Uniform=8500).
+        Return JSON with: status ('Balanced' | 'Shortage'), totalLossCents, and summary.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    status: { type: Type.STRING },
+                    totalLossCents: { type: Type.NUMBER },
+                    summary: { type: Type.STRING }
+                },
+                required: ["status", "totalLossCents", "summary"]
+            }
+        }
+    });
+    const result = JSON.parse(response.text || "{}");
+
+    // Update local state with reconciliation result
+    const { updateCateringEvent } = useDataStore.getState();
+    updateCateringEvent(event.id, { reconciliationStatus: result.status });
+
+    return result;
+}
+
+export async function extractInfoFromCV(base64Data: string, mimeType: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+            parts: [
+                { inlineData: { data: base64Data, mimeType } },
+                { text: "Extract the following information from this CV into a JSON format: firstName, lastName, email, phoneNumber, dob (YYYY-MM-DD), gender (Male or Female), and address." }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    firstName: { type: Type.STRING },
+                    lastName: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    phoneNumber: { type: Type.STRING },
+                    dob: { type: Type.STRING },
+                    gender: { type: Type.STRING },
+                    address: { type: Type.STRING }
+                }
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+            parts: [
+                { inlineData: { data: base64Audio, mimeType } },
+                { text: "This is a voice recording of an HR manager dictating employee details. Extract the information into JSON: firstName, lastName, email, phoneNumber, address, gender, dob." }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    firstName: { type: Type.STRING },
+                    lastName: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    phoneNumber: { type: Type.STRING },
+                    address: { type: Type.STRING },
+                    gender: { type: Type.STRING },
+                    dob: { type: Type.STRING }
+                }
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function generateAIResponse(prompt: string, context: string = ""): Promise<string> {
+    const ai = getAIInstance();
+    const dataStore = useDataStore.getState();
+
+    const workforceSummary = dataStore.employees.reduce((acc, emp) => {
+        acc[emp.role] = (acc[emp.role] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const operationalContext = JSON.stringify({
+        events: dataStore.cateringEvents.map(e => ({
+            customer: e.customerName,
+            revenue: e.financials.revenueCents,
+            grossMargin: e.costingSheet?.aggregateGrossMarginPercentage
+        })).slice(0, 3),
+        personnel: {
+            totalStaff: dataStore.employees.length,
+            departmentRoles: workforceSummary,
+            staffDirectory: dataStore.employees.map(e => ({
+                name: `${e.firstName} ${e.lastName}`,
+                role: e.role,
+                status: e.status
+            }))
+        }
+    });
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Workspace Context: ${context}. Intelligence Dataset: ${operationalContext}. \n\nUser Question: ${prompt}\n\nAct as Paradigm-Xi Assistant. Use the provided Dataset to answer accurately. If asked about staff or counts (like waiters/chefs), reference the 'personnel' data. 
+ 
+
+IMPORTANT: ALWAYS respond in well-formatted Markdown. Use bold headers, bullet points for lists, and Markdown tables when displaying data. Be professional and structured.`,
+    });
+    return response.text || "";
+}
+
+export async function getCFOAdvice(): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: "Analyze the current financial posture based on provided metrics. Return strategic CFO advice in JSON.",
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    summary: { type: Type.STRING },
+                    sentiment: { type: Type.STRING }
+                },
+                required: ["summary", "sentiment"]
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function processVoiceCommand(base64Audio: string, mimeType: string, context: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+            parts: [
+                { inlineData: { data: base64Audio, mimeType } },
+                { text: `Voice command for Xquisite OS. Context: ${context}. Return JSON intent.` }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    intent: { type: Type.STRING },
+                    transcription: { type: Type.STRING },
+                    feedback: { type: Type.STRING },
+                    data: { type: Type.OBJECT, properties: { path: { type: Type.STRING } } }
+                }
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function textToSpeech(text: string): Promise<string> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text }] }],
+        config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+        },
+    });
+    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
+}
+
+export async function getAIResponseForAudio(base64Audio: string, mimeType: string): Promise<string> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+            parts: [
+                { inlineData: { data: base64Audio, mimeType } },
+                { text: "Respond to this query. ALWAYS use Markdown formatting in your response." }
+            ]
+        }
+    });
+    return response.text || "";
+}
+
+export async function getFormGuidance(formName: string, fieldName: string, value: string, fullContext: any): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Guidance for ${formName} field ${fieldName}.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    tip: { type: Type.STRING },
+                    status: { type: Type.STRING }
+                }
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function runBankingChat(history: any[], message: string): Promise<string> {
+    const ai = getAIInstance();
+    const chat = ai.chats.create({
+        model: 'gemini-3-flash-preview',
+        config: { systemInstruction: "Financial assistant for Xquisite portal. ALWAYS use Markdown for structure." }
+    });
+    const response = await chat.sendMessage({ message });
+    return response.text || "";
+}
+
+export async function suggestCOAForTransaction(description: string, coa: any[]): Promise<{ accountId: string, confidence: number, reason: string }> {
+    const ai = getAIInstance();
+    const accountsContext = coa.map(a => `${a.id}: ${a.name} (${a.type}/${a.subtype})`).join('\n');
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze this transaction description: "${description}".
+        Map it to the most appropriate Account ID from this Chart of Accounts:
+        ${accountsContext}
+        
+        Return JSON with: accountId, confidence (0-1), and reason.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    accountId: { type: Type.STRING },
+                    confidence: { type: Type.NUMBER },
+                    reason: { type: Type.STRING }
+                }
+            }
+        }
+    });
+
+    return JSON.parse(response.text || "{}");
+}
+
+export async function processMeetingAudio(base64Audio: string, mimeType: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+            parts: [
+                { inlineData: { data: base64Audio, mimeType } },
+                {
+                    text: `Analyze this meeting recording. 
+                1. Identify speakers where possible (e.g., Speaker 1, Speaker 2) or use context if names are mentioned.
+                2. Provide an Executive Summary.
+                3. List Key Decisions with the speaker who proposed them if clear.
+                4. Extract Actionable Tasks with assignees (if mentioned) and priority (High/Medium/Low).
+                
+                Return JSON in this format:
+                {
+                    "summary": "...",
+                    "decisions": ["..."],
+                    "tasks": [{ "title": "...", "assignee": "...", "priority": "..." }]
+                }` }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    summary: { type: Type.STRING },
+                    decisions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    tasks: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                title: { type: Type.STRING },
+                                assignee: { type: Type.STRING },
+                                priority: { type: Type.STRING }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function runProjectAnalysis(projectId: string, context: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: `Analyze logistics project ${projectId}.`,
+        config: { responseMimeType: "application/json" }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function executeAgentWorkflow(workflowId: string, agentName: string, role: string, context: string): Promise<any> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Execute workflow ${workflowId} for agent ${agentName}.`,
+        config: { responseMimeType: "application/json" }
+    });
+    return JSON.parse(response.text || "{}");
+}
+
+export async function parseFinancialDocument(base64Data: string, mimeType: string): Promise<{ type: 'Inflow' | 'Outflow', amountCents: number, description: string, date: string, merchant: string }> {
+    const ai = getAIInstance();
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+            parts: [
+                { inlineData: { data: base64Data, mimeType } },
+                { text: "Analyze this receipt/invoice. Extract: type (Inflow for sales/Outflow for expenses), total amount in cents (convert currency if needed, assume NGN if ambiguous), description (brief summary of items), date (YYYY-MM-DD), and merchant/payer name. Return JSON." }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    type: { type: Type.STRING, enum: ['Inflow', 'Outflow'] },
+                    amountCents: { type: Type.NUMBER },
+                    description: { type: Type.STRING },
+                    date: { type: Type.STRING },
+                    merchant: { type: Type.STRING }
+                },
+                required: ["type", "amountCents", "description", "date"]
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+}

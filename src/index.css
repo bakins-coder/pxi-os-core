@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-primary: #00ff9d;
+    --brand-dark: #020617;
+    --brand-slate: #0f172a;
+  }
+}
+
+body {
+    @apply bg-brand-dark text-slate-100 font-sans;
+}
