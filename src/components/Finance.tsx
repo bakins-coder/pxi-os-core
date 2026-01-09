@@ -8,7 +8,7 @@ import {
    Plus, FileText, Download, X, ArrowRight,
    ChevronRight, Receipt,
    CheckCircle2, Banknote, ArrowDownLeft, TrendingDown, TrendingUp, ShoppingBag, Zap, Clock, GripHorizontal, Check, ShieldCheck, Users,
-   BookOpen, Bot, Landmark, RefreshCw, ShieldAlert, AlertTriangle, Cloud, Activity, Camera, Upload
+   BookOpen, Bot, Landmark, RefreshCw, ShieldAlert, AlertTriangle, Cloud, Activity, Camera, Upload, FileSpreadsheet
 } from 'lucide-react';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { getCFOAdvice, suggestCOAForTransaction, generateAIResponse, parseFinancialDocument } from '../services/ai';
