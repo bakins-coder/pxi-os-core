@@ -317,6 +317,7 @@ export const HR = () => {
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
    const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.HR_MANAGER;
+   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE, Role.FINANCE_MANAGER].includes(currentUser?.role as any);
 
    useEffect(() => {
       if (activeTab === 'payroll') {
@@ -353,12 +354,12 @@ export const HR = () => {
                </div>
                <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0">
                   {[
-                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid },
-                     { id: 'people', label: 'People', icon: Users },
-                     { id: 'leave', label: 'Absence Node', icon: Plane },
-                     { id: 'payroll', label: 'Payroll', icon: Banknote },
-                     { id: 'matrix', label: 'Role Matrix', icon: Layers }
-                  ].map(tab => (
+                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: true },
+                     { id: 'people', label: 'People', icon: Users, visible: true },
+                     { id: 'leave', label: 'Absence Node', icon: Plane, visible: true },
+                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: canViewPayroll },
+                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: true }
+                  ].filter(t => t.visible).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 md:px-8 py-3 rounded-[1.2rem] md:rounded-[1.5rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-2xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                         <tab.icon size={14} className="shrink-0" /> <span className="hidden sm:inline">{tab.label}</span>
                         <span className="sm:hidden">{tab.label.charAt(0)}</span>
