@@ -12,6 +12,7 @@ interface SettingsState {
     partialSetupData: any | null;
     completeSetup: (settings: Partial<OrganizationSettings>) => void;
     updatePartialSetup: (data: any) => void;
+    toggleStrictMode: () => void;
 }
 
 const DEFAULT_SETTINGS: OrganizationSettings = {
@@ -61,6 +62,7 @@ export const useSettingsStore = create<SettingsState>()(
                     settings: { ...state.settings, ...newSettings, setupComplete: true },
                     partialSetupData: null
                 })),
+            toggleStrictMode: () => set((state) => ({ strictMode: !state.strictMode })),
         }),
         {
             name: 'settings-storage',

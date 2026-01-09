@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
@@ -8,7 +7,7 @@ import { EventCalendar } from './EventCalendar';
 import {
   TrendingUp, Bot, BrainCircuit, Activity,
   CheckSquare, Users, Calendar, ArrowUpRight, Building2,
-  Clock, AlertCircle, ShoppingBag, Receipt, ArrowDownRight, ArrowUpLeft, ChevronRight, UserCheck
+  Clock, AlertCircle, ShoppingBag, Receipt, ArrowDownRight, ArrowUpLeft, ChevronRight, UserCheck, LayoutGrid
 } from 'lucide-react';
 
 const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 'payable' | 'event' | 'complaint' | 'customer' | 'employee' }> = ({ title, items, type }) => {
@@ -40,9 +39,9 @@ const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 
               >
                 <div className="flex items-center gap-4">
                   <div className={`p-2 rounded-xl ${type === 'receivable' ? 'bg-emerald-50 text-emerald-600' :
-                      type === 'payable' ? 'bg-rose-50 text-rose-600' :
-                        type === 'complaint' ? 'bg-amber-50 text-amber-600' :
-                          type === 'employee' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'
+                    type === 'payable' ? 'bg-rose-50 text-rose-600' :
+                      type === 'complaint' ? 'bg-amber-50 text-amber-600' :
+                        type === 'employee' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                     {type === 'receivable' ? <ArrowUpRight size={14} /> :
                       type === 'payable' ? <ArrowDownRight size={14} /> :

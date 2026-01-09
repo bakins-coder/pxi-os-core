@@ -359,12 +359,14 @@ const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComplete: (
       return Object.values(selected).some(qty => Number(qty) > 0);
    }, [selected]);
 
+   // Flexible portions: No longer locking to guest count
    const isPortionLocked = useMemo(() => {
+      // Just checks if we have at least one mandatory category selected (informational only now)
       return mandatoryLockCategories.every(cat => {
          const total = categoryTotals[cat] || 0;
-         return total === 0 || total === guestCount;
+         return total > 0;
       });
-   }, [categoryTotals, guestCount]);
+   }, [categoryTotals]);
 
    const projections = useMemo(() => {
       const costings = (Object.entries(selected) as [string, number][])
@@ -398,15 +400,25 @@ const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComplete: (
    };
 
    const handlePlaceOrder = async () => {
-      if (!customerName || !eventDate || !eventLocation || !contactEmail || !contactPhone) {
-         alert("Complete all mandatory event details.");
+      const missingFields = [];
+      if (!customerName) missingFields.push("Host Name");
+      if (!eventDate) missingFields.push("Event Date");
+      if (!eventLocation) missingFields.push("Location");
+      if (!contactEmail) missingFields.push("Email");
+      if (!contactPhone) missingFields.push("Phone");
+
+      if (missingFields.length > 0) {
+         alert(`Please complete the following mandatory fields: ${missingFields.join(', ')}`);
          return;
       }
 
+      // Removed Portion Lock Check - Allow flexible ordering
+      /*
       if (!isPortionLocked) {
          alert(`Course category portions must exactly match the guest count (${guestCount}). Check categories with red indicators.`);
          return;
       }
+      */
 
       setIsSubmitting(true);
       const dealItems: DealItem[] = (Object.entries(selected) as [string, number][])

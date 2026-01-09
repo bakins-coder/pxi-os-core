@@ -41,7 +41,12 @@ export const brochureMenu = [
 
     // HOT PLATES
     { id: 'hp-prawn-steak', cat: "Hot Plates", name: "Sizzling Prawn & Steak", price: 55000, desc: "Prawn & Imported steak served with special fried rice and steamed vegetables.", img: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=800' },
-    // Simplified list...
+
+    // DESSERT
+    { id: 'ds-choc-gateau', cat: "Dessert", name: "Chocolate Gateau", price: 4500, recipeId: 'rec-cake', desc: "Rich triple-layer chocolate cake with dark chocolate ganache.", img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=800' },
+    { id: 'ds-fruit-platter', cat: "Dessert", name: "Exotic Fruit Platter", price: 3500, desc: "Seasonal sliced fruits served with honey yogurt dip.", img: 'https://images.unsplash.com/photo-1615486511484-92e590d2d75f?q=80&w=800' },
+    { id: 'ds-cheesecake', cat: "Dessert", name: "Strawberry Cheesecake", price: 5000, recipeId: 'rec-cake', desc: "Classic New York cheesecake with fresh strawberry glaze.", img: 'https://images.unsplash.com/photo-1508737027454-e6454ef45afd?q=80&w=800' },
+    { id: 'ds-icecream', cat: "Dessert", name: "Gelato Trio", price: 3000, desc: "Three scoops of premium artisan gelato.", img: 'https://images.unsplash.com/photo-1560008581-09826d1de69e?q=80&w=800' }
 ];
 
 export const scannedAssets = [
@@ -61,6 +66,19 @@ export const initialRecipes: Recipe[] = [
             { name: 'Whole Chicken', qtyPerPortion: 0.2, unit: 'kg', priceSourceQuery: 'Frozen chicken wholesale price Lagos per kg' },
             { name: 'Fresh Tomatoes', qtyPerPortion: 0.1, unit: 'kg', priceSourceQuery: 'Fresh tomato basket price Mile 12' },
             { name: 'Onions', qtyPerPortion: 0.05, unit: 'kg', priceSourceQuery: 'Onion bag price wholesale Nigeria' }
+        ]
+    },
+    {
+        id: 'rec-cake',
+        name: 'Chocolate Gateau',
+        category: 'Dessert',
+        portions: [10, 20, 50],
+        ingredients: [
+            { name: 'Flour', qtyPerPortion: 0.1, unit: 'kg', priceSourceQuery: 'Flour price 50kg bag Lagos' },
+            { name: 'Cocoa Powder', qtyPerPortion: 0.05, unit: 'kg', priceSourceQuery: 'Cocoa powder price' },
+            { name: 'Sugar', qtyPerPortion: 0.08, unit: 'kg', priceSourceQuery: 'Sugar price 50kg bag' },
+            { name: 'Eggs', qtyPerPortion: 2, unit: 'pcs', priceSourceQuery: 'Crate of eggs price Lagos' },
+            { name: 'Butter', qtyPerPortion: 0.05, unit: 'kg', priceSourceQuery: 'Butter wholesale price' }
         ]
     }
 ];

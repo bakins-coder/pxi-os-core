@@ -167,6 +167,7 @@ export interface CateringEvent {
   companyId: string;
   customerName: string;
   eventDate: string;
+  endDate?: string;
   location?: string;
   guestCount: number;
   status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed';
@@ -192,6 +193,28 @@ export interface CateringEvent {
     invoiceId?: string; // Link to the main sales invoice
   };
   banquetDetails?: BanquetDetails;
+  portionMonitor?: PortionMonitor;
+}
+
+export interface ServingTable {
+  id: string;
+  name: string;
+  assignedGuests: number;
+  assignedWaiterId?: string;
+  status: 'Waiting' | 'Served' | 'Partially Served';
+  servedItems: { itemId: string; name: string; quantity: number; servedAt: string }[];
+  isLocked: boolean;
+}
+
+export interface PortionMonitor {
+  eventId: string;
+  tables: ServingTable[];
+  leftovers: { itemId: string; name: string; quantity: number; reason: string; loggedAt: string }[];
+  handoverEvidence: { url: string; note: string; timestamp: string }[];
+  handoverNotes?: string;
+  handoverSignedBySupervisor?: string;
+  handoverSignedByHost?: string;
+  handoverDate?: string;
 }
 
 export interface InventoryItem {
@@ -276,7 +299,7 @@ export interface Project {
 }
 
 export interface AIAgent { id: string; companyId: string; name: string; title: string; industry: string; objective: string; voice: { name: string; accent: string; traits: string[]; speed: number; }; telephony: { phoneNumber: string; areaCode: string; liveTransferNumber: string; callbackEnabled: boolean; }; intelligence: { kycQuestions: string[]; guardrails: string[]; script: string; }; status: 'Deployed' | 'Training' | 'Idle'; }
-export interface AgenticLog { id: string; timestamp: string; channel: string; customerName: string; intent: string; reasoning: string; actionTaken: string; policyApplied: string; outcome: 'Resolved' | 'Escalated' | 'Pending Approval'; language: string; }
+export interface ConversationLog { id: string; timestamp: string; channel: string; customerName: string; intent: string; reasoning: string; actionTaken: string; policyApplied: string; outcome: 'Resolved' | 'Escalated' | 'Pending Approval'; language: string; }
 export interface MarketingPost { id: string; companyId: string; type: string; title: string; content: string; status: string; scheduledDate: string; generatedByAI: boolean; }
 export interface SocialInteraction { id: string; platform: string; user: string; handle: string; timestamp: string; sentiment: string; content: string; aiAnalysis: string; suggestedResponse: string; status: string; }
 export interface SocialPost { id: string; platform: string; title: string; content: string; scheduledDate: string; status: string; generatedByAI: boolean; }

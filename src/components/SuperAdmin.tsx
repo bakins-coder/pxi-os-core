@@ -29,13 +29,12 @@ const revenueData = [
 ];
 
 export const SuperAdmin = () => {
-    const { settings, setBrandColor, strictMode } = useSettingsStore();
+    const { settings, setBrandColor, strictMode, toggleStrictMode } = useSettingsStore();
     const brandColor = settings.brandColor || '#00ff9d';
     const [activeTab, setActiveTab] = useState<'matrix' | 'branding' | 'security'>('matrix');
 
     const handleToggleStrictMode = () => {
-        // In a real app, this would update a global system flag
-        useSettingsStore.setState({ strictMode: !strictMode });
+        toggleStrictMode();
     };
 
     return (
@@ -111,7 +110,7 @@ export const SuperAdmin = () => {
                                             </td>
                                             <td className="px-6 py-6">
                                                 <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${client.status === 'Healthy' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                        client.status === 'Warning' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
+                                                    client.status === 'Warning' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
                                                     }`}>
                                                     {client.status}
                                                 </span>

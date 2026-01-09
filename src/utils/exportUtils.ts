@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { Invoice, Contact, Employee, BookkeepingEntry } from '../types';
+import { Invoice, Contact, Employee, BookkeepingEntry, CateringEvent, PortionMonitor } from '../types';
+import { useDataStore } from '../store/useDataStore';
 
 /**
  * Generate PDF for a single invoice
@@ -218,4 +219,148 @@ export const exportComprehensiveReport = (data: {
     XLSX.utils.book_append_sheet(wb, contactsWS, 'Contacts');
 
     XLSX.writeFile(wb, `Paradigm-Xi-Report-${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+/**
+ * Generate PDF Handover Report for Catering Event
+ */
+export const generateHandoverReport = (event: CateringEvent, monitor: PortionMonitor) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+
+    // --- HEADER ---
+    doc.setFillColor(63, 81, 181); // Indigo
+    doc.rect(0, 0, pageWidth, 40, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Service Handover Report', 14, 18);
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Event: ${event.customerName} | Date: ${event.eventDate}`, 14, 28);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 35);
+
+    // --- METRICS ---
+    doc.setTextColor(0, 0, 0);
+    const totalGuests = monitor.tables.reduce((sum, t) => sum + t.assignedGuests, 0);
+    const servedGuests = monitor.tables.reduce((sum, t) => t.status === 'Served' ? sum + t.assignedGuests : sum, 0);
+    const serviceRate = totalGuests > 0 ? Math.round((servedGuests / totalGuests) * 100) : 0;
+
+    autoTable(doc, {
+        startY: 50,
+        head: [['Total Guests Expected', 'Guests Served', 'Service Completion Rate', 'Total Tables']],
+        body: [[
+            event.guestCount.toString(),
+            servedGuests.toString(),
+            `${serviceRate}%`,
+            monitor.tables.length.toString()
+        ]],
+        theme: 'plain',
+        headStyles: { fontSize: 10, textColor: 100 },
+        bodyStyles: { fontSize: 14, fontStyle: 'bold' }
+    });
+
+    // --- LEFTOVER LOG ---
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Leftover / Handover Log', 14, finalY);
+
+    const leftoverData = monitor.leftovers.length > 0 ? monitor.leftovers.map(l => [
+        l.name,
+        l.quantity.toString(),
+        l.reason,
+        new Date(l.loggedAt).toLocaleTimeString()
+    ]) : [['No leftovers recorded', '-', '-', '-']];
+
+    autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Item Name', 'Quantity', 'Reason / Note', 'Time Logged']],
+        body: leftoverData,
+        theme: 'striped',
+        headStyles: { fillColor: [234, 179, 8], textColor: 0 }, // Yellow/Orange header
+    });
+
+    // --- TABLE SERVICE DETAILS ---
+    let currentY = (doc as any).lastAutoTable.finalY + 15;
+    doc.text('Table Service Details', 14, currentY);
+
+    // Get waiter names map
+    const store = useDataStore.getState();
+    const getWaiterName = (id?: string) => {
+        if (!id) return 'Unassigned';
+        const w = store.employees.find(e => e.id === id);
+        return w ? `${w.firstName} ${w.lastName}` : 'Unknown';
+    };
+
+    const tableData = monitor.tables.map(t => [
+        t.name,
+        t.status,
+        t.assignedGuests.toString(),
+        getWaiterName(t.assignedWaiterId),
+        t.servedItems.length > 0 ? `${t.servedItems.length} items served` : '-'
+    ]);
+
+    autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Table Name', 'Status', 'Guests', 'Served By (Waiter)', 'Details']],
+        body: tableData,
+    });
+
+    // --- EVIDENCE PHOTOS ---
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+    if (monitor.handoverEvidence.length > 0) {
+        // Create a new page if not enough space
+        if (currentY > 200) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.text('Handover Evidence', 14, currentY);
+        currentY += 10;
+
+        monitor.handoverEvidence.forEach((ev, idx) => {
+            if (currentY + 60 > 280) {
+                doc.addPage();
+                currentY = 20;
+            }
+            try {
+                // Add image (assuming standard aspect ratio for simplicity, scaling to width 80)
+                doc.addImage(ev.url, 'JPEG', 14, currentY, 80, 60);
+                doc.setFontSize(10);
+                doc.text(`Note: ${ev.note}`, 100, currentY + 10);
+                doc.text(`Time: ${new Date(ev.timestamp).toLocaleString()}`, 100, currentY + 18);
+                currentY += 70;
+            } catch (e) {
+                doc.text(`[Error loading image ${idx + 1}]`, 14, currentY);
+                currentY += 10;
+            }
+        });
+    }
+
+    // --- SIGNATURES ---
+    if (currentY + 50 > 280) { // Check for space for signatures
+        doc.addPage();
+        currentY = 20;
+    } else {
+        currentY += 20;
+    }
+
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
+
+    // Host Signature Line
+    doc.line(20, currentY + 30, 90, currentY + 30);
+    doc.setFontSize(11);
+    doc.text('Host Representative Signature', 20, currentY + 40);
+    doc.text('Date: ________________', 20, currentY + 50);
+
+    // Supervisor Signature Line
+    doc.line(120, currentY + 30, 190, currentY + 30);
+    doc.text('Event Supervisor Signature', 120, currentY + 40);
+    doc.text('Date: ________________', 120, currentY + 50);
+
+    doc.save(`Handover_Report_${event.customerName.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 };

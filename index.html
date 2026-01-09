@@ -201,6 +201,17 @@
   <script>
     const progress = document.getElementById('splash-progress');
     const splash = document.getElementById('splash-root');
+
+    // Capture PWA install prompt immediately
+    window.deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      window.deferredPrompt = e;
+      console.log('PWA installation available - event captured');
+    });
+
     let p = 0;
     const interval = setInterval(() => {
       p += Math.random() * 15;

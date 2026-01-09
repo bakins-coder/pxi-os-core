@@ -13,6 +13,7 @@ import {
    Users, TrendingUp, MessageSquare, Database, ChevronRight, Briefcase, Hash, MapPin, FileSpreadsheet, Trash2, MessageCircle, Send as TelegramIcon, GripHorizontal
 } from 'lucide-react';
 import { CustomerStatementModal } from './CustomerStatementModal';
+import { CustomerEventsModal } from './CustomerEventsModal';
 
 const AddContactModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose: () => void, onAdd: (c: Partial<Contact>) => void }) => {
    const [segment, setSegment] = useState<'Individual' | 'Company'>('Individual');
@@ -150,6 +151,7 @@ export const CRM = () => {
    const [view, setView] = useState<'contacts' | 'deals' | 'tasks' | 'calendar'>('contacts');
    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
    const [selectedContactForStatement, setSelectedContactForStatement] = useState<Contact | null>(null);
+   const [selectedContactForEvents, setSelectedContactForEvents] = useState<Contact | null>(null);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
    const { contacts, deals, tasks, addContact, addContactsBulk, deleteContact } = useDataStore();
@@ -270,6 +272,7 @@ export const CRM = () => {
                                  </td>
                                  <td className="px-8 py-6 text-right flex justify-end gap-2">
                                     <button onClick={() => setSelectedContactForStatement(con)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all" title="View Statement"><FileText size={16} /></button>
+                                    <button onClick={() => setSelectedContactForEvents(con)} className="p-2.5 bg-sky-50 text-sky-600 rounded-xl hover:bg-sky-600 hover:text-white transition-all" title="Event History"><CalendarDays size={16} /></button>
                                     <button onClick={() => deleteContact(con.id)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16} /></button>
                                  </td>
                               </tr>
@@ -293,6 +296,19 @@ export const CRM = () => {
             <CustomerStatementModal
                contact={selectedContactForStatement}
                onClose={() => setSelectedContactForStatement(null)}
+            />
+         )}
+         {selectedContactForStatement && (
+            <CustomerStatementModal
+               contact={selectedContactForStatement}
+               onClose={() => setSelectedContactForStatement(null)}
+            />
+         )}
+
+         {selectedContactForEvents && (
+            <CustomerEventsModal
+               contact={selectedContactForEvents}
+               onClose={() => setSelectedContactForEvents(null)}
             />
          )}
       </div>

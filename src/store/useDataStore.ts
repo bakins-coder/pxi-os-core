@@ -96,6 +96,14 @@ interface DataState {
     hydrateFromCloud: () => Promise<void>;
     subscribeToRealtimeUpdates: () => void;
     unsubscribeFromRealtimeUpdates: () => void;
+    addAgenticLog: (log: Partial<AgenticLog>) => void;
+
+    // Portion Monitor Actions
+    initializePortionMonitor: (eventId: string, tableCount: number, guestsPerTable: number) => void;
+    markTableServed: (eventId: string, tableId: string, itemIds: string[]) => void;
+    assignWaiterToTable: (eventId: string, tableId: string, waiterId: string) => void;
+    logLeftover: (eventId: string, itemId: string, quantity: number, reason: string) => void;
+    addHandoverEvidence: (eventId: string, url: string, note: string) => void;
 }
 
 export const useDataStore = create<DataState>()(
@@ -494,8 +502,165 @@ export const useDataStore = create<DataState>()(
             addWorkflow: (wf) => {
                 const workflow = { ...wf, id: `wf-${Date.now()}`, logs: [], status: 'Active' } as Workflow;
                 set((state) => ({ workflows: [workflow, ...state.workflows] }));
+                set((state) => ({ workflows: [workflow, ...state.workflows] }));
                 get().syncWithCloud();
             },
+            addAgenticLog: (log) => {
+                const newLog = {
+                    ...log,
+                    id: log.id || `log-${Date.now()}`,
+                    timestamp: log.timestamp || new Date().toISOString()
+                } as AgenticLog;
+                set((state) => ({ agenticLogs: [newLog, ...state.agenticLogs] }));
+            },
+
+            initializePortionMonitor: (eventId, tableCount, guestsPerTable) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const tables: any[] = [];
+                for (let i = 1; i <= tableCount; i++) {
+                    tables.push({
+                        id: `tbl-${eventId}-${i}`,
+                        name: `Table ${i}`,
+                        assignedGuests: guestsPerTable,
+                        status: 'Waiting',
+                        servedItems: [],
+                        isLocked: false
+                    });
+                }
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = {
+                    ...updatedEvents[eventIndex],
+                    portionMonitor: {
+                        eventId,
+                        tables,
+                        leftovers: [],
+                        handoverEvidence: []
+                    }
+                };
+
+                return { cateringEvents: updatedEvents };
+            }),
+
+            markTableServed: (eventId, tableId, itemIds) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const updatedTables = event.portionMonitor.tables.map((t: any) => {
+                    if (t.id === tableId && !t.isLocked) {
+                        // In a real app, we'd look up item names from inventory/recipes.
+                        // For this simplified logic, we assume served all items in the event deal
+                        const served = itemIds.map(id => ({
+                            itemId: id,
+                            name: event.items.find(i => i.inventoryItemId === id)?.name || 'Unknown Item',
+                            quantity: 1, // Assumption: 1 portion per guest per item
+                            servedAt: new Date().toISOString()
+                        }));
+
+                        return {
+                            ...t,
+                            status: 'Served',
+                            isLocked: true,
+                            servedItems: served
+                        };
+                    }
+                    return t;
+                });
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: { ...event.portionMonitor, tables: updatedTables }
+                };
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            assignWaiterToTable: (eventId, tableId, waiterId) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const updatedTables = event.portionMonitor.tables.map((t: any) =>
+                    t.id === tableId ? { ...t, assignedWaiterId: waiterId } : t
+                );
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: { ...event.portionMonitor, tables: updatedTables }
+                };
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            logLeftover: (eventId, itemId, quantity, reason) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const itemName = event.items.find(i => i.inventoryItemId === itemId)?.name || 'Unknown';
+                const newLeftover = {
+                    itemId,
+                    name: itemName,
+                    quantity,
+                    reason,
+                    loggedAt: new Date().toISOString()
+                };
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: {
+                        ...event.portionMonitor,
+                        leftovers: [...event.portionMonitor.leftovers, newLeftover]
+                    }
+                };
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            addHandoverEvidence: (eventId, url, note) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const newEvidence = {
+                    url,
+                    note,
+                    timestamp: new Date().toISOString()
+                };
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: {
+                        ...event.portionMonitor,
+                        handoverEvidence: [...event.portionMonitor.handoverEvidence, newEvidence]
+                    }
+                };
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
 
             createCateringOrder: async (d) => {
                 const evId = `ev-${Date.now()}`;
@@ -543,6 +708,86 @@ export const useDataStore = create<DataState>()(
                     }))
                 };
 
+                // Calculate dates
+                const eventDateObj = new Date(d.eventDate);
+                const oneDayBefore = new Date(eventDateObj); oneDayBefore.setDate(eventDateObj.getDate() - 1);
+                const oneDayAfter = new Date(eventDateObj); oneDayAfter.setDate(eventDateObj.getDate() + 1);
+
+                const taskList: Task[] = [
+                    {
+                        id: `task-proc-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Procurement & Requisitions',
+                        description: 'Generate and approve requisitions for all deal items.',
+                        dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'High', status: 'Todo'
+                    },
+                    {
+                        id: `task-prep-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Mise en Place (Food Prep)',
+                        description: 'Initial ingredient preparation and marination.',
+                        dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
+                    },
+                    {
+                        id: `task-cook-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Live Cooking / Final Production',
+                        description: 'CRITICAL: Main cooking execution on event day.',
+                        dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
+                    },
+                    {
+                        id: `task-asset-out-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Asset Checkout & Loading',
+                        description: 'Checkout hardware, cutlery, and equipment from store.',
+                        dueDate: d.eventDate, priority: 'High', status: 'Todo'
+                    },
+                    {
+                        id: `task-setup-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Event Setup',
+                        description: 'Setup service points, tables, and chaffing dishes.',
+                        dueDate: d.eventDate, priority: 'High', status: 'Todo'
+                    },
+                    {
+                        id: `task-service-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Service Delivery',
+                        description: 'Execute food service and guest management.',
+                        dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
+                    },
+                    {
+                        id: `task-asset-in-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Asset Return & Reconciliation',
+                        description: 'Return all assets to store and log breakages/losses.',
+                        dueDate: oneDayAfter.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
+                    }
+                ];
+
+                // Conditional Tasks
+                // Mock logic: If guest count > 50, assume vehicle hire needed
+                if (d.guestCount > 50) {
+                    taskList.push({
+                        id: `task-veh-${Date.now()}`, companyId: 'org-xquisite',
+                        title: 'Vehicle Hire & Logistics',
+                        description: 'Coordinate transport for team and equipment.',
+                        dueDate: d.eventDate, priority: 'Medium', status: 'Todo'
+                    });
+                }
+
+                // If event includes "Rental" items (mock check)
+                const hasRentals = d.items.some((i: any) => i.name.toLowerCase().includes('rental'));
+                if (hasRentals) {
+                    taskList.push(
+                        {
+                            id: `task-rent-out-${Date.now()}`, companyId: 'org-xquisite',
+                            title: 'Rental Pickup',
+                            description: 'Collect rental items from vendors.',
+                            dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
+                        },
+                        {
+                            id: `task-rent-in-${Date.now()}`, companyId: 'org-xquisite',
+                            title: 'Rental Return',
+                            description: 'Return items to vendors (Clean/Dirty as agreed).',
+                            dueDate: oneDayAfter.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
+                        }
+                    );
+                }
+
                 const project: Project = {
                     id: `proj-${Date.now()}`,
                     companyId: 'org-xquisite',
@@ -550,15 +795,11 @@ export const useDataStore = create<DataState>()(
                     clientContactId: d.contactId || '',
                     status: 'Planning',
                     startDate: d.eventDate,
-                    endDate: d.eventDate,
+                    endDate: oneDayAfter.toISOString().split('T')[0],
                     budgetCents: totalRev,
-                    progress: 10,
+                    progress: 0,
                     referenceId: evId,
-                    tasks: [
-                        { id: `task-proc-${Date.now()}`, companyId: 'org-xquisite', title: 'Procurement Verification', description: 'Validate ingredient stock and vendor fulfillment', dueDate: d.eventDate, priority: 'High', status: 'Todo' },
-                        { id: `task-log-${Date.now()}`, companyId: 'org-xquisite', title: 'Logistics Planning', description: 'Coordinate van dispatch and delivery windows', dueDate: d.eventDate, priority: 'Medium', status: 'Todo' },
-                        { id: `task-hr-${Date.now()}`, companyId: 'org-xquisite', title: 'Staff Deployment', description: 'Assign waiter ratios and onsite coordination team', dueDate: d.eventDate, priority: 'Medium', status: 'Todo' }
-                    ],
+                    tasks: taskList,
                     aiAlerts: []
                 };
 

@@ -1,11 +1,13 @@
+import { GoogleGenAI, Type, Modality } from '@google/genai';
+import { useDataStore } from '../store/useDataStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { Ingredient, CateringEvent, Recipe, AIAgentMode } from '../types';
 
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { useDataStore } from "../store/useDataStore";
-import { Ingredient, CateringEvent, Recipe } from "../types";
-
-const getAIInstance = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Access environment variables directly
+const getAIInstance = () => new GoogleGenAI({ apiKey: process.env.API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || '' });
 
 export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Promise<void> {
+    if (useSettingsStore.getState().strictMode) return;
     const ai = getAIInstance();
     const { updateIngredientPrice } = useDataStore.getState();
 
@@ -14,7 +16,7 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
         try {
             const response = await ai.models.generateContent({
                 model: 'gemini-3-pro-preview',
-                contents: `Determine current commercial wholesale price in NGN (Naira) for "${ing.name}" based on this specific query: "${ing.priceSourceQuery}". Focus on Lagos/Mile 12 or Major markets. Provide a brief 1-sentence summary. Return the price as a number in NAIRA per UNIT specified in the query.`,
+                contents: `Determine current commercial wholesale price in NGN(Naira) for "${ing.name}" based on this specific query: "${ing.priceSourceQuery}".Focus on Lagos / Mile 12 or Major markets.Provide a brief 1 - sentence summary.Return the price as a number in NAIRA per UNIT specified in the query.`,
                 config: { tools: [{ googleSearch: {} }] }
             });
             const text = response.text || "";
@@ -26,20 +28,21 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
                 .filter(Boolean) || [];
 
             updateIngredientPrice(ing.id, marketPriceCents, { marketPriceCents, groundedSummary: text, sources });
-        } catch (e) { console.error(`Grounding failed for ${ing.name}:`, e); }
+        } catch (e) { console.error(`Grounding failed for ${ing.name}: `, e); }
     }
 }
 
 export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Record<string, number>> {
+    if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const ingredientList = recipe.ingredients.map(i => `${i.name} (Unit: ${i.unit})`).join(', ');
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-preview',
-            contents: `Search for current market prices in Lagos, Nigeria (2025 data) for the following food ingredients: ${ingredientList}. 
+            contents: `Search for current market prices in Lagos, Nigeria(2025 data) for the following food ingredients: ${ingredientList}. 
             For each item, return the WHOLESALE market price in NAIRA per UNIT specified.
-            IMPORTANT: Return exactly the original ingredient names as keys in the JSON array objects. 
+    IMPORTANT: Return exactly the original ingredient names as keys in the JSON array objects. 
             Respond ONLY with the JSON.`,
             config: {
                 tools: [{ googleSearch: {} }],
@@ -59,7 +62,7 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
         });
 
         let cleanedText = response.text || "[]";
-        cleanedText = cleanedText.replace(/```json|```/g, '');
+        cleanedText = cleanedText.replace(/```json | ```/g, '');
 
         const dataArray = JSON.parse(cleanedText);
         const priceMap: Record<string, number> = {};
@@ -74,10 +77,11 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
 }
 
 export async function performAgenticMarketResearch(itemName: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { marketPriceCents: 0, groundedSummary: "Strict Mode Enabled", sources: [] };
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
-        contents: `Determine current commercial wholesale price in NGN (Naira) for "${itemName}" in major Nigerian food markets (e.g. Mile 12, Lagos, or Abuja Wuse). Provide a brief summary of current trends. Return the market price (as a number representing Naira) and a summary.`,
+        contents: `Determine current commercial wholesale price in NGN(Naira) for "${itemName}" in major Nigerian food markets(e.g.Mile 12, Lagos, or Abuja Wuse).Provide a brief summary of current trends.Return the market price(as a number representing Naira) and a summary.`,
         config: { tools: [{ googleSearch: {} }] }
     });
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
@@ -90,14 +94,15 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
 }
 
 export async function runInventoryReconciliation(event: CateringEvent): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { status: 'Balanced', totalLossCents: 0, summary: "Strict Mode: Reconciliation skipped." };
     const ai = getAIInstance();
     const payload = JSON.stringify(event.hardwareChecklist);
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Analyze this catering event inventory recovery log: ${payload}. 
-        Identify if there is a 'Shortage' (unaccounted items where Out > Returned + Broken + Lost). 
-        Calculate total financial impact of lost/broken items (assume prices: Plate=500, Fork=150, Glass=1200, Linen=12000, Uniform=8500).
-        Return JSON with: status ('Balanced' | 'Shortage'), totalLossCents, and summary.`,
+        Identify if there is a 'Shortage'(unaccounted items where Out > Returned + Broken + Lost). 
+        Calculate total financial impact of lost / broken items(assume prices: Plate = 500, Fork = 150, Glass = 1200, Linen = 12000, Uniform = 8500).
+        Return JSON with: status('Balanced' | 'Shortage'), totalLossCents, and summary.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -121,6 +126,7 @@ export async function runInventoryReconciliation(event: CateringEvent): Promise<
 }
 
 export async function extractInfoFromCV(base64Data: string, mimeType: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -150,6 +156,7 @@ export async function extractInfoFromCV(base64Data: string, mimeType: string): P
 }
 
 export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -179,6 +186,7 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
 }
 
 export async function generateAIResponse(prompt: string, context: string = ""): Promise<string> {
+    if (useSettingsStore.getState().strictMode) return "I am currently in Strict Mode. AI services are disabled.";
     const ai = getAIInstance();
     const dataStore = useDataStore.getState();
 
@@ -197,7 +205,7 @@ export async function generateAIResponse(prompt: string, context: string = ""): 
             totalStaff: dataStore.employees.length,
             departmentRoles: workforceSummary,
             staffDirectory: dataStore.employees.map(e => ({
-                name: `${e.firstName} ${e.lastName}`,
+                name: `${e.firstName} ${e.lastName} `,
                 role: e.role,
                 status: e.status
             }))
@@ -206,15 +214,16 @@ export async function generateAIResponse(prompt: string, context: string = ""): 
 
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Workspace Context: ${context}. Intelligence Dataset: ${operationalContext}. \n\nUser Question: ${prompt}\n\nAct as Paradigm-Xi Assistant. Use the provided Dataset to answer accurately. If asked about staff or counts (like waiters/chefs), reference the 'personnel' data. 
- 
+        contents: `Workspace Context: ${context}. Intelligence Dataset: ${operationalContext}.\n\nUser Question: ${prompt} \n\nAct as Paradigm - Xi Assistant.Use the provided Dataset to answer accurately.If asked about staff or counts(like waiters / chefs), reference the 'personnel' data.
 
-IMPORTANT: ALWAYS respond in well-formatted Markdown. Use bold headers, bullet points for lists, and Markdown tables when displaying data. Be professional and structured.`,
+
+    IMPORTANT: ALWAYS respond in well - formatted Markdown.Use bold headers, bullet points for lists, and Markdown tables when displaying data.Be professional and structured.`,
     });
     return response.text || "";
 }
 
 export async function getCFOAdvice(): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { summary: "Services Offline (Strict Mode)", sentiment: "Neutral" };
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -231,17 +240,29 @@ export async function getCFOAdvice(): Promise<any> {
             }
         }
     });
-    return JSON.parse(response.text || "{}");
+    const result = JSON.parse(response.text || "{}");
+
+    // LOGGING
+    useDataStore.getState().addAgenticLog({
+        agentName: 'CFO Advisor',
+        action: 'Financial Analysis',
+        details: result.summary || 'Analyzed financial posture.',
+        sentiment: (result.sentiment as any) || 'Neutral',
+        confidence: 0.95
+    });
+
+    return result;
 }
 
 export async function processVoiceCommand(base64Audio: string, mimeType: string, context: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { intent: 'none', transcription: '', feedback: 'Strict Mode Enabled' };
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
             parts: [
                 { inlineData: { data: base64Audio, mimeType } },
-                { text: `Voice command for Xquisite OS. Context: ${context}. Return JSON intent.` }
+                { text: `Voice command for Xquisite OS.Context: ${context}. Return JSON intent.` }
             ]
         },
         config: {
@@ -257,10 +278,22 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
             }
         }
     });
-    return JSON.parse(response.text || "{}");
+    const result = JSON.parse(response.text || "{}");
+
+    // LOGGING
+    useDataStore.getState().addAgenticLog({
+        agentName: 'Voice Interface',
+        action: 'Command Processing',
+        details: `Processed voice command: "${result.transcription || 'Audio Input'}" -> Intent: ${result.intent} `,
+        sentiment: 'Neutral',
+        confidence: 0.88
+    });
+
+    return result;
 }
 
 export async function textToSpeech(text: string): Promise<string> {
+    if (useSettingsStore.getState().strictMode) return "";
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
@@ -274,6 +307,7 @@ export async function textToSpeech(text: string): Promise<string> {
 }
 
 export async function getAIResponseForAudio(base64Audio: string, mimeType: string): Promise<string> {
+    if (useSettingsStore.getState().strictMode) return "Strict Mode Enabled";
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -288,6 +322,7 @@ export async function getAIResponseForAudio(base64Audio: string, mimeType: strin
 }
 
 export async function getFormGuidance(formName: string, fieldName: string, value: string, fullContext: any): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { tip: "AI Guidance Disabled", status: "Neutral" };
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -303,10 +338,22 @@ export async function getFormGuidance(formName: string, fieldName: string, value
             }
         }
     });
-    return JSON.parse(response.text || "{}");
+    const result = JSON.parse(response.text || "{}");
+
+    // LOGGING
+    useDataStore.getState().addAgenticLog({
+        agentName: 'Form Assistant',
+        action: 'Guidance',
+        details: `Provided guidance for field: ${fieldName} in form: ${formName}`,
+        sentiment: 'Neutral',
+        confidence: 0.9
+    });
+
+    return result;
 }
 
 export async function runBankingChat(history: any[], message: string): Promise<string> {
+    if (useSettingsStore.getState().strictMode) return "Banking Assistant is currently offline due to Strict Mode.";
     const ai = getAIInstance();
     const chat = ai.chats.create({
         model: 'gemini-3-flash-preview',
@@ -317,6 +364,7 @@ export async function runBankingChat(history: any[], message: string): Promise<s
 }
 
 export async function suggestCOAForTransaction(description: string, coa: any[]): Promise<{ accountId: string, confidence: number, reason: string }> {
+    if (useSettingsStore.getState().strictMode) return { accountId: '', confidence: 0, reason: "Strict Mode" };
     const ai = getAIInstance();
     const accountsContext = coa.map(a => `${a.id}: ${a.name} (${a.type}/${a.subtype})`).join('\n');
 
@@ -326,7 +374,7 @@ export async function suggestCOAForTransaction(description: string, coa: any[]):
         Map it to the most appropriate Account ID from this Chart of Accounts:
         ${accountsContext}
         
-        Return JSON with: accountId, confidence (0-1), and reason.`,
+        Return JSON with: accountId, confidence(0 - 1), and reason.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -344,6 +392,7 @@ export async function suggestCOAForTransaction(description: string, coa: any[]):
 }
 
 export async function processMeetingAudio(base64Audio: string, mimeType: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { summary: "Strict Mode Enabled", decisions: [], tasks: [] };
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -352,17 +401,17 @@ export async function processMeetingAudio(base64Audio: string, mimeType: string)
                 { inlineData: { data: base64Audio, mimeType } },
                 {
                     text: `Analyze this meeting recording. 
-                1. Identify speakers where possible (e.g., Speaker 1, Speaker 2) or use context if names are mentioned.
+                1. Identify speakers where possible(e.g., Speaker 1, Speaker 2) or use context if names are mentioned.
                 2. Provide an Executive Summary.
                 3. List Key Decisions with the speaker who proposed them if clear.
-                4. Extract Actionable Tasks with assignees (if mentioned) and priority (High/Medium/Low).
+                4. Extract Actionable Tasks with assignees(if mentioned) and priority(High / Medium / Low).
                 
                 Return JSON in this format:
-                {
-                    "summary": "...",
-                    "decisions": ["..."],
-                    "tasks": [{ "title": "...", "assignee": "...", "priority": "..." }]
-                }` }
+{
+    "summary": "...",
+        "decisions": ["..."],
+            "tasks": [{ "title": "...", "assignee": "...", "priority": "..." }]
+} ` }
             ]
         },
         config: {
@@ -391,6 +440,7 @@ export async function processMeetingAudio(base64Audio: string, mimeType: string)
 }
 
 export async function runProjectAnalysis(projectId: string, context: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
@@ -401,6 +451,7 @@ export async function runProjectAnalysis(projectId: string, context: string): Pr
 }
 
 export async function executeAgentWorkflow(workflowId: string, agentName: string, role: string, context: string): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -411,6 +462,7 @@ export async function executeAgentWorkflow(workflowId: string, agentName: string
 }
 
 export async function parseFinancialDocument(base64Data: string, mimeType: string): Promise<{ type: 'Inflow' | 'Outflow', amountCents: number, description: string, date: string, merchant: string }> {
+    if (useSettingsStore.getState().strictMode) return { type: 'Outflow', amountCents: 0, description: 'Strict Mode', date: new Date().toISOString().split('T')[0], merchant: '' };
     const ai = getAIInstance();
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
