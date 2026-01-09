@@ -79,11 +79,11 @@ export const PortionMonitor: React.FC = () => {
         return (
             <div className=\"p-6 max-w-4xl mx-auto\">
                 < h1 className =\"text-2xl font-bold mb-6 text-gray-800\">Portion Monitor Selection</h1>
-                    < div className =\"grid gap-4\">
-        {
-            activeEvents.length === 0 ? (
-                <div className=\"p-8 text-center bg-gray-50 rounded-lg\">
-                    < p className =\"text-gray-500\">No active events found. Events must be Confirmed or In Progress.</p>
+                    < div className = "grid gap-4" >
+                    {
+                        activeEvents.length === 0 ? (
+                            <div className=\"p-8 text-center bg-gray-50 rounded-lg\">
+                            <p className =\"text-gray-500\">No active events found. Events must be Confirmed or In Progress.</p>
                         </div >
                     ) : (
     activeEvents.map(event => (
@@ -200,8 +200,8 @@ className =\"w-full pl-7 pr-2 py-1 text-xs border rounded bg-gray-50 focus:bg-wh
         onClick={() => handleServe(table.id)}
         disabled={table.isLocked}
         className={`w-full py-2 rounded-lg font-bold text-sm transition-all ${table.status === 'Served'
-                ? 'bg-green-600 text-white cursor-default'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg'
+            ? 'bg-green-600 text-white cursor-default'
+            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg'
             }`}
     >
         {table.status === 'Served' ? 'SERVED' : 'SERVE TABLE'}
