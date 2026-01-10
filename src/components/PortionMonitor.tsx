@@ -27,6 +27,7 @@ export const PortionMonitor: React.FC = () => {
 
     const activeEvents = cateringEvents.filter(e => e.status !== 'Completed' && e.status !== 'Draft');
     const selectedEvent = cateringEvents.find(e => e.id === selectedEventId);
+    // Fixed: Using correct Role enums
     const waiters = employees.filter(e => e.role === Role.HEAD_WAITER || e.role === Role.EVENT_COORDINATOR);
 
     const handleServe = (tableId: string) => {
@@ -79,7 +80,7 @@ export const PortionMonitor: React.FC = () => {
     if (!selectedEventId) {
         return (
             <div className="p-4 md:p-6 max-w-4xl mx-auto">
-                <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-800">Portion Monitor Selection (v1.0.3)</h1>
+                <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-800">Portion Monitor Selection (v1.0.5)</h1>
                 <div className="grid gap-4">
                     {activeEvents.length === 0 ? (
                         <div className="p-8 text-center bg-gray-50 rounded-lg">
@@ -363,5 +364,3 @@ export const PortionMonitor: React.FC = () => {
         </div>
     );
 };
-
-// Trigger Vercel Deployment: v1.0.2
