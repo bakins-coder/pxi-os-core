@@ -8,9 +8,12 @@ import {
 import { Role } from '../types';
 
 export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch: () => void }) => {
-  const { login } = useAuthStore();
+  const { login, signup } = useAuthStore();
   const { partialSetupData, settings } = useSettingsStore();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasDraft, setHasDraft] = useState(false);
@@ -21,6 +24,7 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
       setHasDraft(true);
       if (partialSetupData.email) {
         setEmail(partialSetupData.email);
+        setIsSignUp(true); // Assume continuing means signing up/finishing
       }
       if (partialSetupData.orgName) {
         setTargetOrg(partialSetupData.orgName);
@@ -30,31 +34,65 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
     }
   }, [partialSetupData, settings.setupComplete]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    const cleanEmail = email.trim();
+    let authIdentifier = email.trim();
+
+    // Phone Number Logic: If it looks like a phone number (digits), treat as phone-based user
+    const isPhoneNumber = /^[0-9+]+$/.test(authIdentifier);
+    if (isPhoneNumber) {
+      // Strip non-digits just in case, though regex checks it
+      const cleanPhone = authIdentifier.replace(/\D/g, '');
+      authIdentifier = `${cleanPhone}@xquisite.staff`;
+    }
 
     try {
-      await login(cleanEmail);
+      if (isSignUp) {
+        if (!name) throw new Error('Name is required for signup.');
+        // For phone users, we might want to ensure a role or specific setup, but basic signup works the same
+        await signup(name, authIdentifier, password);
+      } else {
+        await login(authIdentifier, password);
+      }
       onSuccess();
-    } catch (err) {
-      setError('Neural ID not recognized. Ensure your email is correct or create a new workspace.');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Authentication failed.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Smart Context Assistant Logic
+  const getContextAdvice = () => {
+    if (!email) return null;
+
+    const isDigits = /^\d+$/.test(email);
+    if (isDigits) {
+      if (email.length < 11) return { text: `Enter ${11 - email.length} more digits for a valid local number`, color: 'text-yellow-500' };
+      if (email.length > 11) return { text: `Number seems too long (Standard is 11 digits)`, color: 'text-yellow-500' };
+      return { text: 'Valid Phone Number Format Detected', color: 'text-[#00ff9d]' };
+    }
+
+    if (!email.includes('@')) return { text: 'Enter a valid email address (missing @)', color: 'text-yellow-500' };
+    if (!email.includes('.')) return { text: 'Enter a valid domain (missing .com, .ng, etc)', color: 'text-yellow-500' };
+
+    return { text: 'Valid Email Format Detected', color: 'text-[#00ff9d]' };
+  };
+
+  const advice = getContextAdvice();
+
   return (
     <div className="w-full max-sm animate-in fade-in slide-in-from-bottom-4">
       <div className="mb-10 text-center">
-        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">Welcome.</h2>
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Securely access your business workspace.</p>
+        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">{isSignUp ? 'Create Workspace' : 'Welcome Back.'}</h2>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">{isSignUp ? 'Launch your new digital headquarters.' : 'Securely access your business workspace.'}</p>
       </div>
 
-      <form onSubmit={handleLogin} className="flex flex-col space-y-6">
+      <form onSubmit={handleAuth} className="flex flex-col space-y-6">
         {hasDraft && (
           <div className="p-5 bg-[#00ff9d]/5 border border-[#00ff9d]/20 rounded-3xl space-y-3 animate-in slide-in-from-top-4">
             <div className="flex items-center gap-3 text-[#00ff9d] text-[10px] font-black uppercase tracking-widest">
@@ -77,17 +115,55 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
             <AlertCircle size={16} className="shrink-0" /> {error}
           </div>
         )}
+
+        {isSignUp && (
+          <div className="relative group w-1/2 mx-auto animate-in slide-in-from-left-4">
+            <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Full Name</label>
+            <div className="relative">
+              <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <input
+                type="text"
+                required={isSignUp}
+                className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
+                placeholder="John Doe"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="relative group w-1/2 mx-auto">
-          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Business Email</label>
+          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Business Email or Phone</label>
           <div className="relative">
             <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input
-              type="email"
+              type="text"
               required
               className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
-              placeholder="name@company.com"
+              placeholder="email@company.com OR 0801234..."
               value={email}
               onChange={e => setEmail(e.target.value)}
+            />
+            {advice && (
+              <div className={`absolute -bottom-6 left-0 w-full text-center text-[9px] font-bold uppercase tracking-widest ${advice.color} animate-in fade-in slide-in-from-top-1`}>
+                {advice.text}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="relative group w-1/2 mx-auto">
+          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Password</label>
+          <div className="relative">
+            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <input
+              type="password"
+              required
+              className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
           </div>
         </div>
@@ -97,11 +173,13 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
           disabled={isLoading}
           className="w-1/3 mx-auto bg-[#00ff9d] py-5 rounded-2xl font-black text-slate-950 uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 text-[10px]"
         >
-          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : hasDraft ? 'Resume' : 'Sign In to your Hub'}
+          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : isSignUp ? 'Create Workspace' : 'Sign In'}
         </button>
 
         <div className="flex flex-col gap-4 mt-8 text-center">
-          <button type="button" onClick={onSwitch} className="text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">Don't have an account? Create a Workspace</button>
+          <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">
+            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create Workspace"}
+          </button>
           <div className="h-px bg-white/5 w-full my-2"></div>
           <button type="button" onClick={() => login('guest@paradigm-xi.com').then(onSuccess)} className="w-full py-4 bg-white/5 rounded-2xl font-black text-[#00ff9d] uppercase text-[11px] border border-white/10 flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
             <Sparkles size={14} /> Explore Guest Demo

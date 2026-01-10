@@ -1,0 +1,23 @@
+-- ENFORCE SECURITY: Enable Row Level Security (RLS) on all tables
+-- Run this if you previously disabled RLS or want to ensure security is active.
+
+-- Organizations & Users
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Core Business Data
+ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookkeeping ENABLE ROW LEVEL SECURITY;
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+
+-- Operations
+ALTER TABLE catering_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE requisitions ENABLE ROW LEVEL SECURITY;
+
+-- Financials
+ALTER TABLE chart_of_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
