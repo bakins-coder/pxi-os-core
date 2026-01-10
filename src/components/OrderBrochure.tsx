@@ -358,7 +358,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         </div>
 
                                         {/* RESPONSIVE LAYOUT SWITCH: Carousel on Mobile, Grid on Desktop */}
-                                        <div className="flex overflow-x-auto snap-x gap-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-10 pb-4 md:pb-0 px-1 md:px-0">
+                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-10 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar">
                                             {items.map(item => {
                                                 const qty = selected[item.id] || 0;
                                                 const isSelected = (Number(qty) || 0) > 0;
