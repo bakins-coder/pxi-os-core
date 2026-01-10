@@ -446,7 +446,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {catItems.map(([id, qty]) => {
-                                                    const item = menuItems.find(i => i.id === id)!;
+                                                    const item = menuItems.find(i => i.id === id);
+                                                    if (!item) return null;
                                                     return (
                                                         <div key={id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                                                             <div className="min-w-0">

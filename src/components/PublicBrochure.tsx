@@ -6,6 +6,30 @@ import { Invoice, Role } from '../types';
 import { ChevronLeft, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error: any) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error: any, errorInfo: any) {
+        console.error("Uncaught error:", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="p-8 text-center">
+                    <h2 className="text-xl font-bold text-rose-600 mb-2">Something went wrong</h2>
+                    <pre className="text-xs bg-slate-100 p-4 rounded text-left overflow-auto max-w-lg mx-auto">{this.state.error?.toString()}</pre>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 export const PublicBrochure = () => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
@@ -67,10 +91,12 @@ export const PublicBrochure = () => {
             </div>
 
             <div className="flex-1 flex justify-center">
-                <OrderBrochure
-                    onComplete={handleBack}
-                    onFinalize={handleFinalize}
-                />
+                <ErrorBoundary>
+                    <OrderBrochure
+                        onComplete={handleBack}
+                        onFinalize={handleFinalize}
+                    />
+                </ErrorBoundary>
             </div>
         </div>
     );
