@@ -358,7 +358,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         </div>
 
                                         {/* RESPONSIVE LAYOUT SWITCH: Carousel on Mobile, Grid on Desktop */}
-                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-10 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar">
+                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar">
                                             {items.map(item => {
                                                 const qty = selected[item.id] || 0;
                                                 const isSelected = (Number(qty) || 0) > 0;
@@ -367,31 +367,31 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                                         key={item.id}
                                                         onClick={() => isSelected ? updateQty(item.id, 0) : updateQty(item.id, guestCount)}
                                                         className={`
-                                            min-w-[85vw] md:min-w-0 snap-center shrink-0
-                                            group bg-white rounded-[2.5rem] md:rounded-[3.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer 
-                                            ${isSelected ? 'border-indigo-600 shadow-2xl ring-4 ring-indigo-50' : 'border-slate-100 shadow-sm'}
+                                            min-w-[45vw] md:min-w-0 snap-center shrink-0
+                                            group bg-white rounded-[2rem] md:rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer 
+                                            ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-100 shadow-sm'}
                                           `}
                                                     >
-                                                        <div className="h-44 md:h-44 w-full relative overflow-hidden bg-slate-50">
+                                                        <div className="h-32 md:h-32 w-full relative overflow-hidden bg-slate-50">
                                                             <img src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={item.name} />
-                                                            {isSelected && <div className="absolute top-4 right-4 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl animate-in zoom-in"><CheckCircle2 size={16} /></div>}
+                                                            {isSelected && <div className="absolute top-2 right-2 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg animate-in zoom-in"><CheckCircle2 size={12} /></div>}
                                                         </div>
-                                                        <div className="p-6 flex-1 flex flex-col">
-                                                            <h4 className="text-lg font-black uppercase tracking-tight text-slate-900 mb-2 md:mb-4 leading-tight">{item.name}</h4>
-                                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-4 leading-relaxed line-clamp-2 md:line-clamp-none">{item.description}</p>
-                                                            <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                        <div className="p-4 flex-1 flex flex-col">
+                                                            <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1 leading-tight">{item.name}</h4>
+                                                            <p className="text-[9px] text-slate-400 font-bold uppercase mb-3 leading-relaxed line-clamp-2 md:line-clamp-none">{item.description}</p>
+                                                            <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                                                 <div className="flex justify-between items-center">
-                                                                    <p className="text-sm font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
+                                                                    <p className="text-xs font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
                                                                     <input
                                                                         type="number"
-                                                                        className="w-20 bg-white border border-slate-200 rounded-lg py-2 text-center text-xs font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
+                                                                        className="w-16 bg-white border border-slate-200 rounded-lg py-1.5 text-center text-[10px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
                                                                         value={qty}
                                                                         max={guestCount}
                                                                         onChange={(e) => updateQty(item.id, parseInt(e.target.value) || 0)}
                                                                     />
                                                                 </div>
-                                                                <div className="flex items-center gap-3">
-                                                                    <Minus size={12} className="text-slate-300" />
+                                                                <div className="flex items-center gap-2">
+                                                                    <Minus size={10} className="text-slate-300" />
                                                                     <input
                                                                         type="range"
                                                                         min="0"
@@ -401,7 +401,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                                                         value={qty}
                                                                         onChange={(e) => updateQty(item.id, parseInt(e.target.value))}
                                                                     />
-                                                                    <Plus size={12} className="text-slate-300" />
+                                                                    <Plus size={10} className="text-slate-300" />
                                                                 </div>
                                                             </div>
                                                         </div>
