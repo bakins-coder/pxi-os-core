@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { platform } from 'node:os';
 import { URL } from 'node:url';
+import { existsSync } from 'node:fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -67,17 +68,21 @@ export async function openBrowserSecurely(url: string): Promise<void> {
       break;
 
     case 'win32':
-      // Windows - use PowerShell with Start-Process
-      // This avoids the cmd.exe shell which is vulnerable to injection
-      command = 'powershell.exe';
-      args = [
-        '-NoProfile',
-        '-NonInteractive',
-        '-WindowStyle',
-        'Hidden',
-        '-Command',
-        `Start-Process '${url.replace(/'/g, "''")}'`,
+      // Windows - try to use Chrome explicitly first to ensure extensions are available
+      const chromePaths = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        `${process.env['LOCALAPPDATA']}\\Google\\Chrome\\Application\\chrome.exe`,
       ];
+
+      const foundChrome = chromePaths.find((path) => existsSync(path));
+
+      if (foundChrome) {
+        command = foundChrome;
+        args = [url];
+      } else {
+        throw new Error('Critical Error: Google Chrome not found. The agent strictly requires Google Chrome on Windows.');
+      }
       break;
 
     case 'linux':

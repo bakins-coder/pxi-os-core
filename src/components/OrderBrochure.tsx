@@ -358,7 +358,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         </div>
 
                                         {/* RESPONSIVE LAYOUT SWITCH: Carousel on Mobile, Grid on Desktop */}
-                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-2 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar md:overflow-visible md:snap-none">
+                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-1.5 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar md:overflow-visible md:snap-none">
                                             {items.map(item => {
                                                 const qty = selected[item.id] || 0;
                                                 const isSelected = (Number(qty) || 0) > 0;
@@ -367,7 +367,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                                         key={item.id}
                                                         onClick={() => isSelected ? updateQty(item.id, 0) : updateQty(item.id, guestCount)}
                                                         className={`
-                                            min-w-[32vw] md:min-w-0 snap-center shrink-0
+                                            min-w-[28vw] md:min-w-0 snap-center shrink-0
                                             group bg-white rounded-[1rem] md:rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer 
                                             ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-100 shadow-sm'}
                                           `}

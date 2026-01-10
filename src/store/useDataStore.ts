@@ -959,7 +959,9 @@ export const useDataStore = create<DataState>()(
                         syncTableToCloud('bookkeeping', state.bookkeeping),
                         syncTableToCloud('tasks', state.tasks),
                         syncTableToCloud('employees', state.employees),
-                        syncTableToCloud('requisitions', state.requisitions)
+                        syncTableToCloud('requisitions', state.requisitions),
+                        syncTableToCloud('chart_of_accounts', state.chartOfAccounts),
+                        syncTableToCloud('bank_transactions', state.bankTransactions)
                     ]);
                     set({ isSyncing: false, syncStatus: 'Synced' });
                 } catch (e) {
@@ -978,14 +980,16 @@ export const useDataStore = create<DataState>()(
                 set({ isSyncing: true, syncStatus: 'Syncing' });
 
                 try {
-                    const [inv, contacts, invoices, events, tasks, employees, requisitions] = await Promise.all([
+                    const [inv, contacts, invoices, events, tasks, employees, requisitions, accounts, transactions] = await Promise.all([
                         pullCloudState('inventory', companyId),
                         pullCloudState('contacts', companyId),
                         pullCloudState('invoices', companyId),
                         pullCloudState('catering_events', companyId),
                         pullCloudState('tasks', companyId),
                         pullCloudState('employees', companyId),
-                        pullCloudState('requisitions', companyId)
+                        pullCloudState('requisitions', companyId),
+                        pullCloudState('chart_of_accounts', companyId),
+                        pullCloudState('bank_transactions', companyId)
                     ]);
 
                     const updates: Partial<DataState> = {};
@@ -996,6 +1000,8 @@ export const useDataStore = create<DataState>()(
                     if (tasks) updates.tasks = tasks;
                     if (employees) updates.employees = employees;
                     if (requisitions) updates.requisitions = requisitions;
+                    if (accounts) updates.chartOfAccounts = accounts;
+                    if (transactions) updates.bankTransactions = transactions;
 
                     set({ ...updates, isSyncing: false, syncStatus: 'Synced' });
                 } catch (e) {
@@ -1168,6 +1174,44 @@ export const useDataStore = create<DataState>()(
                                 return { requisitions: state.requisitions.map(r => r.id === newRow.id ? newRow : r) };
                             } else if (eventType === 'DELETE') {
                                 return { requisitions: state.requisitions.filter(r => r.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // Chart of Accounts
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'chart_of_accounts',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                return { chartOfAccounts: [newRow, ...state.chartOfAccounts] };
+                            } else if (eventType === 'UPDATE') {
+                                return { chartOfAccounts: state.chartOfAccounts.map(a => a.id === newRow.id ? newRow : a) };
+                            } else if (eventType === 'DELETE') {
+                                return { chartOfAccounts: state.chartOfAccounts.filter(a => a.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // Bank Transactions
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'bank_transactions',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                return { bankTransactions: [newRow, ...state.bankTransactions] };
+                            } else if (eventType === 'UPDATE') {
+                                return { bankTransactions: state.bankTransactions.map(t => t.id === newRow.id ? newRow : t) };
+                            } else if (eventType === 'DELETE') {
+                                return { bankTransactions: state.bankTransactions.filter(t => t.id !== oldRow.id) };
                             }
                             return state;
                         });
