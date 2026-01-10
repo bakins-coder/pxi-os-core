@@ -27,7 +27,7 @@ export const PortionMonitor: React.FC = () => {
 
     const activeEvents = cateringEvents.filter(e => e.status !== 'Completed' && e.status !== 'Draft');
     const selectedEvent = cateringEvents.find(e => e.id === selectedEventId);
-    const waiters = employees.filter(e => e.role === Role.WAITER || e.role === Role.HEAD_WAITER || e.role === Role.EVENT_COORDINATOR);
+    const waiters = employees.filter(e => e.role === Role.HEAD_WAITER || e.role === Role.EVENT_COORDINATOR);
 
     const handleServe = (tableId: string) => {
         if (!selectedEvent) return;
