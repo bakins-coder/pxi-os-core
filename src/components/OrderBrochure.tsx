@@ -358,7 +358,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         </div>
 
                                         {/* RESPONSIVE LAYOUT SWITCH: Carousel on Mobile, Grid on Desktop */}
-                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-2 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar">
+                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-2 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar md:overflow-visible md:snap-none">
                                             {items.map(item => {
                                                 const qty = selected[item.id] || 0;
                                                 const isSelected = (Number(qty) || 0) > 0;
@@ -378,7 +378,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                                         </div>
                                                         <div className="p-2 md:p-4 flex-1 flex flex-col">
                                                             <h4 className="text-[9px] md:text-sm font-black uppercase tracking-tight text-slate-900 mb-0.5 leading-tight line-clamp-1">{item.name}</h4>
-                                                            <p className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase mb-1 leading-tight line-clamp-2 h-6">{item.description}</p>
+                                                            <p className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase mb-1 leading-tight line-clamp-2 h-6 md:h-auto">{item.description}</p>
                                                             <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-1 p-1.5 md:p-3 bg-slate-50 rounded-lg md:rounded-xl border border-slate-100">
                                                                 <div className="flex justify-between items-center">
                                                                     <p className="text-[9px] md:text-xs font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
