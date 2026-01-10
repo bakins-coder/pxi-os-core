@@ -7,6 +7,7 @@ import {
     ShoppingBag, X, RefreshCw, ArrowRight, Trash2, Plus, Minus,
     Users, Palette, AlertCircle, ShoppingCart, CheckCircle2, Check
 } from 'lucide-react';
+import { MenuCard } from './MenuCard';
 
 export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent }) => {
     const [menuItems, setMenuItems] = useState<InventoryItem[]>([]);
@@ -361,51 +362,14 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-1.5 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar md:overflow-visible md:snap-none">
                                             {items.map(item => {
                                                 const qty = selected[item.id] || 0;
-                                                const isSelected = (Number(qty) || 0) > 0;
                                                 return (
-                                                    <div
+                                                    <MenuCard
                                                         key={item.id}
-                                                        onClick={() => isSelected ? updateQty(item.id, 0) : updateQty(item.id, guestCount)}
-                                                        className={`
-                                            min-w-[28vw] md:min-w-0 snap-center shrink-0
-                                            group bg-white rounded-[1rem] md:rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer 
-                                            ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-100 shadow-sm'}
-                                          `}
-                                                    >
-                                                        <div className="h-20 md:h-32 w-full relative overflow-hidden bg-slate-50">
-                                                            <img src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={item.name} />
-                                                            {isSelected && <div className="absolute top-1 right-1 w-4 h-4 md:w-6 md:h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg animate-in zoom-in"><CheckCircle2 size={8} className="md:w-3 md:h-3" /></div>}
-                                                        </div>
-                                                        <div className="p-2 md:p-4 flex-1 flex flex-col">
-                                                            <h4 className="text-[9px] md:text-sm font-black uppercase tracking-tight text-slate-900 mb-0.5 leading-tight line-clamp-1">{item.name}</h4>
-                                                            <p className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase mb-1 leading-tight line-clamp-2 h-6 md:h-auto">{item.description}</p>
-                                                            <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-1 p-1.5 md:p-3 bg-slate-50 rounded-lg md:rounded-xl border border-slate-100">
-                                                                <div className="flex justify-between items-center">
-                                                                    <p className="text-[9px] md:text-xs font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="w-10 md:w-16 bg-white border border-slate-200 rounded md:rounded-lg py-0.5 text-center text-[8px] md:text-[10px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
-                                                                        value={qty}
-                                                                        max={guestCount}
-                                                                        onChange={(e) => updateQty(item.id, parseInt(e.target.value) || 0)}
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-center gap-1 md:gap-2">
-                                                                    <Minus size={8} className="text-slate-300 md:w-2.5 md:h-2.5" />
-                                                                    <input
-                                                                        type="range"
-                                                                        min="0"
-                                                                        max={guestCount}
-                                                                        step="5"
-                                                                        className="flex-1 accent-indigo-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                                                        value={qty}
-                                                                        onChange={(e) => updateQty(item.id, parseInt(e.target.value))}
-                                                                    />
-                                                                    <Plus size={8} className="text-slate-300 md:w-2.5 md:h-2.5" />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                        item={item}
+                                                        qty={qty}
+                                                        guestCount={guestCount}
+                                                        updateQty={updateQty}
+                                                    />
                                                 );
                                             })}
                                         </div>
