@@ -468,31 +468,32 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             </div>
 
             {/* FOOTER */}
-            <div className="p-4 md:p-8 border-t-2 border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-2xl relative z-20 gap-4 md:gap-0">
-                <div className="flex items-center gap-4 md:gap-10 w-full md:w-auto justify-between md:justify-start">
-                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-4 group">
-                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-xl group-hover:scale-110 transition-transform">
-                            <ShoppingCart size={20} />
+            {/* FOOTER - COMPACT */}
+            <div className="p-3 md:p-4 border-t-2 border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-2xl relative z-20 gap-3 md:gap-0">
+                <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-between md:justify-start">
+                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform">
+                            <ShoppingCart size={16} />
                         </div>
                         <div className="text-left">
-                            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Basket Contents</p>
-                            <p className="text-xs md:text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Unique Items</p>
+                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Basket</p>
+                            <p className="text-[10px] md:text-xs font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
                         </div>
                     </button>
-                    <div className="h-12 w-px bg-slate-100 mx-2 hidden md:block"></div>
+                    <div className="h-8 w-px bg-slate-100 mx-2 hidden md:block"></div>
                     <div className="text-right md:text-left">
-                        <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aggregate Valuation</p>
-                        <span className="text-2xl md:text-4xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
+                        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
+                        <span className="text-xl md:text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
                     </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
-                    <button onClick={onComplete} className="flex-1 md:flex-none px-6 md:px-10 py-4 md:py-5 font-black uppercase text-[10px] text-slate-400 bg-slate-50 rounded-xl md:bg-transparent">Abort</button>
+                    <button onClick={onComplete} className="flex-1 md:flex-none px-4 md:px-6 py-3 md:py-3 font-black uppercase text-[9px] text-slate-400 bg-slate-50 rounded-xl md:bg-transparent hover:text-rose-500">Abort</button>
                     <button
                         onClick={handlePlaceOrder}
                         disabled={!hasSelection || isSubmitting || !customerName}
-                        className={`flex-1 md:flex-none px-6 md:px-16 py-4 md:py-6 rounded-2xl md:rounded-[2rem] font-black uppercase text-xs shadow-xl transition-all flex items-center justify-center gap-4 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                        className={`flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
-                        {isSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <ArrowRight size={20} />} {isPortionLocked ? 'Finalize' : 'Incomplete'}
+                        {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <ArrowRight size={16} />} {isPortionLocked ? 'Finalize' : 'Incomplete'}
                     </button>
                 </div>
             </div>
