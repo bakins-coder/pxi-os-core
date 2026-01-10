@@ -19,7 +19,14 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
   const [hasDraft, setHasDraft] = useState(false);
   const [targetOrg, setTargetOrg] = useState('');
 
+  const [sysStatus, setSysStatus] = useState<{ status: string, error?: string } | null>(null);
+
   useEffect(() => {
+    // Check cloud connection immediately
+    import('../services/supabase').then(({ checkCloudHealth }) => {
+      checkCloudHealth().then(setSysStatus);
+    });
+
     if (partialSetupData && !settings.setupComplete) {
       setHasDraft(true);
       if (partialSetupData.email) {

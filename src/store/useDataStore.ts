@@ -1240,6 +1240,11 @@ export const useDataStore = create<DataState>()(
         }),
         {
             name: 'data-storage',
+            partialize: (state) => {
+                // Exclude circular references and non-serializable objects
+                const { realtimeChannel, ...rest } = state;
+                return rest;
+            },
             onRehydrateStorage: () => (state) => {
                 state?.hydrateFromCloud();
             }
