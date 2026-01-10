@@ -358,7 +358,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         </div>
 
                                         {/* RESPONSIVE LAYOUT SWITCH: Carousel on Mobile, Grid on Desktop */}
-                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar">
+                                        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-3 md:grid md:grid-cols-3 xl:grid-cols-4 md:gap-6 pb-8 md:pb-0 px-4 md:px-0 no-scrollbar">
                                             {items.map(item => {
                                                 const qty = selected[item.id] || 0;
                                                 const isSelected = (Number(qty) || 0) > 0;
@@ -367,31 +367,31 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                                         key={item.id}
                                                         onClick={() => isSelected ? updateQty(item.id, 0) : updateQty(item.id, guestCount)}
                                                         className={`
-                                            min-w-[45vw] md:min-w-0 snap-center shrink-0
-                                            group bg-white rounded-[2rem] md:rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer 
+                                            min-w-[40vw] md:min-w-0 snap-center shrink-0
+                                            group bg-white rounded-[1.5rem] md:rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer 
                                             ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-100 shadow-sm'}
                                           `}
                                                     >
-                                                        <div className="h-32 md:h-32 w-full relative overflow-hidden bg-slate-50">
+                                                        <div className="h-24 md:h-32 w-full relative overflow-hidden bg-slate-50">
                                                             <img src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={item.name} />
-                                                            {isSelected && <div className="absolute top-2 right-2 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg animate-in zoom-in"><CheckCircle2 size={12} /></div>}
+                                                            {isSelected && <div className="absolute top-2 right-2 w-5 h-5 md:w-6 md:h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg animate-in zoom-in"><CheckCircle2 size={10} className="md:w-3 md:h-3" /></div>}
                                                         </div>
-                                                        <div className="p-4 flex-1 flex flex-col">
-                                                            <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-1 leading-tight">{item.name}</h4>
-                                                            <p className="text-[9px] text-slate-400 font-bold uppercase mb-3 leading-relaxed line-clamp-2 md:line-clamp-none">{item.description}</p>
-                                                            <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                        <div className="p-3 md:p-4 flex-1 flex flex-col">
+                                                            <h4 className="text-[10px] md:text-sm font-black uppercase tracking-tight text-slate-900 mb-1 leading-tight line-clamp-2 h-8 md:h-auto">{item.name}</h4>
+                                                            <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase mb-2 md:mb-3 leading-relaxed line-clamp-2">{item.description}</p>
+                                                            <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-2 p-2 md:p-3 bg-slate-50 rounded-lg md:rounded-xl border border-slate-100">
                                                                 <div className="flex justify-between items-center">
-                                                                    <p className="text-xs font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
+                                                                    <p className="text-[10px] md:text-xs font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
                                                                     <input
                                                                         type="number"
-                                                                        className="w-16 bg-white border border-slate-200 rounded-lg py-1.5 text-center text-[10px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
+                                                                        className="w-12 md:w-16 bg-white border border-slate-200 rounded-md md:rounded-lg py-1 text-center text-[9px] md:text-[10px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
                                                                         value={qty}
                                                                         max={guestCount}
                                                                         onChange={(e) => updateQty(item.id, parseInt(e.target.value) || 0)}
                                                                     />
                                                                 </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Minus size={10} className="text-slate-300" />
+                                                                <div className="flex items-center gap-1 md:gap-2">
+                                                                    <Minus size={8} className="text-slate-300 md:w-2.5 md:h-2.5" />
                                                                     <input
                                                                         type="range"
                                                                         min="0"
@@ -401,7 +401,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                                                         value={qty}
                                                                         onChange={(e) => updateQty(item.id, parseInt(e.target.value))}
                                                                     />
-                                                                    <Plus size={10} className="text-slate-300" />
+                                                                    <Plus size={8} className="text-slate-300 md:w-2.5 md:h-2.5" />
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -417,7 +417,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
                     {/* Itemized Basket Overlay - Responsive Width */}
                     {isBasketOpen && (
-                        <div className="absolute inset-x-0 bottom-0 z-50 bg-slate-950 text-white p-6 md:p-10 border-t-2 border-[#00ff9d]/20 animate-in slide-in-from-bottom-full duration-500 max-h-[70%] overflow-y-auto rounded-t-[3rem] md:rounded-t-[4rem]">
+                        <div className="absolute inset-x-0 bottom-0 z-50 bg-slate-950 text-white p-6 md:p-10 border-t-2 border-[#00ff9d]/20 animate-in slide-in-from-bottom-full duration-500 max-h-[70%] overflow-y-auto rounded-t-[2rem] md:rounded-t-[4rem]">
                             <div className="flex justify-between items-center mb-6 md:mb-10">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 bg-[#00ff9d] rounded-xl flex items-center justify-center text-slate-950"><ShoppingCart size={20} /></div>
@@ -469,15 +469,15 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
             {/* FOOTER */}
             {/* FOOTER - COMPACT */}
-            <div className="p-3 md:p-4 border-t-2 border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-2xl relative z-20 gap-3 md:gap-0">
+            <div className="p-2 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-2 md:gap-0">
                 <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-between md:justify-start">
                     <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform">
-                            <ShoppingCart size={16} />
+                        <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg md:rounded-xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform">
+                            <ShoppingCart size={14} className="md:w-4 md:h-4" />
                         </div>
                         <div className="text-left">
-                            <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Basket</p>
-                            <p className="text-[10px] md:text-xs font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
+                            <p className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Basket</p>
+                            <p className="text-[9px] md:text-xs font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
                         </div>
                     </button>
                     <div className="h-8 w-px bg-slate-100 mx-2 hidden md:block"></div>
