@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import {
    MessageSquare, Send, X,
    Paperclip, ArrowUpRight, ArrowDownLeft, Receipt,
-   MoreHorizontal, Mic, ShieldCheck, ChevronRight, Image as ImageIcon, Film, UploadCloud
+   MoreHorizontal, Mic, ShieldCheck, ChevronRight, Image as ImageIcon, Film, UploadCloud, CalendarDays
 } from 'lucide-react';
 import { runBankingChat } from '../services/ai';
 
@@ -95,6 +95,10 @@ export const CustomerPortal = () => {
                   <div className="text-center">
                      <div className="bg-indigo-500/30 p-3 rounded-full mb-2 mx-auto w-12 h-12 flex items-center justify-center backdrop-blur-sm border border-white/10"><Receipt size={20} /></div>
                      <span className="text-xs text-indigo-100">Pay</span>
+                  </div>
+                  <div onClick={() => window.location.hash = '/brochure'} className="text-center cursor-pointer hover:scale-105 transition-transform">
+                     <div className="bg-amber-500/30 p-3 rounded-full mb-2 mx-auto w-12 h-12 flex items-center justify-center backdrop-blur-sm border border-white/10"><CalendarDays size={20} className="text-amber-200" /></div>
+                     <span className="text-xs text-indigo-100">Plan</span>
                   </div>
                </div>
             </div>

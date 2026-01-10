@@ -40,10 +40,13 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-preview',
-            contents: `Search for current market prices in Lagos, Nigeria(2025 data) for the following food ingredients: ${ingredientList}. 
-            For each item, return the WHOLESALE market price in NAIRA per UNIT specified.
-    IMPORTANT: Return exactly the original ingredient names as keys in the JSON array objects. 
-            Respond ONLY with the JSON.`,
+            contents: `Search for current market prices in Lagos, Nigeria (2025 data) for the following food ingredients: ${ingredientList}. 
+            For each item, return the best estimate for WHOLESALE market price in NAIRA per UNIT specified.
+            
+            RETURN JSON ONLY. No markdown formatting. No code blocks. Just the raw JSON array.
+            Format: [{ "name": "Ingredient Name", "price": 1000 }]
+            
+            IMPORTANT: Return exactly the original ingredient names as keys in the JSON array objects.`,
             config: {
                 tools: [{ googleSearch: {} }],
                 responseMimeType: "application/json",

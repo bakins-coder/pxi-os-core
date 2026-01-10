@@ -23,6 +23,7 @@ import { SetupWizard } from './components/SetupWizard';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PortionMonitor } from './components/PortionMonitor';
+import { PublicBrochure } from './components/PublicBrochure';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -99,6 +100,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<AuthPage />} />
+        <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -132,6 +134,7 @@ function AppContent() {
         <Route path="/reports" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES]}><Reports /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER]}><Settings /></ProtectedRoute>} />
         <Route path="/customer-portal" element={<CustomerPortal />} />
+        <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

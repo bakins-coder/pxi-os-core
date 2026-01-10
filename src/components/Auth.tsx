@@ -106,6 +106,9 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
           <button type="button" onClick={() => login('guest@paradigm-xi.com').then(onSuccess)} className="w-full py-4 bg-white/5 rounded-2xl font-black text-[#00ff9d] uppercase text-[11px] border border-white/10 flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
             <Sparkles size={14} /> Explore Guest Demo
           </button>
+          <button type="button" onClick={() => window.location.hash = '/brochure'} className="w-full py-4 bg-indigo-600/10 rounded-2xl font-black text-indigo-400 uppercase text-[11px] border border-indigo-500/20 flex items-center justify-center gap-2 hover:bg-indigo-600/20 transition-all">
+            Plan Custom Event
+          </button>
         </div>
       </form>
     </div>
