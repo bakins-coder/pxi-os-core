@@ -91,49 +91,49 @@ export const initialContacts: Contact[] = [
 export const initialChartOfAccounts: ChartOfAccount[] = [
     // ASSETS (1000-1999)
     // Current Assets
-    { id: 'coa-1001', code: '1001', name: 'Cash on Hand', type: 'Asset', subtype: 'Current', balanceCents: 5000000, currency: 'NGN' },
-    { id: 'coa-1002', code: '1002', name: 'Petty Cash', type: 'Asset', subtype: 'Current', balanceCents: 15000000, currency: 'NGN' },
-    { id: 'coa-1003', code: '1003', name: 'GTBank Corporate', type: 'Asset', subtype: 'Current', balanceCents: 2500000000, currency: 'NGN' },
-    { id: 'coa-1004', code: '1004', name: 'Zenith Bank Operations', type: 'Asset', subtype: 'Current', balanceCents: 1200000000, currency: 'NGN' },
-    { id: 'coa-1005', code: '1005', name: 'Accounts Receivable', type: 'Asset', subtype: 'Current', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-1006', code: '1006', name: 'Inventory Asset', type: 'Asset', subtype: 'Current', balanceCents: 0, currency: 'NGN' },
+    { id: 'coa-1001', code: '1001', name: 'Cash on Hand', type: 'Asset', subtype: 'Current', balanceCents: 5000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1002', code: '1002', name: 'Petty Cash', type: 'Asset', subtype: 'Current', balanceCents: 15000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1003', code: '1003', name: 'GTBank Corporate', type: 'Asset', subtype: 'Current', balanceCents: 2500000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1004', code: '1004', name: 'Zenith Bank Operations', type: 'Asset', subtype: 'Current', balanceCents: 1200000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1005', code: '1005', name: 'Accounts Receivable', type: 'Asset', subtype: 'Current', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1006', code: '1006', name: 'Inventory Asset', type: 'Asset', subtype: 'Current', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
 
     // Fixed Assets & Investments
-    { id: 'coa-1501', code: '1501', name: 'Vehicles', type: 'Asset', subtype: 'Fixed', balanceCents: 4500000000, currency: 'NGN' },
-    { id: 'coa-1502', code: '1502', name: 'Furniture & Fittings', type: 'Asset', subtype: 'Fixed', balanceCents: 1200000000, currency: 'NGN' },
-    { id: 'coa-1503', code: '1503', name: 'Kitchen Equipment', type: 'Asset', subtype: 'Fixed', balanceCents: 3500000000, currency: 'NGN' },
-    { id: 'coa-1504', code: '1504', name: 'Investments', type: 'Asset', subtype: 'Non-Current', balanceCents: 1000000000, currency: 'NGN' },
+    { id: 'coa-1501', code: '1501', name: 'Vehicles', type: 'Asset', subtype: 'Fixed', balanceCents: 4500000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1502', code: '1502', name: 'Furniture & Fittings', type: 'Asset', subtype: 'Fixed', balanceCents: 1200000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1503', code: '1503', name: 'Kitchen Equipment', type: 'Asset', subtype: 'Fixed', balanceCents: 3500000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-1504', code: '1504', name: 'Investments', type: 'Asset', subtype: 'Non-Current', balanceCents: 1000000000, currency: 'NGN', companyId: 'org-xquisite' },
 
     // LIABILITIES (2000-2999)
-    { id: 'coa-2001', code: '2001', name: 'Accounts Payable', type: 'Liability', subtype: 'Current', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-2002', code: '2002', name: 'VAT Payable', type: 'Liability', subtype: 'Current', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-2003', code: '2003', name: 'Salaries Payable', type: 'Liability', subtype: 'Current', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-2501', code: '2501', name: 'Bank Loans', type: 'Liability', subtype: 'Long Term', balanceCents: 0, currency: 'NGN' },
+    { id: 'coa-2001', code: '2001', name: 'Accounts Payable', type: 'Liability', subtype: 'Current', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-2002', code: '2002', name: 'VAT Payable', type: 'Liability', subtype: 'Current', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-2003', code: '2003', name: 'Salaries Payable', type: 'Liability', subtype: 'Current', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-2501', code: '2501', name: 'Bank Loans', type: 'Liability', subtype: 'Long Term', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
 
     // EQUITY (3000-3999)
-    { id: 'coa-3001', code: '3001', name: 'Share Capital', type: 'Equity', subtype: 'Equity', balanceCents: 5000000000, currency: 'NGN' },
-    { id: 'coa-3002', code: '3002', name: 'Retained Earnings', type: 'Equity', subtype: 'Equity', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-3003', code: '3003', name: 'General Reserves', type: 'Equity', subtype: 'Equity', balanceCents: 2000000000, currency: 'NGN' },
+    { id: 'coa-3001', code: '3001', name: 'Share Capital', type: 'Equity', subtype: 'Equity', balanceCents: 5000000000, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-3002', code: '3002', name: 'Retained Earnings', type: 'Equity', subtype: 'Equity', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-3003', code: '3003', name: 'General Reserves', type: 'Equity', subtype: 'Equity', balanceCents: 2000000000, currency: 'NGN', companyId: 'org-xquisite' },
 
     // REVENUE (4000-4999)
-    { id: 'coa-4001', code: '4001', name: 'Catering Sales', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-4002', code: '4002', name: 'Banquet Hall Rentals', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-4003', code: '4003', name: 'Equipment Rentals', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-4004', code: '4004', name: 'Logistics Services', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
+    { id: 'coa-4001', code: '4001', name: 'Catering Sales', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-4002', code: '4002', name: 'Banquet Hall Rentals', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-4003', code: '4003', name: 'Equipment Rentals', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-4004', code: '4004', name: 'Logistics Services', type: 'Revenue', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
 
     // EXPENSES (5000-5999)
-    { id: 'coa-5001', code: '5001', name: 'Cost of Goods Sold', type: 'Expense', subtype: 'COGS', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5002', code: '5002', name: 'Salaries & Wages', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5003', code: '5003', name: 'Rent & Rates', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5004', code: '5004', name: 'Electricity & Power', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5005', code: '5005', name: 'Diesel / Generator Fuel', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5006', code: '5006', name: 'Marketing & Ads', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5007', code: '5007', name: 'Transport & Logistics', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5008', code: '5008', name: 'Repairs & Maintenance', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5009', code: '5009', name: 'Office Supplies', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5010', code: '5010', name: 'Legal & Professional Fees', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5011', code: '5011', name: 'Internet & Telephone', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN' },
-    { id: 'coa-5900', code: '5900', name: 'Depreciation', type: 'Expense', subtype: 'Non-Cash', balanceCents: 0, currency: 'NGN' }
+    { id: 'coa-5001', code: '5001', name: 'Cost of Goods Sold', type: 'Expense', subtype: 'COGS', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5002', code: '5002', name: 'Salaries & Wages', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5003', code: '5003', name: 'Rent & Rates', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5004', code: '5004', name: 'Electricity & Power', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5005', code: '5005', name: 'Diesel / Generator Fuel', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5006', code: '5006', name: 'Marketing & Ads', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5007', code: '5007', name: 'Transport & Logistics', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5008', code: '5008', name: 'Repairs & Maintenance', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5009', code: '5009', name: 'Office Supplies', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5010', code: '5010', name: 'Legal & Professional Fees', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5011', code: '5011', name: 'Internet & Telephone', type: 'Expense', subtype: 'Operating', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' },
+    { id: 'coa-5900', code: '5900', name: 'Depreciation', type: 'Expense', subtype: 'Non-Cash', balanceCents: 0, currency: 'NGN', companyId: 'org-xquisite' }
 ];
 
 export const getInitialInventory = () => {

@@ -304,8 +304,8 @@ export interface MarketingPost { id: string; companyId: string; type: string; ti
 export interface SocialInteraction { id: string; platform: string; user: string; handle: string; timestamp: string; sentiment: string; content: string; aiAnalysis: string; suggestedResponse: string; status: string; }
 export interface SocialPost { id: string; platform: string; title: string; content: string; scheduledDate: string; status: string; generatedByAI: boolean; }
 export interface Workflow { id: string; name: string; trigger: string; status: 'Active' | 'Inactive'; lastRun?: string; logs: string[]; agentName: string; agentRole: string; }
-export interface BankTransaction { id: string; date: string; description: string; amountCents: number; type: string; category: string; contactId?: string; }
-export interface ChartOfAccount { id: string; code: string; name: string; type: string; subtype: string; balanceCents: number; currency: 'NGN' | 'USD'; }
+export interface BankTransaction { id: string; companyId: string; date: string; description: string; amountCents: number; type: string; category: string; contactId?: string; }
+export interface ChartOfAccount { id: string; companyId: string; code: string; name: string; type: string; subtype: string; balanceCents: number; currency: 'NGN' | 'USD'; }
 export interface BankStatementLine { id: string; date: string; description: string; amountCents: number; type: 'Credit' | 'Debit'; isMatched: boolean; suggestedAccountId?: string; }
 export enum InvoiceStatus { PAID = 'Paid', UNPAID = 'Unpaid', OVERDUE = 'Overdue' }
 
