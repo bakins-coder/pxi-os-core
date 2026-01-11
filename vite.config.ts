@@ -1,8 +1,22 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const logEnvPlugin = () => {
+  return {
+    name: 'log-env',
+    config: (_, env) => {
+      const loaded = loadEnv(env.mode, process.cwd(), '');
+      console.log('--- VITE ENVIRONMENT VARIABLES ---');
+      console.log('VITE_SUPABASE_URL:', loaded.VITE_SUPABASE_URL ? 'FOUND' : 'MISSING');
+      console.log('VITE_SUPABASE_ANON_KEY:', loaded.VITE_SUPABASE_ANON_KEY ? 'FOUND' : 'MISSING');
+      console.log('Full Keys:', Object.keys(loaded).filter(k => k.startsWith('VITE_')));
+      console.log('----------------------------------');
+    }
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), logEnvPlugin()],
   define: {
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY || ''),
     'process.env.SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL || ''),

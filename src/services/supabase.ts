@@ -1,17 +1,18 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log('Context Debug:', {
-  hasViteUrl: !!import.meta.env.VITE_SUPABASE_URL,
-  hasProcessUrl: !!process.env.SUPABASE_URL,
-  finalUrl: supabaseUrl ? 'Loaded' : 'Missing',
-  finalKey: supabaseAnonKey ? 'Loaded' : 'Missing'
-});
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('CRITICAL: Missing Supabase Environment Variables (VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY)');
+}
 
-// Initialize client only if credentials exist
+// Ensure we are NOT using a service role key on the client
+if (supabaseAnonKey?.includes('service_role') || supabaseAnonKey?.startsWith('sb_secret')) {
+  console.error('CRITICAL SECURITY ALERT: Attempting to use a Service Role or Secret Key on the client. This is forbidden.');
+}
+
 export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;

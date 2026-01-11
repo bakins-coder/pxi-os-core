@@ -53,7 +53,7 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
     if (isPhoneNumber) {
       // Strip non-digits just in case, though regex checks it
       const cleanPhone = authIdentifier.replace(/\D/g, '');
-      authIdentifier = `${cleanPhone}@xquisite.staff`;
+      authIdentifier = `${cleanPhone}@xquisite.com`;
     }
 
     try {
@@ -95,8 +95,10 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
   return (
     <div className="w-full max-sm animate-in fade-in slide-in-from-bottom-4">
       <div className="mb-10 text-center">
-        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">{isSignUp ? 'Create Workspace' : 'Welcome Back.'}</h2>
+        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">{isSignUp ? 'Create Account' : 'Welcome Back.'}</h2>
         <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">{isSignUp ? 'Launch your new digital headquarters.' : 'Securely access your business workspace.'}</p>
+
+
       </div>
 
       <form onSubmit={handleAuth} className="flex flex-col space-y-6">
@@ -180,19 +182,16 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
           disabled={isLoading}
           className="w-1/3 mx-auto bg-[#00ff9d] py-5 rounded-2xl font-black text-slate-950 uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 text-[10px]"
         >
-          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : isSignUp ? 'Create Workspace' : 'Sign In'}
+          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : isSignUp ? 'Create Account' : 'Sign In'}
         </button>
 
         <div className="flex flex-col gap-4 mt-8 text-center">
           <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">
-            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create Workspace"}
+            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
           </button>
           <div className="h-px bg-white/5 w-full my-2"></div>
           <button type="button" onClick={() => login('guest@paradigm-xi.com').then(onSuccess)} className="w-full py-4 bg-white/5 rounded-2xl font-black text-[#00ff9d] uppercase text-[11px] border border-white/10 flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
             <Sparkles size={14} /> Explore Guest Demo
-          </button>
-          <button type="button" onClick={() => window.location.hash = '/brochure'} className="w-full py-4 bg-indigo-600/10 rounded-2xl font-black text-indigo-400 uppercase text-[11px] border border-indigo-500/20 flex items-center justify-center gap-2 hover:bg-indigo-600/20 transition-all">
-            Plan Custom Event
           </button>
         </div>
       </form>
@@ -218,7 +217,15 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
 
     try {
       const name = `${title} ${firstName} ${lastName}`.trim();
-      await signup(name, email.trim(), Role.ADMIN);
+
+      let authIdentifier = email.trim();
+      // Phone Number Logic for Signup form as well
+      if (/^[0-9+]+$/.test(authIdentifier)) {
+        const cleanPhone = authIdentifier.replace(/\D/g, '');
+        authIdentifier = `${cleanPhone}@xquisite.com`;
+      }
+
+      await signup(name, authIdentifier, Role.ADMIN);
       onSuccess();
     } catch (err) {
       setError('Registration node failed. Please try a different email.');

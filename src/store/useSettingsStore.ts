@@ -13,27 +13,28 @@ interface SettingsState {
     completeSetup: (settings: Partial<OrganizationSettings>) => void;
     updatePartialSetup: (data: any) => void;
     toggleStrictMode: () => void;
+    reset: () => void;
 }
 
 const DEFAULT_SETTINGS: OrganizationSettings = {
-    id: 'org-xquisite',
-    name: 'Xquisite Celebrations Limited',
-    type: 'Catering',
+    id: '',
+    name: 'My New Workspace',
+    type: 'General',
     currency: 'NGN',
-    setupComplete: true,
-    enabledModules: ['Catering', 'CRM', 'Finance', 'Logistics', 'Accounting', 'Automation', 'HR'],
+    setupComplete: false,
+    enabledModules: ['CRM', 'Finance', 'Reports'],
     agentMode: AIAgentMode.AI_AGENTIC,
-    brandColor: '#ff6b6b',
-    integrations: ['WhatsApp', 'Telegram'],
+    brandColor: '#00ff9d',
+    integrations: [],
     apiKeys: [],
-    address: 'A23 Primrose Drive, Pinnock Beach Estate, Lekki, Lagos',
-    contactPhone: '0814 990 6777',
-    contactPerson: { email: 'toxsyyb@yahoo.co.uk', jobTitle: 'Administrator', name: 'Xquisite Admin' },
-    logo: 'https://api.dicebear.com/7.x/initials/svg?seed=XC&backgroundColor=ff6b6b',
+    address: '',
+    contactPhone: '',
+    contactPerson: { email: '', jobTitle: '', name: '' },
+    logo: '',
     bankInfo: {
-        bankName: 'Xquisite Trust Bank',
-        accountName: 'Xquisite Celebrations Ltd',
-        accountNumber: '0012345678'
+        bankName: '',
+        accountName: '',
+        accountNumber: ''
     }
 };
 
@@ -63,6 +64,7 @@ export const useSettingsStore = create<SettingsState>()(
                     partialSetupData: null
                 })),
             toggleStrictMode: () => set((state) => ({ strictMode: !state.strictMode })),
+            reset: () => set({ settings: DEFAULT_SETTINGS, ...INITIAL_SYSTEM_FLAGS }),
         }),
         {
             name: 'settings-storage',

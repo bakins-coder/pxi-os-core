@@ -705,7 +705,18 @@ export const Catering = () => {
                   <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
                   <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Catering Operations</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Banquet Management Node Active</p></div>
                </div>
-               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
+               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2">
+                  <button
+                     onClick={() => {
+                        const url = `${window.location.origin}/#/brochure`;
+                        navigator.clipboard.writeText(url);
+                        alert('Brochure Link Copied to Clipboard!');
+                     }}
+                     className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 text-[#00ff9d] hover:bg-white/5"
+                  >
+                     <Share2 size={14} /> Share Booking Link
+                  </button>
+                  <div className="w-px bg-white/10 my-2"></div>
                   {[{ id: 'orders', label: 'Banquets', icon: ShoppingBag }, { id: 'matrix', label: 'Costing Matrix', icon: Grid3X3 }].map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
                   ))}

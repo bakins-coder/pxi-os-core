@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, Role } from '../types';
 import { supabase, syncTableToCloud, pullCloudState } from '../services/supabase';
+import { useSettingsStore } from './useSettingsStore';
 
 interface AuthState {
     user: User | null;
@@ -53,13 +54,16 @@ export const useAuthStore = create<AuthState>()(
             logout: async () => {
                 if (supabase) await supabase.auth.signOut();
                 set({ user: null });
+                useSettingsStore.getState().reset();
             },
             setUser: (user) => set({ user }),
             signup: async (name: string, email: string, password?: string, role: Role = Role.ADMIN) => {
                 if (!supabase) throw new Error('Supabase client not initialized');
                 if (!password) throw new Error('Password required for signup.');
 
-                const companyId = `org-${Date.now()}`; // Generate a new Organization ID
+                if (!password) throw new Error('Password required for signup.');
+
+                // const companyId = `org-${Date.now()}`; // REMOVED: Deferred to Setup Wizard
 
                 const { data, error } = await supabase.auth.signUp({
                     email,
@@ -68,7 +72,7 @@ export const useAuthStore = create<AuthState>()(
                         data: {
                             name,
                             role,
-                            company_id: companyId,
+                            // company_id: companyId, // DEFER: created during setup wizard
                             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
                         }
                     }
@@ -77,24 +81,19 @@ export const useAuthStore = create<AuthState>()(
                 if (error) throw error;
 
                 if (data.user) {
+                    // Reset any previous settings to ensure clean slate
+                    useSettingsStore.getState().reset();
+
                     const newUser: User = {
                         id: data.user.id,
                         name,
                         email,
                         role,
                         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-                        companyId
+                        // companyId is intentionally undefined
+                        companyId: undefined as any
                     };
                     set({ user: newUser });
-
-                    // Also create the Organization record in the DB so constraints are met
-                    await syncTableToCloud('organizations', [{
-                        id: companyId,
-                        name: `${name}'s Organization`,
-                        owner_id: data.user.id,
-                        plan: 'Free',
-                        status: 'Active'
-                    }]);
                 }
             }
         }),

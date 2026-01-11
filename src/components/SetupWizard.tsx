@@ -80,10 +80,32 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       }
    }, [showRestoreToast]);
 
-   const handleFinish = () => {
+   const handleFinish = async () => {
       setIsConfiguring(true);
-      setTimeout(() => {
+
+      try {
+         // 1. Create Workspace in Backend
+         const { supabase } = await import('../services/supabase');
+         if (!supabase) throw new Error('System Offline');
+
+         const { data: workspaceData, error: fnError } = await supabase.functions.invoke('create-workspace', {
+            body: { name: orgName }
+         });
+
+         if (fnError) throw new Error(fnError.message || 'Workspace creation failed on server node');
+
+         const newCompanyId = workspaceData?.workspace?.id;
+         if (!newCompanyId) throw new Error('Did not receive valid workspace ID');
+
+         // 2. Update Local User State with new Company ID
+         useAuthStore.getState().setUser({
+            ...currentUser!,
+            companyId: newCompanyId
+         });
+
+         // 3. Persist Settings
          completeSetup({
+            id: newCompanyId, // Use the real ID
             name: orgName,
             type: orgType,
             size: orgSize,
@@ -104,9 +126,17 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             },
             enabledModules: selectedModules as any
          });
+
+         setTimeout(() => {
+            setIsConfiguring(false);
+            onComplete();
+         }, 1000);
+
+      } catch (error: any) {
+         console.error('Setup failed:', error);
          setIsConfiguring(false);
-         onComplete();
-      }, 2500);
+         alert(`Setup Failed: ${error.message}`);
+      }
    };
 
    const nextStep = () => setStep(s => Math.min(6, s + 1));
@@ -200,11 +230,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                         { s: 5, label: 'Modules', icon: LayoutGrid },
                         { s: 6, label: 'Personnel', icon: Users }
                      ].map(item => (
-                        <div key={item.s} className={`flex items-center gap-4 transition-all duration-500 ${step === item.s ? 'translate-x-3' : 'opacity-40'}`}>
-                           <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 ${step === item.s ? 'bg-[#00ff9d] border-[#00ff9d] text-slate-950 shadow-[0_0_20px_rgba(0,255,157,0.3)]' : 'border-slate-800 text-slate-600'}`}>
+                        <div key={item.s} className={`flex items-center gap-4 transition-all duration-500 ${step === item.s ? 'translate-x-3' : 'opacity-80'}`}>
+                           <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 ${step === item.s ? 'bg-[#00ff9d] border-[#00ff9d] text-slate-950 shadow-[0_0_20px_rgba(0,255,157,0.3)]' : 'border-white/20 text-white/40'}`}>
                               <item.icon size={14} strokeWidth={3} />
                            </div>
-                           <span className={`text-[10px] font-black uppercase tracking-widest ${step === item.s ? 'text-white' : 'text-slate-700'}`}>{item.label}</span>
+                           <span className={`text-[10px] font-black uppercase tracking-widest ${step === item.s ? 'text-white' : 'text-white/40'}`}>{item.label}</span>
                         </div>
                      ))}
                   </div>

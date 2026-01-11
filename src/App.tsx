@@ -20,6 +20,7 @@ import { AgentHub } from './components/AgentHub';
 import { SuperAdmin } from './components/SuperAdmin';
 import { AuthPage } from './components/Auth';
 import { SetupWizard } from './components/SetupWizard';
+import { Welcome } from './components/Welcome';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PortionMonitor } from './components/PortionMonitor';
@@ -106,10 +107,20 @@ function AppContent() {
     );
   }
 
-  if (!settings.setupComplete) {
+  if (!user.companyId) {
     return (
-      <SetupWizard onComplete={() => useSettingsStore.getState().updateSettings({ setupComplete: true })} />
+      <Routes>
+        <Route path="/welcome" element={<Welcome />} />
+        <Route path="/setup-wizard" element={<SetupWizard onComplete={() => window.location.hash = '/'} />} />
+        <Route path="*" element={<Navigate to="/welcome" replace />} />
+      </Routes>
     );
+  }
+
+  // Fallback if settings say incomplete but we have companyId (migration edge case)
+  if (!settings.setupComplete) {
+    // We might want to just let them finish setting up
+    return <SetupWizard onComplete={() => useSettingsStore.getState().completeSetup({})} />;
   }
 
   return (
