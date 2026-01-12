@@ -1,0 +1,422 @@
+[
+    {
+        "name": "Spanish Ham & Smoked Salmon Platter",
+        "category": "Hors D'Oeuvre",
+        "description": "Spanish ham with olives & oranges on toast bread, smoked salmon on a bed of cucumber cup, tuna laced with peppers topping on garlic bread, prawn cucumber cups",
+        "price_cents": 450000
+    },
+    {
+        "name": "Shrimp Cocktail",
+        "category": "Hors D'Oeuvre",
+        "description": "Classic shrimp cocktail",
+        "price_cents": 500000
+    },
+    {
+        "name": "Wrapped Noodle Prawn",
+        "category": "Hors D'Oeuvre",
+        "description": "Crispy wrapped noodle prawn",
+        "price_cents": 550000
+    },
+    {
+        "name": "Mixed Grill Platter",
+        "category": "Hors D'Oeuvre",
+        "description": "Meat balls, Mixed seafood balls, Mixed kebab",
+        "price_cents": 250000
+    },
+    {
+        "name": "Asian Fusion Platter",
+        "category": "Hors D'Oeuvre",
+        "description": "Barbecue chicken wings, chicken, Money bags, samosa, Prawn roll, chicken spring rolls, vegetable spring rolls",
+        "price_cents": 650000
+    },
+    {
+        "name": "Peppered Snails",
+        "category": "Hors D'Oeuvre",
+        "description": "Spicy peppered snails",
+        "price_cents": 600000
+    },
+    {
+        "name": "Goat Meat Pepper Soup",
+        "category": "Starters",
+        "description": "Spicy traditional goat meat soup",
+        "price_cents": 500000
+    },
+    {
+        "name": "Fish Pepper Soup",
+        "category": "Starters",
+        "description": "Fresh fish spicy soup",
+        "price_cents": 500000
+    },
+    {
+        "name": "Chicken Pepper Soup",
+        "category": "Starters",
+        "description": "Spicy chicken soup",
+        "price_cents": 450000
+    },
+    {
+        "name": "Chicken Corn Soup",
+        "category": "Starters",
+        "description": "Creamy chicken and corn soup",
+        "price_cents": 550000
+    },
+    {
+        "name": "Vegetable Soup",
+        "category": "Starters",
+        "description": "Mixed vegetable soup",
+        "price_cents": 450000
+    },
+    {
+        "name": "Beef and Noodles Soup",
+        "category": "Starters",
+        "description": "Hearty beef and noodle broth",
+        "price_cents": 550000
+    },
+    {
+        "name": "Oriental Shrimps and Noodle Soup",
+        "category": "Starters",
+        "description": "Asian style shrimp and noodle soup",
+        "price_cents": 650000
+    },
+    {
+        "name": "Cream of Mushroom Soup",
+        "category": "Starters",
+        "description": "Rich creamy mushroom soup",
+        "price_cents": 550000
+    },
+    {
+        "name": "Spicy Thai Shrimps' Soup",
+        "category": "Starters",
+        "description": "Hot and sour Thai shrimp soup",
+        "price_cents": 700000
+    },
+    {
+        "name": "Coleslaw",
+        "category": "Salads",
+        "description": "Creamy cabbage and carrot salad",
+        "price_cents": 450000
+    },
+    {
+        "name": "Vegetable Salad",
+        "category": "Salads",
+        "description": "Fresh garden salad",
+        "price_cents": 450000
+    },
+    {
+        "name": "Tossed Vegetable Salad",
+        "category": "Salads",
+        "description": "Mixed tossed greens",
+        "price_cents": 450000
+    },
+    {
+        "name": "Prawns and Calamari Salad",
+        "category": "Salads",
+        "description": "Seafood salad with prawns and calamari",
+        "price_cents": 850000
+    },
+    {
+        "name": "Caesar Salad",
+        "category": "Salads",
+        "description": "Classic Caesar with croutons and parmesan",
+        "price_cents": 600000
+    },
+    {
+        "name": "Chicken Salad",
+        "category": "Salads",
+        "description": "Grilled chicken breast salad",
+        "price_cents": 650000
+    },
+    {
+        "name": "Avocado Salad",
+        "category": "Salads",
+        "description": "Fresh avocado mix",
+        "price_cents": 550000
+    },
+    {
+        "name": "Potato Salad",
+        "category": "Salads",
+        "description": "Classic creamy potato salad",
+        "price_cents": 500000
+    },
+    {
+        "name": "Nigerian Menu - Option A",
+        "category": "Nigerian Cuisine",
+        "description": "Xquisite jollof rice & Xquisite Special Fried Rice Served with Chicken in Peppered Sauce & Stewed Beef, Coleslaw, Moi-moi or Fried plantain",
+        "price_cents": 1050000
+    },
+    {
+        "name": "Nigerian Menu - Option B",
+        "category": "Nigerian Cuisine",
+        "description": "Richly Prepared Efo-Riro / Efo-Elegusi Served with Poundo Yam & Fresh Fish",
+        "price_cents": 1050000
+    },
+    {
+        "name": "Nigerian Menu - Option C",
+        "category": "Nigerian Cuisine",
+        "description": "Locally Grown Ofada Rice Served with Designer Stew, Fried Fish & Fried Plantain or Moi-moi",
+        "price_cents": 1050000
+    },
+    {
+        "name": "Nigerian Menu - Option D",
+        "category": "Nigerian Cuisine",
+        "description": "Yam pottage with palm fried fish dry fish sauce, Fried fish & fried plantain OR Ewa agoyin topped with palm fried dry fish sauce, fried fish & fried plantain",
+        "price_cents": 1050000
+    },
+    {
+        "name": "Nigerian Menu - Option E",
+        "category": "Nigerian Cuisine",
+        "description": "Amala served with gbegiri, ewedu and assorted meat stew laced with panla & Fresh Fish",
+        "price_cents": 1050000
+    },
+    {
+        "name": "Chinese Menu Package",
+        "category": "Oriental",
+        "description": "Includes Chinese dishes and choice of sauces. (N12,500 Per Head)",
+        "price_cents": 1250000
+    },
+    {
+        "name": "Chinese Fried Rice",
+        "category": "Oriental",
+        "description": "With prawns, lamb fillet, chicken & vegetables (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Stir Fry Noodles",
+        "category": "Oriental",
+        "description": "With vegetable and chicken fillet (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Braised Lamb in Oyster Sauce",
+        "category": "Oriental",
+        "description": "Sauce Option (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Shredded Spicy Beef",
+        "category": "Oriental",
+        "description": "In green peppers (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Prawns in Coconut Sauce",
+        "category": "Oriental",
+        "description": "Sauce Option (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Stir Fry Prawns with Peppers",
+        "category": "Oriental",
+        "description": "Sauce Option (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Fillet Fish in Crispy Batter",
+        "category": "Oriental",
+        "description": "Served with sweet oriental sauce (Select with Package)",
+        "price_cents": 0
+    },
+    {
+        "name": "Thai Menu Package",
+        "category": "Oriental",
+        "description": "Choice of Sticky Rice or Curry dishes. (N12,500 Per Head)",
+        "price_cents": 1250000
+    },
+    {
+        "name": "Sticky Rice with Goat Ribs",
+        "category": "Oriental",
+        "description": "Sticky rice served with sticky spicy goat spare ribs",
+        "price_cents": 1250000
+    },
+    {
+        "name": "Thai Chicken Curry",
+        "category": "Oriental",
+        "description": "Thai chicken with cashew nuts and mixed peppers served with steamed basmati and vegetables",
+        "price_cents": 1250000
+    },
+    {
+        "name": "Grilled Spicy Prawns",
+        "category": "Continental",
+        "description": "Served with fettuccine pasta wrapped in a creamy basil cheese sauce/tomato sauce",
+        "price_cents": 1850000
+    },
+    {
+        "name": "Grilled Jumbo Prawns Upgrade",
+        "category": "Continental",
+        "description": "Upgrade for Spicy Prawns (N20,000)",
+        "price_cents": 2000000
+    },
+    {
+        "name": "Chicken in Mushroom Sauce",
+        "category": "Continental",
+        "description": "Served with roast potatoes and steamed vegetables",
+        "price_cents": 1250000
+    },
+    {
+        "name": "Slow Roasted Nigerian Lamb Steak",
+        "category": "Continental",
+        "description": "In brown and mint sauce served with grilled jumbo prawns, sautéed potatoes/special fried rice",
+        "price_cents": 1800000
+    },
+    {
+        "name": "Imported Lamb Steak Option",
+        "category": "Continental",
+        "description": "Imported lamb option",
+        "price_cents": 2500000
+    },
+    {
+        "name": "Braised Oxtail/Lamb Chops",
+        "category": "Continental",
+        "description": "Imported oxtail/lamb chops in brown sauce served with roast potatoes, parsley, baby carrots, broccoli",
+        "price_cents": 3500000
+    },
+    {
+        "name": "Grilled Salmon Steak",
+        "category": "Continental",
+        "description": "In creamy garlic white sauce served with fried rice/mashed potatoes, asparagus",
+        "price_cents": 5000000
+    },
+    {
+        "name": "Fish, Prawns and Calamari in Batter",
+        "category": "Continental",
+        "description": "Served with onion rings, french fries, tartar sauce and coleslaw",
+        "price_cents": 1850000
+    },
+    {
+        "name": "Succulent Lamb in Oyster Sauce",
+        "category": "Continental",
+        "description": "Served with potato gratin topped with parsley",
+        "price_cents": 2200000
+    },
+    {
+        "name": "Lamb with Jumbo Prawns",
+        "category": "Continental",
+        "description": "Succulent lamb with jumbo prawns",
+        "price_cents": 3500000
+    },
+    {
+        "name": "Prawn & Imported Steak Hot Plate",
+        "category": "Hot Plates",
+        "description": "Served with Xquisite special fried rice, sautéed potatoes and steamed vegetables",
+        "price_cents": 5500000
+    },
+    {
+        "name": "Prawn & Grilled Chicken Hot Plate",
+        "category": "Hot Plates",
+        "description": "Served with xquisite special fried rice, sautéed potatoes and steamed vegetables",
+        "price_cents": 2200000
+    },
+    {
+        "name": "Prawn Hot Plate",
+        "category": "Hot Plates",
+        "description": "Served with xquisite special fried rice, sautéed potatoes and steamed vegetables",
+        "price_cents": 2000000
+    },
+    {
+        "name": "Succulent Nigerian Lamb Hot Plate",
+        "category": "Hot Plates",
+        "description": "Served with xquisite special fried rice, sautéed potatoes and steamed vegetables",
+        "price_cents": 1600000
+    },
+    {
+        "name": "Imported Succulent Lamb Hot Plate",
+        "category": "Hot Plates",
+        "description": "Served with potato gratin and steamed vegetables",
+        "price_cents": 3500000
+    },
+    {
+        "name": "Sizzling Sweet and Sour Prawns",
+        "category": "Hot Plates",
+        "description": "Served with steamed basmati rice",
+        "price_cents": 2000000
+    },
+    {
+        "name": "Apple Pie",
+        "category": "Dessert",
+        "description": "Served with homemade custard or ice cream",
+        "price_cents": 650000
+    },
+    {
+        "name": "Apple & Blackberry Crumble",
+        "category": "Dessert",
+        "description": "Served with homemade custard or ice cream",
+        "price_cents": 850000
+    },
+    {
+        "name": "Apple Crumble",
+        "category": "Dessert",
+        "description": "Served with homemade custard or ice cream",
+        "price_cents": 550000
+    },
+    {
+        "name": "Use Imported Apples (Extra)",
+        "category": "Dessert",
+        "description": "Surcharge for imported apples",
+        "price_cents": 150000
+    },
+    {
+        "name": "Exotic Fruit Salad",
+        "category": "Dessert",
+        "description": "Fresh exotic fruits",
+        "price_cents": 850000
+    },
+    {
+        "name": "Fruit Trifle",
+        "category": "Dessert",
+        "description": "Classic fruit trifle",
+        "price_cents": 1050000
+    },
+    {
+        "name": "Pancakes or Waffles",
+        "category": "Dessert",
+        "description": "Served with strawberries or syrup",
+        "price_cents": 550000
+    },
+    {
+        "name": "Pineapple Upside Down",
+        "category": "Dessert",
+        "description": "Classic cake",
+        "price_cents": 650000
+    },
+    {
+        "name": "Chocolate Roulade",
+        "category": "Dessert",
+        "description": "Rich chocolate roll",
+        "price_cents": 650000
+    },
+    {
+        "name": "Chocolate Orange with Mousse",
+        "category": "Dessert",
+        "description": "Served with chocolate mousse",
+        "price_cents": 950000
+    },
+    {
+        "name": "Cream Caramel",
+        "category": "Dessert",
+        "description": "Classic creme caramel",
+        "price_cents": 650000
+    },
+    {
+        "name": "Black Forest Gateau",
+        "category": "Dessert",
+        "description": "Rich cherry chocolate cake",
+        "price_cents": 850000
+    },
+    {
+        "name": "Apricot Gateau",
+        "category": "Dessert",
+        "description": "Fruity cake",
+        "price_cents": 950000
+    },
+    {
+        "name": "Lemon Cheesecake",
+        "category": "Dessert",
+        "description": "With blackberries",
+        "price_cents": 2500000
+    },
+    {
+        "name": "Strawberry Gateau",
+        "category": "Dessert",
+        "description": "Fresh strawberry cake",
+        "price_cents": 2500000
+    }
+]
