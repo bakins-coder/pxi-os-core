@@ -217,23 +217,47 @@ export interface PortionMonitor {
   handoverDate?: string;
 }
 
+// REFACTOR: New Taxonomy
+export type InventoryType = 'raw_material' | 'asset' | 'rental' | 'product' | 'fixture';
+
 export interface InventoryItem {
   id: string;
   companyId: string;
   name: string;
   category: string;
+  type: InventoryType; // New strict type
   priceCents: number;
   costPriceCents?: number;
   image?: string;
   description?: string;
   recipeId?: string;
   stockQuantity: number;
-  isAsset: boolean;
-  isRental: boolean;
+  // Deprecated Legacy Flags (kept optional for simple backward compat during transition if needed)
+  isAsset?: boolean;
+  isRental?: boolean;
   rentalVendor?: string;
 }
 
-export interface Contact { id: string; name: string; type: 'Company' | 'Individual'; companyId: string; email: string; phone: string; sentimentScore: number; industry?: string; registrationNumber?: string; contactPerson?: string; address?: string; jobTitle?: string; }
+export type CustomerType = 'Individual' | 'Corporate';
+export type ContactCategory = 'Customer' | 'Supplier' | 'Bank_Partner' | 'Vendor' | 'Employee';
+
+export interface Contact {
+  id: string;
+  name: string;
+  category: ContactCategory; // New
+  customerType?: CustomerType; // New
+  // Legacy mapping
+  type: 'Company' | 'Individual';
+  companyId: string;
+  email: string;
+  phone: string;
+  sentimentScore: number;
+  industry?: string;
+  registrationNumber?: string;
+  contactPerson?: string;
+  address?: string;
+  jobTitle?: string;
+}
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
 export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; }
 export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId: string; }

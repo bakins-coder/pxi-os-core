@@ -42,10 +42,24 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   // One important key is company_id vs companyId.
   const sanitizedData = data.map(item => {
     const newItem = { ...item };
-    if ('companyId' in newItem) {
-      newItem.company_id = newItem.companyId;
-      delete newItem.companyId;
-    }
+
+    if ('companyId' in newItem) { newItem.company_id = newItem.companyId; delete newItem.companyId; }
+
+    // Inventory Reverse Mappings
+    if ('stockQuantity' in newItem) { newItem.stock_quantity = newItem.stockQuantity; delete newItem.stockQuantity; }
+    if ('priceCents' in newItem) { newItem.price_cents = newItem.priceCents; delete newItem.priceCents; }
+    if ('costPriceCents' in newItem) { newItem.cost_price_cents = newItem.costPriceCents; delete newItem.costPriceCents; }
+    if ('recipeId' in newItem) { newItem.recipe_id = newItem.recipeId; delete newItem.recipeId; }
+    if ('isAsset' in newItem) { newItem.is_asset = newItem.isAsset; delete newItem.isAsset; }
+    if ('isRental' in newItem) { newItem.is_rental = newItem.isRental; delete newItem.isRental; }
+    if ('rentalVendor' in newItem) { newItem.rental_vendor = newItem.rentalVendor; delete newItem.rentalVendor; }
+
+    // Contact Reverse Mappings
+    if ('customerType' in newItem) { newItem.customer_type = newItem.customerType; delete newItem.customerType; }
+
+    // Ledger Reverse Mappings
+    if ('balanceCents' in newItem) { newItem.balance_cents = newItem.balanceCents; delete newItem.balanceCents; }
+
     return newItem;
   });
 
@@ -78,10 +92,25 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   // Map back snake_case to camelCase
   return data.map((item: any) => {
     const newItem = { ...item };
-    if ('company_id' in newItem) {
-      newItem.companyId = newItem.company_id;
-      delete newItem.company_id;
-    }
+
+    // Explicit mappings for known fields
+    if ('company_id' in newItem) { newItem.companyId = newItem.company_id; delete newItem.company_id; }
+
+    // Inventory Mappings
+    if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }
+    if ('price_cents' in newItem) { newItem.priceCents = newItem.price_cents; delete newItem.price_cents; }
+    if ('cost_price_cents' in newItem) { newItem.costPriceCents = newItem.cost_price_cents; delete newItem.cost_price_cents; }
+    if ('recipe_id' in newItem) { newItem.recipeId = newItem.recipe_id; delete newItem.recipe_id; }
+    if ('is_asset' in newItem) { newItem.isAsset = newItem.is_asset; delete newItem.is_asset; }
+    if ('is_rental' in newItem) { newItem.isRental = newItem.is_rental; delete newItem.is_rental; }
+    if ('rental_vendor' in newItem) { newItem.rentalVendor = newItem.rental_vendor; delete newItem.rental_vendor; }
+
+    // Contact Mappings
+    if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }
+
+    // Ledger Mappings
+    if ('balance_cents' in newItem) { newItem.balanceCents = newItem.balance_cents; delete newItem.balance_cents; }
+
     return newItem;
   });
 };

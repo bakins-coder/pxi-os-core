@@ -57,7 +57,10 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     const updateCateringOrder = useDataStore(state => state.updateCateringOrder);
 
     useEffect(() => {
-        setMenuItems(inventory.filter(i => !i.isAsset));
+        // REFACTOR: Use new strict type taxonomy
+        // Only show 'product' (Menu Items) or 'raw_material' (Ingredients) in the brochure
+        // Exclude 'asset' (Hardware), 'rental', 'fixture'
+        setMenuItems(inventory.filter(i => i.type === 'product' || i.type === 'raw_material'));
     }, [inventory]);
 
     const updateQty = (id: string, qty: number) => { setSelected(prev => ({ ...prev, [id]: Math.max(0, qty) })); };

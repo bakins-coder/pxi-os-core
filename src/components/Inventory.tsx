@@ -6,7 +6,7 @@ import { calculateItemCosting } from '../utils/costing';
 import {
    Package, Plus, RefreshCw, Layers, TrendingUp, Utensils,
    Zap, X, Trash2, Edit3, BookOpen, Info, Truck, Hammer, AlertTriangle, History, Clock, Box, Search, Check, Image as ImageIcon, Sparkles, Loader2,
-   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine
+   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid
 } from 'lucide-react';
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
@@ -464,7 +464,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 };
 
 export const Inventory = () => {
-   const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'rentals'>('products');
+   const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'rentals' | 'fixtures'>('products');
    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
    const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
    const [selectedRental, setSelectedRental] = useState<RentalRecord | null>(null);
@@ -477,7 +477,7 @@ export const Inventory = () => {
    const [showScanModal, setShowScanModal] = useState(false);
    const [isProcessingScan, setIsProcessingScan] = useState(false);
 
-   const { inventory, ingredients, requisitions, rentalLedger, cateringEvents, approveRequisition, addIngredient, checkOverdueAssets } = useDataStore();
+   const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents, approveRequisition, addIngredient, checkOverdueAssets } = useDataStore();
 
    useEffect(() => {
       checkOverdueAssets();
@@ -509,9 +509,11 @@ export const Inventory = () => {
       }
    };
 
-   const products = inventory.filter(i => !i.isAsset);
-   const assets = inventory.filter(i => i.isAsset);
-   const rentals = rentalLedger;
+   const products = inventory.filter(i => i.type === 'product');
+   const rawMaterials = inventory.filter(i => i.type === 'raw_material');
+   const assets = inventory.filter(i => i.type === 'asset');
+   const fixtures = inventory.filter(i => i.type === 'fixture');
+   const rentals = rentalLedger; // Kept separate as it joins with Requisitions
    const events = cateringEvents;
 
    useEffect(() => {
@@ -542,10 +544,11 @@ export const Inventory = () => {
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
                      { id: 'products', label: 'Offerings', icon: Utensils },
-                     { id: 'ingredients', label: 'Food Stock', icon: Box },
+                     { id: 'ingredients', label: 'Raw Materials', icon: Box },
                      { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList },
                      { id: 'rentals', label: 'Rental Stock', icon: RotateCcw },
-                     { id: 'hardware', label: 'Asset Ledger', icon: Hammer }
+                     { id: 'hardware', label: 'Asset Ledger', icon: Hammer },
+                     { id: 'fixtures', label: 'Fixtures', icon: Grid }
                   ].map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
                   ))}
@@ -628,7 +631,7 @@ export const Inventory = () => {
          {activeTab === 'ingredients' && (
             <div className="space-y-6 animate-in slide-in-from-bottom-4">
                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl"><div><h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Food Ingredient Pipeline</h2><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Movement Inward (Procurement) & Current Inventory Levels</p></div><div className="flex gap-4"><button onClick={() => setIsReleaseModalOpen(true)} className="px-8 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-3 shadow-xl hover:scale-105 transition-all"><Flame size={18} /> Kitchen Release</button><button onClick={() => setIsReceiveModalOpen(true)} className="px-8 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-3 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={18} className="text-[#00ff9d]" /> Inward Stock</button></div></div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{ingredients.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 uppercase">{ing.unit}</span></div></td><td className="p-8 font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></td></tr>))}</tbody></table></div></div>
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><span className={`text-lg font-black tracking-tighter ${ing.stockQuantity < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockQuantity.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 uppercase">Input</span></div></td><td className="p-8 font-black text-slate-900 text-xs">₦{(ing.priceCents / 100).toLocaleString()}</td><td className="p-8">{ing.costPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.costPriceCents / 100).toLocaleString()}</span>{ing.costPriceCents > ing.priceCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></td></tr>))}</tbody></table></div></div>
             </div>
          )}
 
@@ -639,8 +642,9 @@ export const Inventory = () => {
          )}
 
          {activeTab === 'hardware' && <HardwareHub assets={assets} />}
-         <ReceiveStockModal isOpen={isReceiveModalOpen} onClose={() => setIsReceiveModalOpen(false)} ingredients={ingredients} />
-         <KitchenReleaseModal isOpen={isReleaseModalOpen} onClose={() => setIsReleaseModalOpen(false)} ingredients={ingredients} events={events} />
+         {activeTab === 'fixtures' && <HardwareHub assets={fixtures} />}
+         <ReceiveStockModal isOpen={isReceiveModalOpen} onClose={() => setIsReceiveModalOpen(false)} ingredients={storeIngredients} />
+         <KitchenReleaseModal isOpen={isReleaseModalOpen} onClose={() => setIsReleaseModalOpen(false)} ingredients={storeIngredients} events={events} />
          <RentalReturnModal isOpen={!!selectedRental} onClose={() => setSelectedRental(null)} rental={selectedRental} />
 
          {showScanModal && (

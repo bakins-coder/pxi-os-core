@@ -595,7 +595,7 @@ const CostingMatrix = () => {
    const calculateItemCosting = useDataStore(state => state.calculateItemCosting);
 
    useEffect(() => {
-      const items = inventory.filter(i => !i.isAsset);
+      const items = inventory.filter(i => i.type === 'product');
       const mockCostings = items.map(i => calculateItemCosting(i.id, 100)).filter(Boolean) as ItemCosting[];
       setCostings(mockCostings);
    }, [inventory]);
