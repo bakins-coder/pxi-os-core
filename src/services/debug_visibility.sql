@@ -6,6 +6,7 @@
 SELECT 
     id as user_id, 
     email, 
+    raw_user_meta_data,
     (raw_user_meta_data->>'company_id')::uuid as claim_company_id 
 FROM auth.users 
 WHERE email = 'tomiwab@hotmail.com';
