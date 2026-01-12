@@ -980,7 +980,9 @@ export const useDataStore = create<DataState>()(
                 set({ isSyncing: true, syncStatus: 'Syncing' });
 
                 try {
-                    const [inv, contacts, invoices, events, tasks, employees, requisitions, accounts, transactions] = await Promise.all([
+                    const tables = ['inventory', 'contacts', 'invoices', 'catering_events', 'tasks', 'employees', 'requisitions', 'chart_of_accounts', 'bank_transactions'];
+
+                    const results = await Promise.allSettled([
                         pullCloudState('inventory', companyId),
                         pullCloudState('contacts', companyId),
                         pullCloudState('invoices', companyId),
@@ -993,20 +995,47 @@ export const useDataStore = create<DataState>()(
                     ]);
 
                     const updates: Partial<DataState> = {};
-                    if (inv) updates.inventory = inv;
-                    if (contacts) updates.contacts = contacts;
-                    if (invoices) updates.invoices = invoices;
-                    if (events) updates.cateringEvents = events;
-                    if (tasks) updates.tasks = tasks;
-                    if (employees) updates.employees = employees;
-                    if (requisitions) updates.requisitions = requisitions;
-                    if (accounts) updates.chartOfAccounts = accounts;
-                    if (transactions) updates.bankTransactions = transactions;
+                    let errorCount = 0;
+                    let lastErrorMsg = '';
 
-                    set({ ...updates, isSyncing: false, syncStatus: 'Synced' });
+                    results.forEach((result, index) => {
+                        if (result.status === 'fulfilled') {
+                            const data = result.value;
+                            if (data) {
+                                switch (index) {
+                                    case 0: updates.inventory = data; break;
+                                    case 1: updates.contacts = data; break;
+                                    case 2: updates.invoices = data; break;
+                                    case 3: updates.cateringEvents = data; break;
+                                    case 4: updates.tasks = data; break;
+                                    case 5: updates.employees = data; break;
+                                    case 6: updates.requisitions = data; break;
+                                    case 7: updates.chartOfAccounts = data; break;
+                                    case 8: updates.bankTransactions = data; break;
+                                }
+                            }
+                        } else {
+                            errorCount++;
+                            lastErrorMsg = `Failed to fetch ${tables[index]}: ${result.reason}`;
+                            console.error(`Hydration Error [${tables[index]}]:`, result.reason);
+                        }
+                    });
+
+                    if (errorCount > 0 && errorCount < tables.length) {
+                        // Partial Success
+                        console.warn(`Hydration Partial Success: ${errorCount} tables failed.`);
+                        set({ ...updates, isSyncing: false, syncStatus: 'Synced', lastSyncError: `Partial Sync Warning: ${lastErrorMsg}` });
+                    } else if (errorCount === tables.length) {
+                        // Total Failure
+                        set({ isSyncing: false, syncStatus: 'Error', lastSyncError: lastErrorMsg });
+                    } else {
+                        // Total Success
+                        set({ ...updates, isSyncing: false, syncStatus: 'Synced', lastSyncError: null });
+                    }
+
                 } catch (e) {
                     set({ isSyncing: false, syncStatus: 'Error', lastSyncError: (e as Error).message });
-                    console.error('Cloud Hydration Failed:', e);
+                    console.error('Cloud Hydration Fatal Error:', e);
                 }
             },
 
@@ -1239,7 +1268,7 @@ export const useDataStore = create<DataState>()(
             }
         }),
         {
-            name: 'data-storage',
+            name: 'data-storage-v2',
             partialize: (state) => {
                 // Exclude circular references and non-serializable objects
                 const { realtimeChannel, ...rest } = state;

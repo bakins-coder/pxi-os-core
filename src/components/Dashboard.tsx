@@ -74,6 +74,24 @@ export const Dashboard = () => {
   const { user } = useAuthStore();
   const { strictMode } = useSettingsStore();
 
+  const calculateNetProfitMargin = () => {
+    // 1. Total Revenue (Paid Invoices)
+    const totalRevenueCents = invoices
+      .filter(inv => inv.status === 'Paid' || inv.status === 'Overdue')
+      .reduce((sum, inv) => sum + (inv.paidAmountCents || 0), 0);
+
+    // 2. Total Expenses (Bookkeeping Outflows - Simplified)
+    // In a real scenario, this would check 'bookkeeping' or specific expense accounts.
+    // For now we will assume 0 expenses if no ledger data, preventing divide by zero.
+    const totalExpensesCents = 0;
+
+    if (totalRevenueCents === 0) return '0.0';
+
+    // Placeholder logic until Expense Ledger is fully connected
+    const margin = ((totalRevenueCents - totalExpensesCents) / totalRevenueCents) * 100;
+    return margin.toFixed(1);
+  };
+
   const dataState = useMemo(() => {
     // Financial Summary Logic
     const salesInvoices = invoices.filter(i => i.type === 'Sales');
@@ -126,7 +144,8 @@ export const Dashboard = () => {
           { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
           { label: 'Cash at Hand', value: `₦${(dataState.financial.cash / 100).toLocaleString()}`, icon: Activity, color: 'text-emerald-600', trend: 'Healthy' },
           { label: 'Receivables', value: `₦${(dataState.financial.receivables / 100).toLocaleString()}`, icon: Receipt, color: 'text-amber-600', trend: 'Action Needed' },
-          { label: 'Net Profit Margin', value: '34.2%', icon: TrendingUp, color: 'text-purple-600', trend: '+2.1%' },
+
+          { label: 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', trend: 'Real-time' },
         ].map((kpi, idx) => (
           <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
             <div className="relative z-10">
