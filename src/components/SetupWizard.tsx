@@ -80,24 +80,124 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       }
    }, [showRestoreToast]);
 
+   // AUTO-RECOVERY: Check if user is already linked to an org (Stale Session Fix)
+   useEffect(() => {
+      const checkExistingOrg = async () => {
+         if (!currentUser?.id) return;
+         try {
+            const { supabase } = await import('../services/supabase');
+            if (!supabase) return;
+
+            // 1. Check Profile for Organization Link
+            const { data: profile } = await supabase
+               .from('profiles')
+               .select('organization_id, role')
+               .eq('id', currentUser.id)
+               .single();
+
+            if (profile?.organization_id) {
+               console.log('Found existing organization link:', profile.organization_id);
+
+               // 2. Fetch Organization Details
+               const { data: org } = await supabase
+                  .from('organizations')
+                  .select('*')
+                  .eq('id', profile.organization_id)
+                  .single();
+
+               if (org) {
+                  // 3. Force Update Local State
+                  useAuthStore.getState().setUser({
+                     ...currentUser,
+                     companyId: org.id,
+                     role: profile.role as Role || currentUser.role
+                  });
+
+                  completeSetup({
+                     id: org.id,
+                     name: org.name,
+                     type: org.type as any,
+                     size: org.size as any,
+                     brandColor: org.brand_color,
+                     logo: org.logo,
+                     address: org.address,
+                     firs_tin: org.firs_tin,
+                     contactPhone: org.contact_phone
+                  });
+
+                  // 4. Redirect
+                  onComplete();
+               }
+            }
+         } catch (err) {
+            console.error('Auto-recovery failed:', err);
+         }
+      };
+
+      checkExistingOrg();
+   }, [currentUser?.id]);
+
+   const handleLogout = () => {
+      useAuthStore.getState().logout();
+      window.location.reload();
+   };
+
    const handleFinish = async () => {
       setIsConfiguring(true);
 
       try {
          // 1. Create Workspace in Backend
+         // 1. Create Workspace (Organization) directly in DB
          const { supabase } = await import('../services/supabase');
          if (!supabase) throw new Error('System Offline');
 
-         const { data: workspaceData, error: fnError } = await supabase.functions.invoke('create-workspace', {
-            body: { name: orgName }
-         });
+         // Map local state to DB columns
+         const orgPayload = {
+            name: orgName,
+            type: orgType,
+            size: orgSize,
+            brand_color: brandColor,
+            logo: logo,
+            address: address,
+            firs_tin: taxId,
+            contact_phone: repPhone,
+            setup_complete: true,
+            enabled_modules: selectedModules,
+            contact_person: {
+               name: fullDisplayName,
+               email: currentUser?.email || '',
+               jobTitle: repJobTitle,
+               title: repTitle
+            }
+         };
 
-         if (fnError) throw new Error(fnError.message || 'Workspace creation failed on server node');
+         const { data: orgData, error: orgError } = await supabase
+            .from('organizations')
+            .insert(orgPayload)
+            .select('id')
+            .single();
 
-         const newCompanyId = workspaceData?.workspace?.id;
-         if (!newCompanyId) throw new Error('Did not receive valid workspace ID');
+         if (orgError) throw new Error(orgError.message || 'Failed to create organization record');
+         const newCompanyId = orgData.id;
 
-         // 2. Update Local User State with new Company ID
+         // 2. Link User to Organization (Update public.users)
+         if (currentUser?.id) {
+            const userPayload = {
+               id: currentUser.id,
+               company_id: newCompanyId,
+               name: fullDisplayName,
+               email: currentUser.email || '',
+               role: Role.ADMIN
+            };
+
+            const { error: userError } = await supabase
+               .from('users')
+               .upsert(userPayload);
+
+            if (userError) console.warn('Failed to link user profile:', userError);
+         }
+
+         // 3. Update Local User State with new Company ID
          useAuthStore.getState().setUser({
             ...currentUser!,
             companyId: newCompanyId
@@ -213,6 +313,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             </div>
          )}
 
+         <div className="absolute top-8 right-8 z-50">
+            <button
+               onClick={handleLogout}
+               className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/50 rounded-2xl transition-all group backdrop-blur-md"
+            >
+               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-rose-400">Sign Out</span>
+            </button>
+         </div>
+
          <div className="w-full max-w-5xl bg-white rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row relative z-10 border border-slate-100 min-h-[700px]">
             {/* Sidebar */}
             <div className="w-full md:w-80 bg-slate-950 p-10 flex flex-col justify-between border-r border-slate-800">
@@ -278,7 +387,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-2">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Honorific</label>
                               <select
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer text-slate-900"
                                  value={repTitle}
                                  onChange={e => setRepTitle(e.target.value)}
                                  onFocus={() => setActiveField('repTitle')}
@@ -289,7 +398,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-4">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">First Name</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
                                  placeholder="e.g. Akinwale"
                                  value={firstName}
                                  onChange={e => setFirstName(e.target.value)}
@@ -299,7 +408,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-3">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Middle Name (Optional)</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
                                  placeholder="e.g. Babatunde"
                                  value={middleName}
                                  onChange={e => setMiddleName(e.target.value)}
@@ -309,7 +418,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-3">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Last Name</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
                                  placeholder="e.g. Akinbiyi"
                                  value={lastName}
                                  onChange={e => setLastName(e.target.value)}
@@ -333,7 +442,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-3">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Job Title</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
                                  placeholder="e.g. Managing Director"
                                  value={repJobTitle}
                                  onChange={e => setRepJobTitle(e.target.value)}
@@ -357,7 +466,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div className="relative">
                                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 border-r-2 border-slate-100 pr-6"><Building2 size={24} /></div>
                                  <input
-                                    className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] font-black outline-none focus:border-indigo-500 transition-all pl-24 text-2xl truncate shadow-inner focus:bg-white"
+                                    className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] font-black outline-none focus:border-indigo-500 transition-all pl-24 text-2xl truncate shadow-inner focus:bg-white text-slate-900 placeholder:text-slate-400"
                                     placeholder="e.g. Xquisite Celebrations Ltd"
                                     value={orgName}
                                     onChange={e => setOrgName(e.target.value)}
@@ -372,7 +481,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                  <div className="relative">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 border-r-2 border-slate-100 pr-4"><Phone size={18} /></div>
                                     <input
-                                       className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all pl-20"
+                                       className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all pl-20 text-slate-900 placeholder:text-slate-400"
                                        placeholder="080 123 4567"
                                        value={repPhone}
                                        onChange={e => setRepPhone(e.target.value)}
@@ -383,7 +492,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div>
                                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Business Classification</label>
                                  <select
-                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer"
+                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer text-slate-900"
                                     value={orgType}
                                     onChange={e => setOrgType(e.target.value as any)}
                                     onFocus={() => setActiveField('orgType')}
@@ -414,7 +523,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                  <div className="absolute left-6 top-8 text-slate-300"><MapPin size={24} /></div>
                                  <textarea
                                     rows={2}
-                                    className="w-full p-6 pt-7 pl-20 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-indigo-500 transition-all shadow-inner focus:bg-white resize-none"
+                                    className="w-full p-6 pt-7 pl-20 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-indigo-500 transition-all shadow-inner focus:bg-white resize-none text-slate-900 placeholder:text-slate-400"
                                     placeholder="Building Number, Street, LGA, State, Country"
                                     value={address}
                                     onChange={e => setAddress(e.target.value)}
@@ -427,7 +536,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div>
                                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">FIRS T.I.N (Corporate)</label>
                                  <input
-                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all"
+                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all text-slate-900 placeholder:text-slate-400"
                                     placeholder="12345678-0001"
                                     value={taxId}
                                     onChange={e => setTaxId(e.target.value)}
@@ -437,7 +546,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div>
                                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Operational Scale</label>
                                  <select
-                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer"
+                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer text-slate-900"
                                     value={orgSize}
                                     onChange={e => setOrgSize(e.target.value as any)}
                                     onFocus={() => setActiveField('orgSize')}

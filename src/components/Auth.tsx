@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Role } from '../types';
 
-export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch: () => void }) => {
+export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void, onSwitch: () => void, onForgot?: () => void }) => {
   const { login, signup } = useAuthStore();
   const { partialSetupData, settings } = useSettingsStore();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -186,12 +186,91 @@ export const Login = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitch
         </button>
 
         <div className="flex flex-col gap-4 mt-8 text-center">
-          <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">
+          <button type="button" onClick={() => onSwitch()} className="text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">
             {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
           </button>
+          {!isSignUp && onForgot && (
+            <button type="button" onClick={onForgot} className="text-[9px] font-bold text-slate-600 uppercase hover:text-[#00ff9d] transition-colors tracking-widest">
+              Forgot Password?
+            </button>
+          )}
           <div className="h-px bg-white/5 w-full my-2"></div>
           <button type="button" onClick={() => login('guest@paradigm-xi.com').then(onSuccess)} className="w-full py-4 bg-white/5 rounded-2xl font-black text-[#00ff9d] uppercase text-[11px] border border-white/10 flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
             <Sparkles size={14} /> Explore Guest Demo
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export const ForgotPassword = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: () => void }) => {
+  const { resetPassword } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const result = await resetPassword(email);
+      if (result.isBypass) {
+        // Immediate login for bypass
+        onSuccess();
+      } else {
+        setMessage({ text: result.message || 'Reset link sent.', type: 'success' });
+      }
+    } catch (err: any) {
+      setMessage({ text: err.message || 'Failed to send reset link.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-sm animate-in fade-in slide-in-from-bottom-4">
+      <div className="mb-10 text-center">
+        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">Recover Access</h2>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Enter your email to reset your credentials.</p>
+      </div>
+
+      <form onSubmit={handleReset} className="flex flex-col space-y-6">
+        {message && (
+          <div className={`p-4 border rounded-2xl flex items-center gap-3 text-xs font-bold uppercase tracking-widest leading-relaxed ${message.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-[#00ff9d]/5 border-[#00ff9d]/20 text-[#00ff9d]'}`}>
+            {message.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+            {message.text}
+          </div>
+        )}
+
+        <div className="relative group w-1/2 mx-auto">
+          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Registered Email</label>
+          <div className="relative">
+            <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <input
+              type="email"
+              required
+              className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
+              placeholder="name@company.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading || (message?.type === 'success')}
+          className="w-1/3 mx-auto bg-[#00ff9d] py-5 rounded-2xl font-black text-slate-950 uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 text-[10px]"
+        >
+          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : 'Send Link'}
+        </button>
+
+        <div className="mt-8 text-center">
+          <button type="button" onClick={onBack} className="text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">
+            Back to Sign In
           </button>
         </div>
       </form>
@@ -333,7 +412,8 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
 };
 
 export const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [view, setView] = useState<'login' | 'signup' | 'forgot'>('login');
+
   return (
     <div className="min-h-screen bg-[#020617] flex">
       <div className="hidden lg:flex w-3/5 bg-slate-950 text-white p-24 flex-col justify-between relative overflow-hidden">
@@ -358,10 +438,24 @@ export const AuthPage = () => {
         <div className="relative z-10 text-[10px] font-black uppercase tracking-[0.5em] text-slate-600">© 2025 PARADIGM-XI • BUSINESS OPERATING SYSTEM</div>
       </div>
       <div className="w-full lg:w-2/5 flex flex-col items-center justify-center p-12 bg-[#020617] border-l border-white/5 shadow-2xl">
-        {isLogin ? (
-          <Login onSuccess={() => window.location.hash = '/'} onSwitch={() => setIsLogin(false)} />
-        ) : (
-          <Signup onSuccess={() => window.location.hash = '/'} onSwitch={() => setIsLogin(true)} />
+        {view === 'login' && (
+          <Login
+            onSuccess={() => window.location.hash = '/'}
+            onSwitch={() => setView('signup')}
+            onForgot={() => setView('forgot')}
+          />
+        )}
+        {view === 'signup' && (
+          <Signup
+            onSuccess={() => window.location.hash = '/'}
+            onSwitch={() => setView('login')}
+          />
+        )}
+        {view === 'forgot' && (
+          <ForgotPassword
+            onBack={() => setView('login')}
+            onSuccess={() => window.location.hash = '/'}
+          />
         )}
       </div>
     </div>

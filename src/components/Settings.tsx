@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 export const Settings = () => {
-   const [activeTab, setActiveTab] = useState<'team' | 'system' | 'general'>('team');
+   const [activeTab, setActiveTab] = useState<'team' | 'system' | 'general' | 'security'>('team');
    const { settings, updateSettings, cloudEnabled, isDemoMode, strictMode } = useSettingsStore();
    const { employees, addEmployee } = useDataStore();
    const { user: currentUser } = useAuthStore();
@@ -80,7 +80,8 @@ export const Settings = () => {
             {[
                { id: 'team', label: 'Team Members' },
                { id: 'system', label: 'Platform Management' },
-               { id: 'general', label: 'Business Profile' }
+               { id: 'general', label: 'Business Profile' },
+               { id: 'security', label: 'Security & Access' }
             ].map(tab => (
                <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                   {tab.label}
@@ -249,6 +250,83 @@ export const Settings = () => {
                   </div>
                </form>
             )}
+
+            {activeTab === 'security' && <SecuritySettings />}
+         </div>
+      </div>
+   );
+};
+
+const SecuritySettings = () => {
+   const { updatePassword, user } = useAuthStore();
+   const [password, setPassword] = useState('');
+   const [confirm, setConfirm] = useState('');
+   const [isLoading, setIsLoading] = useState(false);
+
+   const handleUpdate = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (password !== confirm) return alert('Passwords do not match');
+      if (password.length < 6) return alert('Password too short');
+
+      setIsLoading(true);
+      try {
+         await updatePassword(password);
+         alert('Password updated successfully');
+         setPassword('');
+         setConfirm('');
+      } catch (err: any) {
+         alert('Failed to update: ' + err.message);
+      } finally {
+         setIsLoading(false);
+      }
+   };
+
+   return (
+      <div className="max-w-xl animate-in fade-in">
+         <div className="bg-white/5 p-10 rounded-[2.5rem] border border-white/5 mb-8">
+            <div className="flex items-center gap-4 mb-6">
+               <div className="p-4 bg-indigo-500/20 text-indigo-400 rounded-2xl"><Key size={24} /></div>
+               <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight">Credentials</h2>
+                  <p className="text-xs text-slate-400 font-bold">Update your access keys</p>
+               </div>
+            </div>
+
+            <form onSubmit={handleUpdate} className="space-y-6">
+               <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">New Password</label>
+                  <input
+                     type="password"
+                     required
+                     className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 px-6 font-black text-sm text-white focus:border-[#00ff9d] outline-none transition-all"
+                     placeholder="••••••••"
+                     value={password}
+                     onChange={e => setPassword(e.target.value)}
+                  />
+               </div>
+               <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Confirm Password</label>
+                  <input
+                     type="password"
+                     required
+                     className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 px-6 font-black text-sm text-white focus:border-[#00ff9d] outline-none transition-all"
+                     placeholder="••••••••"
+                     value={confirm}
+                     onChange={e => setConfirm(e.target.value)}
+                  />
+               </div>
+
+               <div className="pt-4">
+                  <button disabled={isLoading} className="w-full bg-[#00ff9d] text-slate-950 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all">
+                     {isLoading ? 'Updating...' : 'Update Password'}
+                  </button>
+               </div>
+            </form>
+         </div>
+
+         <div className="bg-rose-500/5 p-8 rounded-[2.5rem] border border-rose-500/10">
+            <h3 className="font-black text-rose-500 uppercase text-xs mb-2">Session Control</h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase mb-4">Current Session ID: {user?.id?.slice(0, 8)}...</p>
          </div>
       </div>
    );

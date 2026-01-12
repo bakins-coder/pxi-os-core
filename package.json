@@ -39,6 +39,7 @@
     "@vitest/ui": "^4.0.16",
     "happy-dom": "^20.1.0",
     "jsdom": "^27.0.1",
+    "supabase": "^2.72.4",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^4.0.16"

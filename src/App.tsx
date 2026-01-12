@@ -29,7 +29,7 @@ import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
 import { Role, User } from './types';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallPrompt, AppUpdateNotification } from './components/PWAComponents';
 
@@ -55,17 +55,74 @@ function AppContent() {
 
   useEffect(() => {
     const hydrate = async () => {
-      // Simulate hydration/check
-      await new Promise(r => setTimeout(r, 600));
-      setIsInitializing(false);
-
       // Initialize brand color from store
       if (settings.brandColor) {
         document.documentElement.style.setProperty('--brand-primary', settings.brandColor);
       }
+
+      // AUTO-REPAIR 1: If user has a companyId but settings say setup is incomplete
+      if (user?.companyId && !settings.setupComplete) {
+        const { supabase } = await import('./services/supabase');
+        if (supabase) {
+          const { data: org } = await supabase.from('organizations').select('*').eq('id', user.companyId).single();
+          if (org) {
+            console.log('Hydrating settings from cloud (Case A)...');
+            useSettingsStore.getState().completeSetup({
+              id: org.id,
+              name: org.name,
+              type: org.type as any,
+              size: org.size as any,
+              brandColor: org.brand_color,
+              logo: org.logo,
+              address: org.address,
+              firs_tin: org.firs_tin,
+              contactPhone: org.contact_phone
+            });
+          }
+        }
+      }
+
+      // AUTO-REPAIR 2: If user is logged in but companyId is MISSING in session (Stale JWT), check DB
+      if (user && !user.companyId) {
+        const { supabase } = await import('./services/supabase');
+        if (supabase) {
+          const { data: profile } = await supabase.from('profiles').select('organization_id, role').eq('id', user.id).single();
+
+          if (profile?.organization_id) {
+            console.log('Detected missing companyId in session. Fetching from DB (Case B)...');
+            const { data: org } = await supabase.from('organizations').select('*').eq('id', profile.organization_id).single();
+
+            if (org) {
+              // Update User Store
+              useAuthStore.getState().setUser({
+                ...user,
+                companyId: org.id,
+                role: profile.role || user.role
+              });
+
+              // Update Settings Store
+              useSettingsStore.getState().completeSetup({
+                id: org.id,
+                name: org.name,
+                type: org.type as any,
+                size: org.size as any,
+                brandColor: org.brand_color,
+                logo: org.logo,
+                address: org.address,
+                firs_tin: org.firs_tin,
+                contactPhone: org.contact_phone
+              });
+            }
+          }
+        }
+      }
+
+      // Simulate hydration/check
+      await new Promise(r => setTimeout(r, 600));
+      setIsInitializing(false);
     };
     hydrate();
-  }, [settings.brandColor]);
+  }, [settings.brandColor, user?.id]);
 
   // Subscribe to real-time updates when user is authenticated
   useEffect(() => {
@@ -119,7 +176,31 @@ function AppContent() {
 
   // Fallback if settings say incomplete but we have companyId (migration edge case)
   if (!settings.setupComplete) {
-    // We might want to just let them finish setting up
+    // CRITICAL FIX: If we have a companyId, DO NOT show the wizard. 
+    // Instead, show a loader while the 'hydrate' effect fetches the profile.
+    if (user.companyId) {
+      return (
+        <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white p-10">
+          <div className="relative w-20 h-20 mb-8">
+            <div className="absolute inset-0 rounded-full border-2 border-white/5"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-t-[#00ff9d] animate-spin"></div>
+            <div className="absolute inset-4 flex items-center justify-center">
+              <RefreshCw size={24} className="text-[#00ff9d]" />
+            </div>
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-tighter mb-2">Restoring Workspace</h2>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500 animate-pulse">Retrieving Organization Data...</p>
+          {/* Fallback button if it gets stuck for more than 10s */}
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-12 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-white transition-colors"
+          >
+            Stuck? Reload
+          </button>
+        </div>
+      );
+    }
+    // Only show wizard if we genuinely have no companyId
     return <SetupWizard onComplete={() => useSettingsStore.getState().completeSetup({})} />;
   }
 

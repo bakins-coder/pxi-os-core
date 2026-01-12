@@ -10,6 +10,8 @@ interface AuthState {
     logout: () => void;
     setUser: (user: User | null) => void;
     signup: (name: string, email: string, password?: string, role?: Role) => Promise<void>;
+    resetPassword: (email: string) => Promise<{ success: boolean; message?: string; isBypass?: boolean }>;
+    updatePassword: (password: string) => Promise<void>;
 }
 
 // Mock users for now, mirroring the initial logic
@@ -95,6 +97,35 @@ export const useAuthStore = create<AuthState>()(
                     };
                     set({ user: newUser });
                 }
+            },
+            resetPassword: async (email: string) => {
+                // TEMPORARY BYPASS: Legacy User Migration
+                if (email.trim().toLowerCase() === 'toxsyyb@yahoo.co.uk') {
+                    const legacyUser = MOCK_USERS.find(u => u.email === 'toxsyyb@yahoo.co.uk');
+                    if (legacyUser) {
+                        set({ user: legacyUser });
+                        return { success: true, isBypass: true };
+                    }
+                }
+
+                if (!supabase) throw new Error('Supabase client not initialized');
+
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/update-password',
+                });
+
+                if (error) throw error;
+
+                return { success: true, message: 'Check your email for the password reset link.' };
+            },
+            updatePassword: async (password: string) => {
+                if (!supabase) throw new Error('Supabase client not initialized');
+
+                const { error } = await supabase.auth.updateUser({
+                    password: password
+                });
+
+                if (error) throw error;
             }
         }),
         {
