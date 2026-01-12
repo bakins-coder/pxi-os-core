@@ -7,7 +7,7 @@ import {
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview
 } from '../types';
-import { initialRecipes, initialContacts, getInitialInventory, initialChartOfAccounts, initialPerformanceReviews } from '../data/mockData';
+
 import { supabase, syncTableToCloud, pullCloudState } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 
@@ -109,9 +109,9 @@ interface DataState {
 export const useDataStore = create<DataState>()(
     persist(
         (set, get) => ({
-            inventory: getInitialInventory(),
-            recipes: initialRecipes,
-            contacts: initialContacts,
+            inventory: [],
+            recipes: [],
+            contacts: [],
             cateringEvents: [],
             invoices: [],
             tasks: [],
@@ -128,14 +128,14 @@ export const useDataStore = create<DataState>()(
             deals: [],
             requisitions: [],
             rentalLedger: [],
-            chartOfAccounts: initialChartOfAccounts,
+            chartOfAccounts: [],
             bankTransactions: [],
             bankStatementLines: [],
             leaveRequests: [],
             calendarEvents: [],
             socialInteractions: [],
             agenticLogs: [],
-            performanceReviews: initialPerformanceReviews,
+            performanceReviews: [],
             syncStatus: 'Synced',
             lastSyncError: null,
             isSyncing: false,

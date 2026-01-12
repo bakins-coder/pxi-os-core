@@ -142,6 +142,13 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
           </div>
         )}
         <button
+          onClick={() => import('../services/clear_cache').then(m => m.clearAllClientCache())}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all group mb-2 border border-rose-500/20"
+        >
+          <RefreshCw size={18} className="text-rose-500 group-hover:text-rose-400 shrink-0" />
+          <span className="text-xs font-black uppercase tracking-widest">Reset App</span>
+        </button>
+        <button
           onClick={handleLogout}
           className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all group"
         >

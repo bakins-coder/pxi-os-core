@@ -2,7 +2,7 @@
 import { useDataStore } from '../store/useDataStore.ts';
 import { useSettingsStore } from '../store/useSettingsStore.ts';
 import { useAuthStore } from '../store/useAuthStore.ts';
-import { initialRecipes, initialContacts } from '../data/mockData.ts';
+
 
 // Mock LocalStorage for Zustand persist middleware
 const localStorageMock = (function () {

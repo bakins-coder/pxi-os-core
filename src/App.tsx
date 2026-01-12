@@ -124,17 +124,19 @@ function AppContent() {
     hydrate();
   }, [settings.brandColor, user?.id]);
 
-  // Subscribe to real-time updates when user is authenticated
+  // Subscribe to real-time updates and fetch data when user is authenticated
   useEffect(() => {
-    const { subscribeToRealtimeUpdates, unsubscribeFromRealtimeUpdates } = useDataStore.getState();
+    const { subscribeToRealtimeUpdates, unsubscribeFromRealtimeUpdates, hydrateFromCloud } = useDataStore.getState();
 
     if (user) {
-      // User logged in - start listening for real-time updates
+      console.log('User authenticated, starting hydration cycle...');
+      // 1. Fetch latest data (fixes 'Mock Data' issue)
+      hydrateFromCloud();
+      // 2. Listen for changes
       subscribeToRealtimeUpdates();
     }
 
     return () => {
-      // Cleanup on unmount or logout
       unsubscribeFromRealtimeUpdates();
     };
   }, [user]);
