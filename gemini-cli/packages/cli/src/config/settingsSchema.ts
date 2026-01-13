@@ -1426,6 +1426,36 @@ const SETTINGS_SCHEMA = {
     },
   },
 
+  browser: {
+    type: 'object',
+    label: 'Browser',
+    category: 'Advanced',
+    requiresRestart: true,
+    default: {},
+    description: 'Browser configuration settings.',
+    showInDialog: false,
+    properties: {
+      chromeBinPath: {
+        type: 'string',
+        label: 'Chrome Binary Path',
+        category: 'Advanced',
+        requiresRestart: true,
+        default: undefined as string | undefined,
+        description: 'Path to the Chrome/Chromium executable. Leave empty for auto-detection.',
+        showInDialog: true,
+      },
+      chromeProfilePath: {
+        type: 'string',
+        label: 'Browser User Profile Path',
+        category: 'Advanced',
+        requiresRestart: true,
+        default: undefined as string | undefined,
+        description: 'Custom path for the browser user profile directory. Leave empty for default (~/.gemini/antigravity-browser-profile).',
+        showInDialog: true,
+      },
+    },
+  },
+
   extensions: {
     type: 'object',
     label: 'Extensions',
@@ -1957,14 +1987,14 @@ export function getSettingsSchema(): SettingsSchemaType {
 
 type InferSettings<T extends SettingsSchema> = {
   -readonly [K in keyof T]?: T[K] extends { properties: SettingsSchema }
-    ? InferSettings<T[K]['properties']>
-    : T[K]['type'] extends 'enum'
-      ? T[K]['options'] extends readonly SettingEnumOption[]
-        ? T[K]['options'][number]['value']
-        : T[K]['default']
-      : T[K]['default'] extends boolean
-        ? boolean
-        : T[K]['default'];
+  ? InferSettings<T[K]['properties']>
+  : T[K]['type'] extends 'enum'
+  ? T[K]['options'] extends readonly SettingEnumOption[]
+  ? T[K]['options'][number]['value']
+  : T[K]['default']
+  : T[K]['default'] extends boolean
+  ? boolean
+  : T[K]['default'];
 };
 
 export type Settings = InferSettings<SettingsSchemaType>;

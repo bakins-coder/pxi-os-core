@@ -99,7 +99,10 @@ const HTTP_OK = 200;
 export class MCPOAuthProvider {
   private readonly tokenStorage: MCPOAuthTokenStorage;
 
-  constructor(tokenStorage: MCPOAuthTokenStorage = new MCPOAuthTokenStorage()) {
+  constructor(
+    private readonly tokenStorage: MCPOAuthTokenStorage = new MCPOAuthTokenStorage(),
+    private readonly browserSettings: { chromeBinPath?: string; chromeProfilePath?: string } = {},
+  ) {
     this.tokenStorage = tokenStorage;
   }
 
@@ -528,7 +531,7 @@ export class MCPOAuthProvider {
       }
       throw new Error(
         errorMessage ||
-          `Token exchange failed: ${response.status} - ${responseText}`,
+        `Token exchange failed: ${response.status} - ${responseText}`,
       );
     }
 
@@ -539,8 +542,8 @@ export class MCPOAuthProvider {
     ) {
       debugLogger.warn(
         `Token endpoint returned unexpected content-type: ${contentType}. ` +
-          `Expected application/json or application/x-www-form-urlencoded. ` +
-          `Will attempt to parse response.`,
+        `Expected application/json or application/x-www-form-urlencoded. ` +
+        `Will attempt to parse response.`,
       );
     }
 
@@ -650,7 +653,7 @@ export class MCPOAuthProvider {
       }
       throw new Error(
         errorMessage ||
-          `Token refresh failed: ${response.status} - ${responseText}`,
+        `Token refresh failed: ${response.status} - ${responseText}`,
       );
     }
 
@@ -661,8 +664,8 @@ export class MCPOAuthProvider {
     ) {
       debugLogger.warn(
         `Token refresh endpoint returned unexpected content-type: ${contentType}. ` +
-          `Expected application/json or application/x-www-form-urlencoded. ` +
-          `Will attempt to parse response.`,
+        `Expected application/json or application/x-www-form-urlencoded. ` +
+        `Will attempt to parse response.`,
       );
     }
 
@@ -874,7 +877,11 @@ ${authUrl}
 
     // Open browser securely (callback server is already running)
     try {
-      await openBrowserSecurely(authUrl);
+      await openBrowserSecurely(
+        authUrl,
+        this.browserSettings.chromeBinPath,
+        this.browserSettings.chromeProfilePath,
+      );
     } catch (error) {
       debugLogger.warn(
         'Failed to open browser automatically:',

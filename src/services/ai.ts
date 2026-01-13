@@ -4,7 +4,11 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { Ingredient, CateringEvent, Recipe, AIAgentMode } from '../types';
 
 // Access environment variables directly
-const getAIInstance = () => new GoogleGenAI({ apiKey: process.env.API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || '' });
+const getAIInstance = () => {
+    const key = process.env.API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
+    if (!key) throw new Error("MISSING_API_KEY");
+    return new GoogleGenAI({ apiKey: key });
+};
 
 export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Promise<void> {
     if (useSettingsStore.getState().strictMode) return;

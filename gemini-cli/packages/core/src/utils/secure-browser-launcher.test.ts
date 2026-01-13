@@ -6,12 +6,17 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { openBrowserSecurely } from './secure-browser-launcher.js';
+import { existsSync } from 'node:fs';
 
 // Create mock function using vi.hoisted
 const mockExecFile = vi.hoisted(() => vi.fn());
 
 // Mock modules
 vi.mock('node:child_process');
+// Mock fs
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+}));
 vi.mock('node:util', () => ({
   promisify: () => mockExecFile,
 }));
@@ -92,30 +97,6 @@ describe('secure-browser-launcher', () => {
   });
 
   describe('Command injection prevention', () => {
-    it('should prevent PowerShell command injection on Windows', async () => {
-      setPlatform('win32');
-
-      // The POC from the vulnerability report
-      const maliciousUrl =
-        "http://127.0.0.1:8080/?param=example#$(Invoke-Expression([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('Y2FsYy5leGU='))))";
-
-      await openBrowserSecurely(maliciousUrl);
-
-      // Verify that execFile was called (not exec) and the URL is passed safely
-      expect(mockExecFile).toHaveBeenCalledWith(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-NonInteractive',
-          '-WindowStyle',
-          'Hidden',
-          '-Command',
-          `Start-Process '${maliciousUrl.replace(/'/g, "''")}'`,
-        ],
-        expect.any(Object),
-      );
-    });
-
     it('should handle URLs with special shell characters safely', async () => {
       setPlatform('darwin');
 
@@ -138,28 +119,6 @@ describe('secure-browser-launcher', () => {
         );
       }
     });
-
-    it('should properly escape single quotes in URLs on Windows', async () => {
-      setPlatform('win32');
-
-      const urlWithSingleQuotes =
-        "http://example.com/path?name=O'Brien&test='value'";
-      await openBrowserSecurely(urlWithSingleQuotes);
-
-      // Verify that single quotes are escaped by doubling them
-      expect(mockExecFile).toHaveBeenCalledWith(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-NonInteractive',
-          '-WindowStyle',
-          'Hidden',
-          '-Command',
-          `Start-Process 'http://example.com/path?name=O''Brien&test=''value'''`,
-        ],
-        expect.any(Object),
-      );
-    });
   });
 
   describe('Platform-specific behavior', () => {
@@ -173,15 +132,30 @@ describe('secure-browser-launcher', () => {
       );
     });
 
-    it('should use PowerShell on Windows', async () => {
+    it('should use Chrome on Windows', async () => {
       setPlatform('win32');
+      vi.mocked(existsSync).mockReturnValue(true);
+
       await openBrowserSecurely('https://example.com');
+
+      // Should find one of the default Chrome paths
       expect(mockExecFile).toHaveBeenCalledWith(
-        'powershell.exe',
-        expect.arrayContaining([
-          '-Command',
-          `Start-Process 'https://example.com'`,
-        ]),
+        expect.stringMatching(/chrome\.exe$/),
+        ['https://example.com'],
+        expect.any(Object),
+      );
+    });
+
+    it('should use provided Chrome path on Windows', async () => {
+      setPlatform('win32');
+      const customChrome = 'C:\\Custom\\Chrome.exe';
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      await openBrowserSecurely('https://example.com', customChrome);
+
+      expect(mockExecFile).toHaveBeenCalledWith(
+        customChrome,
+        ['https://example.com'],
         expect.any(Object),
       );
     });

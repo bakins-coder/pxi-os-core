@@ -138,6 +138,11 @@ export interface IntrospectionAgentSettings {
   enabled?: boolean;
 }
 
+export interface BrowserSettings {
+  chromeBinPath?: string;
+  chromeProfilePath?: string;
+}
+
 /**
  * All information required in CLI to handle an extension. Defined in Core so
  * that the collection of loaded, active, and inactive extensions can be passed
@@ -223,7 +228,7 @@ export class MCPServerConfig {
     readonly targetAudience?: string,
     /* targetServiceAccount format: <service-account-name>@<project-num>.iam.gserviceaccount.com */
     readonly targetServiceAccount?: string,
-  ) {}
+  ) { }
 }
 
 export enum AuthProviderType {
@@ -324,15 +329,16 @@ export interface ConfigParameters {
   enableHooks?: boolean;
   experiments?: Experiments;
   hooks?:
-    | {
-        [K in HookEventName]?: HookDefinition[];
-      }
-    | ({
-        [K in HookEventName]?: HookDefinition[];
-      } & { disabled?: string[] });
+  | {
+    [K in HookEventName]?: HookDefinition[];
+  }
+  | ({
+    [K in HookEventName]?: HookDefinition[];
+  } & { disabled?: string[] });
   previewFeatures?: boolean;
   enableAgents?: boolean;
   experimentalJitContext?: boolean;
+  browser?: BrowserSettings;
 }
 
 export class Config {
@@ -456,6 +462,7 @@ export class Config {
   private readonly experimentalJitContext: boolean;
   private contextManager?: ContextManager;
   private terminalBackground: string | undefined = undefined;
+  readonly browser: BrowserSettings;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -610,6 +617,7 @@ export class Config {
     this.retryFetchErrors = params.retryFetchErrors ?? false;
     this.disableYoloMode = params.disableYoloMode ?? false;
     this.hooks = params.hooks;
+    this.browser = params.browser ?? {};
     this.experiments = params.experiments;
 
     if (params.contextFileName) {
@@ -1506,7 +1514,7 @@ export class Config {
     return Math.min(
       // Estimate remaining context window in characters (1 token ~= 4 chars).
       4 *
-        (tokenLimit(this.model) - uiTelemetryService.getLastPromptTokenCount()),
+      (tokenLimit(this.model) - uiTelemetryService.getLastPromptTokenCount()),
       this.truncateToolOutputThreshold,
     );
   }

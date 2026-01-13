@@ -323,12 +323,6 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
         <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Launch your company's smart operations hub.</p>
       </div>
       <form onSubmit={handleSignup} className="space-y-6">
-        {error && (
-          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-xs font-bold uppercase tracking-widest">
-            <AlertCircle size={16} /> {error}
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2 relative">
             <label className={labelClasses}>Work Email Address</label>

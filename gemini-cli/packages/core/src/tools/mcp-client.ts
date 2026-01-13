@@ -119,7 +119,7 @@ export class McpClient {
     private readonly cliConfig: Config,
     private readonly debugMode: boolean,
     private readonly onToolsUpdated?: (signal?: AbortSignal) => Promise<void>,
-  ) {}
+  ) { }
 
   /**
    * Connects to the MCP server.
@@ -137,6 +137,7 @@ export class McpClient {
         this.serverConfig,
         this.debugMode,
         this.workspaceContext,
+        this.cliConfig,
       );
 
       this.registerNotificationHandlers();
@@ -564,6 +565,7 @@ async function handleAutomaticOAuth(
   mcpServerName: string,
   mcpServerConfig: MCPServerConfig,
   wwwAuthenticate: string,
+  browserSettings: { chromeBinPath?: string; chromeProfilePath?: string } = {},
 ): Promise<boolean> {
   try {
     debugLogger.log(`🔐 '${mcpServerName}' requires OAuth authentication`);
@@ -607,7 +609,10 @@ async function handleAutomaticOAuth(
     debugLogger.log(
       `Starting OAuth authentication for server '${mcpServerName}'...`,
     );
-    const authProvider = new MCPOAuthProvider(new MCPOAuthTokenStorage());
+    const authProvider = new MCPOAuthProvider(
+      new MCPOAuthTokenStorage(),
+      browserSettings,
+    );
     await authProvider.authenticate(mcpServerName, oauthAuthConfig, serverUrl);
 
     debugLogger.log(
@@ -758,10 +763,9 @@ class LenientJsonSchemaValidator implements jsonSchemaValidator {
       return this.ajvValidator.getValidator<T>(schema);
     } catch (error) {
       debugLogger.warn(
-        `Failed to compile MCP tool output schema (${
-          (schema as Record<string, unknown>)?.['$id'] ?? '<no $id>'
+        `Failed to compile MCP tool output schema (${(schema as Record<string, unknown>)?.['$id'] ?? '<no $id>'
         }): ${error instanceof Error ? error.message : String(error)}. ` +
-          'Skipping output validation for this tool.',
+        'Skipping output validation for this tool.',
       );
       return (input: unknown) => ({
         valid: true as const,
@@ -820,6 +824,7 @@ export async function connectAndDiscover(
       mcpServerConfig,
       debugMode,
       workspaceContext,
+      cliConfig,
     );
 
     mcpClient.onerror = (error) => {
@@ -928,8 +933,7 @@ export async function discoverTools(
       } catch (error) {
         coreEvents.emitFeedback(
           'error',
-          `Error discovering tool: '${
-            toolDef.name
+          `Error discovering tool: '${toolDef.name
           }' from MCP server '${mcpServerName}': ${(error as Error).message}`,
           error,
         );
@@ -958,7 +962,7 @@ class McpCallableTool implements CallableTool {
     private readonly client: Client,
     private readonly toolDef: McpTool,
     private readonly timeout: number,
-  ) {}
+  ) { }
 
   async tool(): Promise<Tool> {
     return {
@@ -1329,6 +1333,7 @@ export async function connectToMcpServer(
   mcpServerConfig: MCPServerConfig,
   debugMode: boolean,
   workspaceContext: WorkspaceContext,
+  cliConfig?: Config,
 ): Promise<Client> {
   const mcpClient = new Client(
     {
@@ -1537,6 +1542,7 @@ export async function connectToMcpServer(
           mcpServerName,
           mcpServerConfig,
           wwwAuthenticate,
+          cliConfig?.browser,
         );
         if (oauthSuccess) {
           // Retry connection with OAuth token
@@ -1671,7 +1677,7 @@ function createUrlTransport(
     if (mcpServerConfig.url) {
       debugLogger.warn(
         `MCP server '${mcpServerName}': Both 'httpUrl' and 'url' are configured. ` +
-          `Using deprecated 'httpUrl'. Please migrate to 'url' with 'type: "http"'.`,
+        `Using deprecated 'httpUrl'. Please migrate to 'url' with 'type: "http"'.`,
       );
     }
     return new StreamableHTTPClientTransport(

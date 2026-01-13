@@ -50,9 +50,15 @@ function validateUrl(url: string): void {
  * 3. Passing the URL as an argument rather than constructing a command string
  *
  * @param url The URL to open
+ * @param chromeBinPath Optional path to Chrome executable
+ * @param chromeProfilePath Optional path to user profile directory
  * @throws Error if the URL is invalid or if opening the browser fails
  */
-export async function openBrowserSecurely(url: string): Promise<void> {
+export async function openBrowserSecurely(
+  url: string,
+  chromeBinPath?: string,
+  chromeProfilePath?: string,
+): Promise<void> {
   // Validate the URL first
   validateUrl(url);
 
@@ -65,23 +71,37 @@ export async function openBrowserSecurely(url: string): Promise<void> {
       // macOS
       command = 'open';
       args = [url];
+      if (chromeBinPath) {
+        command = chromeBinPath;
+        args = ['--args', url];
+        if (chromeProfilePath) {
+          args.unshift(`--user-data-dir=${chromeProfilePath}`);
+        }
+      }
       break;
 
     case 'win32':
       // Windows - try to use Chrome explicitly first to ensure extensions are available
-      const chromePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        `${process.env['LOCALAPPDATA']}\\Google\\Chrome\\Application\\chrome.exe`,
-      ];
+      const chromePaths = chromeBinPath
+        ? [chromeBinPath]
+        : [
+          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+          `${process.env['LOCALAPPDATA']}\\Google\\Chrome\\Application\\chrome.exe`,
+        ];
 
       const foundChrome = chromePaths.find((path) => existsSync(path));
 
       if (foundChrome) {
         command = foundChrome;
         args = [url];
+        if (chromeProfilePath) {
+          args.push(`--user-data-dir=${chromeProfilePath}`);
+        }
       } else {
-        throw new Error('Critical Error: Google Chrome not found. The agent strictly requires Google Chrome on Windows.');
+        throw new Error(
+          'Critical Error: Google Chrome not found. The agent strictly requires Google Chrome on Windows.',
+        );
       }
       break;
 
@@ -89,9 +109,17 @@ export async function openBrowserSecurely(url: string): Promise<void> {
     case 'freebsd':
     case 'openbsd':
       // Linux and BSD variants
-      // Try xdg-open first, fall back to other options
-      command = 'xdg-open';
-      args = [url];
+      if (chromeBinPath) {
+        command = chromeBinPath;
+        args = [url];
+        if (chromeProfilePath) {
+          args.push(`--user-data-dir=${chromeProfilePath}`);
+        }
+      } else {
+        // Try xdg-open first, fall back to other options
+        command = 'xdg-open';
+        args = [url];
+      }
       break;
 
     default:
