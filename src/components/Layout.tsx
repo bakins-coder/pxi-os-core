@@ -5,7 +5,8 @@ import {
   LayoutDashboard, Users, Banknote,
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, Activity,
-  Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar
+  Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
+  Plane, Fuel
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -80,7 +81,11 @@ const NAV_ITEMS = [
   { label: 'CRM', icon: Users, path: '/crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES] },
   { label: 'Project Hub', icon: ProjectIcon, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS] },
   { label: 'Inventory', icon: Package, path: '/inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
-  { label: 'Catering Ops', icon: ChefHat, path: '/catering', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
+
+  // Industry Specific
+  { label: 'Catering Ops', icon: ChefHat, path: '/catering', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES], allowedIndustries: ['Catering'] },
+  { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER], allowedIndustries: ['Aviation'] }, // Reuse Projects for now or generic placeholder
+
   { label: 'Finance', icon: Banknote, path: '/finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
   { label: 'Human Resources', icon: Briefcase, path: '/hr', allowedRoles: [Role.ADMIN, Role.HR, Role.HR_MANAGER] },
   { label: 'Automation', icon: Bot, path: '/automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
@@ -104,7 +109,13 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
       </div>
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
-        {NAV_ITEMS.filter(i => i.allowedRoles.includes(userRole)).map(item => {
+        {NAV_ITEMS.filter(i => {
+          if (!i.allowedRoles.includes(userRole)) return false;
+          if (i.allowedIndustries && !i.allowedIndustries.includes(settings.type as any)) return false;
+          // Logic: If 'Catering' is required, only show if settings.type is 'Catering'. 
+          // Current implementation uses simple inclusion.
+          return true;
+        }).map(item => {
           const isActive = currentPath === item.path;
           return (
             <Link

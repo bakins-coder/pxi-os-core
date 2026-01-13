@@ -7,7 +7,7 @@ import { EventCalendar } from './EventCalendar';
 import {
   TrendingUp, Bot, BrainCircuit, Activity,
   CheckSquare, Users, Calendar, ArrowUpRight, Building2,
-  Clock, AlertCircle, ShoppingBag, Receipt, ArrowDownRight, ArrowUpLeft, ChevronRight, UserCheck, LayoutGrid
+  Clock, AlertCircle, ShoppingBag, Receipt, ArrowDownRight, ArrowUpLeft, ChevronRight, UserCheck, LayoutGrid, Plane
 } from 'lucide-react';
 
 const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 'payable' | 'event' | 'complaint' | 'customer' | 'employee' }> = ({ title, items, type }) => {
@@ -72,7 +72,7 @@ const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 
 export const Dashboard = () => {
   const { invoices, requisitions, cateringEvents, tickets, contacts, employees } = useDataStore();
   const { user } = useAuthStore();
-  const { strictMode } = useSettingsStore();
+  const { strictMode, settings } = useSettingsStore();
 
   const calculateNetProfitMargin = () => {
     // 1. Total Revenue (Paid Invoices)
@@ -168,7 +168,9 @@ export const Dashboard = () => {
         <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm min-h-[450px]">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">Event Pipeline</h3>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                {(settings.type === 'Catering' || settings.type === 'General') ? 'Event Pipeline' : 'Project Timeline'}
+              </h3>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Real-time scheduling \ 30 Days Forecast</p>
             </div>
             <button className="bg-slate-50 p-3 rounded-2xl hover:bg-slate-100 transition-colors">
@@ -186,7 +188,19 @@ export const Dashboard = () => {
 
       <div className="col-span-4 space-y-8 h-full">
         <div className="h-1/2">
-          <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" />
+          {(settings.type === 'Catering') ? (
+            <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" />
+          ) : (
+            (settings.type === 'General') ? (
+              <SummaryList title="Upcoming Events" items={dataState.upcomingEvents} type="event" />
+            ) : (
+              <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full p-6 text-center">
+                <Plane size={32} className="text-slate-300 mb-2" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Industry Module Active</p>
+              </div>
+            )
+          )}
+          )}
         </div>
         <div className="h-1/2">
           <SummaryList title="Recent Hires" items={dataState.recentHires} type="employee" />

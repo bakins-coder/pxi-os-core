@@ -74,10 +74,15 @@ export const ChatWidget = () => {
       const botMsg: Message = { id: (Date.now() + 1).toString(), text: response, sender: 'bot' };
       setMessages(prev => [...prev, botMsg]);
     } catch (error: any) {
-      console.error(error);
-      const errorMessage = error.message === "MISSING_API_KEY"
-        ? "Configuration Error: Missing VITE_GEMINI_API_KEY in .env.local"
-        : "Connection error. Please try again.";
+      console.error("AI Error:", error);
+      let errorMessage = "Connection error.";
+
+      if (error.message === "MISSING_API_KEY") {
+        errorMessage = `MISSING KEY. Debug: VITE=${!!import.meta.env.VITE_GEMINI_API_KEY}`;
+      } else {
+        errorMessage = `Error: ${error.message}`;
+      }
+
       setMessages(prev => [...prev, { id: Date.now().toString(), text: errorMessage, sender: 'bot' }]);
     } finally {
       setIsTyping(false);

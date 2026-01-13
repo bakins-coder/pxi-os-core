@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { Ingredient, InventoryItem, Recipe, Requisition, InventoryMovement, RentalRecord, ItemCosting } from '../types';
 import { performAgenticMarketResearch, getLiveRecipeIngredientPrices } from '../services/ai';
 import { calculateItemCosting } from '../utils/costing';
@@ -477,6 +478,16 @@ export const Inventory = () => {
    const [showScanModal, setShowScanModal] = useState(false);
    const [isProcessingScan, setIsProcessingScan] = useState(false);
 
+   const { settings } = useSettingsStore();
+   const isAviation = settings.type === 'Aviation';
+
+   // Set default tab based on industry
+   useEffect(() => {
+      if (isAviation && activeTab === 'products') {
+         setActiveTab('hardware');
+      }
+   }, [isAviation]);
+
    const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents, approveRequisition, addIngredient, checkOverdueAssets } = useDataStore();
 
    useEffect(() => {
@@ -539,7 +550,13 @@ export const Inventory = () => {
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
                   <div className="w-16 h-16 bg-[#00ff9d] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><Package size={36} className="text-slate-950" /></div>
-                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Stock Intelligence</h1><div className="flex items-center gap-3 mt-1"><span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5">Dynamic Matrix Active</span></div></div>
+                  <div>
+                     <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Stock Intelligence</h1>
+                     <div className="flex items-center gap-3 mt-1">
+                        <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5">Dynamic Matrix Active</span>
+                        {isAviation && <span className="flex items-center gap-1.5 bg-sky-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-300 border border-sky-500/30">AeroParts Mode</span>}
+                     </div>
+                  </div>
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[

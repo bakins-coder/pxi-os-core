@@ -498,6 +498,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                     onFocus={() => setActiveField('orgType')}
                                  >
                                     <option value="Catering">Banquet & Catering</option>
+                                    <option value="Aviation">Aviation & Aerospace</option>
+                                    <option value="Oil & Gas">Oil & Gas / Energy</option>
                                     <option value="Logistics">Supply Chain & Logistics</option>
                                     <option value="Retail">Commercial Retail</option>
                                     <option value="Services">Professional Services</option>

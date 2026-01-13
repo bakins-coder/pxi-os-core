@@ -447,7 +447,7 @@ export interface Attachment {
   size: number;
 }
 
-export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics';
+export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas';
 export type CompanySize = 'Micro (1-10)' | 'Small (11-50)' | 'Medium (51-250)' | 'Large (250+)';
 export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR';
 export type MarketingChannel = 'Blog' | 'Social' | 'Email' | 'Ads';

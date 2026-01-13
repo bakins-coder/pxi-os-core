@@ -10,6 +10,7 @@ const logEnvPlugin = () => {
       console.log('VITE_SUPABASE_URL:', loaded.VITE_SUPABASE_URL ? 'FOUND' : 'MISSING');
       console.log('VITE_SUPABASE_ANON_KEY:', loaded.VITE_SUPABASE_ANON_KEY ? 'FOUND' : 'MISSING');
       console.log('Full Keys:', Object.keys(loaded).filter(k => k.startsWith('VITE_')));
+      console.log('VITE_GEMINI_API_KEY:', loaded.VITE_GEMINI_API_KEY ? `FOUND (starts with ${loaded.VITE_GEMINI_API_KEY.substring(0, 4)}...)` : 'MISSING');
       console.log('----------------------------------');
     }
   }

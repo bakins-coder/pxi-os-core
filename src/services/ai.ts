@@ -3,9 +3,19 @@ import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Ingredient, CateringEvent, Recipe, AIAgentMode } from '../types';
 
-// Access environment variables directly
 const getAIInstance = () => {
-    const key = process.env.API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    // Fallback to process.env for 'process.env.API_KEY' replacement in Vite config
+    const legacyKey = process.env.API_KEY;
+
+    // Debug logging
+    console.log("[AI Service] Loading Keys:", {
+        hasVite: !!apiKey,
+        hasLegacy: !!legacyKey,
+        viteKeyPrefix: apiKey ? apiKey.substring(0, 4) : 'N/A'
+    });
+
+    const key = apiKey || legacyKey || '';
     if (!key) throw new Error("MISSING_API_KEY");
     return new GoogleGenAI({ apiKey: key });
 };
@@ -196,6 +206,7 @@ export async function generateAIResponse(prompt: string, context: string = ""): 
     if (useSettingsStore.getState().strictMode) return "I am currently in Strict Mode. AI services are disabled.";
     const ai = getAIInstance();
     const dataStore = useDataStore.getState();
+    const { settings } = useSettingsStore.getState();
 
     const workforceSummary = dataStore.employees.reduce((acc, emp) => {
         acc[emp.role] = (acc[emp.role] || 0) + 1;
