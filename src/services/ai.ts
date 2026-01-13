@@ -202,7 +202,7 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     return JSON.parse(response.text || "{}");
 }
 
-export async function generateAIResponse(prompt: string, context: string = ""): Promise<string> {
+export async function generateAIResponse(prompt: string, context: string = "", attachment?: { base64: string, mimeType: string }): Promise<string> {
     if (useSettingsStore.getState().strictMode) return "I am currently in Strict Mode. AI services are disabled.";
     const ai = getAIInstance();
     const dataStore = useDataStore.getState();
@@ -230,12 +230,26 @@ export async function generateAIResponse(prompt: string, context: string = ""): 
         }
     });
 
+    const systemPrompt = `Workspace Context: ${context}. Intelligence Dataset: ${operationalContext}.\n\nUser Question: ${prompt} \n\nAct as Paradigm - Xi Assistant.Use the provided Dataset to answer accurately.If asked about staff or counts(like waiters / chefs), reference the 'personnel' data.
+
+
+    IMPORTANT: ALWAYS respond in well - formatted Markdown.Use bold headers, bullet points for lists, and Markdown tables when displaying data.Be professional and structured.`;
+
+    let contents: any = systemPrompt;
+
+    // If there is an attachment, we need to switch to the "parts" format
+    if (attachment) {
+        contents = {
+            parts: [
+                { text: systemPrompt },
+                { inlineData: { data: attachment.base64, mimeType: attachment.mimeType } }
+            ]
+        };
+    }
+
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Workspace Context: ${context}. Intelligence Dataset: ${operationalContext}.\n\nUser Question: ${prompt} \n\nAct as Paradigm - Xi Assistant.Use the provided Dataset to answer accurately.If asked about staff or counts(like waiters / chefs), reference the 'personnel' data.
-
-
-    IMPORTANT: ALWAYS respond in well - formatted Markdown.Use bold headers, bullet points for lists, and Markdown tables when displaying data.Be professional and structured.`,
+        contents: contents,
     });
     return response.text || "";
 }

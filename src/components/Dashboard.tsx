@@ -200,7 +200,7 @@ export const Dashboard = () => {
               </div>
             )
           )}
-          )}
+
         </div>
         <div className="h-1/2">
           <SummaryList title="Recent Hires" items={dataState.recentHires} type="employee" />

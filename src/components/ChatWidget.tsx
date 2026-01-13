@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff } from 'lucide-react';
+import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff, Paperclip, Image as ImageIcon, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { generateAIResponse, getAIResponseForAudio, textToSpeech } from '../services/ai';
@@ -22,6 +22,8 @@ export const ChatWidget = () => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [attachment, setAttachment] = useState<{ file: File; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -62,15 +64,41 @@ export const ChatWidget = () => {
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() && !attachment) return;
 
     const userMsg: Message = { id: Date.now().toString(), text: input, sender: 'user' };
     setMessages(prev => [...prev, userMsg]);
-    setInput('');
     setIsTyping(true);
 
+    let aiInput = input;
+    let aiAttachment = undefined;
+
+    if (attachment) {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(attachment.file);
+      reader.onloadend = async () => {
+        const base64String = (reader.result as string).split(',')[1];
+        aiAttachment = {
+          base64: base64String,
+          mimeType: attachment.file.type
+        };
+
+        processAIRequest(aiInput, aiAttachment);
+      };
+      // Clear attachment from UI immediately to avoid double send
+      setAttachment(null);
+      setInput('');
+      return;
+    }
+
+    setInput('');
+    processAIRequest(aiInput);
+  };
+
+  const processAIRequest = async (text: string, attach?: { base64: string, mimeType: string }) => {
     try {
-      const response = await generateAIResponse(input, "Global Floating Chat");
+      const response = await generateAIResponse(text, "Global Floating Chat", attach);
       const botMsg: Message = { id: (Date.now() + 1).toString(), text: response, sender: 'bot' };
       setMessages(prev => [...prev, botMsg]);
     } catch (error: any) {
@@ -144,6 +172,26 @@ export const ChatWidget = () => {
     };
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File too large. Max 5MB.");
+        return;
+      }
+      const preview = URL.createObjectURL(file);
+      setAttachment({ file, preview });
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    if (attachment) {
+      URL.revokeObjectURL(attachment.preview);
+      setAttachment(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end pointer-events-none">
       {isOpen && (
@@ -153,7 +201,10 @@ export const ChatWidget = () => {
               <div className="w-8 h-8 bg-[#00ff9d] rounded-xl flex items-center justify-center text-slate-950 shadow-lg animate-pulse">
                 <Sparkles size={16} />
               </div>
-              <span className="font-black text-xs uppercase tracking-widest text-[#00ff9d]">Neural Assistant</span>
+              <div>
+                <span className="font-black text-xs uppercase tracking-widest text-[#00ff9d] block">Neural Assistant</span>
+                <span className="text-[10px] text-rose-500 font-bold bg-white/10 px-1 rounded">DEBUG: ATTACHMENT VERSION</span>
+              </div>
             </div>
             <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-2 rounded-xl transition-all">
               <Minimize2 size={18} />
@@ -193,6 +244,29 @@ export const ChatWidget = () => {
           </div>
 
           <div className="p-4 bg-white border-t border-slate-100">
+            {attachment && (
+              <div className="mb-3 flex items-start">
+                <div className="relative group">
+                  {attachment.file.type.startsWith('image/') ? (
+                    <img src={attachment.preview} alt="Attachment" className="h-16 w-16 object-cover rounded-lg border border-slate-200 shadow-sm" />
+                  ) : (
+                    <div className="h-16 w-16 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
+                      <FileText size={24} className="text-slate-400" />
+                    </div>
+                  )}
+                  <button
+                    onClick={handleRemoveAttachment}
+                    className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="ml-3 flex-1 overflow-hidden">
+                  <p className="text-xs font-bold text-slate-700 truncate">{attachment.file.name}</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">{(attachment.file.size / 1024).toFixed(1)} KB</p>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-[1.5rem] px-4 py-3 focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all">
               {isRecording ? (
                 <div className="flex-1 flex items-center gap-3">
@@ -215,13 +289,28 @@ export const ChatWidget = () => {
                     <Square size={18} className="fill-current" />
                   </button>
                 ) : (
-                  <button onClick={startRecording} className="text-slate-400 hover:text-[#00ff9d] p-2 transition-colors">
-                    <Mic size={18} />
-                  </button>
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*,application/pdf"
+                      onChange={handleFileSelect}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`p-2 transition-colors ${attachment ? 'text-indigo-500' : 'text-slate-400 hover:text-[#00ff9d]'}`}
+                    >
+                      <Paperclip size={18} />
+                    </button>
+                    <button onClick={startRecording} className="text-slate-400 hover:text-[#00ff9d] p-2 transition-colors">
+                      <Mic size={18} />
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim() || isTyping || isRecording}
+                  disabled={(!input.trim() && !attachment) || isTyping || isRecording}
                   className="text-slate-900 hover:text-indigo-600 disabled:opacity-20 p-2 transition-all active:scale-90"
                 >
                   <Send size={18} />
