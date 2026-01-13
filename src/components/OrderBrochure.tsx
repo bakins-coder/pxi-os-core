@@ -325,6 +325,16 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                 <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Planner</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder="Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Planner Phone</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder="Phone (Optional)" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} />
+                            </div>
+                        </div>
                         <div>
                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Venue Address *</label>
                             <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder="Location Detail" value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
