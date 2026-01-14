@@ -64,20 +64,48 @@ function AppContent() {
       if (user?.companyId && !settings.setupComplete) {
         const { supabase } = await import('./services/supabase');
         if (supabase) {
-          const { data: org } = await supabase.from('organizations').select('*').eq('id', user.companyId).single();
-          if (org) {
-            console.log('Hydrating settings from cloud (Case A)...');
-            useSettingsStore.getState().completeSetup({
-              id: org.id,
-              name: org.name,
-              type: org.type as any,
-              size: org.size as any,
-              brandColor: org.brand_color,
-              logo: org.logo,
-              address: org.address,
-              firs_tin: org.firs_tin,
-              contactPhone: org.contact_phone
-            });
+          console.log('[App] Attempting to restore workspace settings for company:', user.companyId);
+          try {
+            const { data: org, error, status } = await supabase.from('organizations').select('*').eq('id', user.companyId).single();
+
+            if (error) {
+              console.error('[App] Failed to restore workspace. Error:', error);
+              // If unauthorized (401/403) or not found (406), we might have a stale ID or bad keys
+              // We should allow the user to escape this state
+              if (error.code === 'PGRST116' || status === 406 || status === 401 || status === 403) {
+                console.warn('[App] Organization not found or access denied. Checking profile...');
+                // Check if the user actually has a DIFFERENT organization in their profile
+                const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+
+                if (profile?.organization_id && profile.organization_id !== user.companyId) {
+                  console.log('[App] Found correct organization in profile. Updating...');
+                  // We will let the AUTO-REPAIR 2 block handle this fix on the next render cycle 
+                  // by clearing the invalid ID now
+                  useAuthStore.getState().setUser({ ...user, companyId: undefined } as any);
+                } else {
+                  console.warn('[App] No valid organization found. Resetting workspace state to allow Setup.');
+                  // Clear the companyId so they fall through to the SetupWizard / Welcome routes
+                  useAuthStore.getState().setUser({ ...user, companyId: undefined } as any);
+                }
+              }
+            } else if (org) {
+              console.log('[App] Workspace restored successfully:', org.name);
+              useSettingsStore.getState().completeSetup({
+                id: org.id,
+                name: org.name,
+                type: org.type as any,
+                size: org.size as any,
+                brandColor: org.brand_color,
+                logo: org.logo,
+                address: org.address,
+                firs_tin: org.firs_tin,
+                contactPhone: org.contact_phone
+              });
+            }
+          } catch (err) {
+            console.error('[App] Unexpected error during workspace restoration:', err);
+            // Safety valve: if we really crash here, let them out
+            useAuthStore.getState().setUser({ ...user, companyId: undefined } as any);
           }
         }
       }

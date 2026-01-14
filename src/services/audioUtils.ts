@@ -11,6 +11,7 @@ export const decodeBase64 = (base64Str: string): ArrayBuffer => {
 
 export const decodeRawPcmToAudioBuffer = async (
     pcmData: ArrayBuffer,
+    context: AudioContext,
     sampleRate: number = 24000
 ): Promise<AudioBuffer> => {
     // Assuming 16-bit little-endian PCM
@@ -20,8 +21,7 @@ export const decodeRawPcmToAudioBuffer = async (
         float32Array[i] = int16Array[i] / 32768;
     }
 
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const audioBuffer = audioContext.createBuffer(1, float32Array.length, sampleRate);
+    const audioBuffer = context.createBuffer(1, float32Array.length, sampleRate);
     audioBuffer.getChannelData(0).set(float32Array);
     return audioBuffer;
 };

@@ -97,7 +97,7 @@ const NAV_ITEMS = [
 ];
 
 const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string }) => {
-  const strictMode = useSettingsStore(s => s.strictMode);
+  const { strictMode, settings } = useSettingsStore();
   const handleOpenAssistant = () => {
     window.dispatchEvent(new CustomEvent('open-assistant'));
   };

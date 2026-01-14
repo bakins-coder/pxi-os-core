@@ -16,7 +16,7 @@ import url from 'node:url';
 import crypto from 'node:crypto';
 import * as net from 'node:net';
 import { EventEmitter } from 'node:events';
-import open from 'open';
+import { openBrowserSecurely } from '../utils/secure-browser-launcher.js';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { Config } from '../config/config.js';
@@ -115,7 +115,7 @@ async function initOauthClient(
   if (
     credentials &&
     (credentials as { type?: string }).type ===
-      'external_account_authorized_user'
+    'external_account_authorized_user'
   ) {
     const auth = new GoogleAuth({
       scopes: OAUTH_SCOPE,
@@ -238,7 +238,7 @@ async function initOauthClient(
         if (!success) {
           writeToStderr(
             '\nFailed to authenticate with user code.' +
-              (i === maxRetries - 1 ? '' : ' Retrying...\n'),
+            (i === maxRetries - 1 ? '' : ' Retrying...\n'),
           );
         }
       }
@@ -269,7 +269,7 @@ async function initOauthClient(
 
     await triggerPostAuthCallbacks(client.credentials);
   } else {
-    const webLogin = await authWithWeb(client);
+    const webLogin = await authWithWeb(client, config);
 
     coreEvents.emit(CoreEvent.UserFeedback, {
       severity: 'info',
@@ -282,20 +282,13 @@ async function initOauthClient(
       // Attempt to open the authentication URL in the default browser.
       // We do not use the `wait` option here because the main script's execution
       // is already paused by `loginCompletePromise`, which awaits the server callback.
-      const childProcess = await open(webLogin.authUrl);
-
-      // IMPORTANT: Attach an error handler to the returned child process.
-      // Without this, if `open` fails to spawn a process (e.g., `xdg-open` is not found
-      // in a minimal Docker container), it will emit an unhandled 'error' event,
-      // causing the entire Node.js process to crash.
-      childProcess.on('error', (error) => {
-        coreEvents.emit(CoreEvent.UserFeedback, {
-          severity: 'error',
-          message:
-            `Failed to open browser with error: ${getErrorMessage(error)}\n` +
-            `Please try running again with NO_BROWSER=true set.`,
-        });
-      });
+      // Attempt to open the authentication URL securely using configured browser settings.
+      // This respects the user's Chrome preference if set.
+      await openBrowserSecurely(
+        webLogin.authUrl,
+        config.browser.chromeBinPath,
+        config.browser.chromeProfilePath,
+      );
     } catch (err) {
       coreEvents.emit(CoreEvent.UserFeedback, {
         severity: 'error',
@@ -319,7 +312,7 @@ async function initOauthClient(
         reject(
           new FatalAuthenticationError(
             'Authentication timed out after 5 minutes. The browser tab may have gotten stuck in a loading state. ' +
-              'Please try again or use NO_BROWSER=true for manual authentication.',
+            'Please try again or use NO_BROWSER=true for manual authentication.',
           ),
         );
       }, authTimeout);
@@ -363,8 +356,8 @@ async function authWithUserCode(client: OAuth2Client): Promise<boolean> {
     });
     writeToStdout(
       'Please visit the following URL to authorize the application:\n\n' +
-        authUrl +
-        '\n\n',
+      authUrl +
+      '\n\n',
     );
 
     const code = await new Promise<string>((resolve, _) => {
@@ -396,8 +389,8 @@ async function authWithUserCode(client: OAuth2Client): Promise<boolean> {
     } catch (error) {
       writeToStderr(
         'Failed to authenticate with authorization code:' +
-          getErrorMessage(error) +
-          '\n',
+        getErrorMessage(error) +
+        '\n',
       );
 
       debugLogger.error(
@@ -422,7 +415,7 @@ async function authWithUserCode(client: OAuth2Client): Promise<boolean> {
   }
 }
 
-async function authWithWeb(client: OAuth2Client): Promise<OauthWebLogin> {
+async function authWithWeb(client: OAuth2Client, config: Config): Promise<OauthWebLogin> {
   const port = await getAvailablePort();
   // The hostname used for the HTTP server binding (e.g., '0.0.0.0' in Docker).
   const host = process.env['OAUTH_CALLBACK_HOST'] || 'localhost';

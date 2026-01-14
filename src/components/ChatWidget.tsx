@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff, Paperclip, Image as ImageIcon, FileText } from 'lucide-react';
+import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff, Paperclip, Image as ImageIcon, FileText, Plus, History, Trash2, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { generateAIResponse, getAIResponseForAudio, textToSpeech } from '../services/ai';
@@ -13,12 +13,34 @@ interface Message {
   hasAudio?: boolean;
 }
 
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+}
+
 export const ChatWidget = () => {
   const strictMode = useSettingsStore(s => s.strictMode);
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '0', text: 'Hi! I can help you navigate or answer questions about your data.', sender: 'bot' }
-  ]);
+
+  // Session State
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
+    const saved = localStorage.getItem('ai_chat_sessions');
+    return saved ? JSON.parse(saved) : [{
+      id: 'default',
+      title: 'New Chat',
+      messages: [{ id: '0', text: 'Hi! I can help you navigate or answer questions about your data.', sender: 'bot' }],
+      createdAt: Date.now()
+    }];
+  });
+  const [activeSessionId, setActiveSessionId] = useState<string>('default');
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('ai_chat_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -29,6 +51,10 @@ export const ChatWidget = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Derived state for active messages
+  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
+  const messages = activeSession.messages;
 
   useEffect(() => {
     if (isOpen) {
@@ -42,6 +68,57 @@ export const ChatWidget = () => {
     return () => window.removeEventListener('open-assistant', handleOpen);
   }, []);
 
+  const createNewSession = () => {
+    const newId = Date.now().toString();
+    const newSession: ChatSession = {
+      id: newId,
+      title: 'New Chat',
+      messages: [{ id: '0', text: 'Hi! How can I help you today?', sender: 'bot' }],
+      createdAt: Date.now()
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    setShowSidebar(false); // Auto close sidebar on mobile/small views if we implemented that logic
+    if (window.innerWidth < 640) setShowSidebar(false);
+  };
+
+  const deleteSession = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const newSessions = sessions.filter(s => s.id !== id);
+    if (newSessions.length === 0) {
+      // Always keep one
+      setSessions([{
+        id: 'default',
+        title: 'New Chat',
+        messages: [{ id: '0', text: 'Ready for a fresh start.', sender: 'bot' }],
+        createdAt: Date.now()
+      }]);
+      setActiveSessionId('default');
+    } else {
+      setSessions(newSessions);
+      if (activeSessionId === id) {
+        setActiveSessionId(newSessions[0].id);
+      }
+    }
+  };
+
+  const updateSessionMessages = (sessionId: string, newMessages: Message[]) => {
+    setSessions(prev => prev.map(s => {
+      if (s.id === sessionId) {
+        // Auto-generate title from first user message if still default
+        let title = s.title;
+        if (s.title === 'New Chat' && newMessages.length > 1) {
+          const firstUserMsg = newMessages.find(m => m.sender === 'user');
+          if (firstUserMsg) {
+            title = firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : '');
+          }
+        }
+        return { ...s, messages: newMessages, title };
+      }
+      return s;
+    }));
+  };
+
   const getAudioContext = () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -53,7 +130,7 @@ export const ChatWidget = () => {
     try {
       const ctx = getAudioContext();
       const pcmData = decodeBase64(base64);
-      const audioBuffer = await decodeRawPcmToAudioBuffer(pcmData, ctx);
+      const audioBuffer = await decodeRawPcmToAudioBuffer(pcmData, ctx, 24000);
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
@@ -66,15 +143,19 @@ export const ChatWidget = () => {
   const handleSend = async () => {
     if (!input.trim() && !attachment) return;
 
+    const currentSessionId = activeSessionId;
     const userMsg: Message = { id: Date.now().toString(), text: input, sender: 'user' };
-    setMessages(prev => [...prev, userMsg]);
+
+    // Optimistic update
+    const updatedMessages = [...messages, userMsg];
+    updateSessionMessages(currentSessionId, updatedMessages);
+
     setIsTyping(true);
 
     let aiInput = input;
     let aiAttachment = undefined;
 
     if (attachment) {
-      // Convert file to base64
       const reader = new FileReader();
       reader.readAsDataURL(attachment.file);
       reader.onloadend = async () => {
@@ -83,35 +164,32 @@ export const ChatWidget = () => {
           base64: base64String,
           mimeType: attachment.file.type
         };
-
-        processAIRequest(aiInput, aiAttachment);
+        // Clear attachment state
+        setAttachment(null);
+        processAIRequest(currentSessionId, updatedMessages, aiInput, aiAttachment);
       };
-      // Clear attachment from UI immediately to avoid double send
-      setAttachment(null);
       setInput('');
       return;
     }
 
     setInput('');
-    processAIRequest(aiInput);
+    processAIRequest(currentSessionId, updatedMessages, aiInput);
   };
 
-  const processAIRequest = async (text: string, attach?: { base64: string, mimeType: string }) => {
+  const processAIRequest = async (sessionId: string, currentMessages: Message[], text: string, attach?: { base64: string, mimeType: string }) => {
     try {
       const response = await generateAIResponse(text, "Global Floating Chat", attach);
       const botMsg: Message = { id: (Date.now() + 1).toString(), text: response, sender: 'bot' };
-      setMessages(prev => [...prev, botMsg]);
+      updateSessionMessages(sessionId, [...currentMessages, botMsg]);
     } catch (error: any) {
       console.error("AI Error:", error);
       let errorMessage = "Connection error.";
-
       if (error.message === "MISSING_API_KEY") {
         errorMessage = `MISSING KEY. Debug: VITE=${!!import.meta.env.VITE_GEMINI_API_KEY}`;
       } else {
         errorMessage = `Error: ${error.message}`;
       }
-
-      setMessages(prev => [...prev, { id: Date.now().toString(), text: errorMessage, sender: 'bot' }]);
+      updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: errorMessage, sender: 'bot' }]);
     } finally {
       setIsTyping(false);
     }
@@ -142,8 +220,13 @@ export const ChatWidget = () => {
 
   const handleAudioStop = async () => {
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    const currentSessionId = activeSessionId;
 
-    setMessages(prev => [...prev, { id: Date.now().toString(), text: '🎤 Voice Input Recieved', sender: 'user' }]);
+    // Optimistic voice msg
+    const voiceMsg: Message = { id: Date.now().toString(), text: '🎤 Voice Input Recieved', sender: 'user' };
+    const updatedMessages = [...messages, voiceMsg];
+    updateSessionMessages(currentSessionId, updatedMessages);
+
     setIsTyping(true);
 
     const reader = new FileReader();
@@ -160,12 +243,14 @@ export const ChatWidget = () => {
           sender: 'bot',
           hasAudio: !!aiAudioBase64
         };
-        setMessages(prev => [...prev, botMsg]);
+
+        updateSessionMessages(currentSessionId, [...updatedMessages, botMsg]);
+
         if (aiAudioBase64) {
           playRawPcm(aiAudioBase64);
         }
       } catch (e) {
-        setMessages(prev => [...prev, { id: Date.now().toString(), text: "Neural decoding error.", sender: 'bot' }]);
+        updateSessionMessages(currentSessionId, [...updatedMessages, { id: Date.now().toString(), text: "Neural decoding error.", sender: 'bot' }]);
       } finally {
         setIsTyping(false);
       }
@@ -192,18 +277,72 @@ export const ChatWidget = () => {
     }
   };
 
+  if (!isOpen) {
+    return (
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end pointer-events-none">
+        <button
+          onClick={() => setIsOpen(true)}
+          disabled={strictMode}
+          className={`pointer-events-auto h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 transform hover:scale-110 active:scale-95 ${strictMode ? 'bg-slate-800 border-2 border-white/10 opacity-50 cursor-not-allowed' : 'bg-[#00ff9d] hover:shadow-[#00ff9d]/20'}`}
+        >
+          {strictMode ? <ShieldOff size={24} className="text-slate-500" /> : <MessageSquare size={28} className="text-slate-950" />}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end pointer-events-none">
-      {isOpen && (
-        <div className="mb-4 w-[380px] h-[550px] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 flex flex-col overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-slate-950 p-6 flex justify-between items-center text-white">
+    <div className="fixed bottom-6 right-6 z-[60] flex items-end pointer-events-none gap-4">
+
+      {/* Main Chat Container */}
+      <div className="w-[450px] h-[650px] bg-slate-50/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/20 flex overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative">
+
+        {/* Sidebar */}
+        <div className={`absolute inset-y-0 left-0 w-64 bg-slate-100/90 backdrop-blur-md transform transition-transform duration-300 z-20 border-r border-slate-200 ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="p-4 flex flex-col h-full">
+            <button
+              onClick={createNewSession}
+              className="flex items-center gap-2 bg-slate-950 text-white p-3 rounded-xl hover:bg-slate-800 transition-all font-bold text-sm shadow-lg shadow-slate-950/10 mb-6"
+            >
+              <Plus size={16} /> New Chat
+            </button>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 pl-2">Recents</h3>
+              {sessions.map(session => (
+                <div
+                  key={session.id}
+                  onClick={() => { setActiveSessionId(session.id); setShowSidebar(false); }}
+                  className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${activeSessionId === session.id ? 'bg-white border-slate-200 shadow-sm' : 'hover:bg-white/50 border-transparent'}`}
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <MessageSquare size={14} className={activeSessionId === session.id ? 'text-[#00ff9d]' : 'text-slate-400'} />
+                    <span className={`text-sm truncate font-medium ${activeSessionId === session.id ? 'text-slate-900' : 'text-slate-500'}`}>{session.title}</span>
+                  </div>
+                  <button onClick={(e) => deleteSession(e, session.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col h-full bg-slate-50 relative z-10">
+
+          {/* Header */}
+          <div className="bg-slate-950 p-4 flex justify-between items-center text-white shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#00ff9d] rounded-xl flex items-center justify-center text-slate-950 shadow-lg animate-pulse">
-                <Sparkles size={16} />
-              </div>
-              <div>
-                <span className="font-black text-xs uppercase tracking-widest text-[#00ff9d] block">Neural Assistant</span>
-                <span className="text-[10px] text-rose-500 font-bold bg-white/10 px-1 rounded">DEBUG: ATTACHMENT VERSION</span>
+              <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                {showSidebar ? <ChevronRight size={18} /> : <History size={18} />}
+              </button>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm">{activeSession.title}</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-[#00ff9d] rounded-full animate-pulse"></div>
+                  <span className="text-[10px] text-slate-400 font-medium">Paradigm OS AI</span>
+                </div>
               </div>
             </div>
             <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-2 rounded-xl transition-all">
@@ -211,10 +350,20 @@ export const ChatWidget = () => {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 scrollbar-thin">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
+            {activeSessionId === 'default' && sessions.length === 1 && messages.length === 1 && (
+              <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4">
+                  <Sparkles size={32} className="text-[#00ff9d]" />
+                </div>
+                <p className="text-slate-400 text-sm font-medium">Go ahead, ask me anything.</p>
+              </div>
+            )}
+
             {messages.map((msg) => (
               <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[90%] p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${msg.sender === 'user'
+                <div className={`max-w-[85%] p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${msg.sender === 'user'
                   ? 'bg-slate-900 text-white rounded-br-none'
                   : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none'
                   }`}>
@@ -243,22 +392,23 @@ export const ChatWidget = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 bg-white border-t border-slate-100">
+          {/* Input Area */}
+          <div className="p-4 bg-white/50 backdrop-blur-sm border-t border-slate-100 shrink-0">
             {attachment && (
-              <div className="mb-3 flex items-start">
+              <div className="mb-3 flex items-start animate-in slide-in-from-bottom-2 fade-in duration-300">
                 <div className="relative group">
                   {attachment.file.type.startsWith('image/') ? (
-                    <img src={attachment.preview} alt="Attachment" className="h-16 w-16 object-cover rounded-lg border border-slate-200 shadow-sm" />
+                    <img src={attachment.preview} alt="Attachment" className="h-14 w-14 object-cover rounded-xl border border-slate-200 shadow-sm" />
                   ) : (
-                    <div className="h-16 w-16 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
-                      <FileText size={24} className="text-slate-400" />
+                    <div className="h-14 w-14 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
+                      <FileText size={20} className="text-slate-400" />
                     </div>
                   )}
                   <button
                     onClick={handleRemoveAttachment}
                     className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform"
                   >
-                    <X size={12} />
+                    <X size={10} />
                   </button>
                 </div>
                 <div className="ml-3 flex-1 overflow-hidden">
@@ -267,70 +417,53 @@ export const ChatWidget = () => {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-[1.5rem] px-4 py-3 focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all">
-              {isRecording ? (
-                <div className="flex-1 flex items-center gap-3">
-                  <div className="w-2 h-2 bg-rose-500 rounded-full animate-ping"></div>
-                  <span className="text-[10px] text-rose-600 font-black uppercase tracking-widest">Listening...</span>
-                </div>
-              ) : (
-                <input
-                  className="flex-1 bg-transparent text-sm font-bold outline-none text-slate-700 placeholder:text-slate-400"
-                  placeholder="Ask anything..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                />
-              )}
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-[1.5rem] px-2 py-2 shadow-sm focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*,application/pdf"
+                onChange={handleFileSelect}
+              />
 
-              <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-3 rounded-full hover:bg-slate-100 transition-colors ${attachment ? 'text-indigo-500' : 'text-slate-400'}`}
+              >
+                <Paperclip size={18} />
+              </button>
+
+              <input
+                className="flex-1 bg-transparent text-sm font-medium outline-none text-slate-700 placeholder:text-slate-400 px-2"
+                placeholder="Ask Paradigm AI..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              />
+
+              <div className="flex items-center gap-1">
                 {isRecording ? (
-                  <button onClick={stopRecording} className="text-rose-500 hover:scale-110 p-2 transition-transform">
+                  <button onClick={stopRecording} className="p-3 bg-rose-50 rounded-full text-rose-500 hover:scale-110 transition-all">
                     <Square size={18} className="fill-current" />
                   </button>
                 ) : (
-                  <>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*,application/pdf"
-                      onChange={handleFileSelect}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`p-2 transition-colors ${attachment ? 'text-indigo-500' : 'text-slate-400 hover:text-[#00ff9d]'}`}
-                    >
-                      <Paperclip size={18} />
-                    </button>
-                    <button onClick={startRecording} className="text-slate-400 hover:text-[#00ff9d] p-2 transition-colors">
-                      <Mic size={18} />
-                    </button>
-                  </>
+                  <button onClick={startRecording} className="p-3 hover:bg-slate-100 rounded-full text-slate-400 hover:text-[#00ff9d] transition-colors">
+                    <Mic size={18} />
+                  </button>
                 )}
+
                 <button
                   onClick={handleSend}
                   disabled={(!input.trim() && !attachment) || isTyping || isRecording}
-                  className="text-slate-900 hover:text-indigo-600 disabled:opacity-20 p-2 transition-all active:scale-90"
+                  className="p-3 bg-slate-900 text-white rounded-full hover:bg-[#00ff9d] hover:text-slate-900 disabled:opacity-20 disabled:hover:bg-slate-900 disabled:hover:text-white transition-all active:scale-95 shadow-lg shadow-slate-900/20"
                 >
-                  <Send size={18} />
+                  <Send size={16} />
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
-
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={strictMode}
-        className={`pointer-events-auto h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 transform hover:scale-110 active:scale-95 ${strictMode ? 'bg-slate-800 border-2 border-white/10 opacity-50 cursor-not-allowed' :
-          isOpen ? 'bg-slate-950 rotate-90' : 'bg-[#00ff9d] hover:shadow-[#00ff9d]/20'
-          }`}
-      >
-        {strictMode ? <ShieldOff size={24} className="text-slate-500" /> :
-          isOpen ? <X size={28} className="text-white" /> : <MessageSquare size={28} className="text-slate-950" />}
-      </button>
+      </div>
     </div>
   );
 };

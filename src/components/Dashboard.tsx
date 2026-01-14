@@ -102,7 +102,7 @@ export const Dashboard = () => {
       financial: { revenue: rev, cash, receivables: rev - cash },
       receivables: [...invoices].filter(i => i.status !== 'Paid').sort((a, b) => b.totalCents - a.totalCents),
       payables: [...requisitions].filter(r => r.status === 'Pending').sort((a, b) => b.totalAmountCents - a.totalAmountCents),
-      upcomingEvents: [...cateringEvents].filter(e => e.status !== 'Completed').sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
+      upcomingEvents: [...cateringEvents].filter(e => e.status !== 'Completed').sort((a, b) => (a.eventDate || '').localeCompare(b.eventDate || '')),
       complaints: [...tickets].filter(t => t.status !== 'Resolved'),
       newCustomers: [...contacts].slice(0, 5),
       recentHires: [...employees].slice(0, 5)

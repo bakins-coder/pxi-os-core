@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { debugLogger, listExtensions } from '@google/gemini-cli-core';
+import { debugLogger, listExtensions, openBrowserSecurely } from '@google/gemini-cli-core';
 import type { ExtensionUpdateInfo } from '../../config/extension.js';
 import { getErrorMessage } from '../../utils/errors.js';
 import {
@@ -18,7 +18,7 @@ import {
   type SlashCommand,
   CommandKind,
 } from './types.js';
-import open from 'open';
+
 import process from 'node:process';
 import { ExtensionManager } from '../../config/extension-manager.js';
 import { SettingScope } from '../../config/settings.js';
@@ -149,7 +149,7 @@ function updateAction(context: CommandContext, args: string): Promise<void> {
       Date.now(),
     );
   }
-  return updateComplete.then((_) => {});
+  return updateComplete.then((_) => { });
 }
 
 async function restartAction(
@@ -301,7 +301,11 @@ async function exploreAction(context: CommandContext) {
       Date.now(),
     );
     try {
-      await open(extensionsUrl);
+      await openBrowserSecurely(
+        extensionsUrl,
+        context.services.config?.browser.chromeBinPath,
+        context.services.config?.browser.chromeProfilePath,
+      );
     } catch (_error) {
       context.ui.addItem(
         {
