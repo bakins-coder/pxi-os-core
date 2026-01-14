@@ -233,7 +233,22 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 properties: {
                     response: { type: Type.STRING },
                     intent: { type: Type.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] },
-                    payload: { type: Type.OBJECT }
+                    payload: {
+                        type: Type.OBJECT,
+                        properties: {
+                            // Employee Fields
+                            firstName: { type: Type.STRING },
+                            lastName: { type: Type.STRING },
+                            role: { type: Type.STRING },
+                            email: { type: Type.STRING },
+                            // Inventory Fields
+                            itemName: { type: Type.STRING },
+                            quantity: { type: Type.NUMBER },
+                            category: { type: Type.STRING },
+                            // Common/Other
+                            unit: { type: Type.STRING }
+                        }
+                    }
                 },
                 required: ["response", "intent"]
             }
