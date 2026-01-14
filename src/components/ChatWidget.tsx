@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff, Paperclip, Image as ImageIcon, FileText, Plus, History, Trash2, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { generateAIResponse, getAIResponseForAudio, textToSpeech } from '../services/ai';
+import { useDataStore } from '../store/useDataStore';
+import { generateAIResponse, getAIResponseForAudio, textToSpeech, processAgentRequest } from '../services/ai';
 import { decodeBase64, decodeRawPcmToAudioBuffer } from '../services/audioUtils';
 
 
@@ -178,9 +179,47 @@ export const ChatWidget = () => {
 
   const processAIRequest = async (sessionId: string, currentMessages: Message[], text: string, attach?: { base64: string, mimeType: string }) => {
     try {
-      const response = await generateAIResponse(text, "Global Floating Chat", attach);
-      const botMsg: Message = { id: (Date.now() + 1).toString(), text: response, sender: 'bot' };
-      updateSessionMessages(sessionId, [...currentMessages, botMsg]);
+      const response = await processAgentRequest(text, "Global Floating Chat", 'text');
+
+      // Handle Agentic Action
+      if (response.intent && response.intent !== 'GENERAL_QUERY') {
+        const { intent, payload } = response;
+        if (intent === 'ADD_EMPLOYEE') {
+          const { EmployeeStatus } = await import('../types');
+          useDataStore.getState().addEmployee({
+            firstName: payload.firstName || 'Unknown',
+            lastName: payload.lastName || 'Staff',
+            email: payload.email || `staff-${Date.now()}@xquisite.com`,
+            role: payload.role || 'Employee',
+            salaryCents: 0,
+            status: EmployeeStatus.ACTIVE,
+            companyId: 'org-xquisite',
+            dob: new Date().toISOString(),
+            gender: 'Male',
+            dateOfEmployment: new Date().toISOString(),
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
+            kpis: []
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.firstName} ${payload.lastName} as ${payload.role}.`, sender: 'bot' }]);
+        } else if (intent === 'ADD_INVENTORY') {
+          useDataStore.getState().addInventoryItem({
+            name: payload.itemName,
+            stockQuantity: payload.quantity,
+            // unit: payload.unit || 'units', // REMOVED: Not in InventoryItem type
+            category: payload.category || 'General',
+            type: 'raw_material',
+            priceCents: 0,
+            companyId: 'org-xquisite',
+            id: `inv-${Date.now()}`
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.quantity} ${payload.itemName} to inventory.`, sender: 'bot' }]);
+        }
+      } else {
+        // Standard Response
+        const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
+        updateSessionMessages(sessionId, [...currentMessages, botMsg]);
+      }
+
     } catch (error: any) {
       console.error("AI Error:", error);
       let errorMessage = "Connection error.";
@@ -234,12 +273,51 @@ export const ChatWidget = () => {
     reader.onloadend = async () => {
       const base64String = (reader.result as string).split(',')[1];
       try {
-        const aiText = await getAIResponseForAudio(base64String, 'audio/webm');
-        const aiAudioBase64 = await textToSpeech(aiText);
+        // Use the unified Agentic Processor for Voice too!
+        const response = await processAgentRequest(base64String, "Global Voice Chat", 'audio');
+
+        let replyText = response.response || "Task completed.";
+        let hasAction = false;
+
+        if (response.intent && response.intent !== 'GENERAL_QUERY') {
+          hasAction = true;
+          const { intent, payload } = response;
+          if (intent === 'ADD_EMPLOYEE') {
+            const { EmployeeStatus } = await import('../types');
+            useDataStore.getState().addEmployee({
+              firstName: payload.firstName || 'Unknown',
+              lastName: payload.lastName || 'Staff',
+              email: payload.email || `voice-add-${Date.now()}@xquisite.com`,
+              role: payload.role || 'Employee',
+              salaryCents: 0,
+              status: EmployeeStatus.ACTIVE,
+              companyId: 'org-xquisite',
+              dob: new Date().toISOString(),
+              gender: 'Male',
+              dateOfEmployment: new Date().toISOString(),
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
+              kpis: []
+            });
+            replyText = `✅ Voice Action: Added ${payload.firstName} ${payload.lastName} as ${payload.role}.`;
+          } else if (intent === 'ADD_INVENTORY') {
+            useDataStore.getState().addInventoryItem({
+              name: payload.itemName,
+              stockQuantity: payload.quantity,
+              category: payload.category || 'General',
+              type: 'raw_material',
+              priceCents: 0,
+              companyId: 'org-xquisite',
+              id: `inv-voice-${Date.now()}`
+            });
+            replyText = `✅ Voice Action: Added ${payload.quantity} ${payload.itemName} to inventory.`;
+          }
+        }
+
+        const aiAudioBase64 = await textToSpeech(replyText);
 
         const botMsg: Message = {
           id: (Date.now() + 1).toString(),
-          text: aiText,
+          text: replyText,
           sender: 'bot',
           hasAudio: !!aiAudioBase64
         };
@@ -363,6 +441,10 @@ export const ChatWidget = () => {
 
             {messages.map((msg) => (
               <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                {/* Speaker Label */}
+                <span className={`text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 ${msg.sender === 'user' ? 'mr-1' : 'ml-1'}`}>
+                  {msg.sender === 'user' ? 'You' : 'P-Xi'}
+                </span>
                 <div className={`max-w-[85%] p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${msg.sender === 'user'
                   ? 'bg-slate-900 text-white rounded-br-none'
                   : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none'

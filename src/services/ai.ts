@@ -2,6 +2,7 @@ import { GoogleGenAI, Type, Modality } from '@google/genai';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Ingredient, CateringEvent, Recipe, AIAgentMode } from '../types';
+import { useAuthStore } from '../store/useAuthStore';
 
 const getAIInstance = () => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -202,6 +203,46 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     return JSON.parse(response.text || "{}");
 }
 
+export async function processAgentRequest(input: string, context: string, mode: 'text' | 'audio'): Promise<any> {
+    if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
+    const ai = getAIInstance();
+
+    // Re-use logic for context if needed, or keep it simple for now
+    // We want to detect intents: ADD_EMPLOYEE, ADD_INVENTORY
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `User Input: "${input}". Context: ${context}.
+        
+        Analyze the input.
+        1. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
+        2. If Action, extract payload (firstName, lastName, role, etc. OR itemName, quantity, category).
+        3. Generate a helpful conversational response to accompany the action or answer the query.
+        
+        Return JSON:
+        {
+            "response": "...",
+            "intent": "...",
+            "payload": { ... }
+        }
+        `,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    response: { type: Type.STRING },
+                    intent: { type: Type.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] },
+                    payload: { type: Type.OBJECT }
+                },
+                required: ["response", "intent"]
+            }
+        }
+    });
+
+    return JSON.parse(response.text || "{}");
+}
+
 export async function generateAIResponse(prompt: string, context: string = "", attachment?: { base64: string, mimeType: string }): Promise<string> {
     if (useSettingsStore.getState().strictMode) return "I am currently in Strict Mode. AI services are disabled.";
     const ai = getAIInstance();
@@ -212,6 +253,14 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         acc[emp.role] = (acc[emp.role] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
+
+    const menuContext = dataStore.inventory
+        .filter(i => i.type === 'product')
+        .map(i => `- ${i.name} (${i.category}): ₦${(i.priceCents / 100).toLocaleString()}`)
+        .join('\n');
+
+    const currentUser = useAuthStore.getState().user;
+    const userRole = currentUser?.role || 'Guest';
 
     const operationalContext = JSON.stringify({
         events: dataStore.cateringEvents.map(e => ({
@@ -227,13 +276,29 @@ export async function generateAIResponse(prompt: string, context: string = "", a
                 role: e.role,
                 status: e.status
             }))
-        }
+        },
+        menuSample: menuContext ? "Refer to System Prompt for full menu." : "No menu data available."
     });
 
-    const systemPrompt = `Workspace Context: ${context}. Intelligence Dataset: ${operationalContext}.\n\nUser Question: ${prompt} \n\nAct as Paradigm - Xi Assistant.Use the provided Dataset to answer accurately.If asked about staff or counts(like waiters / chefs), reference the 'personnel' data.
+    const systemPrompt = `
+    Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
+    User Context: The user is a ${userRole}. Ensure your answers are appropriate for this authority level.
+    
+    Data Access:
+    1. Menu/Products:
+    ${menuContext || "No specific menu items loaded."}
+    
+    2. Operational Data:
+    ${operationalContext}
+    
+    Instructions:
+    - Answer the User Question based strictly on the provided Data Access.
+    - If asked about "Amala" or other food items, check the 'Menu/Products' section above.
+    - Use bold headers and bullet points.
+    - **CRITICAL**: Do NOT include a signature, footer, or self-introduction (like "Paradigm - Xi Assistant | System Status...") at the end of your message. Just provide the answer.
+    - Be concise and professional.
 
-
-    IMPORTANT: ALWAYS respond in well - formatted Markdown.Use bold headers, bullet points for lists, and Markdown tables when displaying data.Be professional and structured.`;
+    User Question: ${prompt}`;
 
     let contents: any = systemPrompt;
 
