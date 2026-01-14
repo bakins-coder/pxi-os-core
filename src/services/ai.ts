@@ -293,10 +293,11 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     
     Instructions:
     - Answer the User Question based strictly on the provided Data Access.
+    - **BREVITY RULE**: Limit your response to a few sentences. Do NOT provide an entire explanation of what exists unless asked.
+    - Directness: Address the user's request immediately.
     - If asked about "Amala" or other food items, check the 'Menu/Products' section above.
-    - Use bold headers and bullet points.
-    - **CRITICAL**: Do NOT include a signature, footer, or self-introduction (like "Paradigm - Xi Assistant | System Status...") at the end of your message. Just provide the answer.
-    - Be concise and professional.
+    - Use bold headers and bullet points only for lists.
+    - **CRITICAL**: Do NOT include a signature, footer, or self-introduction.
 
     User Question: ${prompt}`;
 
