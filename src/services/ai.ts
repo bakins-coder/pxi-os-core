@@ -203,59 +203,83 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     return JSON.parse(response.text || "{}");
 }
 
+// Helper for retry logic
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+    try {
+        return await fn();
+    } catch (error: any) {
+        if (retries > 0 && (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED'))) {
+            console.warn(`[AI Service] Rate limit hit. Retrying in ${delay}ms... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return callWithRetry(fn, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+}
+
 export async function processAgentRequest(input: string, context: string, mode: 'text' | 'audio'): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
     const ai = getAIInstance();
 
-    // Re-use logic for context if needed, or keep it simple for now
-    // We want to detect intents: ADD_EMPLOYEE, ADD_INVENTORY
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `User Input: "${input}". Context: ${context}.
-        
-        Analyze the input.
-        1. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
-        2. If Action, extract payload (firstName, lastName, role, etc. OR itemName, quantity, category).
-        3. Generate a helpful conversational response to accompany the action or answer the query.
-        
-        Return JSON:
-        {
-            "response": "...",
-            "intent": "...",
-            "payload": { ... }
-        }
-        `,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    response: { type: Type.STRING },
-                    intent: { type: Type.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] },
-                    payload: {
+    try {
+        const response = await callWithRetry(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `User Input: "${input}". Context: ${context}.
+                
+                Analyze the input.
+                1. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
+                2. If Action, extract payload (firstName, lastName, role, etc. OR itemName, quantity, category).
+                3. Generate a helpful conversational response to accompany the action or answer the query.
+                
+                Return JSON:
+                {
+                    "response": "...",
+                    "intent": "...",
+                    "payload": { ... }
+                }
+                `,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
                         type: Type.OBJECT,
                         properties: {
-                            // Employee Fields
-                            firstName: { type: Type.STRING },
-                            lastName: { type: Type.STRING },
-                            role: { type: Type.STRING },
-                            email: { type: Type.STRING },
-                            // Inventory Fields
-                            itemName: { type: Type.STRING },
-                            quantity: { type: Type.NUMBER },
-                            category: { type: Type.STRING },
-                            // Common/Other
-                            unit: { type: Type.STRING }
-                        }
+                            response: { type: Type.STRING },
+                            intent: { type: Type.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] },
+                            payload: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    // Employee Fields
+                                    firstName: { type: Type.STRING },
+                                    lastName: { type: Type.STRING },
+                                    role: { type: Type.STRING },
+                                    email: { type: Type.STRING },
+                                    // Inventory Fields
+                                    itemName: { type: Type.STRING },
+                                    quantity: { type: Type.NUMBER },
+                                    category: { type: Type.STRING },
+                                    // Common/Other
+                                    unit: { type: Type.STRING }
+                                }
+                            }
+                        },
+                        required: ["response", "intent"]
                     }
-                },
-                required: ["response", "intent"]
-            }
-        }
-    });
+                }
+            });
+        });
 
-    return JSON.parse(response.text || "{}");
+        return JSON.parse(response.text || "{}");
+    } catch (error: any) {
+        console.error("AI Agent Request Failed:", error);
+        if (error.status === 429 || error.message?.includes('429')) {
+            return {
+                response: "⚠️ I'm receiving too many requests right now. Please wait a moment and try again.",
+                intent: 'GENERAL_QUERY'
+            };
+        }
+        return { response: "I'm having trouble connecting to the AI service.", intent: 'GENERAL_QUERY' };
+    }
 }
 
 export async function generateAIResponse(prompt: string, context: string = "", attachment?: { base64: string, mimeType: string }): Promise<string> {
@@ -328,9 +352,11 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         };
     }
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: contents,
+    const response = await callWithRetry(async () => {
+        return await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: contents,
+        });
     });
     return response.text || "";
 }
@@ -370,39 +396,45 @@ export async function getCFOAdvice(): Promise<any> {
 export async function processVoiceCommand(base64Audio: string, mimeType: string, context: string): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { intent: 'none', transcription: '', feedback: 'Strict Mode Enabled' };
     const ai = getAIInstance();
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: {
-            parts: [
-                { inlineData: { data: base64Audio, mimeType } },
-                { text: `Voice command for Xquisite OS.Context: ${context}. Return JSON intent.` }
-            ]
-        },
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    intent: { type: Type.STRING },
-                    transcription: { type: Type.STRING },
-                    feedback: { type: Type.STRING },
-                    data: { type: Type.OBJECT, properties: { path: { type: Type.STRING } } }
+    try {
+        const response = await callWithRetry(async () => {
+            return await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: {
+                    parts: [
+                        { inlineData: { data: base64Audio, mimeType } },
+                        { text: `Voice command for Xquisite OS.Context: ${context}. Return JSON intent.` }
+                    ]
+                },
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            intent: { type: Type.STRING },
+                            transcription: { type: Type.STRING },
+                            feedback: { type: Type.STRING },
+                            data: { type: Type.OBJECT, properties: { path: { type: Type.STRING } } }
+                        }
+                    }
                 }
-            }
-        }
-    });
-    const result = JSON.parse(response.text || "{}");
+            });
+        });
+        const result = JSON.parse(response.text || "{}");
 
-    // LOGGING
-    useDataStore.getState().addAgenticLog({
-        agentName: 'Voice Interface',
-        action: 'Command Processing',
-        details: `Processed voice command: "${result.transcription || 'Audio Input'}" -> Intent: ${result.intent} `,
-        sentiment: 'Neutral',
-        confidence: 0.88
-    });
+        // LOGGING
+        useDataStore.getState().addAgenticLog({
+            agentName: 'Voice Interface',
+            action: 'Command Processing',
+            details: `Processed voice command: "${result.transcription || 'Audio Input'}" -> Intent: ${result.intent} `,
+            sentiment: 'Neutral',
+            confidence: 0.88
+        });
 
-    return result;
+        return result;
+    } catch (e) {
+        return { intent: 'none', transcription: '', feedback: 'Voice Service Unavailable (Rate Limit)' };
+    }
 }
 
 export async function textToSpeech(text: string): Promise<string> {
