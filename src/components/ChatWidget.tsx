@@ -292,10 +292,10 @@ export const ChatWidget = () => {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex items-end pointer-events-none gap-4">
+    <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[60] flex items-end pointer-events-none gap-4">
 
       {/* Main Chat Container */}
-      <div className="w-[450px] h-[650px] bg-slate-50/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/20 flex overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative">
+      <div className="w-full h-[100dvh] sm:w-[450px] sm:h-[650px] bg-slate-50/95 backdrop-blur-xl sm:rounded-[2.5rem] shadow-2xl border-t sm:border border-white/20 flex overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative fixed inset-0 sm:static">
 
         {/* Sidebar */}
         <div className={`absolute inset-y-0 left-0 w-64 bg-slate-100/90 backdrop-blur-md transform transition-transform duration-300 z-20 border-r border-slate-200 ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>

@@ -118,7 +118,7 @@ export const Dashboard = () => {
       {/* Platform Header */}
       <div className="col-span-12 flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">
+          <h1 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">
             CONTROL <span className="text-slate-400">CENTER</span>
           </h1>
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
@@ -139,7 +139,7 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Ribbons */}
-      <div className="col-span-12 grid grid-cols-4 gap-6">
+      <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
           { label: 'Cash at Hand', value: `₦${(dataState.financial.cash / 100).toLocaleString()}`, icon: Activity, color: 'text-emerald-600', trend: 'Healthy' },
@@ -164,7 +164,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Main Content Areas */}
-      <div className="col-span-8 space-y-8">
+      <div className="col-span-12 lg:col-span-8 space-y-8">
         <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm min-h-[450px]">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -186,7 +186,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="col-span-4 space-y-8 h-full">
+      <div className="col-span-12 lg:col-span-4 space-y-8 h-full">
         <div className="h-1/2">
           {(settings.type === 'Catering') ? (
             <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" />
