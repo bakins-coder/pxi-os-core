@@ -7,7 +7,7 @@ import { calculatePayrollForEmployee } from '../services/hrUtils';
 import { extractInfoFromCV } from '../services/ai';
 import {
    Users, Briefcase, Plus, ShieldCheck, Receipt, LayoutGrid, TrendingUp, ChevronRight,
-   Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send
+   Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2
 } from 'lucide-react';
 
 const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
@@ -83,21 +83,51 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [isExtracting, setIsExtracting] = useState(false);
    const [idGenerated, setIdGenerated] = useState<Employee | null>(null);
+   const [hasDraft, setHasDraft] = useState(false);
    const fileInputRef = useRef<HTMLInputElement>(null);
+   const DRAFT_KEY = 'hire_staff_form_draft';
 
    const resetFormFields = () => {
       setFirstName(''); setLastName(''); setEmail(''); setPhoneNumber(''); setAddress(''); setDob(''); setGender('Male');
       setDateOfEmployment(new Date().toISOString().split('T')[0]); setSelectedRoleTitle(''); setSalaryNGN(0); setAvatar(''); setHealthNotes(''); setIdGenerated(null);
+      setHasDraft(false);
    };
 
+   // Load Draft or Edit Data
    useEffect(() => {
       if (editingEmployee) {
          setFirstName(editingEmployee.firstName); setLastName(editingEmployee.lastName); setEmail(editingEmployee.email);
          setPhoneNumber(editingEmployee.phoneNumber || ''); setAddress(editingEmployee.address || ''); setDob(editingEmployee.dob);
          setGender(editingEmployee.gender); setDateOfEmployment(editingEmployee.dateOfEmployment); setSelectedRoleTitle(editingEmployee.role);
          setSalaryNGN(editingEmployee.salaryCents / 100); setAvatar(editingEmployee.avatar); setHealthNotes(editingEmployee.healthNotes || '');
-      } else if (isOpen) { resetFormFields(); }
+      } else if (isOpen) {
+         const savedDraft = localStorage.getItem(DRAFT_KEY);
+         if (savedDraft) {
+            try {
+               const data = JSON.parse(savedDraft);
+               setFirstName(data.firstName || ''); setLastName(data.lastName || ''); setEmail(data.email || '');
+               setPhoneNumber(data.phoneNumber || ''); setAddress(data.address || ''); setDob(data.dob || '');
+               setGender(data.gender || 'Male'); setDateOfEmployment(data.dateOfEmployment || new Date().toISOString().split('T')[0]);
+               setSelectedRoleTitle(data.selectedRoleTitle || ''); setSalaryNGN(data.salaryNGN || 0);
+               setAvatar(data.avatar || ''); setHealthNotes(data.healthNotes || '');
+               setHasDraft(true);
+            } catch (e) { console.error("Failed to load draft", e); }
+         } else {
+            resetFormFields();
+         }
+      }
    }, [editingEmployee, isOpen]);
+
+   // Auto-Save Draft
+   useEffect(() => {
+      if (!isOpen || editingEmployee || isSubmitting) return;
+      const formData = { firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes };
+      const isEmpty = !firstName && !lastName && !email && !selectedRoleTitle;
+      if (!isEmpty) {
+         localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+         setHasDraft(true);
+      }
+   }, [firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes, isOpen, editingEmployee, isSubmitting]);
 
    const departmentMatrix = useDataStore(state => state.departmentMatrix);
    const addEmployee = useDataStore(state => state.addEmployee);
@@ -122,7 +152,15 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          const created = addEmployee(employeeData);
          setIsSubmitting(false);
          setIdGenerated(created);
+         // Clear draft on success
+         localStorage.removeItem(DRAFT_KEY);
+         setHasDraft(false);
       }
+   };
+
+   const handleDiscardDraft = () => {
+      localStorage.removeItem(DRAFT_KEY);
+      resetFormFields();
    };
 
    const handleCVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,11 +198,21 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                <div className="flex items-center gap-3 md:gap-6 min-w-0">
                   <div className="hidden sm:block"><GripHorizontal className="text-slate-300" /></div>
                   <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg shrink-0">{editingEmployee ? <UserIcon size={24} /> : <UserPlus size={24} />}</div>
-                  <div className="min-w-0"><h2 className="text-xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter truncate">{editingEmployee ? 'Update Profile' : 'Hire Staff'}</h2><p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 truncate">Organizational Registry</p></div>
+                  <div className="min-w-0">
+                     <h2 className="text-xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter truncate">{editingEmployee ? 'Update Profile' : 'Hire Staff'}</h2>
+                     <div className="flex items-center gap-2">
+                        <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 truncate">Organizational Registry</p>
+                        {hasDraft && !editingEmployee && <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 flex items-center gap-1"><RefreshCw size={10} className="animate-spin" /> Draft Restored</span>}
+                     </div>
+                  </div>
                </div>
                <div className="flex gap-2">
                   {!editingEmployee && (
-                     <><button onClick={() => fileInputRef.current?.click()} className="hidden sm:flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black uppercase text-[10px] shadow-sm hover:border-indigo-500 transition-all"><FileText size={16} /> Scan CV</button><input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={handleCVUpload} /></>
+                     <>
+                        {hasDraft && <button onClick={handleDiscardDraft} className="hidden sm:flex items-center gap-2 px-4 py-3 bg-rose-50 border-2 border-rose-100 text-rose-500 rounded-2xl font-black uppercase text-[10px] shadow-sm hover:bg-rose-100 transition-all"><Trash2 size={16} /> Discard</button>}
+                        <button onClick={() => fileInputRef.current?.click()} className="hidden sm:flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black uppercase text-[10px] shadow-sm hover:border-indigo-500 transition-all"><FileText size={16} /> Scan CV</button>
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={handleCVUpload} />
+                     </>
                   )}
                   <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>

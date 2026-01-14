@@ -332,11 +332,15 @@ export const useDataStore = create<DataState>()(
                     avatar: emp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName}`
                 } as Employee;
                 set((state) => ({ employees: [newEmp, ...state.employees] }));
+                get().syncWithCloud();
                 return newEmp;
             },
-            updateEmployee: (id, updates) => set((state) => ({
-                employees: state.employees.map(e => e.id === id ? { ...e, ...updates } : e)
-            })),
+            updateEmployee: (id, updates) => {
+                set((state) => ({
+                    employees: state.employees.map(e => e.id === id ? { ...e, ...updates } : e)
+                }));
+                get().syncWithCloud();
+            },
             applyForLeave: (req) => {
                 const newReq = {
                     ...req,
