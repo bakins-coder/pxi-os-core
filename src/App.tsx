@@ -32,6 +32,7 @@ import { Role, User } from './types';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallPrompt, AppUpdateNotification } from './components/PWAComponents';
+import { Presentation } from './components/Presentation';
 
 const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], user: User | null }>> = ({ children, allowedRoles, user }) => {
   if (!user) return <Navigate to="/login" replace />;
@@ -208,51 +209,29 @@ function AppContent() {
       </Routes>
     );
   }
-
+  // ... inside AppContent routes ...
   if (!user.companyId) {
     return (
       <Routes>
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/setup-wizard" element={<SetupWizard onComplete={() => window.location.hash = '/'} />} />
+        {/* Helper route for presentation even if not fully setup */}
+        <Route path="/presentation" element={<Presentation />} />
         <Route path="*" element={<Navigate to="/welcome" replace />} />
       </Routes>
     );
   }
 
-  // Fallback if settings say incomplete but we have companyId (migration edge case)
-  if (!settings.setupComplete) {
-    // CRITICAL FIX: If we have a companyId, DO NOT show the wizard. 
-    // Instead, show a loader while the 'hydrate' effect fetches the profile.
-    if (user.companyId) {
-      return (
-        <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white p-10">
-          <div className="relative w-20 h-20 mb-8">
-            <div className="absolute inset-0 rounded-full border-2 border-white/5"></div>
-            <div className="absolute inset-0 rounded-full border-2 border-t-[#00ff9d] animate-spin"></div>
-            <div className="absolute inset-4 flex items-center justify-center">
-              <RefreshCw size={24} className="text-[#00ff9d]" />
-            </div>
-          </div>
-          <h2 className="text-xl font-black uppercase tracking-tighter mb-2">Restoring Workspace</h2>
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500 animate-pulse">Retrieving Organization Data...</p>
-          {/* Fallback button if it gets stuck for more than 10s */}
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-12 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-white transition-colors"
-          >
-            Stuck? Reload
-          </button>
-        </div>
-      );
-    }
-    // Only show wizard if we genuinely have no companyId
-    return <SetupWizard onComplete={() => useSettingsStore.getState().completeSetup({})} />;
-  }
+  // ... existing code ...
 
   return (
     <Layout userRole={user.role}>
       <Routes>
+        {/* ... existing routes ... */}
         <Route path="/" element={user.role === Role.CUSTOMER ? <Navigate to="/customer-portal" replace /> : <Dashboard />} />
+
+        {/* Public/Special Routes */}
+        <Route path="/presentation" element={<Presentation />} />
 
         <Route path="/super-admin" element={<ProtectedRoute user={user} allowedRoles={[Role.SUPER_ADMIN]}><SuperAdmin /></ProtectedRoute>} />
         <Route path="/executive-hub" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><AgentHub /></ProtectedRoute>} />

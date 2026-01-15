@@ -15,8 +15,8 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
    const handlePrint = () => { window.print(); };
 
    return (
-      <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300">
-         <div className="flex flex-col items-center gap-8 max-w-sm w-full">
+      <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div className="flex flex-col items-center gap-8 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
             <div id="printable-id-card" className="w-full max-w-[340px] h-[540px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0">
                <div className="absolute top-0 left-0 w-full h-40 bg-slate-900 overflow-hidden">
                   <div className="absolute top-[-50%] left-[-20%] w-[150%] h-[150%] bg-gradient-to-br from-indigo-500/20 to-transparent rotate-12"></div>
@@ -378,7 +378,7 @@ export const HR = () => {
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
    const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.HR_MANAGER;
-   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE, Role.FINANCE_MANAGER].includes(currentUser?.role as any);
+   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE].includes(currentUser?.role as any);
 
    useEffect(() => {
       if (activeTab === 'payroll') {

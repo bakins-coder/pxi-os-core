@@ -221,16 +221,61 @@ export async function processAgentRequest(input: string, context: string, mode: 
     if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
     const ai = getAIInstance();
 
+    // Build Context
+    const dataStore = useDataStore.getState();
+    const workforceSummary = dataStore.employees.reduce((acc, emp) => {
+        acc[emp.role] = (acc[emp.role] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const menuContext = dataStore.inventory
+        .filter(i => i.type === 'product')
+        .map(i => `- ${i.name} (${i.category}): ₦${(i.priceCents / 100).toLocaleString()}`)
+        .join('\n');
+
+    const currentUser = useAuthStore.getState().user;
+    const userRole = currentUser?.role || 'Guest';
+
+    const operationalContext = JSON.stringify({
+        events: dataStore.cateringEvents.map(e => ({
+            customer: e.customerName,
+            revenue: e.financials.revenueCents,
+            grossMargin: e.costingSheet?.aggregateGrossMarginPercentage
+        })).slice(0, 3),
+        personnel: {
+            totalStaff: dataStore.employees.length,
+            departmentRoles: workforceSummary,
+            staffDirectory: dataStore.employees.map(e => ({
+                name: `${e.firstName} ${e.lastName} `,
+                role: e.role,
+                status: e.status,
+                salary: `₦${(e.salaryCents / 100).toLocaleString()}`
+            }))
+        },
+        menuSample: menuContext ? "Refer to System Prompt for full menu." : "No menu data available."
+    });
+
     try {
         const response = await callWithRetry(async () => {
-            return await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `User Input: "${input}". Context: ${context}.
+            const systemInstructions = `
+                Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
+                User Role: ${userRole}.
                 
-                Analyze the input.
-                1. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
-                2. If Action, extract payload (firstName, lastName, role, etc. OR itemName, quantity, category).
-                3. Generate a helpful conversational response to accompany the action or answer the query.
+                Data Access:
+                1. Menu/Products:
+                ${menuContext || "No specific menu items loaded."}
+                
+                2. Operational Data:
+                ${operationalContext}
+                
+                Additional Context: ${context}.
+                
+                Instructions:
+                1. Analyze the input (Audio or Text).
+                2. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
+                3. If Action, extract payload.
+                4. If Query, answer it using the provided "Data Access".
+                5. BREVITY RULE: Keep response to 2-3 sentences.
                 
                 Return JSON:
                 {
@@ -238,7 +283,24 @@ export async function processAgentRequest(input: string, context: string, mode: 
                     "intent": "...",
                     "payload": { ... }
                 }
-                `,
+            `;
+
+            let contentParts: any[] = [];
+
+            if (mode === 'audio') {
+                contentParts = [
+                    { inlineData: { data: input, mimeType: 'audio/webm' } },
+                    { text: systemInstructions }
+                ];
+            } else {
+                contentParts = [
+                    { text: `User Input: "${input}". \n${systemInstructions}` }
+                ];
+            }
+
+            return await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: { parts: contentParts },
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
