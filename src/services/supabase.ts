@@ -108,9 +108,75 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     // Contact Mappings
     if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }
 
+
     // Ledger Mappings
     if ('balance_cents' in newItem) { newItem.balanceCents = newItem.balance_cents; delete newItem.balance_cents; }
 
     return newItem;
   });
+};
+
+// --- RPC Helpers ---
+
+export const postReusableMovement = async (params: any) => {
+  if (!supabase) throw new Error("Supabase not initialized");
+  const { data, error } = await supabase.rpc('post_reusable_movement', {
+    p_org: params.orgId,
+    p_item: params.itemId,
+    p_delta: params.delta,
+    p_unit: params.unitId,
+    p_type: params.type,
+    p_ref_type: params.refType,
+    p_ref_id: params.refId,
+    p_location: params.locationId,
+    p_notes: params.notes
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const postRentalMovement = async (params: any) => {
+  if (!supabase) throw new Error("Supabase not initialized");
+  const { data, error } = await supabase.rpc('post_rental_movement', {
+    p_org: params.orgId,
+    p_item: params.itemId,
+    p_delta: params.delta,
+    p_unit: params.unitId,
+    p_type: params.type,
+    p_ref_type: params.refType,
+    p_ref_id: params.refId,
+    p_location: params.locationId,
+    p_notes: params.notes
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const postIngredientMovement = async (params: any) => {
+  if (!supabase) throw new Error("Supabase not initialized");
+  const { data, error } = await supabase.rpc('post_ingredient_movement', {
+    p_org: params.orgId,
+    p_ingredient: params.itemId,
+    p_delta: params.delta,
+    p_unit: params.unitId,
+    p_type: params.type,
+    p_ref_type: params.refType,
+    p_ref_id: params.refId,
+    p_location: params.locationId,
+    p_notes: params.notes,
+    p_unit_cost_cents: params.unitCostCents,
+    p_expires_at: params.expiresAt
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const pullInventoryViews = async (viewName: 'v_reusable_inventory' | 'v_rental_inventory' | 'v_ingredient_inventory', orgId: string) => {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from(viewName).select('*').eq('organization_id', orgId);
+  if (error) {
+    console.error(`Failed to pull view ${viewName}:`, error);
+    return [];
+  }
+  return data;
 };

@@ -219,24 +219,54 @@ export interface PortionMonitor {
 }
 
 // REFACTOR: New Taxonomy
-export type InventoryType = 'raw_material' | 'asset' | 'rental' | 'product' | 'fixture';
+export type InventoryType = 'product' | 'ingredient' | 'reusable' | 'rental' | 'asset' | 'fixture' | 'raw_material'; // Extended types
 
 export interface InventoryItem {
   id: string;
   companyId: string;
   name: string;
   category: string;
-  type: InventoryType; // New strict type
+  type: InventoryType;
   priceCents: number;
   costPriceCents?: number;
   image?: string;
   description?: string;
   recipeId?: string;
   stockQuantity: number;
-  // Deprecated Legacy Flags (kept optional for simple backward compat during transition if needed)
+  // Specific fields for different types
+  unitId?: string;
+  sku?: string;
+  isActive?: boolean;
+  supplierId?: string;
+  replacementCostCents?: number;
+  // Legacy Flags 
   isAsset?: boolean;
   isRental?: boolean;
   rentalVendor?: string;
+}
+
+export interface InventoryViewItem {
+  organization_id: string;
+  item_id: string;
+  location_id: string;
+  location_name: string;
+  quantity_on_hand: number;
+  total_quantity: number;
+}
+
+export interface MovementParams {
+  orgId: string;
+  itemId: string;
+  delta: number;
+  unitId: string;
+  type: string;
+  refType: string;
+  refId: string;
+  locationId: string;
+  notes?: string;
+  // Ingredient specific
+  unitCostCents?: number;
+  expiresAt?: string;
 }
 
 export type CustomerType = 'Individual' | 'Corporate';

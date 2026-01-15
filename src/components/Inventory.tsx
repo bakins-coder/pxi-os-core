@@ -364,6 +364,7 @@ const HardwareHub = ({ assets }: { assets: InventoryItem[] }) => {
                stockQuantity: item.quantity,
                category: (item.category as any) || 'Hardware',
                priceCents: 0,
+               type: 'asset', // Explicitly setting type
                isAsset: true,
                isRental: false
             });
