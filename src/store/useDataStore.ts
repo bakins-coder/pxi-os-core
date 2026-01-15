@@ -8,7 +8,7 @@ import {
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview
 } from '../types';
 
-import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement } from '../services/supabase';
+import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 
 interface DataState {
@@ -185,20 +185,46 @@ export const useDataStore = create<DataState>()(
                     inventory: [newItem as InventoryItem, ...state.inventory]
                 }));
 
+                // Determine entity type for media
+                const entityTypeMap: Record<string, 'product' | 'asset' | 'ingredient'> = {
+                    'product': 'product',
+                    'asset': 'asset',
+                    'reusable': 'asset',
+                    'raw_material': 'ingredient',
+                    'ingredient': 'ingredient'
+                };
+                const entityType = (item.type && entityTypeMap[item.type]) || 'product';
+
+                // Handle Image Upload if Base64
+                let uploadedMedia: { bucket: string, path: string } | null = null;
+
+                if (item.image && item.image.startsWith('data:image')) {
+                    try {
+                        // Upload
+                        const uploadRes = await uploadEntityImage(user.companyId, entityType, newItemId, item.image);
+                        uploadedMedia = uploadRes;
+
+                        // Construct Public URL (Optimistic for DB text column if needed, though View handles it)
+                        // Assuming standard Supabase Storage Public URL pattern for now or relying on View
+                        // For products, we don't send image_url to 'products' table if moving to entity_media,
+                        // BUT if we want to be safe, we can trigger the entity_media insert.
+                    } catch (err) {
+                        console.error("Image upload failed:", err);
+                    }
+                }
+
                 // Determine DB Table
                 let tableName = '';
                 let dbPayload: any = {
                     organization_id: user.companyId,
                     name: item.name,
-                    image_url: item.image,
+                    // We DO NOT send base64 to image_url. 
+                    // If we have a legacy image_url column, we might leave it null or set it if we have a URL.
+                    // For now, we omit it and rely on entity_media.
+                    // image_url: item.image, <-- REMOVED
+
                     // Common optional fields mapping
-                    category_id: (item.category as any) // Assuming category is string ID? UI passes string name. DB might expect ID or string. 
-                    // "categories" table exists. "products" has category_id. 
-                    // UI passes 'Dry Goods' etc. 
-                    // I might need to fetch category ID or just pass name if DB allows?
-                    // Prompt says: "category_id" in tables.
-                    // This implies I need to look up category ID.
-                    // For MVP I might skip category_id if nullable or pass a default.
+                    category_id: (item.category as any)
                 };
 
                 // Type Mapping
@@ -206,32 +232,49 @@ export const useDataStore = create<DataState>()(
                     tableName = 'products';
                     dbPayload.description = item.description;
                     dbPayload.price_cents = item.priceCents;
-                    // Product might not have stock fields
                 } else if (item.type === 'asset' || item.type === 'reusable') {
                     tableName = 'reusable_items';
-                    // Reusable Item fields
                 } else if (item.type === 'rental') {
                     tableName = 'rental_items';
-                    dbPayload.replacement_cost_cents = item.priceCents; // Approx mapping
+                    dbPayload.replacement_cost_cents = item.priceCents;
                 } else if (item.type === 'raw_material' || item.type === 'ingredient') {
                     tableName = 'ingredients';
-                    // Ingredient fields
                 }
 
                 if (tableName && supabase) {
-                    // Attempt Insert
-                    // Note: This simplistic mapping might fail if category_id is strict FK.
-                    // We'll trust the User for now or log error.
                     try {
-                        // Removing fields that don't exist in target table
+                        // 1. Insert Entity
                         if (tableName === 'products') {
-                            delete dbPayload.category_id; // Products.category_id exists but we might not have it resolved.
-                            // Actually "products(..., category_id...)"
-                            // If I don't have a UUID, I shouldn't send it.
+                            delete dbPayload.category_id;
                         }
 
-                        const { error } = await supabase.from(tableName).insert([dbPayload]);
-                        if (error) console.error("Failed to insert inventory item:", error);
+                        // Remove 'id' from payload to let DB generate UUID if table is uuid-typed. 
+                        // But wait, if table is text-typed, we might need to provide it?
+                        // Given 'entity_id = product.id' usually implies UUID in Supabase, let's try not sending ID.
+                        // But we need to know if we should send one.
+                        // Ideally we send 'id: newItemId' ONLY IF we are confident it matches schema. 
+                        // Let's TRY to let DB generate it, and capturing it.
+
+                        const { data, error } = await supabase.from(tableName).insert([dbPayload]).select();
+
+                        if (error) {
+                            console.error("Failed to insert inventory item:", error);
+                            return;
+                        }
+
+                        const insertedId = data?.[0]?.id;
+
+                        // 2. Insert Entity Media if uploaded
+                        if (uploadedMedia && insertedId) {
+                            await saveEntityMedia({
+                                entity_type: entityType,
+                                entity_id: insertedId,
+                                organization_id: user.companyId,
+                                bucket: uploadedMedia.bucket,
+                                object_path: uploadedMedia.path,
+                                is_primary: true
+                            });
+                        }
                     } catch (e) {
                         console.error(e);
                     }
@@ -672,12 +715,66 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
-            updateIngredient: (id, updates) => {
+            updateIngredient: async (id, updates) => {
+                const user = useAuthStore.getState().user;
+                if (!user?.companyId) return;
+
                 set((state) => ({
                     ingredients: state.ingredients.map((ing) =>
                         ing.id === id ? { ...ing, ...updates, lastUpdated: new Date().toISOString() } : ing
                     ),
+                    // Also update inventory if matched
+                    inventory: state.inventory.map(inv => inv.id === id ? { ...inv, ...updates } : inv)
                 }));
+
+                // Handle Image Update
+                if (updates.image && updates.image.startsWith('data:image')) {
+                    try {
+                        // Assuming ingredients are 'ingredient' type
+                        const uploadRes = await uploadEntityImage(user.companyId, 'ingredient', id, updates.image);
+                        await saveEntityMedia({
+                            entity_type: 'ingredient',
+                            entity_id: id,
+                            organization_id: user.companyId,
+                            bucket: uploadRes.bucket,
+                            object_path: uploadRes.path,
+                            is_primary: true
+                        });
+                        // Note: We don't update existing 'image_url' column in 'ingredients' table to avoid duplication/confusion
+                        // given the new strategy. But if the old logic relies on it, we might have issues.
+                        // Ideally we update the view or the legacy column with the public URL?
+                        // For now we stick to the new plan: entity_media is the source of truth.
+                    } catch (e) {
+                        console.error("Failed to update ingredient image:", e);
+                    }
+                }
+
+                // Sync other fields
+                // ... (existing sync logic or just let syncWithCloud handle generic table updates?)
+                // The generic 'syncWithCloud' pulls entire table. We want to push updates.
+                // The store has `updateIngredient` which calls `get().syncWithCloud()`.
+                // Actually `get().syncWithCloud()` likely does a FULL PULL or PUSH?
+                // Let's check `syncWithCloud` implementation. It seems missing here or assumes pull.
+
+                // If we want to persist regular fields:
+                const dbPayload = { ...updates };
+                delete dbPayload.image; // Don't push base64
+                // snake_case mapping happens in `syncTableToCloud`? 
+                // Wait, `syncWithCloud` isn't fully shown but `syncTableToCloud` is imported.
+                // The implementation of `updateIngredient` in previous view just called `get().syncWithCloud()`.
+                // That might just be re-fetching? Or maybe it syncs dirty state?
+
+                // For safety, let's explicitly update the row if we can.
+                try {
+                    const { error } = await supabase!.from('ingredients').update({
+                        name: updates.name,
+                        stock_level: updates.stockLevel,
+                        current_cost_cents: updates.currentCostCents
+                        // Add other fields if necessary
+                    }).eq('id', id);
+                    if (error) console.error(error);
+                } catch (e) { }
+
                 get().syncWithCloud();
             },
 

@@ -22,7 +22,10 @@ export const Settings = () => {
       name: settings.name,
       address: settings.address || '',
       phone: settings.contactPhone || '',
-      tin: settings.firs_tin || ''
+      tin: settings.firs_tin || '',
+      bankName: settings.bankInfo?.bankName || '',
+      accountName: settings.bankInfo?.accountName || '',
+      accountNumber: settings.bankInfo?.accountNumber || ''
    });
 
    useEffect(() => {
@@ -30,7 +33,10 @@ export const Settings = () => {
          name: settings.name,
          address: settings.address || '',
          phone: settings.contactPhone || '',
-         tin: settings.firs_tin || ''
+         tin: settings.firs_tin || '',
+         bankName: settings.bankInfo?.bankName || '',
+         accountName: settings.bankInfo?.accountName || '',
+         accountNumber: settings.bankInfo?.accountNumber || ''
       });
    }, [settings]);
 
@@ -51,7 +57,12 @@ export const Settings = () => {
          name: profile.name,
          address: profile.address,
          contactPhone: profile.phone,
-         firs_tin: profile.tin
+         firs_tin: profile.tin,
+         bankInfo: {
+            bankName: profile.bankName,
+            accountName: profile.accountName,
+            accountNumber: profile.accountNumber
+         }
       });
       alert('Business Profile Updated.');
    };
@@ -243,6 +254,39 @@ export const Settings = () => {
                      </div>
                   </div>
 
+                  <div className="bg-white/5 p-10 rounded-[2.5rem] border border-white/5">
+                     <h2 className="text-2xl font-black uppercase tracking-tight mb-8">Financial Coordinates</h2>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                           <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Bank Name</label>
+                           <input
+                              className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 px-6 font-black text-sm text-white focus:border-[#00ff9d] outline-none transition-all placeholder:text-slate-600"
+                              placeholder="e.g. Access Bank"
+                              value={profile.bankName}
+                              onChange={e => setProfile({ ...profile, bankName: e.target.value })}
+                           />
+                        </div>
+                        <div className="space-y-3">
+                           <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Account Number</label>
+                           <input
+                              className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 px-6 font-black text-sm text-white focus:border-[#00ff9d] outline-none transition-all placeholder:text-slate-600"
+                              placeholder="0123456789"
+                              value={profile.accountNumber}
+                              onChange={e => setProfile({ ...profile, accountNumber: e.target.value })}
+                           />
+                        </div>
+                        <div className="space-y-3 md:col-span-2">
+                           <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Account Name</label>
+                           <input
+                              className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 px-6 font-black text-sm text-white focus:border-[#00ff9d] outline-none transition-all placeholder:text-slate-600"
+                              placeholder="e.g. Xquisite Celebrations Ltd"
+                              value={profile.accountName}
+                              onChange={e => setProfile({ ...profile, accountName: e.target.value })}
+                           />
+                        </div>
+                     </div>
+                  </div>
+
                   <div className="flex justify-end pr-4">
                      <button type="submit" className="flex items-center gap-3 bg-[#00ff9d] text-slate-950 px-10 py-5 rounded-[2rem] font-black uppercase text-xs shadow-2xl hover:scale-105 active:scale-95 transition-all">
                         <Save size={18} /> Commit Configuration
@@ -253,7 +297,7 @@ export const Settings = () => {
 
             {activeTab === 'security' && <SecuritySettings />}
          </div>
-      </div>
+      </div >
    );
 };
 

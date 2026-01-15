@@ -180,3 +180,53 @@ export const pullInventoryViews = async (viewName: 'v_reusable_inventory' | 'v_r
   }
   return data;
 };
+
+// --- Media Helpers ---
+
+export const uploadEntityImage = async (
+  orgId: string,
+  entityType: 'product' | 'ingredient' | 'asset',
+  entityId: string,
+  base64Data: string
+) => {
+  if (!supabase) throw new Error("Supabase not initialized");
+
+  // distinct path: product/{org_id}/{product_id}/{timestamp}.jpg
+  const filename = `${Date.now()}.jpg`;
+  const bucketName = 'product_media'; // As per optimisation plan
+  const objectPath = `${entityType}/${orgId}/${entityId}/${filename}`;
+
+  // Convert Base64 to Blob
+  const res = await fetch(base64Data);
+  const blob = await res.blob();
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(objectPath, blob, {
+      contentType: 'image/jpeg',
+      upsert: true
+    });
+
+  if (error) throw error;
+
+  return { bucket: bucketName, path: objectPath };
+};
+
+export const saveEntityMedia = async (
+  mediaData: {
+    entity_type: string;
+    entity_id: string;
+    organization_id: string;
+    bucket: string;
+    object_path: string;
+    is_primary: boolean;
+  }
+) => {
+  if (!supabase) throw new Error("Supabase not initialized");
+
+  const { error } = await supabase
+    .from('entity_media')
+    .insert([mediaData]);
+
+  if (error) throw error;
+};
