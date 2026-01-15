@@ -36,14 +36,33 @@ export const checkCloudHealth = async () => {
  */
 export const syncTableToCloud = async (tableName: string, data: any[]) => {
   if (!supabase) return;
+  console.log(`[Sync Debug] Syncing ${tableName}`, data.length > 0 ? Object.keys(data[0]) : 'empty');
 
-  // Ensure data has the correct snake_case keys for the DB if necessary
-  // but for now we expect the DB schema to match the types or vice versa.
-  // One important key is company_id vs companyId.
+  // Tables that use 'organization_id' instead of 'company_id'
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products'].includes(tableName);
+
+  // Ensure data has the correct snake_case keys for the DB
   const sanitizedData = data.map(item => {
     const newItem = { ...item };
 
-    if ('companyId' in newItem) { newItem.company_id = newItem.companyId; delete newItem.companyId; }
+    if (useOrgId) {
+      // Map camelCase companyId if present
+      if ('companyId' in newItem) {
+        newItem.organization_id = newItem.companyId;
+        delete newItem.companyId;
+      }
+      // Safety: If company_id (snake_case) is present, move it to organization_id or just ensure it's removed
+      if ('company_id' in newItem) {
+        if (!newItem.organization_id) newItem.organization_id = newItem.company_id;
+        delete newItem.company_id;
+      }
+    } else {
+      // Standard tables: ensure company_id is set from companyId
+      if ('companyId' in newItem) {
+        newItem.company_id = newItem.companyId;
+        delete newItem.companyId;
+      }
+    }
 
     // Inventory Reverse Mappings
     if ('stockQuantity' in newItem) { newItem.stock_quantity = newItem.stockQuantity; delete newItem.stockQuantity; }
@@ -79,10 +98,17 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
 
+  // Tables that use 'organization_id' instead of 'company_id'
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products'].includes(tableName);
+
   let query = supabase.from(tableName).select('*');
 
   if (companyId) {
-    query = query.eq('company_id', companyId);
+    if (useOrgId) {
+      query = query.eq('organization_id', companyId);
+    } else {
+      query = query.eq('company_id', companyId);
+    }
   }
 
   const { data, error } = await query;
@@ -95,6 +121,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
     // Explicit mappings for known fields
     if ('company_id' in newItem) { newItem.companyId = newItem.company_id; delete newItem.company_id; }
+    if ('organization_id' in newItem) { newItem.companyId = newItem.organization_id; delete newItem.organization_id; }
 
     // Inventory Mappings
     if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }

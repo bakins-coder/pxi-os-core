@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Disc, Network, Box, DollarSign, Bot, X, FileWarning, MonitorX, Grid3X3, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

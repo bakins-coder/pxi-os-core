@@ -1273,7 +1273,7 @@ export const useDataStore = create<DataState>()(
                         syncTableToCloud('projects', state.projects),
                         syncTableToCloud('bookkeeping', state.bookkeeping),
                         syncTableToCloud('tasks', state.tasks),
-                        syncTableToCloud('employees_api', state.employees),
+                        syncTableToCloud('employees', state.employees),
                         syncTableToCloud('requisitions', state.requisitions),
                         syncTableToCloud('chart_of_accounts', state.chartOfAccounts),
                         syncTableToCloud('bank_transactions', state.bankTransactions)
@@ -1310,7 +1310,7 @@ export const useDataStore = create<DataState>()(
                         pullCloudState('invoices', companyId),
                         pullCloudState('catering_events', companyId),
                         pullCloudState('tasks', companyId),
-                        pullCloudState('employees_api', companyId),
+                        pullCloudState('employees', companyId),
                         pullCloudState('requisitions', companyId),
                         pullCloudState('chart_of_accounts', companyId),
                         pullCloudState('bank_transactions', companyId),
