@@ -209,9 +209,11 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
         return await fn();
     } catch (error: any) {
         if (retries > 0 && (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED'))) {
-            console.warn(`[AI Service] Rate limit hit. Retrying in ${delay}ms... (${retries} attempts left)`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return callWithRetry(fn, retries - 1, delay * 2);
+            // Exponential backoff: 2s, 4s, 8s
+            const delayMs = delay * 2;
+            console.warn(`[AI Service] Rate limit hit. Retrying in ${delayMs}ms... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            return callWithRetry(fn, retries - 1, delayMs);
         }
         throw error;
     }
@@ -230,8 +232,14 @@ export async function processAgentRequest(input: string, context: string, mode: 
 
     const menuContext = dataStore.inventory
         .filter(i => i.type === 'product')
+        .slice(0, 50) // LIMIT CONTEXT: Top 50 items only to prevent token hitting
         .map(i => `- ${i.name} (${i.category}): ₦${(i.priceCents / 100).toLocaleString()}`)
         .join('\n');
+
+    if (dataStore.inventory.length > 50) {
+        // Append a note that more exists
+        // menuContext += `\n... ${dataStore.inventory.length - 50} more items available via search.`;
+    }
 
     const currentUser = useAuthStore.getState().user;
     const userRole = currentUser?.role || 'Guest';
