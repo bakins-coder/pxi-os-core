@@ -36,7 +36,6 @@ export const checkCloudHealth = async () => {
  */
 export const syncTableToCloud = async (tableName: string, data: any[]) => {
   if (!supabase) return;
-  console.log(`[Sync Debug] Syncing ${tableName}`, data.length > 0 ? Object.keys(data[0]) : 'empty');
 
   // Tables that use 'organization_id' instead of 'company_id'
   const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products'].includes(tableName);
