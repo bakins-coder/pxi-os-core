@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Disc, Network, Box, DollarSign, Bot, X, FileWarning, MonitorX, Grid3X3, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+// Import Assets directly from src/assets to avoid public folder issues
+import chaosImg from '../assets/presentation/chaos_paperwork.png';
+import legacyImg from '../assets/presentation/legacy_tech.png';
+import spreadsheetsImg from '../assets/presentation/spreadsheets.png';
+import titleImg from '../assets/presentation/title.png';
+import archImg from '../assets/presentation/arch.png';
+import inventoryImg from '../assets/presentation/inventory.png';
+import financeImg from '../assets/presentation/finance.png';
+import teamImg from '../assets/presentation/team_diversity.png';
 
 const slides = [
     {
@@ -7,7 +17,7 @@ const slides = [
         title: "The Old Way",
         subtitle: "Manual Operations & Paper Chaos",
         content: "Buried under mountains of paperwork. Critical information lost in stacks of invoices. The stress of manual tracking is holding your organization back.",
-        image: "/presentation/chaos_paperwork.png",
+        image: chaosImg,
         icon: <FileWarning size={64} className="text-rose-500" />,
         color: "from-rose-500/20"
     },
@@ -16,7 +26,7 @@ const slides = [
         title: "Legacy Systems",
         subtitle: "Outdated & Disconnected",
         content: "Fighting with slow, clunky desktop software from a bygone era. Systems that don't talk to each other create silos of trapped data.",
-        image: "/presentation/legacy_tech.png",
+        image: legacyImg,
         icon: <MonitorX size={64} className="text-amber-500" />,
         color: "from-amber-500/20"
     },
@@ -25,7 +35,7 @@ const slides = [
         title: "Excel Hell",
         subtitle: "Data Paralysis",
         content: "Running a modern enterprise on fragile spreadsheets. One broken formula can cause financial disaster. It's time to stop the copy-paste madness.",
-        image: "/presentation/spreadsheets.png",
+        image: spreadsheetsImg,
         icon: <Grid3X3 size={64} className="text-red-500" />,
         color: "from-red-600/20"
     },
@@ -34,7 +44,11 @@ const slides = [
         title: "Enter PXI-OS",
         subtitle: "The AI-Native Solution",
         content: "A unified, intelligent operating system designed to bring order to chaos. Real-time. Agentic. Future-ready.",
-        image: "/presentation/title.png",
+        image: chaosImg, // Re-using chaos temporarily? NO, Wait! I need titleImg.
+        // I made a mistake in previous code, let me fix it in THIS block.
+        // Wait, chaosImg is WRONG for 'Enter PXI-OS'. I must use titleImg.
+        // Correcting below:
+        image: titleImg,
         icon: <Disc size={64} className="text-[#00ff9d]" />,
         color: "from-emerald-500/20"
     },
@@ -43,7 +57,7 @@ const slides = [
         title: "Core Architecture",
         subtitle: "Cloud-First & Offline-Ready",
         content: "Built on Supabase with optimistic state management. Work anywhere, sync everywhere. Secure data flow for the modern distributed workforce.",
-        image: "/presentation/arch.png",
+        image: archImg,
         icon: <Network size={64} className="text-cyan-400" />,
         color: "from-cyan-500/20"
     },
@@ -52,7 +66,7 @@ const slides = [
         title: "Inventory Intelligence",
         subtitle: "Dynamic Taxonomy & Neural BoQ",
         content: "The 'Brain' of physical assets. Automating cost calculations, breaking down products into ingredients, and connecting to real-time market data.",
-        image: "/presentation/inventory.png",
+        image: inventoryImg,
         icon: <Box size={64} className="text-amber-400" />,
         color: "from-amber-500/20"
     },
@@ -61,7 +75,7 @@ const slides = [
         title: "Operational Finance",
         subtitle: "Live Gross Margin Tracking",
         content: "Real-time P&L on every event. Requisition workflows prevent pilferage. Automated invoicing converts operational events directly into financial records.",
-        image: "/presentation/finance.png",
+        image: financeImg,
         icon: <DollarSign size={64} className="text-violet-400" />,
         color: "from-violet-500/20"
     },
@@ -70,7 +84,7 @@ const slides = [
         title: "AI & Human Synergy",
         subtitle: "Empowering Diverse Teams",
         content: "AI Agents don't replace humans; they supercharge them. Empowering a diverse, global workforce to focus on creativity while AI handles the drudgery.",
-        image: "/presentation/team_diversity.png",
+        image: teamImg,
         icon: <Users size={64} className="text-indigo-400" />,
         color: "from-indigo-500/20"
     }
