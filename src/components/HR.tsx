@@ -7,7 +7,7 @@ import { calculatePayrollForEmployee } from '../services/hrUtils';
 import { extractInfoFromCV } from '../services/ai';
 import {
    Users, Briefcase, Plus, ShieldCheck, Receipt, LayoutGrid, TrendingUp, ChevronRight,
-   Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2
+   Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2, Maximize2, Minimize2
 } from 'lucide-react';
 
 const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
@@ -84,6 +84,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
    const [isExtracting, setIsExtracting] = useState(false);
    const [idGenerated, setIdGenerated] = useState<Employee | null>(null);
    const [hasDraft, setHasDraft] = useState(false);
+   const [isMaximized, setIsMaximized] = useState(false);
    const fileInputRef = useRef<HTMLInputElement>(null);
    const DRAFT_KEY = 'hire_staff_form_draft';
 
@@ -182,8 +183,11 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
    if (idGenerated) { return <DigitalIDCard employee={idGenerated} onClose={() => { resetFormFields(); onClose(); }} />; }
 
    return (
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-4 bg-slate-950/90 backdrop-blur-2xl animate-in zoom-in duration-300">
-         <div className="bg-white md:rounded-[3.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col relative border border-slate-200 h-full md:h-[90vh]">
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-4 bg-slate-950/90 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col relative border border-slate-200 transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'md:rounded-[3.5rem] max-w-4xl h-full md:h-[90vh]'}`}
+         >
             {isExtracting && (
                <div className="absolute inset-0 z-50 bg-slate-950/60 backdrop-blur-md flex flex-col items-center justify-center text-white p-6 text-center">
                   <div className="relative w-20 h-20 mb-8 mx-auto">
@@ -217,7 +221,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                   <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
-            <form onSubmit={handleHire} className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 overflow-y-auto flex-1 scrollbar-thin">
+            <form id="hire-staff-form" onSubmit={handleHire} className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 overflow-y-auto flex-1 scrollbar-thin">
                <div className="space-y-8 md:space-y-10">
                   <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3"><h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Profile Identity</h3><div className="h-px flex-1 bg-indigo-50"></div></div>
                   <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8 p-6 md:p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 border-dashed group hover:border-indigo-200 transition-all">
@@ -257,7 +261,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
             </form>
             <div className="p-6 md:p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-4 md:gap-6 shrink-0">
                <button type="button" onClick={onClose} className="flex-1 py-4 md:py-6 rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-500 hover:bg-white hover:text-slate-800 border-2 border-transparent hover:border-slate-200 transition-all bg-white shadow-sm">Abort</button>
-               <button type="submit" onClick={handleHire} disabled={isSubmitting} className="flex-2 py-4 md:py-6 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] md:text-[11px] shadow-2xl flex items-center justify-center gap-3 transition-all hover:brightness-110 active:scale-95 group shrink-0 min-w-[160px] md:min-w-[240px]">{isSubmitting ? <Activity className="animate-spin" size={20} /> : <ShieldCheck size={20} className="text-[#00ff9d] group-hover:scale-110 transition-transform" />}{isSubmitting ? 'Onboarding...' : editingEmployee ? 'Update' : 'Hire Staff'}</button>
+               <button type="submit" form="hire-staff-form" disabled={isSubmitting} className="flex-2 py-4 md:py-6 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] md:text-[11px] shadow-2xl flex items-center justify-center gap-3 transition-all hover:brightness-110 active:scale-95 group shrink-0 min-w-[160px] md:min-w-[240px]">{isSubmitting ? <Activity className="animate-spin" size={20} /> : <ShieldCheck size={20} className="text-[#00ff9d] group-hover:scale-110 transition-transform" />}{isSubmitting ? 'Onboarding...' : editingEmployee ? 'Update' : 'Hire Staff'}</button>
             </div>
          </div>
       </div>
@@ -269,6 +273,7 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
    const [startDate, setStartDate] = useState('');
    const [endDate, setEndDate] = useState('');
    const [reason, setReason] = useState('');
+   const [isMaximized, setIsMaximized] = useState(false);
 
    if (!isOpen) return null;
 
@@ -282,14 +287,22 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
    };
 
    return (
-      <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl animate-in zoom-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col border border-slate-200">
+      <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3.5rem] max-h-[90vh]'}`}
+         >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80">
                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg"><Plane size={24} /></div>
                   <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">Request Absence</h2><p className="text-[10px] text-slate-500 font-black uppercase mt-1">Personnel Node Registry</p></div>
                </div>
-               <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+               </div>
             </div>
             <form onSubmit={handleSubmit} className="p-10 space-y-8 flex-1 overflow-y-auto">
                <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Leave Classification</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={type} onChange={e => setType(e.target.value as LeaveType)}>{Object.values(LeaveType).map(t => <option key={t} value={t}>{t} Leave</option>)}</select></div>

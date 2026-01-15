@@ -124,6 +124,7 @@ export interface ItemCosting {
   ingredientBreakdown: {
     name: string;
     qtyRequired: number;
+    qtyPerPortion: number; // Added for transparency
     unit: string;
     unitCostCents: number;
     totalCostCents: number;

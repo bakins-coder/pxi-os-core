@@ -174,14 +174,18 @@ export const useDataStore = create<DataState>()(
             // ... (other state initialized)
 
             addInventoryItem: (item) => {
+                const user = useAuthStore.getState().user;
                 set((state) => ({
-                    inventory: [{ ...item, id: item.id || `inv-${Date.now()}`, companyId: item.companyId || 'org-xquisite' } as InventoryItem, ...state.inventory]
+                    inventory: [{ ...item, id: item.id || `inv-${Date.now()}`, companyId: user?.companyId || item.companyId } as InventoryItem, ...state.inventory]
                 }));
                 get().syncWithCloud();
             },
-            addRequisition: (req) => set((state) => ({
-                requisitions: [{ ...req, id: req.id || `req-${Date.now()}`, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
-            })),
+            addRequisition: (req) => {
+                const user = useAuthStore.getState().user;
+                set((state) => ({
+                    requisitions: [{ ...req, id: req.id || `req-${Date.now()}`, companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
+                }))
+            },
             approveRequisition: (id) => set((state) => ({
                 requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
             })),
@@ -323,10 +327,11 @@ export const useDataStore = create<DataState>()(
             })),
 
             addEmployee: (emp) => {
+                const user = useAuthStore.getState().user;
                 const newEmp = {
                     ...emp,
                     id: emp.id || `emp-${Date.now()}`,
-                    companyId: emp.companyId || 'org-xquisite',
+                    companyId: user?.companyId || emp.companyId, // Dynamic Company ID
                     status: (emp.status as any) || 'Active',
                     kpis: emp.kpis || [],
                     avatar: emp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName}`
@@ -864,11 +869,12 @@ export const useDataStore = create<DataState>()(
             }),
 
             createProcurementInvoice: async (eventId, reqs) => {
+                const user = useAuthStore.getState().user;
                 const totalSpend = reqs.reduce((sum: number, r: Partial<Requisition>) => sum + (r.totalAmountCents || 0), 0 as number);
                 const invoice: Invoice = {
                     id: `pinv-${Date.now()}`,
                     number: `PURCH-${Date.now()}`,
-                    companyId: 'org-xquisite',
+                    companyId: user?.companyId || 'org-xquisite', // Fallback only if no user (shouldn't happen)
                     date: new Date().toISOString().split('T')[0],
                     dueDate: new Date().toISOString().split('T')[0],
                     status: InvoiceStatus.UNPAID,
@@ -962,7 +968,7 @@ export const useDataStore = create<DataState>()(
                         syncTableToCloud('projects', state.projects),
                         syncTableToCloud('bookkeeping', state.bookkeeping),
                         syncTableToCloud('tasks', state.tasks),
-                        syncTableToCloud('employees', state.employees),
+                        syncTableToCloud('employees_api', state.employees),
                         syncTableToCloud('requisitions', state.requisitions),
                         syncTableToCloud('chart_of_accounts', state.chartOfAccounts),
                         syncTableToCloud('bank_transactions', state.bankTransactions)
@@ -984,7 +990,7 @@ export const useDataStore = create<DataState>()(
                 set({ isSyncing: true, syncStatus: 'Syncing' });
 
                 try {
-                    const tables = ['inventory', 'contacts', 'invoices', 'catering_events', 'tasks', 'employees', 'requisitions', 'chart_of_accounts', 'bank_transactions'];
+                    const tables = ['inventory', 'contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions'];
 
                     const results = await Promise.allSettled([
                         pullCloudState('inventory', companyId),
@@ -992,7 +998,7 @@ export const useDataStore = create<DataState>()(
                         pullCloudState('invoices', companyId),
                         pullCloudState('catering_events', companyId),
                         pullCloudState('tasks', companyId),
-                        pullCloudState('employees', companyId),
+                        pullCloudState('employees_api', companyId),
                         pullCloudState('requisitions', companyId),
                         pullCloudState('chart_of_accounts', companyId),
                         pullCloudState('bank_transactions', companyId)
@@ -1139,7 +1145,7 @@ export const useDataStore = create<DataState>()(
                     .on('postgres_changes', {
                         event: '*',
                         schema: 'public',
-                        table: 'employees',
+                        table: 'employees_api',
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;

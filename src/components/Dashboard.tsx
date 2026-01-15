@@ -105,7 +105,7 @@ export const Dashboard = () => {
       upcomingEvents: [...cateringEvents].filter(e => e.status !== 'Completed').sort((a, b) => (a.eventDate || '').localeCompare(b.eventDate || '')),
       complaints: [...tickets].filter(t => t.status !== 'Resolved'),
       newCustomers: [...contacts].slice(0, 5),
-      recentHires: [...employees].slice(0, 5)
+      recentHires: [...employees].slice(0, 20)
     };
   }, [invoices, requisitions, cateringEvents, tickets, contacts, employees]);
 

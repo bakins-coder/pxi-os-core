@@ -20,6 +20,7 @@ export const calculateItemCosting = (
         return {
             name: ri.name,
             qtyRequired: ri.qtyPerPortion * qty,
+            qtyPerPortion: ri.qtyPerPortion,
             unit: ri.unit,
             unitCostCents: unitCost,
             totalCostCents: subTotal,

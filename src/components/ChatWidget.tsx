@@ -373,7 +373,8 @@ export const ChatWidget = () => {
     <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[60] flex items-end pointer-events-none gap-4">
 
       {/* Main Chat Container */}
-      <div className="w-full h-[100dvh] sm:w-[450px] sm:h-[650px] bg-slate-50/95 backdrop-blur-xl sm:rounded-[2.5rem] shadow-2xl border-t sm:border border-white/20 flex overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative fixed inset-0 sm:static">
+      {/* Main Chat Container */}
+      <div className="w-full h-[100dvh] sm:w-[450px] sm:h-[650px] bg-slate-50/95 backdrop-blur-xl sm:rounded-[2.5rem] shadow-2xl border-t sm:border border-white/20 flex overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative">
 
         {/* Sidebar */}
         <div className={`absolute inset-y-0 left-0 w-64 bg-slate-100/90 backdrop-blur-md transform transition-transform duration-300 z-20 border-r border-slate-200 ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -407,25 +408,42 @@ export const ChatWidget = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col h-full bg-slate-50 relative z-10">
+        <div className="flex-1 flex flex-col h-full bg-slate-50 relative z-10 w-full rounded-[2.5rem] overflow-hidden">
 
           {/* Header */}
           <div className="bg-slate-950 p-4 flex justify-between items-center text-white shrink-0">
             <div className="flex items-center gap-3">
-              <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors group relative"
+                title="View History"
+              >
                 {showSidebar ? <ChevronRight size={18} /> : <History size={18} />}
               </button>
               <div className="flex flex-col">
-                <span className="font-bold text-sm">{activeSession.title}</span>
+                <span className="font-bold text-sm tracking-wide">{activeSession.title}</span>
                 <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 bg-[#00ff9d] rounded-full animate-pulse"></div>
-                  <span className="text-[10px] text-slate-400 font-medium">Paradigm OS AI</span>
+                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Paradigm AI Active</span>
                 </div>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-2 rounded-xl transition-all">
-              <Minimize2 size={18} />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={createNewSession}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                title="New Chat"
+              >
+                <Plus size={18} />
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-all"
+                title="Close Chat"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}

@@ -7,7 +7,7 @@ import { calculateItemCosting } from '../utils/costing';
 import {
    Package, Plus, RefreshCw, Layers, TrendingUp, Utensils,
    Zap, X, Trash2, Edit3, BookOpen, Info, Truck, Hammer, AlertTriangle, History, Clock, Box, Search, Check, Image as ImageIcon, Sparkles, Loader2,
-   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid
+   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2
 } from 'lucide-react';
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
@@ -15,6 +15,7 @@ import { parseInventoryList } from '../services/ocrService';
 const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: InventoryItem, portions: number, onClose: () => void, onPortionChange: (val: number) => void }) => {
    const [isGrounding, setIsGrounding] = useState(false);
    const [costing, setCosting] = useState<ItemCosting | null>(null);
+   const [isMaximized, setIsMaximized] = useState(false);
    const { inventory, recipes, ingredients, updateIngredientPrice } = useDataStore();
 
    const refreshCosting = () => {
@@ -52,8 +53,11 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    };
 
    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 max-h-[90vh]">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-4xl rounded-[3rem] max-h-[90vh]'}`}
+         >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={24} /></div>
@@ -62,101 +66,125 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                      <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
+            </div>
+            <div className="flex gap-2">
+               <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
+                  {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+               </button>
                <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
             </div>
+         </div>
 
-            <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-thin">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Portion Multiplier</label>
-                     <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200">
-                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={18} /></button>
-                        <input
-                           type="number"
-                           className="flex-1 bg-transparent text-center text-3xl font-black text-slate-900 outline-none"
-                           value={portions}
-                           onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
-                        />
-                        <button onClick={() => onPortionChange(portions + 50)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={18} /></button>
-                     </div>
-                  </div>
-                  <div className="flex items-end">
-                     <button
-                        onClick={handleGroundPrices}
-                        disabled={isGrounding}
-                        className={`w-full py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
-                     >
-                        {isGrounding ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
-                        {isGrounding ? 'Grounding Neural Data...' : 'Ground Market Prices via AI'}
-                     </button>
+         <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-thin">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Portion Multiplier</label>
+                  <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200">
+                     <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={18} /></button>
+                     <input
+                        type="number"
+                        className="flex-1 bg-transparent text-center text-3xl font-black text-slate-900 outline-none"
+                        value={portions}
+                        onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
+                     />
+                     <button onClick={() => onPortionChange(portions + 50)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={18} /></button>
                   </div>
                </div>
-
-               <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-                  <table className="w-full text-left text-[11px]">
-                     <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
-                        <tr>
-                           <th className="px-8 py-5">Ingredient Component</th>
-                           <th className="px-8 py-5">Net Requirement</th>
-                           <th className="px-8 py-5 text-right">Unit Rate</th>
-                           <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-indigo-50">
-                        {costing?.ingredientBreakdown.map((ing: any, idx: number) => (
-                           <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
-                              <td className="px-8 py-5">
-                                 <div className="flex items-center gap-2">
-                                    <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
-                                    {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
-                                 </div>
-                              </td>
-                              <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
-                              <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                              <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
-                           </tr>
-                        ))}
-                     </tbody>
-                  </table>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-8 bg-slate-950 rounded-[2rem] text-white">
-                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Aggregate Cost</p>
-                     <h5 className="text-2xl font-black">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
-                  </div>
-                  <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100">
-                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Projected Revenue</p>
-                     <h5 className="text-2xl font-black text-indigo-900">₦{(costing?.revenueCents! / 100).toLocaleString()}</h5>
-                  </div>
-                  <div className="p-8 bg-white border-2 border-slate-100 rounded-[2rem]">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Margin</p>
-                     <h5 className={`text-2xl font-black ${costing?.grossMarginPercentage! > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {costing?.grossMarginPercentage.toFixed(1)}%
-                     </h5>
-                  </div>
+               <div className="flex items-end">
+                  <button
+                     onClick={handleGroundPrices}
+                     disabled={isGrounding}
+                     className={`w-full py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
+                  >
+                     {isGrounding ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
+                     {isGrounding ? 'Grounding Neural Data...' : 'Ground Market Prices via AI'}
+                  </button>
                </div>
             </div>
 
-            <div className="p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
-               <button onClick={onClose} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
+            <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
+               <table className="w-full text-left text-[11px]">
+                  <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
+                     <tr>
+                        <th className="px-8 py-5">Ingredient Component</th>
+                        <th className="px-8 py-5 text-center">Std. Portion</th>
+                        <th className="px-8 py-5">Net Requirement</th>
+                        <th className="px-8 py-5 text-right">Unit Rate</th>
+                        <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-indigo-50">
+                     {costing?.ingredientBreakdown.map((ing: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
+                           <td className="px-8 py-5">
+                              <div className="flex items-center gap-2">
+                                 <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
+                                 {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                              </div>
+                           </td>
+                           <td className="px-8 py-5 text-center font-mono text-slate-400 text-[10px]">{ing.qtyPerPortion} {ing.unit}</td>
+                           <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
+                           <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                        </tr>
+                     ))}
+                     <tr className="bg-slate-50 border-t-2 border-slate-100">
+                        <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
+                        <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
+                     </tr>
+                  </tbody>
+               </table>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div className="p-8 bg-slate-950 rounded-[2rem] text-white">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Aggregate Cost</p>
+                  <h5 className="text-2xl font-black">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
+               </div>
+               <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100">
+                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Projected Revenue</p>
+                  <h5 className="text-2xl font-black text-indigo-900">₦{(costing?.revenueCents! / 100).toLocaleString()}</h5>
+               </div>
+               <div className="p-8 bg-white border-2 border-slate-100 rounded-[2rem]">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Margin</p>
+                  <h5 className={`text-2xl font-black ${costing?.grossMarginPercentage! > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                     {costing?.grossMarginPercentage.toFixed(1)}%
+                  </h5>
+               </div>
             </div>
          </div>
+
+         <div className="p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
+            <button onClick={onClose} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
+         </div>
       </div>
+
    );
 };
 
 const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClose: () => void, rental: RentalRecord | null }) => {
    const [status, setStatus] = useState<'Returned' | 'Damaged' | 'Lost'>('Returned');
    const [notes, setNotes] = useState('');
+   const [isMaximized, setIsMaximized] = useState(false);
    const returnRental = useDataStore(state => state.returnRental);
 
    if (!isOpen || !rental) return null;
    const handleReturn = () => { returnRental(rental.id, status, notes); onClose(); };
    return (
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50"><h2 className="text-xl font-black text-slate-900 uppercase">Process Rental Return</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button></div>
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+         >
+            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <h2 className="text-xl font-black text-slate-900 uppercase">Process Rental Return</h2>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
+            </div>
             <div className="p-10 space-y-6">
                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-6"><p className="text-[10px] font-black uppercase text-amber-600 mb-1">Active Liability</p><p className="text-sm font-bold text-amber-900">Est. replacement: ₦{(rental.estimatedReplacementValueCents / 100).toLocaleString()}</p></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Return Status</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={status} onChange={e => setStatus(e.target.value as any)}><option value="Returned">Safely Returned</option><option value="Damaged">Damaged / Broken</option><option value="Lost">Lost / Unaccounted</option></select></div>
@@ -173,6 +201,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
    const [selectedEventId, setSelectedEventId] = useState('');
    const [qty, setQty] = useState(0);
    const [notes, setNotes] = useState('');
+   const [isMaximized, setIsMaximized] = useState(false);
    const addRequisition = useDataStore(state => state.addRequisition);
 
    if (!isOpen) return null;
@@ -184,9 +213,20 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
       alert("Release requisition logged for approval.");
    };
    return (
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50"><h2 className="text-xl font-black text-slate-900 uppercase">Kitchen Release Request</h2><button onClick={onClose} className="p-2 hover:bg-rose-50 rounded-xl"><X size={20} /></button></div>
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+         >
+            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <h2 className="text-xl font-black text-slate-900 uppercase">Kitchen Release Request</h2>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-rose-50 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-rose-50 rounded-xl"><X size={20} /></button>
+               </div>
+            </div>
             <div className="p-10 space-y-6">
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Ingredient Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select Ingredient...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Tie to Event/Order</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}><option value="">General / Casual Order</option>{events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}</select></div>
@@ -203,14 +243,26 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
    const [selectedIngId, setSelectedIngId] = useState('');
    const [qty, setQty] = useState(0);
    const [cost, setCost] = useState(0);
+   const [isMaximized, setIsMaximized] = useState(false);
    const receiveFoodStock = useDataStore(state => state.receiveFoodStock);
 
    if (!isOpen) return null;
    const handleReceive = () => { if (!selectedIngId || qty <= 0) return; receiveFoodStock(selectedIngId, qty, cost * 100); onClose(); };
    return (
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50"><h2 className="text-xl font-black text-slate-900 uppercase">Inward Procurement Entry</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button></div>
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+         >
+            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <h2 className="text-xl font-black text-slate-900 uppercase">Inward Procurement Entry</h2>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
+            </div>
             <div className="p-10 space-y-6">
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Choose item...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></div>
                <div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} /></div></div>
@@ -226,6 +278,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
    const [selectedEventId, setSelectedEventId] = useState('');
    const [qty, setQty] = useState(0);
    const [vendor, setVendor] = useState('In-House');
+   const [isMaximized, setIsMaximized] = useState(false);
    const issueRental = useDataStore(state => state.issueRental);
 
    if (!isOpen) return null;
@@ -238,11 +291,19 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
    };
 
    return (
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+         >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-xl font-black text-slate-900 uppercase">Dispatch Assets</h2>
-               <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
             </div>
 
             <div className="p-10 space-y-6">
@@ -364,6 +425,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
    const [image, setImage] = useState(editItem?.image || '');
 
    const [showCamera, setShowCamera] = useState(false);
+   const [isMaximized, setIsMaximized] = useState(false);
 
    const { addIngredient, updateIngredient } = useDataStore();
 
@@ -380,11 +442,19 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
    if (!isOpen) return null;
 
    return (
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3rem]'}`}
+         >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-xl font-black text-slate-900 uppercase">{editItem ? 'Edit Ingredient' : 'New Ingredient'}</h2>
-               <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
             </div>
 
             <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">

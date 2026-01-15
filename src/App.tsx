@@ -54,6 +54,21 @@ function AppContent() {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    const handleOnline = () => {
+      console.log('Network status: ONLINE. Attempting sync...');
+      useDataStore.getState().syncWithCloud();
+      useDataStore.getState().hydrateFromCloud();
+    };
+    const handleOffline = () => console.log('Network status: OFFLINE. Local mode active.');
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     const hydrate = async () => {
       // Initialize brand color from store
       if (settings.brandColor) {
