@@ -99,7 +99,6 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
   // Tables that use 'organization_id' instead of 'company_id'
   const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets'].includes(tableName);
-  console.log(`[Sync Debug] Table: ${tableName}, useOrgId: ${useOrgId}, companyId: ${companyId}`);
 
   let query = supabase.from(tableName).select('*');
 
