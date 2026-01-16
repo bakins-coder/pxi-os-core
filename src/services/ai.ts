@@ -253,7 +253,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
         personnel: {
             totalStaff: dataStore.employees.length,
             departmentRoles: workforceSummary,
-            staffDirectory: dataStore.employees.map(e => ({
+            staffDirectory: dataStore.employees.slice(0, 50).map(e => ({ // LIMIT CONTEXT: Top 50 staff
                 name: `${e.firstName} ${e.lastName} `,
                 role: e.role,
                 status: e.status,
@@ -307,7 +307,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
             }
 
             return await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-1.5-flash', // OPTIMIZATION: Use 1.5-flash for speed/latency
                 contents: { parts: contentParts },
                 config: {
                     responseMimeType: "application/json",
