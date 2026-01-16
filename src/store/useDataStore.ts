@@ -1318,7 +1318,9 @@ export const useDataStore = create<DataState>()(
                         // Inventory Views
                         reusableStock, rentalStock, ingredientStock,
                         // Categories
-                        categories
+                        categories,
+                        // Fixed Assets
+                        fixedAssets
                     ] = await Promise.all([
                         pullCloudState('contacts', companyId),
                         pullCloudState('invoices', companyId),
@@ -1337,10 +1339,9 @@ export const useDataStore = create<DataState>()(
                         pullInventoryViews('v_reusable_inventory', companyId),
                         pullInventoryViews('v_rental_inventory', companyId),
                         pullInventoryViews('v_ingredient_inventory', companyId),
-                        pullCloudState('product_categories') // Fetch categories to map IDs
-                    ]);
-
-                    // Aggregating Inventory
+                        pullCloudState('product_categories'), // Fetch categories to map IDs
+                        pullCloudState('assets', companyId) // Fetch Fixed Assets
+                    ]); // End Promise.all
                     const combinedInventory: InventoryItem[] = [];
 
                     // 1. Products (Offerings)
@@ -1362,11 +1363,18 @@ export const useDataStore = create<DataState>()(
                         combinedInventory.push(...reusableItems.map((item: any) => {
                             // Find stock info - taking the first row's total_quantity if available
                             const stockInfo = (reusableStock as any[])?.find((s: any) => s.item_id === item.id);
+                            // Construct Image URL
+                            const hasImage = item.image_url && item.image_url.length > 0;
+                            const imageUrl = hasImage
+                                ? `https://qbfhntvjqciardkjpfpy.supabase.co/storage/v1/object/public/asset_inventory/${encodeURIComponent(item.image_url)}`
+                                : null;
+
                             return {
                                 ...item,
-                                type: 'asset', // Mapping 'reusable' to 'asset' for UI compatibility
+                                type: 'reusable', // Operational Inventory
                                 category: item.category_id || 'Hardware', // Fallback or map category
-                                stockQuantity: stockInfo ? stockInfo.total_quantity : 0
+                                stockQuantity: stockInfo ? stockInfo.total_quantity : 0,
+                                image: imageUrl
                             };
                         }));
                     }
@@ -1382,6 +1390,18 @@ export const useDataStore = create<DataState>()(
                                 isRental: true
                             };
                         }));
+                    }
+
+
+                    // 5. Fixed Assets (Capex/Individual Assets)
+                    if (fixedAssets) {
+                        combinedInventory.push(...fixedAssets.map((item: any) => ({
+                            ...item,
+                            type: 'asset', // The Real Fixed Asset
+                            stockQuantity: 1, // Fixed assets are tracked individually usually
+                            priceCents: item.acquisition_cost_cents || 0,
+                            image: item.image_url // Ensure this property is mapped
+                        })));
                     }
 
                     // 4. Ingredients (Raw Materials)

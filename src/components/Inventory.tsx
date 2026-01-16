@@ -346,7 +346,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
    );
 };
 
-const HardwareHub = ({ assets }: { assets: InventoryItem[] }) => {
+const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[], title: string, subtitle: string }) => {
    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
    const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
    const [showScanModal, setShowScanModal] = useState(false);
@@ -364,7 +364,7 @@ const HardwareHub = ({ assets }: { assets: InventoryItem[] }) => {
                stockQuantity: item.quantity,
                category: (item.category as any) || 'Hardware',
                priceCents: 0,
-               type: 'asset', // Explicitly setting type
+               type: 'asset', // Explicitly setting type (TODO: Make dynamic based on usage?)
                isAsset: true,
                isRental: false
             });
@@ -383,13 +383,13 @@ const HardwareHub = ({ assets }: { assets: InventoryItem[] }) => {
          <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
             <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/20">
                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Hammer size={24} /></div>
-                  <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">Non-Food Asset Ledger</h2><p className="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">Institutional Hardware & Crockery Inventory</p></div>
+                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Layers size={24} /></div>
+                  <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">{title}</h2><p className="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">{subtitle}</p></div>
                </div>
                <div className="flex gap-2">
                   <button onClick={() => setShowScanModal(true)} className="bg-white border-2 border-indigo-50 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 shadow-sm transition-all">
                      {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />}
-                     {isProcessing ? 'Processing' : 'Scan Assets'}
+                     {isProcessing ? 'Processing' : 'Scan'}
                   </button>
                   <button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-2">
                      <Plus size={16} /> Log New
@@ -399,7 +399,7 @@ const HardwareHub = ({ assets }: { assets: InventoryItem[] }) => {
                   </button>
                </div>
             </div>
-            <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[9px] tracking-[0.2em] border-b border-slate-100"><tr><th className="px-6 py-6 text-center">S/N</th><th className="px-10 py-6">Reference Picture</th><th className="px-10 py-6">Hardware Item</th><th className="px-10 py-6">Classification</th><th className="px-10 py-6">Physical Stock</th><th className="px-10 py-6 text-right">Replacement (Est)</th></tr></thead><tbody className="divide-y divide-slate-50">
+            <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[9px] tracking-[0.2em] border-b border-slate-100"><tr><th className="px-6 py-6 text-center">S/N</th><th className="px-10 py-6">Reference Picture</th><th className="px-10 py-6">Item Name</th><th className="px-10 py-6">Classification</th><th className="px-10 py-6">Physical Stock</th><th className="px-10 py-6 text-right">Value (Est)</th></tr></thead><tbody className="divide-y divide-slate-50">
                {assets.map((asset, index) => (
                   <tr key={asset.id} className="hover:bg-indigo-50/10 transition-all group">
                      <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
@@ -410,7 +410,7 @@ const HardwareHub = ({ assets }: { assets: InventoryItem[] }) => {
                      <td className="px-10 py-6 text-right font-black text-slate-900 tracking-tight">₦{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
                   </tr>
                ))}
-               {assets.length === 0 && (<tr><td colSpan={6} className="p-20 text-center text-slate-200"><Box size={64} className="mx-auto mb-4 opacity-10" /><p className="font-black uppercase tracking-widest text-xs">No assets indexed in ledger</p></td></tr>)}
+               {assets.length === 0 && (<tr><td colSpan={6} className="p-20 text-center text-slate-200"><Box size={64} className="mx-auto mb-4 opacity-10" /><p className="font-black uppercase tracking-widest text-xs">No items indexed in ledger</p></td></tr>)}
             </tbody></table></div>
          </div>
       </div>
@@ -536,7 +536,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 };
 
 export const Inventory = () => {
-   const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'rentals' | 'fixtures'>('products');
+   const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'reusable' | 'rentals' | 'fixtures'>('products');
    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
    const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
    const [selectedRental, setSelectedRental] = useState<RentalRecord | null>(null);
@@ -598,6 +598,7 @@ export const Inventory = () => {
    const products = inventory.filter(i => i.type === 'product');
    const rawMaterials = inventory.filter(i => i.type === 'raw_material');
    const assets = inventory.filter(i => i.type === 'asset');
+   const reusableItems = inventory.filter(i => i.type === 'reusable');
    const fixtures = inventory.filter(i => i.type === 'fixture');
    const rentals = rentalLedger; // Kept separate as it joins with Requisitions
    const events = cateringEvents;
@@ -639,7 +640,8 @@ export const Inventory = () => {
                      { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering },
                      { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true },
                      { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering },
-                     { id: 'hardware', label: 'Asset Ledger', icon: Hammer, active: true },
+                     { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true },
+                     { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true },
                      { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true }
                   ].filter(t => t.active).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
@@ -733,8 +735,9 @@ export const Inventory = () => {
             </div>
          )}
 
-         {activeTab === 'hardware' && <HardwareHub assets={assets} />}
-         {activeTab === 'fixtures' && <HardwareHub assets={fixtures} />}
+         {activeTab === 'hardware' && <InventoryCatalog assets={assets} title="Fixed Asset Ledger" subtitle="Capital Equipment & Infrastructure" />}
+         {activeTab === 'reusable' && <InventoryCatalog assets={reusableItems} title="Reusable Items Catalog" subtitle="Operational Inventory (Plates, Linens, etc.)" />}
+         {activeTab === 'fixtures' && <InventoryCatalog assets={fixtures} title="Fixtures & Fittings" subtitle="Built-in Infrastructure" />}
          <ReceiveStockModal isOpen={isReceiveModalOpen} onClose={() => setIsReceiveModalOpen(false)} ingredients={storeIngredients} />
          <KitchenReleaseModal isOpen={isReleaseModalOpen} onClose={() => setIsReleaseModalOpen(false)} ingredients={storeIngredients} events={events} />
          <RentalReturnModal isOpen={!!selectedRental} onClose={() => setSelectedRental(null)} rental={selectedRental} />
