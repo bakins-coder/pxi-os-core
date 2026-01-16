@@ -38,7 +38,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   if (!supabase) return;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products'].includes(tableName);
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets'].includes(tableName);
 
   // Ensure data has the correct snake_case keys for the DB
   const sanitizedData = data.map(item => {
@@ -98,7 +98,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products'].includes(tableName);
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets'].includes(tableName);
 
   let query = supabase.from(tableName).select('*');
 
