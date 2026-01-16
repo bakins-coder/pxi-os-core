@@ -1678,7 +1678,7 @@ export const useDataStore = create<DataState>()(
             }
         }),
         {
-            name: 'data-storage-v3', // New storage key to force fresh hydration
+            name: 'data-storage-v4', // Unique name for LocalStorage key to force fresh hydration
             partialize: (state) => {
                 // Exclude circular references and non-serializable objects
                 const { realtimeChannel, ...rest } = state;
