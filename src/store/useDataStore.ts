@@ -1316,7 +1316,9 @@ export const useDataStore = create<DataState>()(
                         // Inventory Base Tables
                         products, reusableItems, rentalItems, rawIngredients,
                         // Inventory Views
-                        reusableStock, rentalStock, ingredientStock
+                        reusableStock, rentalStock, ingredientStock,
+                        // Legacy/Unified Inventory Table
+                        inventoryTable
                     ] = await Promise.all([
                         pullCloudState('contacts', companyId),
                         pullCloudState('invoices', companyId),
@@ -1334,18 +1336,33 @@ export const useDataStore = create<DataState>()(
 
                         pullInventoryViews('v_reusable_inventory', companyId),
                         pullInventoryViews('v_rental_inventory', companyId),
-                        pullInventoryViews('v_ingredient_inventory', companyId)
+                        pullInventoryViews('v_ingredient_inventory', companyId),
+                        pullCloudState('inventory', companyId)
                     ]);
 
                     // Aggregating Inventory
                     const combinedInventory: InventoryItem[] = [];
 
-                    // 1. Products (Offerings) - Assumed no direct stock for now unless pre-made
+                    // 1. Products (Offerings)
+                    // Merge 'products' (legacy/specific) and 'inventoryTable' (unified)
                     if (products) {
                         combinedInventory.push(...products.map((p: any) => ({
                             ...p,
                             type: 'product',
-                            stockQuantity: 0 // Products are produced on demand usually
+                            stockQuantity: 0
+                        })));
+                    }
+                    if (inventoryTable) {
+                        // Filter for products that might not be in the 'products' table
+                        const additionalProducts = inventoryTable.filter((i: any) =>
+                            (i.type === 'product' || !i.type) && // Include 'product' or typed items (we fixed them to 'product')
+                            !combinedInventory.some(existing => existing.id === i.id) // Avoid duplicates
+                        );
+
+                        combinedInventory.push(...additionalProducts.map((p: any) => ({
+                            ...p,
+                            type: p.type || 'product', // Default to product if null (should be fixed now)
+                            stockQuantity: p.stockQuantity || p.stock_quantity || 0
                         })));
                     }
 
