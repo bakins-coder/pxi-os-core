@@ -14,7 +14,7 @@ async function inspect() {
     console.log('Xquisite ID:', xquisiteId);
 
     // 2. Get All Profiles
-    const { data: profiles, error } = await supabase.from('profiles').select('id, email, organization_id');
+    const { data: profiles, error } = await supabase.from('profiles').select('id, full_name, organization_id');
 
     if (error) {
         console.error('Error fetching profiles:', error);
@@ -31,7 +31,7 @@ async function inspect() {
 
     profiles.forEach(p => {
         const isMatch = p.organization_id === xquisiteId;
-        console.log(`User: ${p.email} | Org: ${p.organization_id} | Match: ${isMatch}`);
+        console.log(`User: ${p.full_name} (${p.id}) | Org: ${p.organization_id} | Match: ${isMatch}`);
     });
 }
 

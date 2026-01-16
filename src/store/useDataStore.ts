@@ -580,6 +580,8 @@ export const useDataStore = create<DataState>()(
 
             addEmployee: (emp) => {
                 const user = useAuthStore.getState().user;
+                console.log('[HR Debug] Current User:', user);
+
                 const newEmp = {
                     ...emp,
                     id: emp.id || `emp-${Date.now()}`,
@@ -588,6 +590,9 @@ export const useDataStore = create<DataState>()(
                     kpis: emp.kpis || [],
                     avatar: emp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName}`
                 } as Employee;
+
+                console.log('[HR Debug] New Employee Payload:', newEmp);
+
                 set((state) => ({ employees: [newEmp, ...state.employees] }));
                 get().syncWithCloud();
                 return newEmp;
