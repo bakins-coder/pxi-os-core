@@ -209,8 +209,9 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
         return await fn();
     } catch (error: any) {
         if (retries > 0 && (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED'))) {
-            // Exponential backoff: 2s, 4s, 8s
-            const delayMs = delay * 2;
+            // Simplified Retry: Wait 4s, try once more, then fail.
+            // Aggressive backoff is not helping if quota is zero.
+            const delayMs = 4000;
             console.warn(`[AI Service] Rate limit hit. Retrying in ${delayMs}ms... (${retries} attempts left)`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
             return callWithRetry(fn, retries - 1, delayMs);
@@ -232,7 +233,8 @@ export async function processAgentRequest(input: string, context: string, mode: 
 
     const menuContext = dataStore.inventory
         .filter(i => i.type === 'product')
-        .slice(0, 50) // LIMIT CONTEXT: Top 50 items only to prevent token hitting
+        .filter(i => i.type === 'product')
+        .slice(0, 15) // AGGRESSIVE LIMIT: Top 150 items only.
         .map(i => `- ${i.name} (${i.category}): ₦${(i.priceCents / 100).toLocaleString()}`)
         .join('\n');
 
