@@ -80,12 +80,12 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
 
             {/* Content Body */}
             <div className="p-3 md:p-4 flex-1 flex flex-col">
-                <h4 className="text-[9px] md:text-sm font-black uppercase tracking-tight text-slate-900 mb-0.5 leading-tight line-clamp-1">{item.name}</h4>
+                <h4 className="text-[9px] md:text-sm font-black uppercase tracking-tight text-slate-900 mb-2 leading-tight">{item.name}</h4>
 
                 {/* Description helper - Clicking this also opens info */}
                 <p
                     onClick={(e) => { e.stopPropagation(); setShowInfo(true); }}
-                    className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase mb-2 leading-tight overflow-y-auto h-12 md:h-16 hover:text-indigo-600 transition-colors scrollbar-thin"
+                    className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase mb-4 leading-relaxed hover:text-indigo-600 transition-colors"
                 >
                     {item.description}
                 </p>
