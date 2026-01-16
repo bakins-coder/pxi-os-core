@@ -246,7 +246,25 @@ export async function processAgentRequest(input: string, context: string, mode: 
     const currentUser = useAuthStore.getState().user;
     const userRole = currentUser?.role || 'Guest';
 
+    // Financial Context (CFO Capabilities)
+    const outstandingInvoices = dataStore.invoices.filter(i => i.status !== 'Paid');
+    const totalReceivables = outstandingInvoices.reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
+
+    const recentTransactions = dataStore.bankTransactions
+        .slice(0, 5) // Last 5 transactions
+        .map(t => `${t.date}: ${t.description} (${t.type}) - ₦${(t.amountCents / 100).toLocaleString()}`);
+
+    const keyAccounts = dataStore.chartOfAccounts
+        .filter(a => a.balanceCents > 0)
+        .map(a => `${a.name}: ₦${(a.balanceCents / 100).toLocaleString()}`);
+
     const operationalContext = JSON.stringify({
+        financials: {
+            totalOutstandingReceivables: `₦${(totalReceivables / 100).toLocaleString()}`,
+            outstandingInvoiceCount: outstandingInvoices.length,
+            recentTransactions: recentTransactions,
+            accountBalances: keyAccounts.length > 0 ? keyAccounts : "No active account balances found."
+        },
         events: dataStore.cateringEvents.map(e => ({
             customer: e.customerName,
             revenue: e.financials.revenueCents,

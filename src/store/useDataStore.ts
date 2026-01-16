@@ -10,6 +10,7 @@ import {
 
 import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
+import { useSettingsStore } from './useSettingsStore';
 
 interface DataState {
     inventory: InventoryItem[];
@@ -1295,6 +1296,17 @@ export const useDataStore = create<DataState>()(
                 set({ isSyncing: true, syncStatus: 'Syncing' });
 
                 try {
+                    // Sync Organization Settings Source of Truth
+                    const { data: orgData } = await supabase.from('organizations').select('type, enabled_modules, name').eq('id', companyId).single();
+
+                    if (orgData) {
+                        useSettingsStore.getState().updateSettings({
+                            name: orgData.name,
+                            type: orgData.type as any,
+                            enabledModules: orgData.enabled_modules as any
+                        });
+                    }
+
                     const tables = ['contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions'];
 
                     // Parallel fetching of base tables and inventory views

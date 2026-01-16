@@ -552,12 +552,16 @@ export const Inventory = () => {
    const { settings } = useSettingsStore();
    const isAviation = settings.type === 'Aviation';
 
+   const isCatering = settings.type === 'Catering' || settings.enabledModules?.includes('Catering');
+
    // Set default tab based on industry
    useEffect(() => {
       if (isAviation && activeTab === 'products') {
          setActiveTab('hardware');
+      } else if (!isCatering && ['products', 'ingredients', 'rentals'].includes(activeTab)) {
+         setActiveTab('hardware');
       }
-   }, [isAviation]);
+   }, [isAviation, isCatering]);
 
    const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents, approveRequisition, addIngredient, checkOverdueAssets } = useDataStore();
 
@@ -631,13 +635,13 @@ export const Inventory = () => {
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
-                     { id: 'products', label: 'Offerings', icon: Utensils },
-                     { id: 'ingredients', label: 'Raw Materials', icon: Box },
-                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList },
-                     { id: 'rentals', label: 'Rental Stock', icon: RotateCcw },
-                     { id: 'hardware', label: 'Asset Ledger', icon: Hammer },
-                     { id: 'fixtures', label: 'Fixtures', icon: Grid }
-                  ].map(tab => (
+                     { id: 'products', label: 'Offerings', icon: Utensils, active: isCatering },
+                     { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering },
+                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true },
+                     { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering },
+                     { id: 'hardware', label: 'Asset Ledger', icon: Hammer, active: true },
+                     { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true }
+                  ].filter(t => t.active).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
                   ))}
                </div>

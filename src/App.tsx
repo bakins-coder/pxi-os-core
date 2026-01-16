@@ -15,6 +15,7 @@ import { Inventory } from './components/Inventory';
 import { Catering } from './components/Catering';
 import { HR } from './components/HR';
 import { Settings } from './components/Settings';
+import { InvoicePrototype } from './components/InvoicePrototype';
 import { ProjectManagement } from './components/ProjectManagement';
 import { AgentHub } from './components/AgentHub';
 import { SuperAdmin } from './components/SuperAdmin';
@@ -251,6 +252,7 @@ function AppContent() {
         <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER]}><Settings /></ProtectedRoute>} />
         <Route path="/customer-portal" element={<CustomerPortal />} />
         <Route path="/brochure" element={<PublicBrochure />} />
+        <Route path="/invoice-prototype" element={<InvoicePrototype />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

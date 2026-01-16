@@ -111,9 +111,14 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
         {NAV_ITEMS.filter(i => {
           if (!i.allowedRoles.includes(userRole)) return false;
-          if (i.allowedIndustries && !i.allowedIndustries.includes(settings.type as any)) return false;
-          // Logic: If 'Catering' is required, only show if settings.type is 'Catering'. 
-          // Current implementation uses simple inclusion.
+
+          if (i.allowedIndustries) {
+            const industryMatch = i.allowedIndustries.includes(settings.type as any);
+            const moduleEnabled = i.label === 'Catering Ops' && settings.enabledModules?.includes('Catering');
+
+            if (!industryMatch && !moduleEnabled) return false;
+          }
+
           return true;
         }).map(item => {
           const isActive = currentPath === item.path;
