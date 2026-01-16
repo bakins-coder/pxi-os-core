@@ -1377,6 +1377,7 @@ export const useDataStore = create<DataState>()(
                                 image: imageUrl
                             };
                         }));
+                        console.log('Processed Reusable Items:', combinedInventory.filter(i => i.type === 'reusable').length);
                     }
 
                     // 3. Rental Items
@@ -1677,7 +1678,7 @@ export const useDataStore = create<DataState>()(
             }
         }),
         {
-            name: 'data-storage-v2',
+            name: 'data-storage-v3', // New storage key to force fresh hydration
             partialize: (state) => {
                 // Exclude circular references and non-serializable objects
                 const { realtimeChannel, ...rest } = state;
