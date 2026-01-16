@@ -44,7 +44,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     const [isBasketOpen, setIsBasketOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'details' | 'menu'>('details');
 
-    const standardCategories = ["Hors D'Oeuvre", "Starters", "Salads", "Nigerian Cuisine", "Oriental", "Continental", "Hot Plates", "Dessert"];
+    const standardCategories = ["Hors D'Oeuvres", "Starters", "Salads", "Nigerian Cuisine", "Oriental", "Continental", "Hot Plates", "Desserts"];
     const mandatoryLockCategories = ["Nigerian Cuisine", "Oriental", "Continental", "Hot Plates"];
     const [activeCategory, setActiveCategory] = useState("All");
 
