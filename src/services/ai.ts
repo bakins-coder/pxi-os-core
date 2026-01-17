@@ -224,12 +224,11 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
         return await fn();
     } catch (error: any) {
         if (retries > 0 && (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED'))) {
-            // Simplified Retry: Wait 4s, try once more, then fail.
-            // Aggressive backoff is not helping if quota is zero.
-            const delayMs = 4000;
-            console.warn(`[AI Service] Rate limit hit. Retrying in ${delayMs}ms... (${retries} attempts left)`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-            return callWithRetry(fn, retries - 1, delayMs);
+            // Exponential Backoff: 1s -> 2s -> 4s -> 8s (cap at 10s)
+            console.warn(`[AI Service] Rate limit hit. Retrying in ${delay}ms... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            const nextDelay = Math.min(delay * 2, 10000);
+            return callWithRetry(fn, retries - 1, nextDelay);
         }
         throw error;
     }
