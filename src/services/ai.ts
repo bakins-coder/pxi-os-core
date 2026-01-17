@@ -291,7 +291,9 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 name: `${e.firstName} ${e.lastName} `,
                 role: e.role,
                 status: e.status,
-                salary: `₦${(e.salaryCents / 100).toLocaleString()}`
+                salary: `₦${(e.salaryCents / 100).toLocaleString()}`,
+                dob: e.dob,
+                startDate: e.dateOfEmployment
             }))
         },
         menuSample: menuContext ? "Refer to System Prompt for full menu." : "No menu data available."
