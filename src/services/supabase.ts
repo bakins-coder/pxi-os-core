@@ -41,7 +41,13 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees'].includes(tableName);
 
   // Ensure data has the correct snake_case keys for the DB
-  const sanitizedData = data.map(item => {
+  const sanitizedData = data.filter(item => {
+    // STRICT FILTER: reusable_items should ONLY contain assets
+    if (tableName === 'reusable_items') {
+      return item.type === 'asset' || item.isAsset === true || item.is_asset === true;
+    }
+    return true;
+  }).map(item => {
     const newItem = { ...item };
 
     if (useOrgId) {
@@ -77,6 +83,14 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 
     // Ledger Reverse Mappings
     if ('balanceCents' in newItem) { newItem.balance_cents = newItem.balanceCents; delete newItem.balanceCents; }
+
+    // Employee Reverse Mappings
+    if ('firstName' in newItem) { newItem.first_name = newItem.firstName; delete newItem.firstName; }
+    if ('lastName' in newItem) { newItem.last_name = newItem.lastName; delete newItem.lastName; }
+    if ('phoneNumber' in newItem) { newItem.phone_number = newItem.phoneNumber; delete newItem.phoneNumber; }
+    if ('salaryCents' in newItem) { newItem.salary_cents = newItem.salaryCents; delete newItem.salaryCents; }
+    if ('healthNotes' in newItem) { newItem.health_notes = newItem.healthNotes; delete newItem.healthNotes; }
+    if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.dateOfEmployment; }
 
     return newItem;
   });
@@ -137,6 +151,14 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
     // Ledger Mappings
     if ('balance_cents' in newItem) { newItem.balanceCents = newItem.balance_cents; delete newItem.balance_cents; }
+
+    // Employee Mappings
+    if ('first_name' in newItem) { newItem.firstName = newItem.first_name; delete newItem.first_name; }
+    if ('last_name' in newItem) { newItem.lastName = newItem.last_name; delete newItem.last_name; }
+    if ('phone_number' in newItem) { newItem.phoneNumber = newItem.phone_number; delete newItem.phone_number; }
+    if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
+    if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
+    if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
 
     return newItem;
   });

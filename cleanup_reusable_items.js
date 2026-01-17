@@ -6,60 +6,61 @@ const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function cleanup() {
-    console.log('--- Cleaning Up Reusable Items ---');
+    console.log("Starting Cleanup...");
 
-    // 1. Fetch Products to identify Food
+    // 1. Fetch valid Product Names to identify pollution
     const { data: products } = await supabase.from('products').select('name');
-    const productNames = new Set(products.map(p => p.name.trim().toLowerCase()));
+    if (!products) {
+        console.error("Failed to fetch products");
+        return;
+    }
+    const productNames = new Set(products.map(p => p.name));
+    console.log(`Loaded ${productNames.size} product names.`);
 
     // 2. Fetch all Reusable Items
-    // Limit is 1000 by default, need loop or higher limit?
-    // Let's assume < 2000 for now.
-    const { data: allItems, error } = await supabase.from('reusable_items').select('id, name').range(0, 1999);
-    if (error) { console.error(error); return; }
+    const { data: reusables, error } = await supabase.from('reusable_items').select('id, name');
+    if (error) {
+        console.error("Failed to fetch reusables:", error);
+        return;
+    }
 
-    console.log(`Analyzing ${allItems.length} items...`);
+    const itemsToDelete = [];
+    const pollutionIds = [];
+    const knownNames = new Set();
+    const duplicateIds = [];
 
-    const idsToDelete = [];
-    const keptNames = new Set();
-    let foodCount = 0;
-    let duplicateCount = 0;
-
-    allItems.forEach(item => {
-        const name = item.name.trim().toLowerCase();
-
-        // A. Is it Food? (In products list)
-        if (productNames.has(name)) {
-            idsToDelete.push(item.id);
-            foodCount++;
-            return; // Deleted
+    // 3. Identify Pollution and Duplicates
+    for (const item of reusables) {
+        // Check Pollution
+        if (productNames.has(item.name)) {
+            pollutionIds.push(item.id);
+            continue; // Don't check duplicates for pollution, just nuke it
         }
 
-        // B. Is it a Duplicate?
-        if (keptNames.has(name)) {
-            idsToDelete.push(item.id);
-            duplicateCount++;
+        // Check Duplicates (Keep First)
+        if (knownNames.has(item.name)) {
+            duplicateIds.push(item.id);
         } else {
-            keptNames.add(name); // Keep this one
+            knownNames.add(item.name);
         }
-    });
+    }
 
-    console.log(`Found ${foodCount} Food Items to remove.`);
-    console.log(`Found ${duplicateCount} Duplicates to remove.`);
-    console.log(`Total to Delete: ${idsToDelete.length}`);
-    console.log(`Remaining Unique Reusables: ${keptNames.size}`);
+    // 4. Execute Deletion
+    const totalToDelete = [...pollutionIds, ...duplicateIds];
 
-    // 3. Execute Deletion
-    if (idsToDelete.length > 0) {
-        // Chunk deletion to avoid URL length limits
-        const chunkSize = 100;
-        for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-            const chunk = idsToDelete.slice(i, i + chunkSize);
-            const { error: delError } = await supabase.from('reusable_items').delete().in('id', chunk);
-            if (delError) console.error('Delete Error:', delError);
-            else console.log(`Deleted chunk ${i / chunkSize + 1}`);
+    console.log(`Found ${pollutionIds.length} polluted items (food).`);
+    console.log(`Found ${duplicateIds.length} duplicate items.`);
+    console.log(`Total to delete: ${totalToDelete.length}`);
+
+    if (totalToDelete.length > 0) {
+        const { error } = await supabase.from('reusable_items').delete().in('id', totalToDelete);
+        if (error) {
+            console.error("Deletion failed:", error);
+        } else {
+            console.log("Cleanup SUCCESS. Deleted bad records.");
         }
-        console.log('Deletion Complete');
+    } else {
+        console.log("No items to clean.");
     }
 }
 
