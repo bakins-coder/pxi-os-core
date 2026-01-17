@@ -1,0 +1,31 @@
+npm warn Unknown project config "��s/�y��u�l��". This will stop working in the next major version of npm.
+src/components/Presentation.tsx(52,9): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/ProjectManagement.tsx(146,64): error TS2304: Cannot find name 'LayoutKanban'.
+src/components/TeamCommunication.tsx(174,10): error TS2304: Cannot find name 'addTask'.
+src/main.tsx(2,22): error TS7016: Could not find a declaration file for module 'react-dom/client'. 'C:/Users/akinb/pxi-os-core/node_modules/react-dom/client.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react-dom` if it exists or add a new declaration (.d.ts) file containing `declare module 'react-dom/client';`
+src/scripts/verify_user_flows.ts(2,30): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/scripts/verify_user_flows.ts(3,34): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/scripts/verify_user_flows.ts(4,30): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/scripts/verify_user_flows.ts(48,23): error TS2345: Argument of type '{ id: string; name: string; email: string; role: any; }' is not assignable to parameter of type 'User'.
+  Type '{ id: string; name: string; email: string; role: any; }' is missing the following properties from type 'User': avatar, companyId
+src/test/setup.ts(13,12): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(13,39): error TS7006: Parameter 'query' implicitly has an 'any' type.
+src/test/setup.ts(17,22): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(18,25): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(19,27): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(20,30): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(21,24): error TS2304: Cannot find name 'vi'.
+src/test/setup.ts(26,1): error TS2322: Type 'typeof IntersectionObserver' is not assignable to type '{ new (callback: IntersectionObserverCallback, options?: IntersectionObserverInit | undefined): IntersectionObserver; prototype: IntersectionObserver; }'.
+  Types of property 'prototype' are incompatible.
+    Type 'IntersectionObserver' is missing the following properties from type 'IntersectionObserver': root, rootMargin, thresholds
+supabase/functions/create-workspace/index.ts(39,1): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-workspace/index.ts(52,47): error TS2307: Cannot find module 'npm:@supabase/supabase-js@2.45.4' or its corresponding type declarations.
+supabase/functions/create-workspace/index.ts(53,29): error TS2304: Cannot find name 'Deno'.
+supabase/functions/create-workspace/index.ts(54,30): error TS2304: Cannot find name 'Deno'.
+vite.config.ts(2,19): error TS2307: Cannot find module '@vitejs/plugin-react' or its corresponding type declarations.
+  There are types at 'C:/Users/akinb/pxi-os-core/node_modules/@vitejs/plugin-react/dist/index.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+vite.config.ts(7,14): error TS7006: Parameter '_' implicitly has an 'any' type.
+vite.config.ts(7,17): error TS7006: Parameter 'env' implicitly has an 'any' type.
+vitest.config.ts(2,19): error TS2307: Cannot find module '@vitejs/plugin-react' or its corresponding type declarations.
+  There are types at 'C:/Users/akinb/pxi-os-core/node_modules/@vitejs/plugin-react/dist/index.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.

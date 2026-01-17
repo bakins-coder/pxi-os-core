@@ -65,7 +65,7 @@ interface DataState {
     reconcileMatch: (lineId: string, accountId: string) => void;
 
     // HR Actions
-    addEmployee: (emp: Partial<Employee>) => Employee;
+    addEmployee: (emp: Partial<Employee>) => Promise<Employee>;
     updateEmployee: (id: string, updates: Partial<Employee>) => void;
     applyForLeave: (req: Partial<LeaveRequest>) => LeaveRequest;
     approveLeave: (id: string) => void;
@@ -578,14 +578,17 @@ export const useDataStore = create<DataState>()(
                 bankStatementLines: state.bankStatementLines.map(l => l.id === lineId ? { ...l, isMatched: true } : l)
             })),
 
-            addEmployee: (emp) => {
+            addEmployee: async (emp) => {
                 const user = useAuthStore.getState().user;
                 console.log('[HR Debug] Current User:', user);
 
+                if (!supabase) throw new Error("Database connection unavailable");
+
                 const newEmp = {
                     ...emp,
-                    id: emp.id || `emp-${Date.now()}`,
-                    companyId: user?.companyId || emp.companyId, // Dynamic Company ID
+                    id: emp.id || crypto.randomUUID(),
+                    // Ensure we use the correct column logic for the DB payload, but local model uses camelCase
+                    companyId: user?.companyId || emp.companyId,
                     status: (emp.status as any) || 'Active',
                     kpis: emp.kpis || [],
                     avatar: emp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName}`
@@ -593,8 +596,40 @@ export const useDataStore = create<DataState>()(
 
                 console.log('[HR Debug] New Employee Payload:', newEmp);
 
+                // EXPLICIT DB INSERTION FOR VERIFICATION
+                // We construct the DB payload manually to match the schema we just fixed
+                const dbPayload = {
+                    id: newEmp.id,
+                    organization_id: newEmp.companyId, // mapped from companyId
+                    first_name: newEmp.firstName,
+                    last_name: newEmp.lastName,
+                    email: newEmp.email,
+                    role: newEmp.role,
+                    status: newEmp.status,
+                    phone_number: newEmp.phoneNumber,
+                    salary_cents: newEmp.salaryCents,
+                    date_of_employment: newEmp.dateOfEmployment,
+                    dob: newEmp.dob,
+                    gender: newEmp.gender,
+                    address: newEmp.address,
+                    kpis: newEmp.kpis,
+                    avatar: newEmp.avatar,
+                    health_notes: newEmp.healthNotes
+                };
+
+                const { error } = await supabase.from('employees').insert([dbPayload]);
+
+                if (error) {
+                    console.error("DB Insert Failed:", error);
+                    throw new Error(`Database Error: ${error.message}`);
+                }
+
+                // If successful, update local state
                 set((state) => ({ employees: [newEmp, ...state.employees] }));
+
+                // Trigger full sync just in case, but we know this one is done
                 get().syncWithCloud();
+
                 return newEmp;
             },
             updateEmployee: (id, updates) => {

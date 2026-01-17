@@ -31,7 +31,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           charts: ['recharts'],
-          utils: ['xlsx', '@google/genai']
+          utils: ['xlsx', '@google/generative-ai']
         }
       }
     }

@@ -34,7 +34,7 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
         try {
             const model = ai.getGenerativeModel({
                 model: 'gemini-3-flash-preview',
-                tools: [{ googleSearch: {} }]
+                tools: [{ googleSearch: {} } as any]
             });
 
             const result = await model.generateContent(`Determine current commercial wholesale price in NGN(Naira) for "${ing.name}" based on this specific query: "${ing.priceSourceQuery}".Focus on Lagos / Mile 12 or Major markets.Provide a brief 1 - sentence summary.Return the price as a number in NAIRA per UNIT specified in the query.`);
@@ -60,7 +60,7 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
     try {
         const model = ai.getGenerativeModel({
             model: 'gemini-3-flash-preview',
-            tools: [{ googleSearch: {} }],
+            tools: [{ googleSearch: {} } as any],
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -106,7 +106,7 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
         model: 'gemini-3-flash-preview',
-        tools: [{ googleSearch: {} }]
+        tools: [{ googleSearch: {} } as any]
     });
 
     const result = await model.generateContent(`Determine current commercial wholesale price in NGN(Naira) for "${itemName}" in major Nigerian food markets(e.g.Mile 12, Lagos, or Abuja Wuse).Provide a brief summary of current trends.Return the market price(as a number representing Naira) and a summary.`);
@@ -318,7 +318,13 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 2. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
                 3. If Action, extract payload.
                 4. If Query, answer it using the provided "Data Access".
-                5. BREVITY RULE: Keep response to 2-3 sentences.
+                5. **DATA COMPLETENESS & CLARIFICATION**: 
+                   - Mandatory: Name, Role. If missing, you MUST ask for them (return 'GENERAL_QUERY').
+                   - Recommended: Date of Birth, Address, Phone, Start Date.
+                   - **Behavior**: If the user provides the Mandatory fields but misses Recommended ones, return 'GENERAL_QUERY' and ask: "I have the name and role. To complete the profile, could you also provide their DOB, Address, and Phone number?" 
+                   - **Exception**: If the user says "That's all" or "Skip details", ONLY THEN return the 'ADD_EMPLOYEE' intent with the data you have.
+                6. **ANTI-HALLUCINATION RULE**: You CANNOT update the database yourself. You can ONLY trigger an update by returning the correct 'intent' and 'payload'. NEVER say "I have recorded this" or "Profile created" in your text response unless you are returning an Action Intent. If you return 'GENERAL_QUERY', do NOT say you performed an action.
+                7. BREVITY RULE: Keep response to 2-3 sentences.
                 
                 Return JSON:
                 {
@@ -349,7 +355,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
                         type: SchemaType.OBJECT,
                         properties: {
                             response: { type: SchemaType.STRING },
-                            intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] },
+                            intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] } as any,
                             payload: {
                                 type: SchemaType.OBJECT,
                                 properties: {
@@ -358,6 +364,14 @@ export async function processAgentRequest(input: string, context: string, mode: 
                                     lastName: { type: SchemaType.STRING },
                                     role: { type: SchemaType.STRING },
                                     email: { type: SchemaType.STRING },
+                                    phone: { type: SchemaType.STRING },
+                                    dob: { type: SchemaType.STRING },
+                                    gender: { type: SchemaType.STRING },
+                                    address: { type: SchemaType.STRING },
+                                    dateOfEmployment: { type: SchemaType.STRING },
+                                    healthNotes: { type: SchemaType.STRING },
+                                    stats: { type: SchemaType.STRING },
+
                                     // Inventory Fields
                                     itemName: { type: SchemaType.STRING },
                                     quantity: { type: SchemaType.NUMBER },
@@ -409,23 +423,58 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     const currentUser = useAuthStore.getState().user;
     const userRole = currentUser?.role || 'Guest';
 
-    const operationalContext = JSON.stringify({
-        events: dataStore.cateringEvents.map(e => ({
-            customer: e.customerName,
-            revenue: e.financials.revenueCents,
-            grossMargin: e.costingSheet?.aggregateGrossMarginPercentage
-        })).slice(0, 3),
+    // --- Comprehensive Data Aggregation ---
+    const { InvoiceStatus } = await import('../types');
+
+    const companyData = {
+        // 1. Financial Heartbeat
+        finance: {
+            bankBalance: dataStore.bankTransactions.reduce((sum, t) => sum + t.amountCents, 0) / 100, // Simple aggregate
+            chartOfAccounts: dataStore.chartOfAccounts.map(c => `${c.code} - ${c.name} (${c.type})`).join(', '),
+            unpaidInvoices: dataStore.invoices.filter(i => i.status !== InvoiceStatus.PAID).length,
+            outstandingRevenue: dataStore.invoices.filter(i => i.status !== InvoiceStatus.PAID).reduce((s, i) => s + i.totalCents, 0) / 100,
+            recentTransactions: dataStore.bankTransactions.slice(0, 5).map(t => `${t.date}: ${t.description} (${t.amountCents / 100})`)
+        },
+        // 2. Operational Inventory & Assets
+        assets: {
+            totalItems: dataStore.inventory.length,
+            lowStock: dataStore.inventory.filter(i => i.stockQuantity < 5).map(i => i.name),
+            equipment: dataStore.inventory.filter(i => i.isAsset).map(i => `${i.name} (Qty: ${i.stockQuantity})`)
+        },
+        // 3. CRM (Customers & Suppliers)
+        crm: {
+            totalContacts: dataStore.contacts.length,
+            suppliers: dataStore.contacts.filter(c => c.category === 'Supplier').map(c => c.name),
+            recentClients: dataStore.cateringEvents.slice(0, 5).map(e => e.customerName)
+        },
+        // 4. Personnel (Enhanced)
         personnel: {
-            totalStaff: dataStore.employees.length,
-            departmentRoles: workforceSummary,
-            staffDirectory: dataStore.employees.map(e => ({
-                name: `${e.firstName} ${e.lastName} `,
+            headcount: dataStore.employees.length,
+            roles: workforceSummary,
+            directory: dataStore.employees.map(e => ({
+                name: `${e.firstName} ${e.lastName}`,
                 role: e.role,
-                status: e.status
+                status: e.status,
+                joined: e.dateOfEmployment,
+                phone: e.phoneNumber
             }))
         },
-        menuSample: menuContext ? "Refer to System Prompt for full menu." : "No menu data available."
-    });
+        // 5. Taxation & Compliance (Computed)
+        taxation: {
+            taxPayableEstimate: (dataStore.invoices.reduce((s, i) => s + i.totalCents, 0) * 0.075) / 100, // 7.5% VAT estimate
+            filingStatus: "Pending (Advisory)"
+        },
+        // 6. Active Events
+        operations: dataStore.cateringEvents.map(e => ({
+            id: e.id,
+            client: e.customerName,
+            date: e.eventDate,
+            revenue: e.financials.revenueCents / 100,
+            status: e.status
+        })).slice(0, 5)
+    };
+
+    const operationalContext = JSON.stringify(companyData, null, 2);
 
     const systemPrompt = `
     Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
@@ -555,13 +604,10 @@ export async function textToSpeech(text: string): Promise<string> {
             model: "gemini-2.5-flash-preview-tts",
         });
 
-        // Note: New SDK specific TTS handling might differ, but assuming generateContent returns audio part
-        const result = await model.generateContent({
-            contents: [{ parts: [{ text: `Please speak: ${text}` }] }],
-            generationConfig: {
-                responseMimeType: "audio/mp3"
-            }
-        });
+        // Note: New SDK specific TTS handling calls generateContent with parts
+        const result = await model.generateContent([
+            { text: `Please speak: ${text}` }
+        ]);
         const response = await result.response;
         const inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
         return inlineData ? `data:${inlineData.mimeType};base64,${inlineData.data}` : "";
@@ -587,10 +633,9 @@ export async function getAIResponseForAudio(base64Audio: string, mimeType: strin
 export async function getFormGuidance(formName: string, fieldName: string, value: string, fullContext: any): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { tip: "AI Guidance Disabled", status: "Neutral" };
     const ai = getAIInstance();
-    const response = await ai.models.generateContent({
+    const model = ai.getGenerativeModel({
         model: 'gemini-3-flash-preview',
-        contents: `Guidance for ${formName} field ${fieldName}.`,
-        config: {
+        generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -601,7 +646,10 @@ export async function getFormGuidance(formName: string, fieldName: string, value
             }
         }
     });
-    const result = JSON.parse(response.text || "{}");
+
+    const result = await model.generateContent(`Guidance for ${formName} field ${fieldName}.`);
+    const response = await result.response;
+    const resultData = JSON.parse(response.text() || "{}");
 
     // LOGGING
     useDataStore.getState().addAgenticLog({
@@ -612,7 +660,7 @@ export async function getFormGuidance(formName: string, fieldName: string, value
         confidence: 0.9
     });
 
-    return result;
+    return resultData;
 }
 
 export async function runBankingChat(history: any[], message: string): Promise<string> {
@@ -745,7 +793,7 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
             responseSchema: {
                 type: SchemaType.OBJECT,
                 properties: {
-                    type: { type: SchemaType.STRING, enum: ['Inflow', 'Outflow'] },
+                    type: { type: SchemaType.STRING, enum: ['Inflow', 'Outflow'] } as any,
                     amountCents: { type: SchemaType.NUMBER },
                     description: { type: SchemaType.STRING },
                     date: { type: SchemaType.STRING },

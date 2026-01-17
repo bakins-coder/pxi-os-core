@@ -171,7 +171,7 @@ export const TeamCommunication = () => {
 
    const syncTasks = (tasks: any[]) => {
       tasks.forEach(t => {
-         addTask({
+         addMeetingTask({
             title: `[MEETING] ${t.title}`,
             description: 'Automatically extracted from meeting discussion.',
             priority: t.priority,

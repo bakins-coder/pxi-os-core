@@ -45,10 +45,6 @@ const slides = [
         title: "Enter PXI-OS",
         subtitle: "The AI-Native Solution",
         content: "A unified, intelligent operating system designed to bring order to chaos. Real-time. Agentic. Future-ready.",
-        image: chaosImg, // Re-using chaos temporarily? NO, Wait! I need titleImg.
-        // I made a mistake in previous code, let me fix it in THIS block.
-        // Wait, chaosImg is WRONG for 'Enter PXI-OS'. I must use titleImg.
-        // Correcting below:
         image: titleImg,
         icon: <Disc size={64} className="text-[#00ff9d]" />,
         color: "from-emerald-500/20"

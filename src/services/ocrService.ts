@@ -1,8 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useDataStore } from "../store/useDataStore";
 
-// Initialize AI instance (reusing the same API key logic)
-const getAIInstance = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Initialize AI instance
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
 
 export interface ExtractedInventoryItem {
     name: string;
@@ -32,35 +32,33 @@ async function processDocument<T>(
     prompt: string,
     responseSchema?: any
 ): Promise<T> {
-    const ai = getAIInstance();
 
     // Remove data URL prefix if present for the API call
     const base64Data = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
 
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: [
-                {
-                    role: 'user',
-                    parts: [
-                        { text: prompt },
-                        {
-                            inlineData: {
-                                mimeType: 'image/jpeg',
-                                data: base64Data
-                            }
-                        }
-                    ]
-                }
-            ],
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
-            }
-        });
+    // Choose model
+    const model = genAI.getGenerativeModel({
+        model: "gemini-3-flash-preview",
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: responseSchema
+        }
+    });
 
-        const text = typeof response.text === 'function' ? response.text() : response.text;
+    try {
+        const result = await model.generateContent([
+            { text: prompt },
+            {
+                inlineData: {
+                    mimeType: "image/jpeg",
+                    data: base64Data
+                }
+            }
+        ]);
+
+        const response = await result.response;
+        const text = response.text();
+
         if (!text) throw new Error("No response from AI");
 
         return JSON.parse(text) as T;
@@ -83,15 +81,15 @@ export async function parseInventoryList(base64Image: string): Promise<Extracted
   `;
 
     const schema = {
-        type: "ARRAY",
+        type: SchemaType.ARRAY,
         items: {
-            type: "OBJECT",
+            type: SchemaType.OBJECT,
             properties: {
-                name: { type: "STRING" },
-                quantity: { type: "NUMBER" },
-                unit: { type: "STRING" },
-                category: { type: "STRING" },
-                confidence: { type: "NUMBER" },
+                name: { type: SchemaType.STRING },
+                quantity: { type: SchemaType.NUMBER },
+                unit: { type: SchemaType.STRING },
+                category: { type: SchemaType.STRING },
+                confidence: { type: SchemaType.NUMBER },
             },
             required: ["name", "quantity", "unit", "category", "confidence"],
         },
@@ -111,19 +109,19 @@ export async function parseReceipt(base64Image: string): Promise<ExtractedReceip
   `;
 
     const schema = {
-        type: "OBJECT",
+        type: SchemaType.OBJECT,
         properties: {
-            merchantName: { type: "STRING" },
-            date: { type: "STRING" },
-            totalAmount: { type: "NUMBER" },
-            currency: { type: "STRING" },
+            merchantName: { type: SchemaType.STRING },
+            date: { type: SchemaType.STRING },
+            totalAmount: { type: SchemaType.NUMBER },
+            currency: { type: SchemaType.STRING },
             items: {
-                type: "ARRAY",
+                type: SchemaType.ARRAY,
                 items: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        description: { type: "STRING" },
-                        amount: { type: "NUMBER" }
+                        description: { type: SchemaType.STRING },
+                        amount: { type: SchemaType.NUMBER }
                     }
                 }
             }

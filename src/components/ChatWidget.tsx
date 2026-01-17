@@ -150,6 +150,31 @@ export const ChatWidget = () => {
     }
   };
 
+  const speakResponse = async (text: string) => {
+    try {
+      // 1. Try AI TTS first
+      const aiAudioBase64 = await textToSpeech(text);
+      if (aiAudioBase64) {
+        await playRawPcm(aiAudioBase64);
+        return true;
+      }
+
+      // 2. Fallback to Browser Native TTS
+      console.log("AI TTS failed or empty, falling back to browser speech.");
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        // Optional: details to make it sound better
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+        return true;
+      }
+    } catch (e) {
+      console.error("Speech Generation Failed:", e);
+    }
+    return false;
+  };
+
   const handleSend = async () => {
     if (!input.trim() && !attachment) return;
 
@@ -252,44 +277,59 @@ export const ChatWidget = () => {
       const response = await processAgentRequest(payload, "Global Floating Chat", mode as any);
 
       // Handle Agentic Action
-      if (response.intent && response.intent !== 'GENERAL_QUERY') {
+      // Handle Agentic Action
+      if (response.intent) {
         const { intent, payload } = response;
         if (intent === 'ADD_EMPLOYEE') {
           const { EmployeeStatus } = await import('../types');
-          useDataStore.getState().addEmployee({
-            firstName: payload.firstName || 'Unknown',
-            lastName: payload.lastName || 'Staff',
-            email: payload.email || `staff-${Date.now()}@xquisite.com`,
-            role: payload.role || 'Employee',
-            salaryCents: 0,
-            status: EmployeeStatus.ACTIVE,
-            companyId: 'org-xquisite',
-            dob: new Date().toISOString(),
-            gender: 'Male',
-            dateOfEmployment: new Date().toISOString(),
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
-            kpis: []
-          });
-          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.firstName} ${payload.lastName} as ${payload.role}.`, sender: 'bot' }]);
+          // Validate Payload
+          if (!payload.firstName || !payload.role) {
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: "I need a bit more info. What is the staff member's name and role?", sender: 'bot' }]);
+          } else {
+            try {
+              await useDataStore.getState().addEmployee({
+                firstName: payload.firstName || 'Unknown',
+                lastName: payload.lastName || 'Staff',
+                email: payload.email || `ai-gen-${Date.now()}@xquisite.com`,
+                role: payload.role || 'Employee',
+                salaryCents: 0,
+                status: EmployeeStatus.ACTIVE,
+                companyId: 'org-xquisite',
+                dob: payload.dob || new Date().toISOString(),
+                gender: payload.gender as any || 'Male',
+                dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
+                address: payload.address || '',
+                healthNotes: payload.healthNotes || '',
+                phoneNumber: payload.phone || '',
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
+                kpis: []
+              });
+              updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: I've verified that ${payload.firstName} ${payload.lastName} was saved to the database as ${payload.role}.`, sender: 'bot' }]);
+            } catch (err) {
+              console.error("Agent Action Failed:", err);
+              updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Database Error: I tried to add ${payload.firstName}, but the database rejected it. Reason: ${(err as Error).message}`, sender: 'bot' }]);
+            }
+          }
         } else if (intent === 'ADD_INVENTORY') {
-          useDataStore.getState().addInventoryItem({
-            name: payload.itemName,
-            stockQuantity: payload.quantity,
-            // unit: payload.unit || 'units', // REMOVED: Not in InventoryItem type
-            category: payload.category || 'General',
-            type: 'raw_material',
-            priceCents: 0,
-            companyId: 'org-xquisite',
-            id: `inv-${Date.now()}`
-          });
-          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.quantity} ${payload.itemName} to inventory.`, sender: 'bot' }]);
+          if (!payload.itemName || !payload.quantity) {
+            useDataStore.getState().addInventoryItem({
+              name: payload.itemName,
+              stockQuantity: payload.quantity,
+              category: payload.category || 'General',
+              type: 'raw_material',
+              priceCents: 0,
+              companyId: 'org-xquisite',
+              id: `inv-${Date.now()}`
+            });
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.quantity} ${payload.itemName} to inventory.`, sender: 'bot' }]);
+          }
+        } else {
+          // Standard Response
+          const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
+          updateSessionMessages(sessionId, [...currentMessages, botMsg]);
         }
-      } else {
-        // Standard Response
-        const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
-        updateSessionMessages(sessionId, [...currentMessages, botMsg]);
-      }
 
+      }
     } catch (error: any) {
       console.error("AI Error:", error);
       let errorMessage = "Connection error.";
@@ -354,22 +394,45 @@ export const ChatWidget = () => {
           const { intent, payload } = response;
           if (intent === 'ADD_EMPLOYEE') {
             const { EmployeeStatus } = await import('../types');
-            useDataStore.getState().addEmployee({
-              firstName: payload.firstName || 'Unknown',
-              lastName: payload.lastName || 'Staff',
-              email: payload.email || `voice-add-${Date.now()}@xquisite.com`,
-              role: payload.role || 'Employee',
-              salaryCents: 0,
-              status: EmployeeStatus.ACTIVE,
-              companyId: 'org-xquisite',
-              dob: new Date().toISOString(),
-              gender: 'Male',
-              dateOfEmployment: new Date().toISOString(),
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
-              kpis: []
-            });
-            replyText = `✅ Voice Action: Added ${payload.firstName} ${payload.lastName} as ${payload.role}.`;
+            if (!payload.firstName || !payload.role) {
+              // Return query style response for voice?
+              // For voice, we update message list but also speak.
+              const msg = "I didn't quite catch the name or role. Could you repeat that?";
+              updateSessionMessages(currentSessionId, [...updatedMessages, { id: Date.now().toString(), text: msg, sender: 'bot', hasAudio: true }]);
+
+              await speakResponse(msg);
+              return;
+            }
+
+            try {
+              await useDataStore.getState().addEmployee({
+                firstName: payload.firstName || 'Unknown',
+                lastName: payload.lastName || 'Staff',
+                email: payload.email || `voice-add-${Date.now()}@xquisite.com`,
+                role: payload.role || 'Employee',
+                salaryCents: 0,
+                status: EmployeeStatus.ACTIVE,
+                companyId: 'org-xquisite',
+                dob: payload.dob || new Date().toISOString(),
+                gender: payload.gender as any || 'Male',
+                dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
+                address: payload.address || '',
+                healthNotes: payload.healthNotes || '',
+                phoneNumber: payload.phone || '',
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
+                kpis: []
+              });
+              replyText = `✅ Voice Action: Verified! successfully added ${payload.firstName} ${payload.lastName} to the database as ${payload.role}.`;
+            } catch (err) {
+              console.error("Agent Action Failed:", err);
+              replyText = `❌ Error: I couldn't save ${payload.firstName} to the database. System reported: ${(err as Error).message}`;
+            }
           } else if (intent === 'ADD_INVENTORY') {
+            // Validate Payload
+            if (!payload.itemName || !payload.quantity) {
+              updateSessionMessages(currentSessionId, [...updatedMessages, { id: Date.now().toString(), text: "Please specify the item name and quantity you want to add.", sender: 'bot' }]);
+              return;
+            }
             useDataStore.getState().addInventoryItem({
               name: payload.itemName,
               stockQuantity: payload.quantity,
@@ -383,21 +446,20 @@ export const ChatWidget = () => {
           }
         }
 
-        const aiAudioBase64 = await textToSpeech(replyText);
+        // Trigger Voice Response (AI or Fallback)
+        const didSpeak = await speakResponse(replyText);
 
         const botMsg: Message = {
           id: (Date.now() + 1).toString(),
           text: replyText,
           sender: 'bot',
-          hasAudio: !!aiAudioBase64
+          hasAudio: didSpeak
         };
 
         updateSessionMessages(currentSessionId, [...updatedMessages, botMsg]);
 
-        if (aiAudioBase64) {
-          playRawPcm(aiAudioBase64);
-        }
       } catch (e) {
+        console.error("Voice Processing Error:", e);
         updateSessionMessages(currentSessionId, [...updatedMessages, { id: Date.now().toString(), text: "Neural decoding error.", sender: 'bot' }]);
       } finally {
         setIsTyping(false);

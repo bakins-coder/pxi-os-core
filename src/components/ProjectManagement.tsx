@@ -143,7 +143,7 @@ export const ProjectManagement = () => {
                {selectedProject ? (
                   <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
                      {[
-                        { id: 'kanban', label: 'Kanban', icon: LayoutKanban },
+                        { id: 'kanban', label: 'Kanban', icon: Columns },
                         { id: 'gantt', label: 'Timeline', icon: CalendarRange }
                      ].map(tab => (
                         <button

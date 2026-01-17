@@ -492,6 +492,10 @@ export interface AgenticLog {
   details: string;
   sentiment: 'Positive' | 'Negative' | 'Neutral';
   confidence: number;
+  outcome?: string;
+  intent?: string;
+  policyApplied?: string;
+  reasoning?: string;
 }
 
 export interface PerformanceMetric {
