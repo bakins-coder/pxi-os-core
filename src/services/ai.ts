@@ -33,7 +33,7 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
         if (!ing.priceSourceQuery) continue;
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-1.5-flash-001',
                 tools: [{ googleSearch: {} } as any]
             });
 
@@ -59,7 +59,7 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
 
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-1.5-flash-001',
             tools: [{ googleSearch: {} } as any],
             generationConfig: {
                 responseMimeType: "application/json",
@@ -105,7 +105,7 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     if (useSettingsStore.getState().strictMode) return { marketPriceCents: 0, groundedSummary: "Strict Mode Enabled", sources: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         tools: [{ googleSearch: {} } as any]
     });
 
@@ -128,7 +128,7 @@ export async function runInventoryReconciliation(event: CateringEvent): Promise<
     const payload = JSON.stringify(event.hardwareChecklist);
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -162,7 +162,7 @@ export async function extractInfoFromCV(base64Data: string, mimeType: string): P
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -192,7 +192,7 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -347,7 +347,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
             }
 
             const model = ai.getGenerativeModel({
-                model: 'gemini-1.5-flash', // Use 2.0 Flash for better stability/limits
+                model: 'gemini-1.5-flash-001', // Use 2.0 Flash for better stability/limits
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -399,7 +399,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 intent: 'GENERAL_QUERY'
             };
         }
-        return { response: "I'm having trouble connecting to the AI service.", intent: 'GENERAL_QUERY' };
+        return { response: `Connection Error: ${error.message || "Unknown Error"} (Status: ${error.status || "N/A"})`, intent: 'GENERAL_QUERY' };
     }
 }
 
@@ -520,7 +520,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     }
 
     const response = await callWithRetry(async () => {
-        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash-001' });
         const result = await model.generateContent(contents);
         const response = await result.response;
         return response.text();
@@ -532,7 +532,7 @@ export async function getCFOAdvice(): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { summary: "Services Offline (Strict Mode)", sentiment: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -568,7 +568,7 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
     try {
         const response = await callWithRetry(async () => {
             const model = ai.getGenerativeModel({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-1.5-flash-001',
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -631,7 +631,7 @@ export async function getAIResponseForAudio(base64Audio: string, mimeType: strin
     if (useSettingsStore.getState().strictMode) return "Strict Mode Enabled";
     const ai = getAIInstance();
 
-    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash-001' });
     const result = await model.generateContent([
         { inlineData: { data: base64Audio, mimeType } },
         { text: "Respond to this query. ALWAYS use Markdown formatting in your response." }
@@ -644,7 +644,7 @@ export async function getFormGuidance(formName: string, fieldName: string, value
     if (useSettingsStore.getState().strictMode) return { tip: "AI Guidance Disabled", status: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -677,7 +677,7 @@ export async function runBankingChat(history: any[], message: string): Promise<s
     if (useSettingsStore.getState().strictMode) return "Banking Assistant is currently offline due to Strict Mode.";
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         systemInstruction: "Financial assistant for Xquisite portal. ALWAYS use Markdown for structure."
     });
 
@@ -697,7 +697,7 @@ export async function suggestCOAForTransaction(description: string, coa: any[]):
     const accountsContext = coa.map(a => `${a.id}: ${a.name} (${a.type}/${a.subtype})`).join('\n');
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -726,7 +726,7 @@ export async function processMeetingAudio(base64Audio: string, mimeType: string)
     if (useSettingsStore.getState().strictMode) return { summary: "Strict Mode Enabled", decisions: [], tasks: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -784,7 +784,7 @@ export async function executeAgentWorkflow(workflowId: string, agentName: string
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -797,7 +797,7 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
     if (useSettingsStore.getState().strictMode) return { type: 'Outflow', amountCents: 0, description: 'Strict Mode', date: new Date().toISOString().split('T')[0], merchant: '' };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-001',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
