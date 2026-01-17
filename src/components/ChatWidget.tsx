@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff, Paperclip, Image as ImageIcon, FileText, Plus, History, Trash2, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import mammoth from 'mammoth';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useDataStore } from '../store/useDataStore';
 import { generateAIResponse, getAIResponseForAudio, textToSpeech, processAgentRequest } from '../services/ai';
@@ -45,7 +46,15 @@ export const ChatWidget = () => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [attachment, setAttachment] = useState<{ file: File; preview: string } | null>(null);
+
+  // Updated attachment state to support docs
+  const [attachment, setAttachment] = useState<{
+    file: File;
+    preview: string;
+    textContent?: string;
+    type?: 'image' | 'pdf' | 'document'
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -145,7 +154,17 @@ export const ChatWidget = () => {
     if (!input.trim() && !attachment) return;
 
     const currentSessionId = activeSessionId;
-    const userMsg: Message = { id: Date.now().toString(), text: input, sender: 'user' };
+
+    // Construct display text for user message
+    const displayText = attachment?.textContent
+      ? `${input}\n\n[Attached Document: ${attachment.file.name}]`
+      : input;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: displayText || (attachment ? `Sent an attachment: ${attachment.file.name}` : ''),
+      sender: 'user'
+    };
 
     // Optimistic update
     const updatedMessages = [...messages, userMsg];
@@ -157,20 +176,30 @@ export const ChatWidget = () => {
     let aiAttachment = undefined;
 
     if (attachment) {
-      const reader = new FileReader();
-      reader.readAsDataURL(attachment.file);
-      reader.onloadend = async () => {
-        const base64String = (reader.result as string).split(',')[1];
-        aiAttachment = {
-          base64: base64String,
-          mimeType: attachment.file.type
-        };
-        // Clear attachment state
+      if (attachment.type === 'document' && attachment.textContent) {
+        // Pass document content as text context
+        aiInput = `${input}\n\n--- Start of Document Content (${attachment.file.name}) ---\n${attachment.textContent}\n--- End of Document Content ---`;
+        // Clear attachment immediately as it's consumed as text
         setAttachment(null);
-        processAIRequest(currentSessionId, updatedMessages, aiInput, aiAttachment);
-      };
-      setInput('');
-      return;
+        setInput('');
+        processAIRequest(currentSessionId, updatedMessages, aiInput);
+        return;
+      } else {
+        // Image or PDF (Binary)
+        const reader = new FileReader();
+        reader.readAsDataURL(attachment.file);
+        reader.onloadend = async () => {
+          const base64String = (reader.result as string).split(',')[1];
+          aiAttachment = {
+            base64: base64String,
+            mimeType: attachment.file.type
+          };
+          setAttachment(null);
+          processAIRequest(currentSessionId, updatedMessages, aiInput, aiAttachment);
+        };
+        setInput('');
+        return;
+      }
     }
 
     setInput('');
@@ -179,7 +208,48 @@ export const ChatWidget = () => {
 
   const processAIRequest = async (sessionId: string, currentMessages: Message[], text: string, attach?: { base64: string, mimeType: string }) => {
     try {
-      const response = await processAgentRequest(text, "Global Floating Chat", 'text');
+      // If we have text context from a document, it's passed in 'text'
+      // If we have a binary attachment (img/pdf), it's in 'attach'
+
+      // Determine mode based on attachment
+      let mode = 'text';
+      let payload: any = text;
+
+      if (attach) {
+        // If binary attachment exists, we might need a different processor or just pass it
+        // For now, processAgentRequest expects (text, context, type) or (base64, context, type)
+        // We'll stick to 'text' primarily unless it's pure audio/image processing without text?
+        // Actually existing AI service is a bit fragmented. 
+        // Let's use generaAIResponse directly for complex cases if needed, 
+        // BUT processAgentRequest is the Agentic gateway.
+        // Let's assume processAgentRequest handles text + attachment if we modify it, 
+        // OR we just use `generateAIResponse` here for chat.
+
+        // Current architecture: processAgentRequest takes (input, context, type)
+        // If type is 'text', input is string.
+        // If type is 'image'/'audio', input is base64.
+
+        // We have both Text AND Attachment potentially.
+        // FIX: We will prioritize the Agentic Flow. 
+        // If we have an attachment, we probably want to describe it?
+
+        // TEMPORARY FIX: If attachment is present, use `generateAIResponse` directly to support multimodal 
+        // OR assume the user query is about the attachment.
+
+        // For now, let's keep it simple:
+        // If attachment is Image, we send base64. Text is ignored? No, that's bad.
+        // The current `processAgentRequest` is:
+        // export async function processAgentRequest(input: string, context: string, type: 'text' | 'voice' | 'image' | 'audio' = 'text')
+
+        if (attach.mimeType.startsWith('image/')) {
+          mode = 'image';
+          payload = attach.base64;
+          // We lose the 'text' input here if we just switch to image mode. 
+          // Ideally we pass both.
+        }
+      }
+
+      const response = await processAgentRequest(payload, "Global Floating Chat", mode as any);
 
       // Handle Agentic Action
       if (response.intent && response.intent !== 'GENERAL_QUERY') {
@@ -335,21 +405,47 @@ export const ChatWidget = () => {
     };
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File too large. Max 5MB.");
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File too large. Max 10MB.");
         return;
       }
-      const preview = URL.createObjectURL(file);
-      setAttachment({ file, preview });
+
+      let type: 'image' | 'pdf' | 'document' = 'image';
+      let textContent = undefined;
+      let preview = '';
+
+      if (file.name.endsWith('.docx')) {
+        type = 'document';
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          textContent = result.value;
+        } catch (e) {
+          console.error("Docx parse error", e);
+          alert("Could not read Word document.");
+          return;
+        }
+      } else if (file.type === 'text/plain' || file.name.endsWith('.md')) {
+        type = 'document';
+        textContent = await file.text();
+      } else if (file.type === 'application/pdf') {
+        type = 'pdf';
+        preview = URL.createObjectURL(file);
+      } else {
+        type = 'image';
+        preview = URL.createObjectURL(file);
+      }
+
+      setAttachment({ file, preview, textContent, type });
     }
   };
 
   const handleRemoveAttachment = () => {
     if (attachment) {
-      URL.revokeObjectURL(attachment.preview);
+      if (attachment.preview) URL.revokeObjectURL(attachment.preview);
       setAttachment(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -502,13 +598,14 @@ export const ChatWidget = () => {
             {attachment && (
               <div className="mb-3 flex items-start animate-in slide-in-from-bottom-2 fade-in duration-300">
                 <div className="relative group">
-                  {attachment.file.type.startsWith('image/') ? (
-                    <img src={attachment.preview} alt="Attachment" className="h-14 w-14 object-cover rounded-xl border border-slate-200 shadow-sm" />
-                  ) : (
-                    <div className="h-14 w-14 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
-                      <FileText size={20} className="text-slate-400" />
+                  {attachment.type === 'document' || attachment.type === 'pdf' ? (
+                    <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
+                      <FileText size={24} className="text-indigo-600" />
                     </div>
+                  ) : (
+                    <img src={attachment.preview} alt="Attachment" className="h-14 w-14 object-cover rounded-xl border border-slate-200 shadow-sm" />
                   )}
+
                   <button
                     onClick={handleRemoveAttachment}
                     className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform"
@@ -527,7 +624,7 @@ export const ChatWidget = () => {
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept="image/*,application/pdf"
+                accept="image/*,application/pdf,.docx,.txt,.md"
                 onChange={handleFileSelect}
               />
 
