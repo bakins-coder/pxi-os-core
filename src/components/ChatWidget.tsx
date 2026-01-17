@@ -155,15 +155,15 @@ export const ChatWidget = () => {
 
   const speakResponse = async (text: string) => {
     try {
-      // 1. Try AI TTS first
-      const aiAudioBase64 = await textToSpeech(text);
-      if (aiAudioBase64) {
-        await playRawPcm(aiAudioBase64);
-        return true;
-      }
+      // 1. SKIP AI TTS to save quota (User has strict 10 RPD limit on preview models)
+      // const aiAudioBase64 = await textToSpeech(text);
+      // if (aiAudioBase64) {
+      //   await playRawPcm(aiAudioBase64);
+      //   return true;
+      // }
 
-      // 2. Fallback to Browser Native TTS
-      console.log("AI TTS failed or empty, falling back to browser speech.");
+      // 2. Use Browser Native TTS directly
+      console.log("Using browser speech (Quota Optimization).");
       if ('speechSynthesis' in window) {
         // Cancel any pending speech to avoid queue buildups
         window.speechSynthesis.cancel();
