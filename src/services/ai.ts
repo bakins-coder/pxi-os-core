@@ -348,7 +348,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
             }
 
             const model = ai.getGenerativeModel({
-                model: 'gemini-3-flash-preview', // Fallback to 1.5-flash for agentic logic if preferred, or bump to 3-flash
+                model: 'gemini-2.0-flash-exp', // Use 2.0 Flash for better stability/limits
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -439,7 +439,18 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         assets: {
             totalItems: dataStore.inventory.length,
             lowStock: dataStore.inventory.filter(i => i.stockQuantity < 5).map(i => i.name),
-            equipment: dataStore.inventory.filter(i => i.isAsset).map(i => `${i.name} (Qty: ${i.stockQuantity})`)
+            equipment: dataStore.inventory.filter(i => i.isAsset).map(i => `${i.name} (Qty: ${i.stockQuantity})`),
+            // SMART CONTEXT: Group by Category (Filtered to exclude ingredients to save tokens)
+            inventorySummary: dataStore.inventory
+                .filter(i => i.type !== 'ingredient') // Remove ingredients to reduce payload size
+                .reduce((acc, item) => {
+                    const cat = item.category || 'General';
+                    if (!acc[cat]) acc[cat] = [];
+                    if (acc[cat].length < 20) { // Limit to 20 items per category
+                        acc[cat].push(`${item.name} (${item.stockQuantity})`);
+                    }
+                    return acc;
+                }, {} as Record<string, string[]>)
         },
         // 3. CRM (Customers & Suppliers)
         crm: {
