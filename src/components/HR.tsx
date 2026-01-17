@@ -444,7 +444,7 @@ export const HR = () => {
                <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl">
                   <div className="flex-1 w-full relative max-w-md">
                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                     <input className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-14 pr-6 py-4 text-[11px] md:text-xs font-black uppercase tracking-widest outline-none focus:border-indigo-500 transition-all" placeholder="Search roster..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                     <input className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-14 pr-6 py-4 text-[11px] md:text-xs font-black uppercase tracking-widest outline-none focus:border-indigo-500 transition-all text-slate-900" placeholder="Search roster..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                   </div>
                   <button onClick={() => { setEditingEmployee(undefined); setIsHireModalOpen(true); }} className="w-full md:w-auto bg-slate-950 text-white px-8 md:px-10 py-4 md:py-5 rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-xs flex items-center justify-center gap-3 transition-all active:scale-95 group shrink-0"><UserPlus size={18} className="text-[#00ff9d] group-hover:scale-110 transition-transform" /> Hire Staff</button>
                </div>
