@@ -11,6 +11,7 @@ export enum Role {
   CUSTOMER = 'Customer',
   HEAD_CHEF = 'Head Chef',
   CHEF = 'Chef',
+  COOK = 'Cook',
   KITCHEN_MANAGER = 'Kitchen Manager',
   PROCUREMENT = 'Procurement Officer',
   LOGISTICS = 'Logistics Manager',
