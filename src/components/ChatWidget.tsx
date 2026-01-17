@@ -139,6 +139,9 @@ export const ChatWidget = () => {
   const playRawPcm = async (base64: string) => {
     try {
       const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
       const pcmData = decodeBase64(base64);
       const audioBuffer = await decodeRawPcmToAudioBuffer(pcmData, ctx, 24000);
       const source = ctx.createBufferSource();
@@ -162,11 +165,27 @@ export const ChatWidget = () => {
       // 2. Fallback to Browser Native TTS
       console.log("AI TTS failed or empty, falling back to browser speech.");
       if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        // Optional: details to make it sound better
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
+        // Cancel any pending speech to avoid queue buildups
+        window.speechSynthesis.cancel();
+
+        const speak = () => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+
+          // Try to select a "Google" voice if available as they sound better, or default
+          const voices = window.speechSynthesis.getVoices();
+          const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) || voices.find(v => v.lang.startsWith("en"));
+          if (preferredVoice) utterance.voice = preferredVoice;
+
+          window.speechSynthesis.speak(utterance);
+        };
+
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = speak;
+        } else {
+          speak();
+        }
         return true;
       }
     } catch (e) {
