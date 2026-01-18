@@ -88,10 +88,15 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
    const fileInputRef = useRef<HTMLInputElement>(null);
    const DRAFT_KEY = 'hire_staff_form_draft';
 
-   const resetFormFields = () => {
+   const clearInputs = () => {
       setFirstName(''); setLastName(''); setEmail(''); setPhoneNumber(''); setAddress(''); setDob(''); setGender('Male');
-      setDateOfEmployment(new Date().toISOString().split('T')[0]); setSelectedRoleTitle(''); setSalaryNGN(0); setAvatar(''); setHealthNotes(''); setIdGenerated(null);
+      setDateOfEmployment(new Date().toISOString().split('T')[0]); setSelectedRoleTitle(''); setSalaryNGN(0); setAvatar(''); setHealthNotes('');
       setHasDraft(false);
+   };
+
+   const resetFormFields = () => {
+      clearInputs();
+      setIdGenerated(null);
    };
 
    // Load Draft or Edit Data
@@ -143,7 +148,17 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
       e.preventDefault();
       if (!firstName || !lastName || !email || !selectedRoleTitle) return;
       setIsSubmitting(true);
-      const employeeData = { firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, role: selectedRoleTitle as any, salaryCents: salaryNGN * 100, avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firstName}`, healthNotes };
+
+      // Gender-aware avatar generation
+      let avatarUrl = avatar;
+      if (!avatarUrl) {
+         const genderParams = gender === 'Female'
+            ? '&facialHairProbability=0&head[]=long,longBob,longCurly,longCurvy,longDreads,longFrida,longFro,longFroBand,longMiaWallace,longNotTooLong,longShavedSides,longStraight,longStraight2,longStraightStrand'
+            : '&head[]=short,shortDreads1,shortDreads2,shortFrizzle,shortShaggyMullet,shortCurly,shortFlat,shortRound,shortWaved,shortSides,caesar,caesarSidePart';
+         avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${firstName}-${lastName}${genderParams}`;
+      }
+
+      const employeeData = { firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, role: selectedRoleTitle as any, salaryCents: salaryNGN * 100, avatar: avatarUrl, healthNotes };
       if (editingEmployee) {
          updateEmployee(editingEmployee.id, employeeData);
          setIsSubmitting(false);
@@ -153,9 +168,9 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          const created = addEmployee(employeeData);
          setIsSubmitting(false);
          setIdGenerated(created);
-         // Clear draft on success
+         // Clear form inputs immediately so they don't persist on next open
          localStorage.removeItem(DRAFT_KEY);
-         setHasDraft(false);
+         clearInputs();
       }
    };
 
