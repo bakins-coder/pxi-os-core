@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import mammoth from 'mammoth';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { generateAIResponse, getAIResponseForAudio, textToSpeech, processAgentRequest } from '../services/ai';
 import { decodeBase64, decodeRawPcmToAudioBuffer } from '../services/audioUtils';
 
@@ -293,7 +294,15 @@ export const ChatWidget = () => {
         }
       }
 
-      const response = await processAgentRequest(payload, "Global Floating Chat", mode as any);
+      // Construct History Context
+      const historyContext = currentMessages
+        .slice(-10) // Last 10 messages
+        .map(m => `${m.sender === 'user' ? 'User' : 'Assistant'}: ${m.text}`)
+        .join('\n');
+
+      const fullContext = `Session: Global Floating Chat.\n\nRecent History:\n${historyContext}`;
+
+      const response = await processAgentRequest(payload, fullContext, mode as any);
 
       // Handle Agentic Action
       // Handle Agentic Action
@@ -337,7 +346,7 @@ export const ChatWidget = () => {
               category: payload.category || 'General',
               type: 'raw_material',
               priceCents: 0,
-              companyId: 'org-xquisite',
+              companyId: useAuthStore.getState().user?.companyId || '',
               id: `inv-${Date.now()}`
             });
             updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.quantity} ${payload.itemName} to inventory.`, sender: 'bot' }]);
@@ -349,7 +358,7 @@ export const ChatWidget = () => {
             phone: payload.phone || '',
             category: intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier',
             type: 'Company', // Default
-            companyId: 'org-xquisite'
+            companyId: useAuthStore.getState().user?.companyId || ''
           });
           updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: Added ${payload.name} as a new ${intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier'}.`, sender: 'bot' }]);
         } else if (intent === 'ADD_PROJECT') {
@@ -359,7 +368,7 @@ export const ChatWidget = () => {
             budgetCents: payload.budget ? parseInt(payload.budget) * 100 : 0,
             startDate: new Date().toISOString(),
             endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days
-            companyId: 'org-xquisite'
+            companyId: useAuthStore.getState().user?.companyId || ''
           });
           updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Project Created: "${payload.name}" has been added to the board.`, sender: 'bot' }]);
         } else if (intent === 'CREATE_EVENT') {

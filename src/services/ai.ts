@@ -335,8 +335,8 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 
                 Additional Context: ${context}.
                 
-                Instructions:
-                1. Analyze the input (Audio or Text).
+                instructions:
+                1. **ANALYZE CONTEXT**: Verify if "Recent History" shows a pending question from you (e.g., "What is the email?"). If the User's current input is an answer, MERGE it with the previous intent/data.
                 2. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'.
                 3. If Action, extract payload.
                 4. If Query, answer it using the provided "Data Access".
@@ -347,8 +347,11 @@ export async function processAgentRequest(input: string, context: string, mode: 
                    - **CREATE_EVENT**: Mandatory: Customer Name, Event Type, Date, Guest Count.
                    - **Behavior**: If the user provides the Mandatory fields but misses Recommended ones, return 'GENERAL_QUERY' and ask: "I have the name and role. To complete the profile, could you also provide their DOB, Address, and Phone number?" 
                    - **Exception**: If the user says "That's all" or "Skip details", ONLY THEN return the 'ADD_EMPLOYEE' intent with the data you have.
-                6. **ANTI-HALLUCINATION RULE**: You CANNOT update the database yourself. You can ONLY trigger an update by returning the correct 'intent' and 'payload'. NEVER say "I have recorded this" or "Profile created" in your text response unless you are returning an Action Intent. If you return 'GENERAL_QUERY', do NOT say you performed an action.
-                7. BREVITY RULE: Keep response to 2-3 sentences.
+                7. **DATA FORMATTING RULES**:
+                   - **DATES**: ALL dates in 'payload' MUST be ISO 8601 (YYYY-MM-DD). Example: Convert "13th March 1974" -> "1974-03-13".
+                   - **CURRENCY**: Convert all money references to integers (Cents/Kobo). e.g., "500k" -> 500000.
+                8. **ANTI-HALLUCINATION RULE**: You CANNOT update the database yourself. You can ONLY trigger an update by returning the correct 'intent' and 'payload'. NEVER say "I have recorded this" or "Profile created" in your text response unless you are returning an Action Intent. If you return 'GENERAL_QUERY', do NOT say you performed an action.
+                9. BREVITY RULE: Keep response to 2-3 sentences.
                 
                 Return JSON:
                 {

@@ -748,7 +748,7 @@ export const useDataStore = create<DataState>()(
                 const newProject = {
                     ...proj,
                     id: proj.id || `proj-${Date.now()}`,
-                    companyId: 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || proj.companyId || 'org-xquisite',
                     status: proj.status || 'Planning',
                     progress: 0,
                     tasks: [],
@@ -1039,7 +1039,7 @@ export const useDataStore = create<DataState>()(
 
                 const event: CateringEvent = {
                     id: evId,
-                    companyId: 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
                     customerName: d.customerName,
                     eventDate: d.eventDate,
                     guestCount: d.guestCount,
@@ -1062,7 +1062,7 @@ export const useDataStore = create<DataState>()(
                 const invoice: Invoice = {
                     id: invoiceId,
                     number: `SALES-${Date.now()}`,
-                    companyId: 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
                     contactId: d.contactId,
                     date: new Date().toISOString().split('T')[0],
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
@@ -1085,7 +1085,7 @@ export const useDataStore = create<DataState>()(
 
                 const taskList: Task[] = [
                     {
-                        id: `task-proc-${Date.now()}`, companyId: 'org-xquisite',
+                        id: `task-proc-${Date.now()}`, companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
                         title: 'Procurement & Requisitions',
                         description: 'Generate and approve requisitions for all deal items.',
                         dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'High', status: 'Todo'
@@ -1160,7 +1160,7 @@ export const useDataStore = create<DataState>()(
 
                 const project: Project = {
                     id: `proj-${Date.now()}`,
-                    companyId: 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
                     name: `${evId.toUpperCase()} - ${d.customerName} - Event Project`,
                     clientContactId: d.contactId || '',
                     status: 'Planning',
