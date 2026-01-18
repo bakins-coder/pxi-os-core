@@ -84,6 +84,7 @@ interface DataState {
     addMarketingPost: (post: Partial<MarketingPost>) => MarketingPost;
     addAIAgent: (agent: Partial<AIAgent>) => void;
     addWorkflow: (wf: Partial<Workflow>) => void;
+    addProject: (proj: Partial<Project>) => void;
 
     // Catering Actions
     createCateringOrder: (data: any) => Promise<{ event: CateringEvent, invoice: Invoice }>;
@@ -740,6 +741,20 @@ export const useDataStore = create<DataState>()(
             addMeetingTask: (t) => {
                 const newTask = { ...t, id: `task-${Date.now()}`, companyId: 'org-xquisite', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
                 set((state) => ({ tasks: [newTask, ...state.tasks] }));
+                get().syncWithCloud();
+            },
+
+            addProject: (proj) => {
+                const newProject = {
+                    ...proj,
+                    id: proj.id || `proj-${Date.now()}`,
+                    companyId: 'org-xquisite',
+                    status: proj.status || 'Planning',
+                    progress: 0,
+                    tasks: [],
+                    aiAlerts: []
+                } as Project;
+                set((state) => ({ projects: [newProject, ...state.projects] }));
                 get().syncWithCloud();
             },
 

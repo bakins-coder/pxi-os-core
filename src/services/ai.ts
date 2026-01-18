@@ -272,6 +272,16 @@ export async function processAgentRequest(input: string, context: string, mode: 
         .filter(a => a.balanceCents > 0)
         .map(a => `${a.name}: ₦${(a.balanceCents / 100).toLocaleString()}`);
 
+    // CRM Context
+    const customers = dataStore.contacts.filter(c => c.category === 'Customer').slice(0, 50)
+        .map(c => `${c.name} (${c.email || 'No email'}) - ${c.companyId}`);
+    const suppliers = dataStore.contacts.filter(c => c.category === 'Supplier').slice(0, 20)
+        .map(s => `${s.name} (${s.email || 'No email'})`);
+
+    // Projects Context
+    const projects = dataStore.projects.slice(0, 20)
+        .map(p => `${p.name} [${p.status}] - ${p.progress}%`);
+
     const operationalContext = JSON.stringify({
         financials: {
             totalOutstandingReceivables: `₦${(totalReceivables / 100).toLocaleString()}`,
@@ -281,9 +291,20 @@ export async function processAgentRequest(input: string, context: string, mode: 
         },
         events: dataStore.cateringEvents.map(e => ({
             customer: e.customerName,
-            revenue: e.financials.revenueCents,
+            date: e.eventDate,
+            status: e.status,
+            revenue: `₦${(e.financials.revenueCents / 100).toLocaleString()}`,
             grossMargin: e.costingSheet?.aggregateGrossMarginPercentage
-        })).slice(0, 3),
+        })).slice(0, 10), // Expanded to top 10
+        crm: {
+            totalCustomers: dataStore.contacts.filter(c => c.category === 'Customer').length,
+            customerList: customers,
+            supplierList: suppliers
+        },
+        projects: {
+            activeCount: dataStore.projects.filter(p => p.status === 'Active').length,
+            list: projects
+        },
         personnel: {
             totalStaff: dataStore.employees.length,
             departmentRoles: workforceSummary,
@@ -316,12 +337,14 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 
                 Instructions:
                 1. Analyze the input (Audio or Text).
-                2. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY'.
+                2. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'.
                 3. If Action, extract payload.
                 4. If Query, answer it using the provided "Data Access".
                 5. **DATA COMPLETENESS & CLARIFICATION**: 
-                   - Mandatory: Name, Role. If missing, you MUST ask for them (return 'GENERAL_QUERY').
-                   - Recommended: Date of Birth, Address, Phone, Start Date.
+                   - **ADD_EMPLOYEE**: Mandatory: Name, Role. Recommended: DOB, Start Date.
+                   - **ADD_CUSTOMER/SUPPLIER**: Mandatory: Name. Recommended: Email, Phone.
+                   - **ADD_PROJECT**: Mandatory: Name. Recommended: Client, Budget.
+                   - **CREATE_EVENT**: Mandatory: Customer Name, Event Type, Date, Guest Count.
                    - **Behavior**: If the user provides the Mandatory fields but misses Recommended ones, return 'GENERAL_QUERY' and ask: "I have the name and role. To complete the profile, could you also provide their DOB, Address, and Phone number?" 
                    - **Exception**: If the user says "That's all" or "Skip details", ONLY THEN return the 'ADD_EMPLOYEE' intent with the data you have.
                 6. **ANTI-HALLUCINATION RULE**: You CANNOT update the database yourself. You can ONLY trigger an update by returning the correct 'intent' and 'payload'. NEVER say "I have recorded this" or "Profile created" in your text response unless you are returning an Action Intent. If you return 'GENERAL_QUERY', do NOT say you performed an action.

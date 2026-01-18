@@ -342,6 +342,40 @@ export const ChatWidget = () => {
             });
             updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.quantity} ${payload.itemName} to inventory.`, sender: 'bot' }]);
           }
+        } else if (intent === 'ADD_CUSTOMER' || intent === 'ADD_SUPPLIER') {
+          useDataStore.getState().addContact({
+            name: payload.name,
+            email: payload.email || '',
+            phone: payload.phone || '',
+            category: intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier',
+            type: 'Company', // Default
+            companyId: 'org-xquisite'
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: Added ${payload.name} as a new ${intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier'}.`, sender: 'bot' }]);
+        } else if (intent === 'ADD_PROJECT') {
+          useDataStore.getState().addProject({
+            name: payload.name,
+            clientContactId: payload.clientContactId, // Optional
+            budgetCents: payload.budget ? parseInt(payload.budget) * 100 : 0,
+            startDate: new Date().toISOString(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days
+            companyId: 'org-xquisite'
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Project Created: "${payload.name}" has been added to the board.`, sender: 'bot' }]);
+        } else if (intent === 'CREATE_EVENT') {
+          try {
+            await useDataStore.getState().createCateringOrder({
+              customerName: payload.customerName,
+              eventDate: payload.date || new Date().toISOString(),
+              guestCount: payload.guestCount || 50,
+              location: payload.location || 'TBD',
+              eventType: payload.eventType || 'General',
+              items: []
+            });
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Event Drafted: Catering event for ${payload.customerName} on ${payload.date} is ready for planning.`, sender: 'bot' }]);
+          } catch (e) {
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Event Creation Failed.`, sender: 'bot' }]);
+          }
         } else {
           // Standard Response
           const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
