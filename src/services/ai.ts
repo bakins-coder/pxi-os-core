@@ -305,6 +305,15 @@ export async function processAgentRequest(input: string, context: string, mode: 
             customerList: customers,
             supplierList: suppliers
         },
+        recipes: dataStore.recipes.slice(0, 50).map(r => ({
+            name: r.name,
+            ingredients: r.ingredients.map(i => `${i.qtyPerPortion} ${i.unit} ${i.name}`).join(', ')
+        })),
+        tasks: dataStore.tasks.filter(t => t.status !== 'Done').slice(0, 10).map(t => `${t.title} [${t.priority}] - Due: ${t.dueDate}`),
+        support: {
+            openTickets: dataStore.tickets.filter(t => t.status !== 'Resolved').length,
+            recentTickets: dataStore.tickets.slice(0, 5).map(t => `${t.subject} (${t.status})`)
+        },
         projects: {
             activeCount: dataStore.projects.filter(p => p.status === 'Active').length,
             list: projects
