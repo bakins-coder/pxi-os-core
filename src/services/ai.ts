@@ -59,7 +59,7 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
 
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-flash-latest',
+            model: 'gemini-1.5-flash',
             tools: [{ googleSearch: {} } as any],
             generationConfig: {
                 responseMimeType: "application/json",
@@ -105,7 +105,7 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     if (useSettingsStore.getState().strictMode) return { marketPriceCents: 0, groundedSummary: "Strict Mode Enabled", sources: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         tools: [{ googleSearch: {} } as any]
     });
 
@@ -561,7 +561,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     }
 
     const response = await callWithRetry(async () => {
-        const model = ai.getGenerativeModel({ model: 'gemini-flash-latest' });
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const result = await model.generateContent(contents);
         const response = await result.response;
         return response.text();
