@@ -33,7 +33,7 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
         if (!ing.priceSourceQuery) continue;
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-flash-latest',
+                model: 'gemini-1.5-flash',
                 tools: [{ googleSearch: {} } as any]
             });
 
@@ -128,7 +128,7 @@ export async function runInventoryReconciliation(event: CateringEvent): Promise<
     const payload = JSON.stringify(event.hardwareChecklist);
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -162,7 +162,7 @@ export async function extractInfoFromCV(base64Data: string, mimeType: string): P
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -192,7 +192,7 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -388,7 +388,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
             }
 
             const model = ai.getGenerativeModel({
-                model: 'gemini-flash-latest', // Use 2.0 Flash for better stability/limits
+                model: 'gemini-1.5-flash', // Standardize to stable 1.5 Flash
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -573,7 +573,7 @@ export async function getCFOAdvice(): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { summary: "Services Offline (Strict Mode)", sentiment: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -685,7 +685,7 @@ export async function getFormGuidance(formName: string, fieldName: string, value
     if (useSettingsStore.getState().strictMode) return { tip: "AI Guidance Disabled", status: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -738,7 +738,7 @@ export async function suggestCOAForTransaction(description: string, coa: any[]):
     const accountsContext = coa.map(a => `${a.id}: ${a.name} (${a.type}/${a.subtype})`).join('\n');
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -767,7 +767,7 @@ export async function processMeetingAudio(base64Audio: string, mimeType: string)
     if (useSettingsStore.getState().strictMode) return { summary: "Strict Mode Enabled", decisions: [], tasks: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -825,7 +825,7 @@ export async function executeAgentWorkflow(workflowId: string, agentName: string
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -838,7 +838,7 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
     if (useSettingsStore.getState().strictMode) return { type: 'Outflow', amountCents: 0, description: 'Strict Mode', date: new Date().toISOString().split('T')[0], merchant: '' };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
