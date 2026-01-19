@@ -248,7 +248,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
     const menuContext = dataStore.inventory
         // Include products, reusables (e.g., glasses, plates), and raw materials
         .filter(i => i.type === 'product' || i.type === 'reusable' || i.type === 'raw_material')
-        .slice(0, 100) // INCREASED LIMIT: Top 100 items to ensure visibility
+        .slice(0, 30) // REDUCED LIMIT: Top 30 items to save tokens
         .map(i => {
             const price = i.priceCents ? `₦${(i.priceCents / 100).toLocaleString()}` : 'Price Varies';
             const desc = i.description ? ` - ${i.description}` : '';
@@ -277,7 +277,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
         .map(a => `${a.name}: ₦${(a.balanceCents / 100).toLocaleString()}`);
 
     // CRM Context
-    const customers = dataStore.contacts.filter(c => c.category === 'Customer').slice(0, 50)
+    const customers = dataStore.contacts.filter(c => c.category === 'Customer').slice(0, 10)
         .map(c => `${c.name} (${c.email || 'No email'}) - ${c.companyId}`);
     const suppliers = dataStore.contacts.filter(c => c.category === 'Supplier').slice(0, 20)
         .map(s => `${s.name} (${s.email || 'No email'})`);
@@ -305,7 +305,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
             customerList: customers,
             supplierList: suppliers
         },
-        recipes: dataStore.recipes.slice(0, 50).map(r => ({
+        recipes: dataStore.recipes.slice(0, 10).map(r => ({
             name: r.name,
             ingredients: r.ingredients.map(i => `${i.qtyPerPortion} ${i.unit} ${i.name}`).join(', ')
         })),
@@ -321,7 +321,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
         personnel: {
             totalStaff: dataStore.employees.length,
             departmentRoles: workforceSummary,
-            staffDirectory: dataStore.employees.slice(0, 50).map(e => ({ // LIMIT CONTEXT: Top 50 staff
+            staffDirectory: dataStore.employees.slice(0, 10).map(e => ({ // LIMIT CONTEXT: Top 10 staff
                 name: `${e.firstName} ${e.lastName} `,
                 role: e.role,
                 status: e.status,
