@@ -249,7 +249,11 @@ export async function processAgentRequest(input: string, context: string, mode: 
         // Include products, reusables (e.g., glasses, plates), and raw materials
         .filter(i => i.type === 'product' || i.type === 'reusable' || i.type === 'raw_material')
         .slice(0, 100) // INCREASED LIMIT: Top 100 items to ensure visibility
-        .map(i => `- ${i.name} (${i.category}): ${i.stockQuantity} in stock`)
+        .map(i => {
+            const price = i.priceCents ? `₦${(i.priceCents / 100).toLocaleString()}` : 'Price Varies';
+            const desc = i.description ? ` - ${i.description}` : '';
+            return `- ${i.name} (${i.category}): ${i.stockQuantity} in stock [${price}]${desc}`;
+        })
         .join('\n');
 
     if (dataStore.inventory.length > 50) {
