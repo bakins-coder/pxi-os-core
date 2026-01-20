@@ -73,6 +73,7 @@ export interface DepartmentRole {
   title: string;
   band: number;
   salaryRange: SalaryRange;
+  permissions?: string[];
 }
 
 export interface DepartmentMatrix {
@@ -405,6 +406,7 @@ export interface Employee {
   companyId: string;
   firstName: string;
   lastName: string;
+  title?: string; // e.g. Mr, Mrs, Dr, Chief
   email: string;
   phoneNumber?: string;
   dob: string;
@@ -416,6 +418,7 @@ export interface Employee {
   status: EmployeeStatus;
   kpis: string[];
   avatar: string;
+  staffId?: string; // Unique Login Identifier (e.g. XQ-8821)
   idCardIssuedDate?: string;
   healthNotes?: string;
 }

@@ -48,12 +48,11 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
 
     let authIdentifier = email.trim();
 
-    // Phone Number Logic: If it looks like a phone number (digits), treat as phone-based user
-    const isPhoneNumber = /^[0-9+]+$/.test(authIdentifier);
-    if (isPhoneNumber) {
-      // Strip non-digits just in case, though regex checks it
-      const cleanPhone = authIdentifier.replace(/\D/g, '');
-      authIdentifier = `${cleanPhone}@xquisite.com`;
+    // ID / Phone Logic: If no '@' symbol, treat as System ID (Staff ID or Phone acting as ID)
+    if (!authIdentifier.includes('@')) {
+      // Allow alphanumeric IDs (e.g. XQ-8821) or pure numbers
+      // We append a consistent internal domain to satisfy Auth requirements
+      authIdentifier = `${authIdentifier.toLowerCase()}@xquisite.local`;
     }
 
     try {
@@ -67,7 +66,12 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
       onSuccess();
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Authentication failed.');
+      let msg = err.message || 'Authentication failed.';
+      // Smart Error for Staff IDs
+      if (msg.includes('Invalid login credentials') && authIdentifier.endsWith('@xquisite.local')) {
+        msg = 'Login failed. First time? Switch to "Sign Up" mode to activate your Staff ID.';
+      }
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +88,11 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
       return { text: 'Valid Phone Number Format Detected', color: 'text-[#00ff9d]' };
     }
 
-    if (!email.includes('@')) return { text: 'Enter a valid email address (missing @)', color: 'text-yellow-500' };
+    if (!email.includes('@')) {
+      // Check if it looks like a Staff ID (e.g. XQ-1234)
+      if (/^XQ-\d+$/i.test(email)) return { text: 'Valid Staff ID Format', color: 'text-[#00ff9d]' };
+      return { text: 'Enter email or Staff ID (XQ-xxxx)', color: 'text-yellow-500' };
+    }
     if (!email.includes('.')) return { text: 'Enter a valid domain (missing .com, .ng, etc)', color: 'text-yellow-500' };
 
     return { text: 'Valid Email Format Detected', color: 'text-[#00ff9d]' };
@@ -149,14 +157,16 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
         )}
 
         <div className="relative group w-1/2 mx-auto">
-          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Business Email or Phone</label>
+          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">
+            {isSignUp ? 'Work Email' : 'Staff ID / Email'}
+          </label>
           <div className="relative">
             <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input
               type="text"
               required
               className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
-              placeholder="email@company.com OR 0801234..."
+              placeholder={isSignUp ? "name@company.com" : "e.g. XQ-8821"}
               value={email}
               onChange={e => setEmail(e.target.value)}
             />
@@ -295,25 +305,44 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // UX State
+  const [isEmployeeMode, setIsEmployeeMode] = useState(false);
+  const [password, setPassword] = useState('');
+
+  // Auto-detect employee mode based on input
+  useEffect(() => {
+    const isStaffId = /^XQ-\d+/i.test(email);
+    const isCorporateEmail = email.includes('@xquisite.com'); // Or other known domains
+    if (isStaffId || isCorporateEmail) {
+      setIsEmployeeMode(true);
+    }
+  }, [email]);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const name = `${title} ${firstName} ${lastName}`.trim();
-
       let authIdentifier = email.trim();
-      // Phone Number Logic for Signup form as well
-      if (/^[0-9+]+$/.test(authIdentifier)) {
-        const cleanPhone = authIdentifier.replace(/\D/g, '');
-        authIdentifier = `${cleanPhone}@xquisite.com`;
+
+      // Standardize Staff ID or Phone to internal email format if needed
+      if (!authIdentifier.includes('@')) {
+        authIdentifier = `${authIdentifier.toLowerCase()}@xquisite.local`;
       }
 
-      await signup(name, authIdentifier, Role.ADMIN);
+      // Handle Name (Hidden in Employee Mode)
+      const formName = `${title} ${firstName} ${lastName}`.trim();
+      const name = isEmployeeMode ? 'Staff Member' : formName;
+
+      // If Employee Mode, we assume they are joining an existing org (Role is filtered by backend/invite)
+      // But initially we can set them as Employee or Admin depending on logic.
+      // For now, let's keep it safe.
+      await signup(name, authIdentifier, password, Role.ADMIN);
       onSuccess();
-    } catch (err) {
-      setError('Registration node failed. Please try a different email.');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Registration failed. Please Check your internet connection.');
     } finally {
       setIsLoading(false);
     }
@@ -325,86 +354,161 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
   return (
     <div className="w-full max-w-lg animate-in fade-in slide-in-from-bottom-4">
       <div className="mb-10 text-center">
-        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">Get Started.</h2>
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Launch your company's smart operations hub.</p>
+        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">
+          {isEmployeeMode ? 'Activate Profile.' : 'Get Started.'}
+        </h2>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">
+          {isEmployeeMode ? "Access your organization's existing workspace." : "Launch your company's smart operations hub."}
+        </p>
       </div>
+
+      {/* Mode Toggle for Clarity */}
+      <div className="flex justify-center mb-8">
+        <div className="p-1 bg-white/5 rounded-xl border border-white/10 flex gap-1">
+          <button
+            type="button"
+            onClick={() => setIsEmployeeMode(false)}
+            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!isEmployeeMode ? 'bg-[#00ff9d] text-slate-950' : 'text-slate-500 hover:text-white'}`}
+          >
+            New Organization
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsEmployeeMode(true)}
+            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isEmployeeMode ? 'bg-[#00ff9d] text-slate-950' : 'text-slate-500 hover:text-white'}`}
+          >
+            Join Team
+          </button>
+        </div>
+      </div>
+
       <form onSubmit={handleSignup} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2 relative">
-            <label className={labelClasses}>Work Email Address</label>
+        {!isEmployeeMode && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2 relative">
+                <label className={labelClasses}>Work Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <input
+                    required
+                    type="email"
+                    className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClasses}>Title</label>
+                <select
+                  className="w-full px-6 py-4 bg-[#0f172a] border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all text-sm appearance-none"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                >
+                  <option value="Mr">Mr.</option>
+                  <option value="Ms">Ms.</option>
+                  <option value="Mrs">Mrs.</option>
+                  <option value="Dr">Dr.</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClasses}>Gender</label>
+                <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setGender('Male')}
+                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gender === 'Male' ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500'}`}
+                  >
+                    Male
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGender('Female')}
+                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gender === 'Female' ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500'}`}
+                  >
+                    Female
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className={labelClasses}>First Name</label>
+                <input required className={inputClasses} placeholder="First" value={firstName} onChange={e => setFirstName(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClasses}>Middle Name</label>
+                <input className={inputClasses} placeholder="Middle" value={middleName} onChange={e => setMiddleName(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClasses}>Surname</label>
+                <input required className={inputClasses} placeholder="Surname" value={lastName} onChange={e => setLastName(e.target.value)} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {isEmployeeMode && (
+          <div className="relative">
+            <label className={labelClasses}>Staff ID / Work Email</label>
             <div className="relative">
               <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
               <input
                 required
-                type="email"
+                type="text"
                 className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
-                placeholder="name@company.com"
+                placeholder="e.g. XQ-8821 or name@xquisite.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />
             </div>
-          </div>
 
-          <div>
-            <label className={labelClasses}>Title</label>
-            <select
-              className="w-full px-6 py-4 bg-[#0f172a] border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all text-sm appearance-none"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            >
-              <option value="Mr">Mr.</option>
-              <option value="Ms">Ms.</option>
-              <option value="Mrs">Mrs.</option>
-              <option value="Dr">Dr.</option>
-            </select>
-          </div>
-
-          <div>
-            <label className={labelClasses}>Gender</label>
-            <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setGender('Male')}
-                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gender === 'Male' ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500'}`}
-              >
-                Male
-              </button>
-              <button
-                type="button"
-                onClick={() => setGender('Female')}
-                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${gender === 'Female' ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500'}`}
-              >
-                Female
-              </button>
+            {/* Password field for activation */}
+            <div className="relative mt-4">
+              <label className={labelClasses}>Password</label>
+              <div className="relative">
+                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input
+                  required
+                  type="password"
+                  className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className={labelClasses}>First Name</label>
-            <input required className={inputClasses} placeholder="First" value={firstName} onChange={e => setFirstName(e.target.value)} />
+        {isEmployeeMode ? (
+          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 p-4 rounded-2xl mb-2">
+            <p className="text-[9px] text-[#00ff9d] font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+              <ShieldCheck size={12} /> Account Activation
+            </p>
+            <p className="text-[8px] text-slate-500 font-bold leading-tight uppercase">
+              You are activating your profile for an existing organization. <br />
+              Your permissions will be assigned automatically.
+            </p>
           </div>
-          <div>
-            <label className={labelClasses}>Middle Name</label>
-            <input className={inputClasses} placeholder="Middle" value={middleName} onChange={e => setMiddleName(e.target.value)} />
+        ) : (
+          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 p-4 rounded-2xl mb-2">
+            <p className="text-[9px] text-[#00ff9d] font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+              <ShieldCheck size={12} /> Enterprise Security
+            </p>
+            <p className="text-[8px] text-slate-500 font-bold leading-tight uppercase">You will be designated as the Account Administrator. Your workspace will be private and secure.</p>
           </div>
-          <div>
-            <label className={labelClasses}>Surname</label>
-            <input required className={inputClasses} placeholder="Surname" value={lastName} onChange={e => setLastName(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 p-4 rounded-2xl mb-2">
-          <p className="text-[9px] text-[#00ff9d] font-black uppercase tracking-widest mb-1 flex items-center gap-2">
-            <ShieldCheck size={12} /> Enterprise Security
-          </p>
-          <p className="text-[8px] text-slate-500 font-bold leading-tight uppercase">You will be designated as the Account Administrator. Your workspace will be private and secure.</p>
-        </div>
+        )}
 
         <button disabled={isLoading} className="w-full bg-[#00ff9d] py-5 rounded-2xl font-black text-slate-950 uppercase shadow-xl active:scale-95 transition-all text-sm tracking-widest">
-          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : 'Create Workspace'}
+          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : (isEmployeeMode ? 'Activate Profile' : 'Create Workspace')}
         </button>
+        {error && <p className="text-center text-rose-500 text-[10px] uppercase font-bold">{error}</p>}
         <button type="button" onClick={onSwitch} className="w-full mt-4 text-[11px] font-black text-slate-500 uppercase hover:text-white transition-colors">Already registered? Sign in to your account</button>
       </form>
     </div>

@@ -89,11 +89,17 @@ const slides = [
 
 export const Presentation = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [isPrintMode, setIsPrintMode] = useState(false);
     const navigate = useNavigate();
 
     // Keyboard Navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (isPrintMode) {
+                if (e.key === 'Escape') setIsPrintMode(false);
+                return;
+            };
+
             if (e.key === 'ArrowRight' || e.key === 'Space') {
                 nextSlide();
             } else if (e.key === 'ArrowLeft') {
@@ -104,7 +110,7 @@ export const Presentation = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentSlide]);
+    }, [currentSlide, isPrintMode]);
 
     const nextSlide = () => {
         setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -114,7 +120,104 @@ export const Presentation = () => {
         setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
     };
 
+    const handlePrint = () => {
+        setIsPrintMode(true);
+    };
+
     const slide = slides[currentSlide];
+
+    if (isPrintMode) {
+        return (
+            <div className="bg-white min-h-screen text-black relative">
+                <style>{`
+                    @media print {
+                        @page { size: landscape; margin: 0; }
+                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #000 !important; }
+                        .no-print { display: none !important; }
+                        /* Force text to be white for printing on dark backgrounds */
+                        h1, h2, h3, p, span, div { 
+                            color: white !important; 
+                            -webkit-print-color-adjust: exact; 
+                            print-color-adjust: exact;
+                            text-shadow: 0 2px 10px rgba(0,0,0,0.5) !important;
+                        }
+                        /* Ensure content sits above background */
+                        .print-content { z-index: 50 !important; position: relative !important; }
+                        .print-bg { z-index: 0 !important; }
+                    }
+                `}</style>
+
+                {/* Print Control Bar & Instructions - Hidden when actually printing */}
+                <div className="no-print fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center text-white">
+                    <div className="max-w-2xl bg-black p-10 rounded-3xl border border-white/10 shadow-2xl">
+                        <div className="bg-[#00ff9d] w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-black">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        </div>
+                        <h2 className="text-3xl font-black uppercase mb-4">Ready to Export</h2>
+                        <p className="text-xl text-slate-300 mb-8 leading-relaxed">
+                            For the best result, please ensure <strong className="text-white">"Background graphics"</strong> is checked in your browser's print settings.
+                        </p>
+
+                        <div className="bg-white/5 p-6 rounded-xl mb-8 border border-white/5 text-left text-sm text-slate-400 space-y-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-full border border-slate-500 flex items-center justify-center text-[8px]">1</div>
+                                <span>Click <strong>"Open Print Dialog"</strong> below</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-full border border-slate-500 flex items-center justify-center text-[8px]">2</div>
+                                <span>Set Destination to <strong>"Save as PDF"</strong></span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-full border border-slate-500 flex items-center justify-center text-[8px]">3</div>
+                                <span>Expand <strong>"More settings"</strong> and check <strong>"Background graphics"</strong></span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 justify-center">
+                            <button onClick={() => setIsPrintMode(false)} className="px-8 py-4 rounded-xl font-bold bg-white/10 hover:bg-white/20 transition-all">
+                                Cancel
+                            </button>
+                            <button onClick={() => window.print()} className="px-8 py-4 rounded-xl font-bold bg-[#00ff9d] text-black hover:bg-[#00cc7d] transition-all flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>
+                                Open Print Dialog
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-black flex flex-col items-center print:block">
+                    {slides.map((s) => (
+                        <div key={s.id} className="relative w-full h-[100vh] print:h-[100vh] break-after-page print:break-after-page bg-black page-break-fix">
+                            <div className="absolute inset-0 print-bg">
+                                <img src={s.image} alt={s.title} className="w-full h-full object-cover opacity-60 print:opacity-60" />
+                                <div className={`absolute inset-0 bg-gradient-to-r ${s.color} to-black/80 mix-blend-multiply`} />
+                            </div>
+
+                            <div className="relative z-10 h-full flex flex-col justify-center px-24 print-content">
+                                <div className="flex items-center gap-6 mb-8">
+                                    <div className="p-4 bg-white/20 backdrop-blur-md rounded-2xl border border-white/20">
+                                        {React.cloneElement(s.icon as any, { className: "text-white" })}
+                                    </div>
+                                    <h3 className="text-2xl font-bold uppercase tracking-[0.3em] text-white/80">{s.subtitle}</h3>
+                                </div>
+                                <h1 className="text-7xl font-black uppercase tracking-tight mb-8 text-white drop-shadow-lg print:text-white">
+                                    {s.title}
+                                </h1>
+                                <p className="text-3xl font-medium text-slate-100 max-w-4xl leading-relaxed border-l-8 border-[#00ff9d] pl-8 drop-shadow-md print:text-slate-100">
+                                    {s.content}
+                                </p>
+                            </div>
+
+                            {/* Footer for Print */}
+                            <div className="absolute bottom-8 right-8 text-white/40 text-sm font-mono tracking-widest uppercase">
+                                PXI-OS Presentation Deck
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 bg-black text-white font-sans overflow-hidden z-[100]">
@@ -136,8 +239,13 @@ export const Presentation = () => {
                 </div>
             ))}
 
-            <div className="absolute top-8 right-8 z-50">
-                <button onClick={() => navigate('/')} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all">
+            <div className="absolute top-8 right-8 z-50 flex gap-4">
+                {/* Print/Download Button */}
+                <button onClick={handlePrint} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all group" title="Download / Print">
+                    {/* Simple download icon svg since I can't import easily right now without editing imports */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white group-hover:text-[#00ff9d]"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                </button>
+                <button onClick={() => navigate('/')} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all text-white hover:text-rose-500">
                     <X size={24} />
                 </button>
             </div>

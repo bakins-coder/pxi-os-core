@@ -74,30 +74,52 @@ const ParadigmLogo = ({ brandColor, orgName }: { brandColor: string, orgName: st
 
 const NAV_ITEMS = [
   { label: 'Super Admin', icon: Shield, path: '/super-admin', allowedRoles: [Role.SUPER_ADMIN] },
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/', allowedRoles: Object.values(Role) },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role) },
 
-  { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
-  { label: 'Service Hub', icon: Radio, path: '/contact-center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
-  { label: 'CRM', icon: Users, path: '/crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES] },
-  { label: 'Project Hub', icon: ProjectIcon, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS] },
-  { label: 'Inventory', icon: Package, path: '/inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
+  { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
+  { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:catering', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
+  { label: 'CRM', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES] },
+  { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS] },
+  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
 
   // Industry Specific
-  { label: 'Catering Ops', icon: ChefHat, path: '/catering', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES], allowedIndustries: ['Catering'] },
-  { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER], allowedIndustries: ['Aviation'] }, // Reuse Projects for now or generic placeholder
+  { label: 'Catering Ops', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
+  { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER], allowedIndustries: ['Aviation'] },
 
-  { label: 'Finance', icon: Banknote, path: '/finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
-  { label: 'Human Resources', icon: Briefcase, path: '/hr', allowedRoles: [Role.ADMIN, Role.HR, Role.HR_MANAGER] },
+  { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
+  { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: [Role.ADMIN, Role.HR, Role.HR_MANAGER] },
   { label: 'Automation', icon: Bot, path: '/automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
-  { label: 'Analytics', icon: Activity, path: '/analytics', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE] },
-  { label: 'Reporting', icon: BarChart2, path: '/reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES] },
-  { label: 'User Guides', icon: HelpCircle, path: '/docs', allowedRoles: Object.values(Role) },
-  { label: 'Team Messages', icon: Zap, path: '/team', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
+  { label: 'Analytics', icon: Activity, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE] },
+  { label: 'Reporting', icon: BarChart2, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES] },
+  { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
+  { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: [Role.ADMIN, Role.MANAGER] },
 ];
 
 const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string }) => {
   const { strictMode, settings } = useSettingsStore();
+  const { departmentMatrix } = useDataStore();
+
+  // Find the exact matrix role that matches the user's assigned role string
+  const userMatrixRole = departmentMatrix
+    .flatMap(d => d.roles)
+    .find(r => r.title === userRole);
+
+  const hasPermission = (required?: string, allowedRoles?: Role[]) => {
+    // 1. Super Admin Bypass
+    if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === 'CEO' as any) return true;
+
+    // 2. Legacy Role Check (Keep existing logic if no permission tag)
+    if (allowedRoles && allowedRoles.includes(userRole)) return true;
+    if (!required) return true; // Public if no requirement? Or default deny? Let's say public.
+
+    // 3. Permission Tag Check
+    if (userMatrixRole?.permissions?.includes(required)) return true;
+    if (userMatrixRole?.permissions?.includes('*')) return true;
+
+    return false;
+  };
+
   const handleOpenAssistant = () => {
     window.dispatchEvent(new CustomEvent('open-assistant'));
   };
@@ -110,7 +132,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
         {NAV_ITEMS.filter(i => {
-          if (!i.allowedRoles.includes(userRole)) return false;
+          if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
 
           if (i.allowedIndustries) {
             const industryMatch = i.allowedIndustries.includes(settings.type as any);

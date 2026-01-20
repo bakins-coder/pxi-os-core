@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { Ingredient, InventoryItem, Recipe, Requisition, InventoryMovement, RentalRecord, ItemCosting } from '../types';
 import { performAgenticMarketResearch, getLiveRecipeIngredientPrices } from '../services/ai';
 import { calculateItemCosting } from '../utils/costing';
@@ -619,6 +620,22 @@ export const Inventory = () => {
       setPortionCounts(prev => ({ ...prev, [id]: val }));
    };
 
+   const { user: currentUser } = useAuthStore();
+   const { departmentMatrix } = useDataStore();
+
+   const hasPermission = (tag: string) => {
+      // 1. Super Admin / Admin Bypass
+      if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Manager' || currentUser?.role === 'CEO' as any) return true;
+
+      // 2. Matrix Check
+      const matrixRole = departmentMatrix.flatMap(d => d.roles).find(r => r.title === currentUser?.role);
+      if (matrixRole?.permissions?.includes('*')) return true;
+      if (matrixRole?.permissions?.includes(tag)) return true;
+      if (matrixRole?.permissions?.includes('access:inventory_all')) return true;
+
+      return false;
+   };
+
    return (
       <div className="space-y-6 animate-in fade-in pb-24">
          <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl mb-8">
@@ -636,14 +653,14 @@ export const Inventory = () => {
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
-                     { id: 'products', label: 'Offerings', icon: Utensils, active: isCatering },
-                     { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering },
-                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true },
-                     { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering },
-                     { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true },
-                     { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true },
-                     { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true }
-                  ].filter(t => t.active).map(tab => (
+                     { id: 'products', label: 'Offerings', icon: Utensils, active: isCatering, perm: 'access:inventory_offerings' },
+                     { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering, perm: 'access:inventory_ingredients' },
+                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true, perm: 'access:inventory_all' }, // Or generic?
+                     { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering, perm: 'access:inventory_rentals' },
+                     { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true, perm: 'access:inventory_reusables' },
+                     { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true, perm: 'access:inventory_fixed_assets' },
+                     { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true, perm: 'access:inventory_fixtures' }
+                  ].filter(t => t.active && hasPermission(t.perm)).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
                   ))}
                </div>

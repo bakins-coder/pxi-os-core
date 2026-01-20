@@ -3,11 +3,11 @@ import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Employee, Department, EmployeeStatus, PayrollItem, DepartmentMatrix, Role, DepartmentRole, LeaveRequest, LeaveStatus, LeaveType } from '../types';
-import { calculatePayrollForEmployee } from '../services/hrUtils';
+import { calculatePayrollForEmployee, formatSalary } from '../services/hrUtils';
 import { extractInfoFromCV } from '../services/ai';
 import {
    Users, Briefcase, Plus, ShieldCheck, Receipt, LayoutGrid, TrendingUp, ChevronRight,
-   Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2, Maximize2, Minimize2
+   Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2, Maximize2, Minimize2, Lock
 } from 'lucide-react';
 
 const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
@@ -34,13 +34,19 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
                </div>
                <div className="flex-1 mt-6 text-center px-8 flex flex-col justify-between pb-10">
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">{employee.firstName}<br />{employee.lastName}</h2>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">{employee.title ? `${employee.title} ` : ''}{employee.firstName}<br />{employee.lastName}</h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 mb-6">{employee.role}</p>
-                     <div className="space-y-3">
+                     <div className="space-y-4">
                         <div className="flex flex-col items-center">
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Employee ID</p>
-                           <p className="text-xs font-mono font-bold text-slate-700">PXI-{employee.id.slice(-6).toUpperCase()}</p>
+                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">System Login ID</p>
+                           <p className="text-xl font-mono font-black text-slate-900 tracking-wider bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">{employee.staffId || 'PENDING'}</p>
                         </div>
+                        {(employee as any)._tempPassword && (
+                           <div className="flex flex-col items-center animate-pulse">
+                              <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mb-1">Initial Password</p>
+                              <p className="text-sm font-mono font-black text-slate-900 border-b-2 border-rose-500 pb-1">{(employee as any)._tempPassword}</p>
+                           </div>
+                        )}
                         <div className="flex flex-col items-center">
                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Issue Date</p>
                            <p className="text-xs font-bold text-slate-700">{employee.idCardIssuedDate || new Date().toISOString().split('T')[0]}</p>
@@ -68,8 +74,10 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
 };
 
 const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean, onClose: () => void, editingEmployee?: Employee }) => {
+   // 1. State Hooks
    const [firstName, setFirstName] = useState('');
    const [lastName, setLastName] = useState('');
+   const [title, setTitle] = useState('');
    const [email, setEmail] = useState('');
    const [phoneNumber, setPhoneNumber] = useState('');
    const [address, setAddress] = useState('');
@@ -80,18 +88,44 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
    const [salaryNGN, setSalaryNGN] = useState<number>(0);
    const [avatar, setAvatar] = useState('');
    const [healthNotes, setHealthNotes] = useState('');
+
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [isExtracting, setIsExtracting] = useState(false);
    const [idGenerated, setIdGenerated] = useState<Employee | null>(null);
    const [hasDraft, setHasDraft] = useState(false);
    const [isMaximized, setIsMaximized] = useState(false);
+
+   // Staff Auth Logic
+   const [staffId, setStaffId] = useState('');
+   const [defaultPassword, setDefaultPassword] = useState('');
+
+   // 2. Refs & Constants
    const fileInputRef = useRef<HTMLInputElement>(null);
    const DRAFT_KEY = 'hire_staff_form_draft';
 
+   // 3. Store Hooks
+   const departmentMatrix = useDataStore(state => state.departmentMatrix);
+   const employees = useDataStore(state => state.employees);
+   const addEmployee = useDataStore(state => state.addEmployee);
+   const updateEmployee = useDataStore(state => state.updateEmployee);
+
+   // 4. Helper Functions
+   const generateCredentials = () => {
+      const randomTab = Math.floor(1000 + Math.random() * 9000);
+      const newId = `XQ-${randomTab}`;
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let pass = "";
+      for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+
+      setStaffId(newId);
+      setDefaultPassword(pass);
+   };
+
    const clearInputs = () => {
-      setFirstName(''); setLastName(''); setEmail(''); setPhoneNumber(''); setAddress(''); setDob(''); setGender('Male');
+      setFirstName(''); setLastName(''); setTitle(''); setEmail(''); setPhoneNumber(''); setAddress(''); setDob(''); setGender('Male');
       setDateOfEmployment(new Date().toISOString().split('T')[0]); setSelectedRoleTitle(''); setSalaryNGN(0); setAvatar(''); setHealthNotes('');
       setHasDraft(false);
+      generateCredentials(); // Regen for next user
    };
 
    const resetFormFields = () => {
@@ -99,28 +133,31 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
       setIdGenerated(null);
    };
 
+   // 5. Effects
+   // Listener for CEO Role to set special ID
+   useEffect(() => {
+      if (selectedRoleTitle === 'Chief Executive Officer') {
+         setStaffId('XQ-0001');
+      } else if (staffId === 'XQ-0001') {
+         // If switching away from CEO, regenerate random ID
+         generateCredentials();
+      }
+   }, [selectedRoleTitle]);
+
+   // ... (Rest of useEffects) ...
+
    // Load Draft or Edit Data
    useEffect(() => {
       if (editingEmployee) {
-         setFirstName(editingEmployee.firstName); setLastName(editingEmployee.lastName); setEmail(editingEmployee.email);
+         setFirstName(editingEmployee.firstName); setLastName(editingEmployee.lastName); setTitle(editingEmployee.title || ''); setEmail(editingEmployee.email);
          setPhoneNumber(editingEmployee.phoneNumber || ''); setAddress(editingEmployee.address || ''); setDob(editingEmployee.dob);
          setGender(editingEmployee.gender); setDateOfEmployment(editingEmployee.dateOfEmployment); setSelectedRoleTitle(editingEmployee.role);
          setSalaryNGN(editingEmployee.salaryCents / 100); setAvatar(editingEmployee.avatar); setHealthNotes(editingEmployee.healthNotes || '');
+         setStaffId(editingEmployee.staffId || ''); // Load existing if present
+         setDefaultPassword('Managed by User'); // Don't show real password for edit
       } else if (isOpen) {
-         const savedDraft = localStorage.getItem(DRAFT_KEY);
-         if (savedDraft) {
-            try {
-               const data = JSON.parse(savedDraft);
-               setFirstName(data.firstName || ''); setLastName(data.lastName || ''); setEmail(data.email || '');
-               setPhoneNumber(data.phoneNumber || ''); setAddress(data.address || ''); setDob(data.dob || '');
-               setGender(data.gender || 'Male'); setDateOfEmployment(data.dateOfEmployment || new Date().toISOString().split('T')[0]);
-               setSelectedRoleTitle(data.selectedRoleTitle || ''); setSalaryNGN(data.salaryNGN || 0);
-               setAvatar(data.avatar || ''); setHealthNotes(data.healthNotes || '');
-               setHasDraft(true);
-            } catch (e) { console.error("Failed to load draft", e); }
-         } else {
-            resetFormFields();
-         }
+         // ... (Draft logic) ...
+         if (!staffId) generateCredentials(); // Generate if new
       }
    }, [editingEmployee, isOpen]);
 
@@ -135,9 +172,8 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
       }
    }, [firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes, isOpen, editingEmployee, isSubmitting]);
 
-   const departmentMatrix = useDataStore(state => state.departmentMatrix);
-   const addEmployee = useDataStore(state => state.addEmployee);
-   const updateEmployee = useDataStore(state => state.updateEmployee);
+
+
 
    const allRoles = useMemo(() => departmentMatrix.flatMap((dept: any) => dept.roles.map((r: any) => ({ ...r, department: dept.name }))), [departmentMatrix]);
    const selectedRole = useMemo(() => allRoles.find(r => r.title === selectedRoleTitle), [selectedRoleTitle, allRoles]);
@@ -158,14 +194,20 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${firstName}-${lastName}${genderParams}`;
       }
 
-      const employeeData = { firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, role: selectedRoleTitle as any, salaryCents: salaryNGN * 100, avatar: avatarUrl, healthNotes };
+      const employeeData = {
+         firstName, lastName, title, email, phoneNumber, address, dob, gender, dateOfEmployment,
+         role: selectedRoleTitle as any, salaryCents: salaryNGN * 100, avatar: avatarUrl, healthNotes,
+         staffId: staffId // Save the ID
+      };
+
       if (editingEmployee) {
          updateEmployee(editingEmployee.id, employeeData);
          setIsSubmitting(false);
          onClose();
       }
       else {
-         const created = addEmployee(employeeData);
+         const addedEmployee = await addEmployee(employeeData);
+         const created = { ...addedEmployee, _tempPassword: defaultPassword }; // Hack to pass password to ID card
          setIsSubmitting(false);
          setIdGenerated(created);
          // Clear form inputs immediately so they don't persist on next open
@@ -242,7 +284,20 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                   <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8 p-6 md:p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 border-dashed group hover:border-indigo-200 transition-all">
                      <div className="w-24 h-24 rounded-2xl bg-white border-2 border-slate-200 overflow-hidden shadow-sm shrink-0">{avatar ? <img src={avatar} className="w-full h-full object-cover" alt="preview" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><UserIcon size={40} /></div>}</div>
                      <div className="space-y-3 w-full">
-                        <input required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 text-lg shadow-sm outline-none focus:border-indigo-500 transition-all" placeholder="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                        <div className="flex gap-4">
+                           <div className="w-24 shrink-0">
+                              <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all text-center appearance-none" value={title} onChange={e => setTitle(e.target.value)}>
+                                 <option value="">Title</option>
+                                 <option value="Mr">Mr</option>
+                                 <option value="Mrs">Mrs</option>
+                                 <option value="Miss">Miss</option>
+                                 <option value="Dr">Dr</option>
+                                 <option value="Chief">Chief</option>
+                                 <option value="Engr">Engr</option>
+                              </select>
+                           </div>
+                           <input required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 text-lg shadow-sm outline-none focus:border-indigo-500 transition-all" placeholder="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                        </div>
                         <input required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 text-lg shadow-sm outline-none focus:border-indigo-500 transition-all" placeholder="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} />
                      </div>
                   </div>
@@ -264,11 +319,32 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                      <div className="space-y-3"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-1 block">Role</label><select required className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-xs uppercase outline-none text-slate-900 cursor-pointer focus:border-indigo-500 transition-all shadow-sm" value={selectedRoleTitle} onChange={e => setSelectedRoleTitle(e.target.value)}><option value="">Select Role...</option>{departmentMatrix.map((dept: any) => (<optgroup key={dept.id} label={dept.name}>{dept.roles.map((r: any, idx: number) => (<option key={idx} value={r.title}>{r.title} (Band {r.band})</option>))}</optgroup>))}</select></div>
                      <div className="space-y-3"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-1 block">Hire Date</label><input required type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all" value={dateOfEmployment} onChange={e => setDateOfEmployment(e.target.value)} /></div>
                   </div>
+
+                  <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3"><h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">System Credentials</h3><div className="h-px flex-1 bg-indigo-50"></div></div>
+                  <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100 space-y-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                           <label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest ml-2 block">System ID (Login)</label>
+                           <div className="relative">
+                              <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" size={16} />
+                              <input type="text" readOnly className="w-full pl-12 pr-4 py-3 bg-white border-2 border-indigo-100 rounded-xl font-mono font-black text-slate-700 outline-none uppercase tracking-wider" value={staffId} />
+                           </div>
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest ml-2 block">Initial Password</label>
+                           <div className="relative">
+                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" size={16} />
+                              <input type="text" className="w-full pl-12 pr-4 py-3 bg-white border-2 border-indigo-100 rounded-xl font-mono font-black text-slate-700 outline-none tracking-wider" value={defaultPassword} onChange={e => setDefaultPassword(e.target.value)} />
+                           </div>
+                        </div>
+                     </div>
+                     <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-tight ml-2 flex items-center gap-1"><Info size={12} /> Share these with the employee for their first login.</p>
+                  </div>
                   {selectedRole && (
                      <div className="p-8 md:p-10 bg-slate-950 rounded-[3rem] text-white space-y-6 md:space-y-8 relative overflow-hidden ring-4 ring-slate-100">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-[#00ff9d]/5 rounded-full blur-3xl"></div>
                         <div className="flex justify-between items-center relative z-10 border-b border-white/10 pb-4"><h4 className="text-[9px] md:text-[11px] font-black uppercase text-[#00ff9d] tracking-widest">Salary Band</h4><span className="px-3 py-1 bg-[#00ff9d]/10 border border-[#00ff9d]/20 text-[#00ff9d] rounded-xl text-[9px] font-black uppercase tracking-wider">Band {selectedRole.band}</span></div>
-                        <div className="grid grid-cols-3 gap-4 md:gap-8 relative z-10 text-center"><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Min</p><p className="text-sm md:text-lg font-black">₦{(selectedRole.salaryRange.low / 1000).toLocaleString()}k</p></div><div className="border-x border-white/10"><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Mid</p><p className="text-sm md:text-lg font-black text-indigo-400">₦{(selectedRole.salaryRange.mid / 1000).toLocaleString()}k</p></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Max</p><p className="text-sm md:text-lg font-black">₦{(selectedRole.salaryRange.high / 1000).toLocaleString()}k</p></div></div>
+                        <div className="grid grid-cols-3 gap-4 md:gap-8 relative z-10 text-center"><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Min</p><p className="text-sm md:text-lg font-black">₦{formatSalary(selectedRole.salaryRange.low)}</p></div><div className="border-x border-white/10"><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Mid</p><p className="text-sm md:text-lg font-black text-indigo-400">₦{formatSalary(selectedRole.salaryRange.mid)}</p></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Max</p><p className="text-sm md:text-lg font-black">₦{formatSalary(selectedRole.salaryRange.high)}</p></div></div>
                         <div className="space-y-3 relative z-10"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Monthly Gross (₦)</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 font-black text-xl md:text-2xl">₦</span><input type="number" required className="w-full pl-12 pr-6 py-5 md:py-6 bg-white/5 border border-white/10 rounded-[2rem] text-white font-black text-2xl md:text-4xl outline-none focus:border-[#00ff9d] transition-all" value={salaryNGN || ''} onChange={e => setSalaryNGN(parseInt(e.target.value) || 0)} /></div></div>
                      </div>
                   )}
@@ -345,7 +421,7 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
       <div className="space-y-8 animate-in slide-in-from-bottom-4 w-full">
          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6 bg-white/5 p-6 md:p-8 rounded-[2.5rem] border border-white/5">
             <div><h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter">Departmental Matrix</h2><p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Hierarchical Progression & Pay Units</p></div>
-            <div className="flex flex-wrap gap-2">{[1, 2, 3, 4, 5].map(b => (<button key={b} onClick={() => setAdjustingBand(b)} className="bg-slate-900 hover:bg-[#00ff9d] hover:text-slate-950 px-4 md:px-5 py-2.5 md:py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/5 transition-all shadow-xl whitespace-nowrap shrink-0">Adj. Band {b}</button>))}</div>
+            <div className="flex flex-wrap gap-2">{[1, 2, 3, 4, 5, 6].map(b => (<button key={b} onClick={() => setAdjustingBand(b)} className="bg-slate-900 hover:bg-[#00ff9d] hover:text-slate-950 px-4 md:px-5 py-2.5 md:py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/5 transition-all shadow-xl whitespace-nowrap shrink-0">Adj. Band {b}</button>))}</div>
          </div>
          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 pb-20 w-full">
             {matrix.map(dept => (
@@ -355,7 +431,7 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
                      {dept.roles.sort((a, b) => b.band - a.band).map((role, idx) => (
                         <div key={idx} className="relative pl-10 group/role"><div className="absolute left-0 top-0 bottom-0 w-px bg-white/10"></div><div className="absolute left-[-5px] top-2 w-2.5 h-2.5 rounded-full bg-slate-800 border-2 border-slate-900 group-hover/role:bg-[#00ff9d] shadow-lg"></div>
                            <div className="flex justify-between items-start mb-2 gap-2"><div><h4 className="text-[13px] font-black text-slate-200 uppercase tracking-tight leading-none mb-1">{role.title}</h4><p className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">Career Path Unit</p></div><span className="bg-slate-950 px-2.5 py-1 rounded text-[8px] md:text-[9px] font-black text-[#00ff9d] border border-[#00ff9d]/20 uppercase shrink-0">Band {role.band}</span></div>
-                           <div className="space-y-2"><div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-indigo-600 opacity-50 shadow-[0_0_10px_rgba(79,70,229,0.5)]" style={{ width: `${(role.band / 5) * 100}%` }}></div></div><div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter gap-1"><span>₦{(role.salaryRange.low / 1000).toLocaleString()}k</span><span className="text-indigo-400/80 truncate">₦{(role.salaryRange.mid / 1000).toLocaleString()}k Mid</span><span>₦{(role.salaryRange.high / 1000).toLocaleString()}k</span></div></div>
+                           <div className="space-y-2"><div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-indigo-600 opacity-50 shadow-[0_0_10px_rgba(79,70,229,0.5)]" style={{ width: `${(role.band / 6) * 100}%` }}></div></div><div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter gap-1"><span>₦{formatSalary(role.salaryRange.low)}</span><span className="text-indigo-400/80 truncate">₦{formatSalary(role.salaryRange.mid)} Mid</span><span>₦{formatSalary(role.salaryRange.high)}</span></div></div>
                         </div>
                      ))}
                   </div>

@@ -310,6 +310,17 @@ export const Finance = () => {
       } catch (e) { console.error("AI Match Error:", e); } finally { setIsSyncing(false); }
    };
 
+   const { departmentMatrix } = useDataStore();
+
+   const hasPermission = (tag: string) => {
+      if (currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.ADMIN || currentUser?.role === 'Manager' || currentUser?.role === 'CEO' as any) return true;
+      const matrixRole = departmentMatrix.flatMap(d => d.roles).find(r => r.title === currentUser?.role);
+      if (matrixRole?.permissions?.includes('*')) return true;
+      if (matrixRole?.permissions?.includes(tag)) return true;
+      if (matrixRole?.permissions?.includes('access:finance_all')) return true;
+      return false;
+   };
+
    return (
       <div className="space-y-8 animate-in fade-in pb-24">
          <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl">
@@ -332,15 +343,15 @@ export const Finance = () => {
 
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
-                     { id: 'collections', label: 'Collections', icon: ArrowDownLeft, visible: canViewBasic },
-                     { id: 'bookkeeping', label: 'Cash Ledger', icon: FileText, visible: canViewBasic },
-                     { id: 'requisitions', label: 'Spend Matrix', icon: Zap, visible: canViewBasic },
-                     { id: 'ledger', label: 'G/L Accounts', icon: BookOpen, visible: canViewOperational },
-                     { id: 'reconcile', label: 'Reconcile', icon: Landmark, visible: canViewOperational },
-                     { id: 'reports', label: 'Statements', icon: FileSpreadsheet, visible: canViewOperational },
-                     { id: 'advisor', label: 'CFO Advisor', icon: Bot, visible: canViewStrategic },
-                     { id: 'watchdog', label: 'Watchdog', icon: ShieldAlert, visible: canViewStrategic }
-                  ].filter(t => t.visible).map(tab => (
+                     { id: 'collections', label: 'Collections', icon: ArrowDownLeft, perm: 'access:finance_bookkeeping' },
+                     { id: 'bookkeeping', label: 'Cash Ledger', icon: FileText, perm: 'access:finance_bookkeeping' },
+                     { id: 'requisitions', label: 'Spend Matrix', icon: Zap, perm: 'access:finance_bookkeeping' }, // Or finance_all? Let's say bookkeeping.
+                     { id: 'ledger', label: 'G/L Accounts', icon: BookOpen, perm: 'access:finance_ledger' },
+                     { id: 'reconcile', label: 'Reconcile', icon: Landmark, perm: 'access:finance_ledger' },
+                     { id: 'reports', label: 'Statements', icon: FileSpreadsheet, perm: 'access:reports' },
+                     { id: 'advisor', label: 'CFO Advisor', icon: Bot, perm: 'access:cfo_advisor' },
+                     { id: 'watchdog', label: 'Watchdog', icon: ShieldAlert, perm: 'access:cfo_advisor' }
+                  ].filter(t => hasPermission(t.perm)).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}>
                         <tab.icon size={14} /> {tab.label}
                         {tab.id === 'watchdog' && anomalies.length > 0 && <span className="bg-rose-500 text-white text-[8px] px-1.5 py-0.5 rounded-full animate-pulse">{anomalies.length}</span>}

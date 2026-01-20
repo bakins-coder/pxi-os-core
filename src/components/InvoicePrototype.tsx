@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer, Download, Mail, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import logoFull from '../assets/xquisite-logo-full.png';
 
 export const InvoicePrototype = () => {
     const navigate = useNavigate();
@@ -96,22 +97,7 @@ export const InvoicePrototype = () => {
                     <div className="flex justify-between items-start">
                         {/* Logo / Brand Area */}
                         <div>
-                            <div className="flex items-center gap-2">
-                                {/* Simulated Logo Icon based on "Xquisite" shapes */}
-                                <div className="relative w-16 h-12">
-                                    <div className="absolute top-0 left-0 w-full h-full">
-                                        <svg viewBox="0 0 100 60" className="w-full h-full text-[#ff6b6b] fill-current">
-                                            <path d="M10,10 Q50,0 90,10 L80,20 Q50,15 20,20 Z" fill="#FFA000" />
-                                            <path d="M10,25 Q50,15 90,25 L80,35 Q50,30 20,35 Z" fill="#ff6b6b" />
-                                            <circle cx="25" cy="30" r="8" fill="#D32F2F" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h1 className="text-4xl font-serif text-[#e65100] tracking-tight">XQUISITE</h1>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-500 italic mt-1 ml-1">For the discerning taste buds</p>
+                            <img src={logoFull} alt="Xquisite Celebrations Ltd" className="h-24 object-contain mb-2" />
                         </div>
 
                         {/* Company Address */}

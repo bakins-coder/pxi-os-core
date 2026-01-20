@@ -47,3 +47,21 @@ export const calculatePayrollForEmployee = (employee: Employee): PayrollItem => 
         anomalies
     };
 };
+
+export const formatSalary = (cents: number): string => {
+    // Convert cents to Naira
+    const naira = cents / 100;
+
+    // If >= 1,000,000, format as Millions (M)
+    if (naira >= 1000000) {
+        // e.g. 5,000,000 -> 5M
+        // e.g. 7,500,000 -> 7.5M
+        const millions = naira / 1000000;
+        // Check if integer to avoid .0
+        return Number.isInteger(millions) ? `${millions}M` : `${millions.toFixed(1)}M`;
+    }
+
+    // Otherwise format as Thousands (k)
+    // e.g. 150,000 -> 150k
+    return `${(naira / 1000).toLocaleString()}k`;
+};

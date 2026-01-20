@@ -80,6 +80,9 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 
     // Contact Reverse Mappings
     if ('customerType' in newItem) { newItem.customer_type = newItem.customerType; delete newItem.customerType; }
+    if ('registrationNumber' in newItem) { newItem.registration_number = newItem.registrationNumber; delete newItem.registrationNumber; }
+    if ('jobTitle' in newItem) { newItem.job_title = newItem.jobTitle; delete newItem.jobTitle; }
+    // Industry is 'industry' in both, but usually safe to leave or explicitly map if needed (it matches snake_case logic if it's single word).
 
     // Ledger Reverse Mappings
     if ('balanceCents' in newItem) { newItem.balance_cents = newItem.balanceCents; delete newItem.balanceCents; }
@@ -90,7 +93,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('phoneNumber' in newItem) { newItem.phone_number = newItem.phoneNumber; delete newItem.phoneNumber; }
     if ('salaryCents' in newItem) { newItem.salary_cents = newItem.salaryCents; delete newItem.salaryCents; }
     if ('healthNotes' in newItem) { newItem.health_notes = newItem.healthNotes; delete newItem.healthNotes; }
-    if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.dateOfEmployment; }
+    if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.date_of_employment; }
 
     return newItem;
   });
@@ -112,7 +115,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects'].includes(tableName);
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects', 'job_roles', 'departments'].includes(tableName);
 
   let query = supabase.from(tableName).select('*');
 
@@ -147,6 +150,8 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
     // Contact Mappings
     if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }
+    if ('registration_number' in newItem) { newItem.registrationNumber = newItem.registration_number; delete newItem.registration_number; }
+    if ('job_title' in newItem) { newItem.jobTitle = newItem.job_title; delete newItem.job_title; }
 
 
     // Ledger Mappings

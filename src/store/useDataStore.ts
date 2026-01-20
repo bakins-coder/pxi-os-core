@@ -143,37 +143,7 @@ export const useDataStore = create<DataState>()(
             isSyncing: false,
             realtimeStatus: 'Disconnected',
             realtimeChannel: null,
-            departmentMatrix: [
-                {
-                    id: 'dept-kitchen', name: 'Kitchen', roles: [
-                        { title: "Executive Chef", band: 5, salaryRange: { low: 500000, mid: 600000, high: 700000 } },
-                        { title: "Kitchen Manager", band: 4, salaryRange: { low: 350000, mid: 400000, high: 450000 } },
-                        { title: "Sous Chef", band: 4, salaryRange: { low: 300000, mid: 350000, high: 400000 } },
-                        { title: "Chef", band: 3, salaryRange: { low: 200000, mid: 250000, high: 300000 } },
-                        { title: "Line Cook", band: 2, salaryRange: { low: 130000, mid: 150000, high: 170000 } },
-                        { title: "Kitchen Assistant", band: 1, salaryRange: { low: 80000, mid: 100000, high: 120000 } }
-                    ]
-                },
-                {
-                    id: 'dept-service', name: 'Service', roles: [
-                        { title: "Banquet Manager", band: 5, salaryRange: { low: 500000, mid: 600000, high: 700000 } },
-                        { title: "Event Coordinator", band: 4, salaryRange: { low: 300000, mid: 350000, high: 400000 } },
-                        { title: "Head Waiter", band: 3, salaryRange: { low: 200000, mid: 230000, high: 260000 } },
-                        { title: "Waiter/Server", band: 2, salaryRange: { low: 130000, mid: 150000, high: 170000 } },
-                        { title: "Cleaner", band: 1, salaryRange: { low: 70000, mid: 85000, high: 100000 } },
-                        { title: "Runner/Busser", band: 1, salaryRange: { low: 80000, mid: 100000, high: 120000 } }
-                    ]
-                },
-                {
-                    id: 'dept-logistics', name: 'Logistics', roles: [
-                        { title: "Logistics Manager", band: 4, salaryRange: { low: 300000, mid: 350000, high: 400000 } },
-                        { title: "Logistics Officer", band: 3, salaryRange: { low: 200000, mid: 250000, high: 300000 } },
-                        { title: "Stock Keeper", band: 3, salaryRange: { low: 180000, mid: 220000, high: 260000 } },
-                        { title: "Driver", band: 2, salaryRange: { low: 100000, mid: 120000, high: 140000 } }
-                    ]
-                }
-            ],
-            // ... (other state initialized)
+            departmentMatrix: [], // Fetched dynamically from DB
 
             addInventoryItem: async (item) => {
                 const user = useAuthStore.getState().user;
@@ -1364,6 +1334,25 @@ export const useDataStore = create<DataState>()(
 
                     const tables = ['contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions'];
 
+                    // Safe Pull Helper: Prevents one table failure from crashing the entire app
+                    const safePull = async (table: string, cid?: string) => {
+                        try {
+                            return await pullCloudState(table, cid);
+                        } catch (err) {
+                            console.error(`[Hydration Error] Failed to fetch ${table}:`, err);
+                            return []; // Return empty array so destructuring doesn't fail
+                        }
+                    };
+
+                    const safeViews = async (view: 'v_reusable_inventory' | 'v_rental_inventory' | 'v_ingredient_inventory', cid: string) => {
+                        try {
+                            return await pullInventoryViews(view, cid);
+                        } catch (err) {
+                            console.error(`[Hydration Error] Failed to fetch view ${view}:`, err);
+                            return [];
+                        }
+                    }
+
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
@@ -1377,26 +1366,52 @@ export const useDataStore = create<DataState>()(
                         // Fixed Assets
                         fixedAssets
                     ] = await Promise.all([
-                        pullCloudState('contacts', companyId),
-                        pullCloudState('invoices', companyId),
-                        pullCloudState('catering_events', companyId),
-                        pullCloudState('tasks', companyId),
-                        pullCloudState('employees', companyId),
-                        pullCloudState('requisitions', companyId),
-                        pullCloudState('chart_of_accounts', companyId),
-                        pullCloudState('bank_transactions', companyId),
+                        safePull('contacts', companyId),
+                        safePull('invoices', companyId),
+                        safePull('catering_events', companyId),
+                        safePull('tasks', companyId),
+                        safePull('employees', companyId),
+                        safePull('requisitions', companyId),
+                        safePull('chart_of_accounts', companyId),
+                        safePull('bank_transactions', companyId),
 
-                        pullCloudState('products', companyId),
-                        pullCloudState('reusable_items', companyId),
-                        pullCloudState('rental_items', companyId),
-                        pullCloudState('ingredients', companyId),
+                        safePull('products', companyId),
+                        safePull('reusable_items', companyId),
+                        safePull('rental_items', companyId),
+                        safePull('ingredients', companyId),
 
-                        pullInventoryViews('v_reusable_inventory', companyId),
-                        pullInventoryViews('v_rental_inventory', companyId),
-                        pullInventoryViews('v_ingredient_inventory', companyId),
-                        pullCloudState('product_categories'), // Fetch categories to map IDs
-                        pullCloudState('assets', companyId) // Fetch Fixed Assets
+                        safeViews('v_reusable_inventory', companyId),
+                        safeViews('v_rental_inventory', companyId),
+                        safeViews('v_ingredient_inventory', companyId),
+                        safePull('product_categories'), // Fetch categories to map IDs
+                        safePull('assets', companyId), // Fetch Fixed Assets
                     ]); // End Promise.all
+
+                    // Separate fetch for Department Matrix to keep things clean
+                    const [rawDepartments, rawJobRoles] = await Promise.all([
+                        safePull('departments', companyId),
+                        safePull('job_roles', companyId)
+                    ]);
+
+                    if (rawDepartments && rawJobRoles) {
+                        const constructedMatrix: DepartmentMatrix[] = rawDepartments.map((d: any) => ({
+                            id: d.id,
+                            name: d.name,
+                            roles: rawJobRoles.filter((r: any) => r.department_id === d.id || r.departmentId === d.id).map((r: any) => ({
+                                title: r.title,
+                                band: r.band,
+                                salaryRange: {
+                                    low: r.salary_min || r.salaryMin || 0,
+                                    mid: r.salary_mid || r.salaryMid || 0,
+                                    high: r.salary_max || r.salaryMax || 0
+                                },
+                                permissions: r.permissions || []
+                            }))
+                        }));
+                        if (constructedMatrix.length > 0) {
+                            set({ departmentMatrix: constructedMatrix });
+                        }
+                    }
                     const combinedInventory: InventoryItem[] = [];
 
                     // 1. Products (Offerings)

@@ -41,15 +41,33 @@ export const useAuthStore = create<AuthState>()(
                 if (error) throw error;
                 if (!data.user) throw new Error('No user returned from Supabase.');
 
-                // Construct User object from Supabase session
+                // 1. Fetch Profile Source of Truth (Database Link)
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('organization_id, role, name')
+                    .eq('id', data.user.id)
+                    .single();
+
+                // 2. Determine Authoritative Company ID
+                // Prefer Profile (DB) > Metadata (Stale)
+                const finalCompanyId = profile?.organization_id || data.user.user_metadata.company_id;
+
+                // Construct User object
                 const user: User = {
                     id: data.user.id,
                     email: data.user.email || '',
-                    name: data.user.user_metadata.name || 'User',
-                    role: (data.user.user_metadata.role as Role) || Role.ADMIN,
-                    companyId: data.user.user_metadata.company_id,
+                    name: profile?.name || data.user.user_metadata.name || 'User',
+                    role: (profile?.role as Role) || (data.user.user_metadata.role as Role) || Role.ADMIN,
+                    companyId: finalCompanyId,
                     avatar: data.user.user_metadata.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
                 };
+
+                // Debug Log for User
+                if (!finalCompanyId) {
+                    console.warn('CRITICAL: No Company ID found for user. Profile:', profile);
+                } else {
+                    console.log('Login Successful. Linked to Org:', finalCompanyId);
+                }
 
                 set({ user });
             },
@@ -61,8 +79,6 @@ export const useAuthStore = create<AuthState>()(
             setUser: (user) => set({ user }),
             signup: async (name: string, email: string, password?: string, role: Role = Role.ADMIN) => {
                 if (!supabase) throw new Error('Supabase client not initialized');
-                if (!password) throw new Error('Password required for signup.');
-
                 if (!password) throw new Error('Password required for signup.');
 
                 // const companyId = `org-${Date.now()}`; // REMOVED: Deferred to Setup Wizard
@@ -86,14 +102,34 @@ export const useAuthStore = create<AuthState>()(
                     // Reset any previous settings to ensure clean slate
                     useSettingsStore.getState().reset();
 
+                    // CHECK FOR AUTO-LINKED PROFILE (Staff Onboarding)
+                    // The DB trigger 'on_auth_user_created_link_employee' should have linked this user 
+                    // to an organization if their email matched an employee record.
+                    let linkedCompanyId: string | undefined = undefined;
+                    let linkedRole: Role = role;
+
+                    // Small delay to allow DB trigger to complete (usually instant, but safety first)
+                    await new Promise(r => setTimeout(r, 500));
+
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('organization_id, role')
+                        .eq('id', data.user.id)
+                        .single();
+
+                    if (profile?.organization_id) {
+                        console.log('[Auth] User auto-linked to organization:', profile.organization_id);
+                        linkedCompanyId = profile.organization_id;
+                        linkedRole = (profile.role as Role) || role;
+                    }
+
                     const newUser: User = {
                         id: data.user.id,
                         name,
                         email,
-                        role,
+                        role: linkedRole,
                         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-                        // companyId is intentionally undefined
-                        companyId: undefined as any
+                        companyId: linkedCompanyId as any // If undefined, App will show Setup Wizard. If set, Dashboard.
                     };
                     set({ user: newUser });
                 }
