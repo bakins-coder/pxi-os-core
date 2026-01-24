@@ -366,9 +366,9 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
    const [reason, setReason] = useState('');
    const [isMaximized, setIsMaximized] = useState(false);
 
-   if (!isOpen) return null;
-
    const applyForLeave = useDataStore(state => state.applyForLeave);
+
+   if (!isOpen) return null;
 
    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -461,15 +461,25 @@ export const HR = () => {
    const rejectLeave = useDataStore(state => state.rejectLeave);
    const currentUser = useAuthStore(state => state.user);
 
-   const [activeTab, setActiveTab] = useState<'dashboard' | 'people' | 'payroll' | 'matrix' | 'leave'>('dashboard');
+   const [activeTab, setActiveTab] = useState<'dashboard' | 'people' | 'payroll' | 'matrix' | 'leave' | 'performance'>('dashboard');
    const [searchQuery, setSearchQuery] = useState('');
    const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
    const [isHireModalOpen, setIsHireModalOpen] = useState(false);
    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
-   const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.HR_MANAGER;
-   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE].includes(currentUser?.role as any);
+   const isAdmin = [Role.ADMIN, Role.HR_MANAGER, Role.SUPER_ADMIN, Role.CEO].includes(currentUser?.role as any);
+   const canViewSensitiveInfo = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.HR, Role.FINANCE, Role.MANAGER, Role.CEO].includes(currentUser?.role as any);
+   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE, Role.CEO].includes(currentUser?.role as any);
+
+   useEffect(() => {
+      // Refund to dashboard if on forbidden tab
+      if (!canViewSensitiveInfo && ['people', 'matrix', 'payroll', 'performance'].includes(activeTab)) {
+         setActiveTab('leave');
+      } else if (activeTab === 'payroll' && !canViewPayroll) {
+         setActiveTab('dashboard');
+      }
+   }, [canViewSensitiveInfo, canViewPayroll, activeTab]);
 
    useEffect(() => {
       if (activeTab === 'payroll') {
@@ -478,6 +488,7 @@ export const HR = () => {
    }, [activeTab, employees]);
 
    const filteredEmployees = useMemo(() => {
+      // ... existing code ...
       const query = searchQuery.toLowerCase().trim();
       if (!query) return employees;
       return employees.filter(e => {
@@ -507,10 +518,11 @@ export const HR = () => {
                <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0">
                   {[
                      { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: true },
-                     { id: 'people', label: 'People', icon: Users, visible: true },
+                     { id: 'people', label: 'People', icon: Users, visible: canViewSensitiveInfo },
                      { id: 'leave', label: 'Absence Node', icon: Plane, visible: true },
                      { id: 'payroll', label: 'Payroll', icon: Banknote, visible: canViewPayroll },
-                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: true }
+                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: canViewSensitiveInfo },
+                     { id: 'performance', label: 'Performance', icon: Sparkles, visible: canViewSensitiveInfo }
                   ].filter(t => t.visible).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 md:px-8 py-3 rounded-[1.2rem] md:rounded-[1.5rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-2xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                         <tab.icon size={14} className="shrink-0" /> <span className="hidden sm:inline">{tab.label}</span>
@@ -588,6 +600,25 @@ export const HR = () => {
                            ))}
                         </tbody>
                      </table>
+                  </div>
+               </div>
+            </div>
+         )}
+         {activeTab === 'performance' && (
+            <div className="space-y-8 animate-in slide-in-from-bottom-4 w-full">
+               <div className="bg-slate-950 p-8 md:p-10 rounded-[3rem] text-white flex justify-between items-center shadow-2xl relative overflow-hidden border border-white/10">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+                  <div className="relative z-10">
+                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">Performance</h2>
+                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2"><Sparkles size={14} className="text-amber-400" /> Quarterly Assessment Cycle</p>
+                  </div>
+                  <button className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Placeholder for Review Cards - To be connected to store.performanceReviews */}
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl opacity-60">
+                     <p className="font-black text-slate-300 uppercase tracking-widest text-xs text-center">No Active Reviews</p>
                   </div>
                </div>
             </div>

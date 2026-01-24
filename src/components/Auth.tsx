@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import {
-  Mail, Lock, ArrowRight, Loader2, AlertCircle, Box, User, ShieldCheck, Sparkles, Building, RefreshCw, UserCircle, CheckCircle2
+  Mail, Lock, ArrowRight, Loader2, AlertCircle, Box, User, ShieldCheck, Sparkles, Building, RefreshCw, UserCircle, CheckCircle2, Eye, EyeOff
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -13,6 +13,7 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,12 +49,8 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
 
     let authIdentifier = email.trim();
 
-    // ID / Phone Logic: If no '@' symbol, treat as System ID (Staff ID or Phone acting as ID)
-    if (!authIdentifier.includes('@')) {
-      // Allow alphanumeric IDs (e.g. XQ-8821) or pure numbers
-      // We append a consistent internal domain to satisfy Auth requirements
-      authIdentifier = `${authIdentifier.toLowerCase()}@xquisite.local`;
-    }
+    // ID / Phone Logic: Passed raw to store for lookup
+    // if (!authIdentifier.includes('@')) ... logic moved to store
 
     try {
       if (isSignUp) {
@@ -183,13 +180,20 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
           <div className="relative">
             <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
-              className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
+              className="w-full pl-14 pr-12 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
               placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         </div>
 
@@ -308,6 +312,7 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
   // UX State
   const [isEmployeeMode, setIsEmployeeMode] = useState(false);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Auto-detect employee mode based on input
   useEffect(() => {
@@ -342,6 +347,21 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
       onSuccess();
     } catch (err: any) {
       console.error(err);
+
+      // Smart Fallback: If user already exists, try logging them in
+      if (err.message?.includes('registered') || err.message?.includes('already exists')) {
+        try {
+          const { login } = useAuthStore.getState();
+          await login(authIdentifier, password);
+          onSuccess();
+          return;
+        } catch (loginErr: any) {
+          // If login also fails, show the original or login error
+          setError('Account exists but password invalid. Please check your credentials.');
+          return;
+        }
+      }
+
       setError(err.message || 'Registration failed. Please Check your internet connection.');
     } finally {
       setIsLoading(false);
@@ -472,15 +492,23 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
             <div className="relative mt-4">
               <label className={labelClasses}>Password</label>
               <div className="relative">
+
                 <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                 <input
                   required
-                  type="password"
-                  className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
+                  type={showPassword ? "text" : "password"}
+                  className="w-full pl-14 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
           </div>

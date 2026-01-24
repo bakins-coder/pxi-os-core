@@ -1,5 +1,6 @@
 export enum Role {
   SUPER_ADMIN = 'Super Admin',
+  CEO = 'Chief Executive Officer',
   ADMIN = 'Admin',
   MANAGER = 'Manager',
   AGENT = 'Contact Center Agent',
@@ -21,9 +22,9 @@ export enum Role {
   STOCK_KEEPER = 'Stock Keeper',
   SALES = 'Sales',
   DRIVER = 'Driver',
-  CLEANER = 'Cleaner',
   HEAD_WAITER = 'Head Waiter',
-  FINANCE_OFFICER = 'Finance Officer'
+  FINANCE_OFFICER = 'Finance Officer',
+  CHAIRMAN = 'Chairman'
 }
 
 export enum AIAgentMode {
@@ -42,6 +43,7 @@ export enum LeaveStatus {
 
 export enum LeaveType {
   ANNUAL = 'Annual',
+  CASUAL = 'Casual (Short)',
   SICK = 'Sick',
   MATERNITY = 'Maternity',
   PATERNITY = 'Paternity',
@@ -293,7 +295,7 @@ export interface Contact {
 }
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
 export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; }
-export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId: string; }
+export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId: string; isSuperAdmin?: boolean; permissionTags?: string[]; }
 export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; }
 
 export interface Requisition {

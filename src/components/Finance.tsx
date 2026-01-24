@@ -183,15 +183,279 @@ const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose
    );
 };
 
+const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+   const { contacts, addContact, addInvoice, inventory } = useDataStore();
+   const user = useAuthStore(state => state.user);
+
+   // Customer State
+   const [searchTerm, setSearchTerm] = useState('');
+   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+   const [isNewCustomer, setIsNewCustomer] = useState(false);
+   const [newCustomerDetails, setNewCustomerDetails] = useState({ name: '', email: '', phone: '', address: '' });
+
+   // Invoice State
+   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+   const [dueDate, setDueDate] = useState('');
+   const [lines, setLines] = useState<{ id: string, description: string, quantity: number, price: number }[]>([
+      { id: `line-${Date.now()}`, description: '', quantity: 1, price: 0 }
+   ]);
+   const [notes, setNotes] = useState('');
+
+   useEffect(() => {
+      if (isOpen) {
+         // Reset state on open
+         setSearchTerm('');
+         setSelectedContact(null);
+         setIsNewCustomer(false);
+         setNewCustomerDetails({ name: '', email: '', phone: '', address: '' });
+         setLines([{ id: `line-${Date.now()}`, description: '', quantity: 1, price: 0 }]);
+         setNotes('');
+      }
+   }, [isOpen]);
+
+   const filteredContacts = contacts.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+   const productInventory = inventory.filter(i => i.type === 'product');
+
+   const handleSelectContact = (contact: Contact) => {
+      setSelectedContact(contact);
+      setSearchTerm(contact.name);
+      setIsNewCustomer(false);
+   };
+
+   const handleCreateNewCustomer = () => {
+      setIsNewCustomer(true);
+      setSelectedContact(null);
+      setNewCustomerDetails(prev => ({ ...prev, name: searchTerm }));
+   };
+
+   const addLine = () => {
+      setLines([...lines, { id: `line-${Date.now()}`, description: '', quantity: 1, price: 0 }]);
+   };
+
+   const removeLine = (id: string) => {
+      setLines(lines.filter(l => l.id !== id));
+   };
+
+   const updateLine = (id: string, field: string, value: any) => {
+      setLines(lines.map(l => l.id === id ? { ...l, [field]: value } : l));
+   };
+
+   // Line Item Selection
+   const handleItemSelect = (id: string, itemName: string) => {
+      const item = productInventory.find(i => i.name === itemName);
+      if (item) {
+         updateLine(id, 'description', item.name);
+         updateLine(id, 'price', (item.priceCents || 0) / 100);
+      } else {
+         updateLine(id, 'description', itemName); // Allow custom entry
+      }
+   };
+
+   const handleSubmit = () => {
+      let contactId = selectedContact?.id;
+
+      if (isNewCustomer) {
+         if (!newCustomerDetails.name) return alert("Customer Name is required");
+         contactId = `con-${Date.now()}`;
+         addContact({
+            id: contactId,
+            name: newCustomerDetails.name,
+            email: newCustomerDetails.email,
+            phone: newCustomerDetails.phone,
+            address: newCustomerDetails.address,
+            type: 'Individual',
+            companyId: user?.companyId
+         });
+      } else if (!contactId) {
+         return alert("Please select a customer or create a new one");
+      }
+
+      const totalCents = lines.reduce((sum, l) => sum + (l.quantity * l.price * 100), 0);
+
+      const newInvoice: Invoice = {
+         id: `inv-${Date.now()}`,
+         number: `${Math.floor(Math.random() * 10000)}`, // Simple random number for now
+         companyId: user?.companyId || 'org-xquisite',
+         contactId: contactId!,
+         date: date,
+         dueDate: dueDate || date,
+         status: InvoiceStatus.UNPAID,
+         type: 'Sales',
+         lines: lines.map(l => ({
+            id: l.id,
+            description: l.description,
+            quantity: l.quantity,
+            unitPriceCents: l.price * 100
+         })),
+         totalCents: totalCents,
+         paidAmountCents: 0
+      };
+
+      addInvoice(newInvoice);
+      onClose();
+      alert("Invoice Created Successfully");
+   };
+
+   if (!isOpen) return null;
+
+   const totalAmount = lines.reduce((sum, l) => sum + (l.quantity * l.price), 0);
+
+   return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white shadow-2xl w-full max-w-4xl rounded-[3rem] overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+               <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900">New Invoice</h2>
+               <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="p-8 overflow-y-auto space-y-8">
+               {/* Customer Section */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                     <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2">Customer</label>
+                     {!isNewCustomer ? (
+                        <div className="relative">
+                           <input
+                              className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all"
+                              placeholder="Search Customer..."
+                              value={searchTerm}
+                              onChange={e => { setSearchTerm(e.target.value); setSelectedContact(null); }}
+                           />
+                           {searchTerm && !selectedContact && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-10 max-h-48 overflow-y-auto">
+                                 {filteredContacts.map(c => (
+                                    <button key={c.id} onClick={() => handleSelectContact(c)} className="w-full text-left p-3 hover:bg-slate-50 font-bold text-sm text-slate-700 block">
+                                       {c.name} <span className="text-slate-400 text-xs font-normal">({c.email})</span>
+                                    </button>
+                                 ))}
+                                 <button onClick={handleCreateNewCustomer} className="w-full text-left p-3 bg-indigo-50 text-indigo-600 font-bold text-sm hover:bg-indigo-100">
+                                    + Create new customer "{searchTerm}"
+                                 </button>
+                              </div>
+                           )}
+                        </div>
+                     ) : (
+                        <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 space-y-4 relative">
+                           <button onClick={() => setIsNewCustomer(false)} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600"><X size={16} /></button>
+                           <h4 className="font-black text-indigo-900 text-sm uppercase">New Customer Details</h4>
+                           <input
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm font-bold"
+                              placeholder="Full Name"
+                              value={newCustomerDetails.name}
+                              onChange={e => setNewCustomerDetails({ ...newCustomerDetails, name: e.target.value })}
+                           />
+                           <input
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm"
+                              placeholder="Email Address"
+                              value={newCustomerDetails.email}
+                              onChange={e => setNewCustomerDetails({ ...newCustomerDetails, email: e.target.value })}
+                           />
+                           <input
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm"
+                              placeholder="Phone Number"
+                              value={newCustomerDetails.phone}
+                              onChange={e => setNewCustomerDetails({ ...newCustomerDetails, phone: e.target.value })}
+                           />
+                           <input
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm"
+                              placeholder="Billing Address"
+                              value={newCustomerDetails.address}
+                              onChange={e => setNewCustomerDetails({ ...newCustomerDetails, address: e.target.value })}
+                           />
+                        </div>
+                     )}
+                  </div>
+
+                  <div className="space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 block mb-2">Invoice Date</label>
+                           <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-slate-800 outline-none" />
+                        </div>
+                        <div>
+                           <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 block mb-2">Due Date</label>
+                           <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-slate-800 outline-none" />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div>
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-sm font-black uppercase text-slate-600 tracking-widest">Line Items</h3>
+                     <button onClick={addLine} className="text-xs bg-slate-900 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-widest hover:bg-slate-700 transition-all">+ Add Item</button>
+                  </div>
+                  <div className="space-y-3">
+                     {lines.map((line, idx) => (
+                        <div key={line.id} className="flex gap-4 items-start">
+                           <span className="pt-4 text-xs font-bold text-slate-400 w-6">{idx + 1}.</span>
+                           <div className="flex-1 relative group">
+                              <input
+                                 list={`inventory-list-${line.id}`}
+                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500"
+                                 placeholder="Description or Select Item"
+                                 value={line.description}
+                                 onChange={e => handleItemSelect(line.id, e.target.value)}
+                              />
+                              <datalist id={`inventory-list-${line.id}`}>
+                                 {productInventory.map(item => (
+                                    <option key={item.id} value={item.name}>{item.category} - ₦{(item.priceCents / 100).toLocaleString()}</option>
+                                 ))}
+                              </datalist>
+                           </div>
+                           <input
+                              type="number"
+                              className="w-20 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-center"
+                              placeholder="Qty"
+                              value={line.quantity}
+                              onChange={e => updateLine(line.id, 'quantity', parseFloat(e.target.value))}
+                           />
+                           <div className="relative w-32">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₦</span>
+                              <input
+                                 type="number"
+                                 className="w-full pl-6 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-right"
+                                 placeholder="Price"
+                                 value={line.price}
+                                 onChange={e => updateLine(line.id, 'price', parseFloat(e.target.value))}
+                              />
+                           </div>
+                           <button onClick={() => removeLine(line.id)} className="p-3 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><X size={16} /></button>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Totals */}
+               <div className="flex justify-end">
+                  <div className="bg-slate-900 text-white p-6 rounded-[2rem] min-w-[300px]">
+                     <div className="flex justify-between items-center">
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-400">Total Amount</span>
+                        <span className="text-2xl font-black">₦{totalAmount.toLocaleString()}</span>
+                     </div>
+                  </div>
+               </div>
+            </div >
+
+            <div className="p-8 border-t border-slate-100 bg-white flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-200">Cancel</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Generate Invoice</button>
+            </div>
+         </div >
+      </div >
+   );
+};
+
 export const Finance = () => {
    const [activeTab, setActiveTab] = useState<'collections' | 'bookkeeping' | 'requisitions' | 'ledger' | 'reports' | 'advisor' | 'reconcile' | 'watchdog'>('collections');
 
    const {
       invoices, bookkeeping, requisitions, chartOfAccounts: coa, bankStatementLines: bankLines,
-      recordPayment, addBookkeepingEntry, approveRequisition, reconcileMatch, contacts
+      recordPayment, addBookkeepingEntry, approveRequisition, reconcileMatch, contacts, addContact, addInvoice
    } = useDataStore();
 
    const { cloudEnabled, isDemoMode, settings: org } = useSettingsStore();
+
+   const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const currentUser = useAuthStore(state => state.user);
 
    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -199,6 +463,9 @@ export const Finance = () => {
    const [paymentAmount, setPaymentAmount] = useState<string>('');
    const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
    const [isInvoiceModalMaximized, setIsInvoiceModalMaximized] = useState(false);
+
+   // ... rest of component
+
 
    // Accounting State
    const [cfoInsight, setCfoInsight] = useState<any>(null);
@@ -366,7 +633,7 @@ export const Finance = () => {
                <div className="p-8 border-b border-slate-50 flex justify-between items-center">
                   <div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Accounts Receivable</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Tracking outstanding banquet node payments</p></div>
                   <button onClick={handleSendReminders} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Bot size={16} /> AI Reminders</button>
-                  <button className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
+                  <button onClick={() => setIsManualInvoiceModalOpen(true)} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
                </div>
                <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
@@ -514,7 +781,11 @@ export const Finance = () => {
                            <div className="grid grid-cols-2 gap-6"><div className="p-6 bg-slate-50 rounded-3xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Due</p><p className="text-xl font-black text-slate-900">₦{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div><div className="p-6 bg-rose-50 rounded-3xl border border-rose-100"><p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Balance Remaining</p><p className="text-xl font-black text-rose-600">₦{((selectedInvoice.totalCents - selectedInvoice.paidAmountCents) / 100).toLocaleString()}</p></div></div><div><label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Payment Amount (₦)</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">₦</span><input type="number" className="w-full pl-14 pr-8 py-8 bg-slate-50 border-2 border-slate-200 rounded-[2.5rem] font-black text-4xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="0.00" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div></div></div>
                      )}
                   </div>
-                  <div className="p-8 border-t border-slate-100 bg-white flex gap-4"><button onClick={() => { setSelectedInvoice(null); setPaymentAmount(''); }} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-200">Close Window</button>{selectedInvoice.status !== InvoiceStatus.PAID ? (<button onClick={handlePartialPayment} className="flex-1 py-5 bg-[#ff6b6b] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:brightness-110 flex items-center justify-center gap-3">Confirm Payment Sync <ArrowRight size={16} /></button>) : (<button onClick={() => window.print()} className="flex-1 py-5 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:bg-slate-800 flex items-center justify-center gap-3">Print Official Receipt <Download size={16} /></button>)}</div>
+                  <div className="p-8 border-t border-slate-100 bg-white flex gap-4">
+                     <button onClick={() => { setSelectedInvoice(null); setPaymentAmount(''); }} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-200">Close Window</button>
+                     <button onClick={() => window.open(`#/invoice/${selectedInvoice.id}`, '_blank')} className="flex-1 py-4 text-slate-700 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-slate-200 flex items-center justify-center gap-2">View Invoice <ArrowRight size={14} /></button>
+                     {selectedInvoice.status !== InvoiceStatus.PAID ? (<button onClick={handlePartialPayment} className="flex-1 py-5 bg-[#ff6b6b] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:brightness-110 flex items-center justify-center gap-3">Confirm Payment Sync <ArrowRight size={16} /></button>) : (<button onClick={() => window.print()} className="flex-1 py-5 bg-slate-950 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:bg-slate-800 flex items-center justify-center gap-3">Print Official Receipt <Download size={16} /></button>)}
+                  </div>
                </div>
             </div>
          )}
@@ -525,6 +796,8 @@ export const Finance = () => {
                onClose={() => setSelectedContactForStatement(null)}
             />
          )}
+         {/* Manual Invoice Modal */}
+         <ManualInvoiceModal isOpen={isManualInvoiceModalOpen} onClose={() => setIsManualInvoiceModalOpen(false)} />
       </div>
    );
 };

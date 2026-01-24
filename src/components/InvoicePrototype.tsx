@@ -1,75 +1,77 @@
-import React from 'react';
-import { Printer, Download, Mail, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import logoFull from '../assets/xquisite-logo-full.png';
+import React, { useEffect, useState } from 'react';
+import { Printer, Download, Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useDataStore } from '../store/useDataStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { Invoice, Contact } from '../types';
 
 export const InvoicePrototype = () => {
     const navigate = useNavigate();
+    const { id } = useParams<{ id: string }>();
+    const { invoices, contacts } = useDataStore();
+    const { settings } = useSettingsStore();
 
-    // Mock Data based on the PDF
-    const invoiceData = {
-        number: "166",
-        date: "April 27, 2019",
-        paymentDue: "April 27, 2019",
-        status: "Overdue",
-        amountDue: 214000.00,
-        customer: {
-            name: "Finess event",
-            email: "finess.event@yahoo.com"
-        },
-        items: [
-            {
-                description: "Nigerian & Chinese Cuisine\nXquisite Jollof rice, Xquisite4 special fried rice served with roast chicken in peppered sauce, stewed beef, moimoi, plantain or vegetable salad",
-                quantity: 100,
-                price: 3500.00,
-                amount: 350000.00
-            },
-            {
-                description: "Locally grown ofada rice served with designer stew, fried fish, plantain or moimoi",
-                quantity: "",
-                price: "",
-                amount: ""
-            },
-            {
-                description: "Poundo/Efo/Egusi/Assorted",
-                quantity: "",
-                price: "",
-                amount: ""
-            },
-            {
-                description: "Seafood okro served with poundo yam",
-                quantity: "",
-                price: "",
-                amount: ""
-            },
-            {
-                description: "Amala served with gbegiri and ewedu with assorted meat",
-                quantity: "",
-                price: "",
-                amount: ""
-            },
-            {
-                description: "Xquisite special Fried rice served with singa poren noodles/chill prawn/lamb spare ribs/ vegetables",
-                quantity: "",
-                price: "",
-                amount: ""
-            },
-            {
-                description: "Panla",
-                quantity: "",
-                price: "",
-                amount: ""
+    const [invoice, setInvoice] = useState<Invoice | null>(null);
+    const [customer, setCustomer] = useState<Contact | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (id) {
+            const foundInvoice = invoices.find(inv => inv.id === id);
+            if (foundInvoice) {
+                setInvoice(foundInvoice);
+                const foundCustomer = contacts.find(c => c.id === foundInvoice.contactId);
+                setCustomer(foundCustomer || null);
             }
-        ],
-        subtotal: 350000.00,
-        serviceCharge: 52500.00,
-        total: 402500.00,
-        paid: 188500.00,
-        balance: 214000.00
-    };
+            setLoading(false);
+        }
+    }, [id, invoices, contacts]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-100">
+                <Loader2 className="animate-spin text-slate-400" size={32} />
+            </div>
+        );
+    }
+
+    if (!invoice) {
+        return (
+            <div className="min-h-screen p-8 bg-slate-100 flex flex-col items-center justify-center text-center">
+                <h2 className="text-2xl font-black text-slate-800 mb-2">Invoice Not Found</h2>
+                <p className="text-slate-500 mb-6">The requested invoice ID could not be located.</p>
+                <button
+                    onClick={() => navigate('/finance')}
+                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
+                >
+                    <ArrowLeft size={16} /> Return to Finance
+                </button>
+            </div>
+        );
+    }
+
+    // Calculations
+    const totalAmount = invoice.totalCents / 100;
+    const paidAmount = invoice.paidAmountCents / 100;
+    const balanceDue = totalAmount - paidAmount;
+
+    // Fallback Customer Data
+    const customerName = customer?.name || 'Valued Customer';
+    const customerEmail = customer?.email || '';
+
+    // Organization Data
+    const orgName = settings.name || 'Xquisite Celebrations Ltd';
+    const orgAddress = settings.address || '';
+    const orgPhone = settings.contactPhone;
+    const orgTin = settings.firs_tin;
+    const logo = settings.logo; // In real app, might want a default logo fallback
+    // Use bank settings if available, otherwise fallback (or hide)
+    const bankName = settings.bankInfo?.bankName;
+    const accName = settings.bankInfo?.accountName;
+    const accNum = settings.bankInfo?.accountNumber;
 
     return (
-        <div className="min-h-screen bg-slate-100 p-8 font-sans">
+        <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white">
             {/* Control Bar */}
             <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center print:hidden">
                 <button
@@ -83,33 +85,37 @@ export const InvoicePrototype = () => {
                     <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all">
                         <Printer size={18} /> Print
                     </button>
-                    <button className="flex items-center gap-2 px-6 py-2 bg-[#ff6b6b] text-white rounded-full shadow-md font-bold hover:bg-[#ff5252] transition-all">
+                    {/* Placeholder for PDF Download - browser print to PDF is usually sufficient or requires library */}
+                    {/* <button className="flex items-center gap-2 px-6 py-2 bg-[#ff6b6b] text-white rounded-full shadow-md font-bold hover:bg-[#ff5252] transition-all">
                         <Download size={18} /> Download PDF
-                    </button>
+                    </button> */}
                 </div>
             </div>
 
             {/* Invoice Container */}
-            <div className="max-w-4xl mx-auto bg-white shadow-2xl overflow-hidden print:shadow-none print:max-w-none">
+            <div className="max-w-4xl mx-auto bg-white shadow-2xl overflow-hidden print:shadow-none print:max-w-none print:w-full">
 
                 {/* Header */}
                 <div className="p-12 pb-8">
                     <div className="flex justify-between items-start">
                         {/* Logo / Brand Area */}
                         <div>
-                            <img src={logoFull} alt="Xquisite Celebrations Ltd" className="h-24 object-contain mb-2" />
+                            {logo ? (
+                                <img src={logo} alt={orgName} className="h-24 object-contain mb-2" />
+                            ) : (
+                                <div className="h-24 flex items-center mb-2">
+                                    <h1 className="text-3xl font-black text-[#ff6b6b] uppercase tracking-tighter">{orgName}</h1>
+                                </div>
+                            )}
                         </div>
 
                         {/* Company Address */}
                         <div className="text-right text-xs text-slate-600 leading-relaxed font-medium">
-                            <p className="font-bold text-slate-800">Xquisite Celebrations Ltd</p>
-                            <p>23 Primrose Drive,</p>
-                            <p>Pinnock Beach Est,</p>
-                            <p>Lekki, Lagos</p>
-                            <p>Nigeria</p>
-                            <p className="mt-2">Phone: 0814 990 6777</p>
-                            <p>Mobile: 0802 802 5333</p>
-                            <p className="text-[#ff6b6b]">www.xquisitegroup.com</p>
+                            <p className="font-bold text-slate-800">{orgName}</p>
+                            {/* Simple address formatting - split by comma if desired or just display */}
+                            <p className="whitespace-pre-wrap">{orgAddress}</p>
+                            {orgPhone && <p className="mt-2 text-slate-900 font-bold">Tel: {orgPhone}</p>}
+                            {orgTin && <p>TIN: {orgTin}</p>}
                         </div>
                     </div>
                 </div>
@@ -123,9 +129,10 @@ export const InvoicePrototype = () => {
                 <div className="p-12 grid grid-cols-2 gap-12">
                     <div>
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Bill To</h3>
-                        <p className="font-bold text-slate-800 text-lg">{invoiceData.customer.name}</p>
-                        <p className="text-slate-600">{invoiceData.customer.name}</p>
-                        <p className="text-slate-500 text-sm mt-1">{invoiceData.customer.email}</p>
+                        <p className="font-bold text-slate-800 text-lg">{customerName}</p>
+                        <p className="text-slate-600">{customerName}</p> {/* Contact Person? */}
+                        <p className="text-slate-500 text-sm mt-1">{customerEmail}</p>
+                        {customer?.address && <p className="text-slate-500 text-sm mt-1">{customer.address}</p>}
                     </div>
 
                     <div className="flex flex-col items-end">
@@ -137,76 +144,76 @@ export const InvoicePrototype = () => {
                         <div className="w-full max-w-xs space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="font-bold text-slate-600">Invoice Number:</span>
-                                <span className="font-medium text-slate-900">{invoiceData.number}</span>
+                                <span className="font-medium text-slate-900">{invoice.number}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="font-bold text-slate-600">Invoice Date:</span>
-                                <span className="font-medium text-slate-900">{invoiceData.date}</span>
+                                <span className="font-medium text-slate-900">{new Date(invoice.date).toLocaleDateString()}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="font-bold text-slate-600">Payment Due:</span>
-                                <span className="font-medium text-slate-900">{invoiceData.paymentDue}</span>
+                                <span className="font-medium text-slate-900">{new Date(invoice.dueDate).toLocaleDateString()}</span>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 p-2 rounded">
-                                <span className="font-bold text-slate-600">Amount Due (NGN):</span>
-                                <span className="font-black text-xl text-slate-900">₦{invoiceData.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 p-2 rounded print:bg-transparent">
+                                <span className="font-bold text-slate-600">Balance Due (NGN):</span>
+                                <span className="font-black text-xl text-slate-900">₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Line Items */}
-                <div className="p-12 pt-0">
-                    <table className="w-full">
+                <div className="p-12 pt-0 w-full overflow-hidden">
+                    <table className="w-full table-fixed">
                         <thead>
                             <tr className="border-b-2 border-slate-100">
                                 <th className="text-left py-4 text-sm font-bold text-slate-600 uppercase w-3/5">Items</th>
-                                <th className="text-center py-4 text-sm font-bold text-slate-600 uppercase">Quantity</th>
-                                <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase">Price</th>
-                                <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase">Amount</th>
+                                <th className="text-center py-4 text-sm font-bold text-slate-600 uppercase w-[10%]">Qty</th>
+                                <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase w-[15%]">Price</th>
+                                <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase w-[15%]">Amount</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {invoiceData.items.map((item, index) => (
-                                <tr key={index} className="group hover:bg-slate-50/50">
-                                    <td className="py-6 pr-8 align-top">
-                                        <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap leading-relaxed">{item.description}</p>
-                                    </td>
-                                    <td className="py-6 text-center align-top text-sm font-medium text-slate-600">{item.quantity}</td>
-                                    <td className="py-6 text-right align-top text-sm font-medium text-slate-600">
-                                        {item.price ? `₦${item.price.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
-                                    </td>
-                                    <td className="py-6 text-right align-top text-sm font-bold text-slate-800">
-                                        {item.amount ? `₦${item.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
-                                    </td>
-                                </tr>
-                            ))}
+                            {invoice.lines.map((item, index) => {
+                                const linePrice = item.unitPriceCents / 100;
+                                const lineTotal = (item.quantity * item.unitPriceCents) / 100;
+                                return (
+                                    <tr key={item.id} className="group hover:bg-slate-50/50">
+                                        <td className="py-6 pr-8 align-top break-words">
+                                            <p className="text-sm font-medium text-slate-800 leading-relaxed">{item.description}</p>
+                                        </td>
+                                        <td className="py-6 text-center align-top text-sm font-medium text-slate-600">{item.quantity}</td>
+                                        <td className="py-6 text-right align-top text-sm font-medium text-slate-600">
+                                            {linePrice ? `₦${linePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
+                                        </td>
+                                        <td className="py-6 text-right align-top text-sm font-bold text-slate-800">
+                                            {lineTotal ? `₦${lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                         <tfoot>
                             <tr>
                                 <td colSpan={2}></td>
                                 <td className="pt-8 text-right font-bold text-slate-600 text-sm">Subtotal:</td>
-                                <td className="pt-8 text-right font-bold text-slate-800 text-sm">₦{invoiceData.subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                <td className="pt-8 text-right font-bold text-slate-800 text-sm">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
                             </tr>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-2 text-right font-bold text-slate-600 text-sm">Serv Ch 15%:</td>
-                                <td className="pt-2 text-right font-bold text-slate-800 text-sm">₦{invoiceData.serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
+                            {/* Service Charge logic can be re-added if stored in Invoice model. Currently standard Invoice doesn't have it explicitly separate from total usually unless calculated. */}
                             <tr>
                                 <td colSpan={2}></td>
                                 <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">Total:</td>
-                                <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">₦{invoiceData.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
                             </tr>
                             <tr>
                                 <td colSpan={2}></td>
-                                <td className="pt-4 text-right font-medium text-slate-500 text-xs">Payment on April 29, 2019 using a bank payment:</td>
-                                <td className="pt-4 text-right font-medium text-slate-800 text-xs">₦{invoiceData.paid.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                <td className="pt-4 text-right font-medium text-slate-500 text-xs">Amount Paid:</td>
+                                <td className="pt-4 text-right font-medium text-slate-800 text-xs">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
                             </tr>
                             <tr>
                                 <td colSpan={2}></td>
-                                <td className="pt-4 text-right font-black text-slate-900 text-lg uppercase">Amount Due (NGN):</td>
-                                <td className="pt-4 text-right font-black text-slate-900 text-lg">₦{invoiceData.balance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+                                <td className="pt-4 text-right font-black text-slate-900 text-lg uppercase">Balance Due:</td>
+                                <td className="pt-4 text-right font-black text-slate-900 text-lg">₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -215,26 +222,24 @@ export const InvoicePrototype = () => {
                 {/* Footer Section: Notes & Terms */}
                 <div className="p-12 pt-4 grid grid-cols-1 gap-8">
                     <div>
-                        <h4 className="font-bold text-slate-800 mb-2 text-sm">Notes / Terms</h4>
+                        <h4 className="font-bold text-slate-800 mb-2 text-sm">Payment Information</h4>
                         <div className="text-xs text-slate-600 leading-relaxed">
                             <p className="mb-4">Thank you for your patronage. Please make all payment transfers to:<br />
-                                <span className="font-bold text-slate-800">Xquisite Celebrations Ltd.</span></p>
+                                <span className="font-bold text-slate-800 uppercase">{accName || orgName}</span></p>
 
-                            <p className="font-bold underline mb-1">Banks:-</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-6">
-                                <div className="p-3 bg-slate-50 border border-slate-100 rounded">
-                                    <span className="font-bold block text-slate-700">GTB</span>
-                                    <span className="font-mono">0396426845</span>
-                                </div>
-                                <div className="p-3 bg-slate-50 border border-slate-100 rounded">
-                                    <span className="font-bold block text-slate-700">UBA</span>
-                                    <span className="font-mono">1021135344</span>
-                                </div>
-                                <div className="p-3 bg-slate-50 border border-slate-100 rounded">
-                                    <span className="font-bold block text-slate-700">Zenith</span>
-                                    <span className="font-mono">1010951007</span>
-                                </div>
-                            </div>
+                            {bankName && accNum ? (
+                                <>
+                                    <p className="font-bold underline mb-1">Bank Details:-</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-6">
+                                        <div className="p-3 bg-slate-50 border border-slate-100 rounded">
+                                            <span className="font-bold block text-slate-700">{bankName}</span>
+                                            <span className="font-mono">{accNum}</span>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="italic text-slate-400">Please contact us for bank payment details.</p>
+                            )}
 
                             <p className="font-bold mb-1">Terms and Conditions:</p>
                             <p className="mb-4">Initial deposit of 70% is to be paid before the event and balance payable immediately after the event. Cancellation of order will result to only a 70% refund of initial deposit made.</p>
@@ -246,8 +251,12 @@ export const InvoicePrototype = () => {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="p-4 bg-[#D32F2F] text-white text-center">
+                <div className="p-4 bg-[#D32F2F] text-white text-center print:hidden">
                     <p className="font-serif italic font-bold text-lg">Bon Apetit. We look forward to serving you again soon.</p>
+                </div>
+                {/* Print-only footer to ensure color bar appears if background graphics enabled */}
+                <div className="hidden print:block p-2 bg-[#D32F2F] text-white text-center text-xs mt-4 -mx-12 -mb-12">
+                    {orgName}
                 </div>
 
             </div>

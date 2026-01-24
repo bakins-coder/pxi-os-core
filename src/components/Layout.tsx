@@ -87,13 +87,13 @@ const NAV_ITEMS = [
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER], allowedIndustries: ['Aviation'] },
 
   { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
-  { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: [Role.ADMIN, Role.HR, Role.HR_MANAGER] },
+  { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
   { label: 'Automation', icon: Bot, path: '/automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
   { label: 'Analytics', icon: Activity, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE] },
   { label: 'Reporting', icon: BarChart2, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES] },
   { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
   { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
-  { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: [Role.ADMIN, Role.MANAGER] },
+  { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
 const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string }) => {
@@ -107,13 +107,23 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
   const hasPermission = (required?: string, allowedRoles?: Role[]) => {
     // 1. Super Admin Bypass
-    if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === 'CEO' as any) return true;
+    // 1. Super Admin Bypass
+    if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || (userRole as string) === 'CEO') return true;
+
+    const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
+    if (isSuperAdmin) return true;
 
     // 2. Legacy Role Check (Keep existing logic if no permission tag)
     if (allowedRoles && allowedRoles.includes(userRole)) return true;
     if (!required) return true; // Public if no requirement? Or default deny? Let's say public.
 
-    // 3. Permission Tag Check
+    // 3. Permission Tag Check (Prioritize explicit tags from DB)
+    const userPermissions = useAuthStore.getState().user?.permissionTags || [];
+
+    if (required && userPermissions.includes(required)) return true;
+    if (userPermissions.includes('*')) return true;
+
+    // 4. Fallback to Matrix (Static Definition)
     if (userMatrixRole?.permissions?.includes(required)) return true;
     if (userMatrixRole?.permissions?.includes('*')) return true;
 
@@ -132,6 +142,12 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
         {NAV_ITEMS.filter(i => {
+          // Strict Super Admin Check - ONLY for verified Super Admins
+          if (i.label === 'Super Admin') {
+            const userIsSuper = useAuthStore.getState().user?.isSuperAdmin;
+            return !!userIsSuper;
+          }
+
           if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
 
           if (i.allowedIndustries) {
@@ -213,6 +229,21 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   const [voiceFeedback, setVoiceFeedback] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Profile Dropdown State
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Click Outside Handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -305,14 +336,70 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
             <button onClick={() => navigate('/docs')} className="hidden sm:flex p-2.5 text-slate-500 hover:bg-white/5 rounded-xl transition-all active:scale-90" title="Knowledge Base"><HelpCircle size={20} /></button>
             <button className="p-2.5 text-slate-500 hover:bg-white/5 rounded-xl relative transition-all active:scale-90"><Bell size={20} /><span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full border-2 border-[#020617]" style={{ backgroundColor: brandColor }}></span></button>
 
-            <div className="flex items-center gap-3 ml-2">
-              <div className="text-right hidden xl:block min-w-0">
-                <p className="text-xs font-black text-white leading-none uppercase tracking-tight truncate">{currentUser?.name}</p>
-                <p className="text-[9px] font-bold uppercase mt-1 opacity-70 truncate" style={{ color: brandColor }}>{userRole}</p>
+            <div className="flex items-center gap-2 md:gap-4 shrink-0 relative">
+              {/* ... voice and other icons ... */}
+
+              {/* Profile Dropdown Area */}
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-3 ml-2 hover:bg-white/5 p-1.5 pr-3 rounded-2xl transition-all group"
+                >
+                  <div className="text-right hidden xl:block min-w-0">
+                    <p className="text-xs font-black text-white leading-none uppercase tracking-tight truncate">{currentUser?.name}</p>
+                    <p className="text-[9px] font-bold uppercase mt-1 opacity-70 truncate" style={{ color: brandColor }}>{userRole}</p>
+                  </div>
+                  <div className={`w-10 h-10 rounded-xl border-2 shadow-md overflow-hidden bg-slate-800 shrink-0 transition-all ${isProfileOpen ? 'border-white' : 'border-white/10 group-hover:border-white/30'}`}>
+                    <img src={currentUser?.avatar} className="w-full h-full object-cover" alt="Profile" />
+                  </div>
+                </button>
+
+                {/* Dropdown Menu */}
+                {isProfileOpen && (
+                  <div className="absolute right-0 top-full mt-4 w-72 bg-[#020617] border border-white/10 rounded-3xl shadow-2xl p-6 z-50 animate-in fade-in slide-in-from-top-2">
+                    {/* Dropdown Header */}
+                    <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
+                      <div className="w-14 h-14 rounded-2xl border-2 border-white/10 overflow-hidden shrink-0">
+                        <img src={currentUser?.avatar} className="w-full h-full object-cover" alt="Profile" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-tight">{currentUser?.name}</h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest truncate max-w-[140px]">{currentUser?.email}</p>
+                        <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest text-[#00ff9d]">
+                          {userRole}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="space-y-2">
+                      <Link
+                        to="/settings"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-3 w-full p-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
+                      >
+                        <Settings size={16} className="group-hover:text-[#00ff9d] transition-colors" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Global Settings</span>
+                      </Link>
+
+                      <button
+                        onClick={() => { setIsProfileOpen(false); handleLogout(); }}
+                        className="flex items-center gap-3 w-full p-3 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group"
+                      >
+                        <LogOut size={16} className="group-hover:text-rose-500 transition-colors" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Sign Out</span>
+                      </button>
+                    </div>
+
+                    {/* Footer Stats / Fluff */}
+                    <div className="mt-6 pt-4 border-t border-white/5 flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-slate-600">
+                      <span>Session ID: {currentUser?.id?.slice(0, 8)}</span>
+                      <span className="text-[#00ff9d]">Secure</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="w-10 h-10 rounded-xl border-2 border-white/10 shadow-md overflow-hidden bg-slate-800 shrink-0">
-                <img src={currentUser?.avatar} className="w-full h-full object-cover" alt="Profile" />
-              </div>
+
             </div>
           </div>
         </header>

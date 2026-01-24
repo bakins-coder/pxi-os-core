@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 import {
     Shield, Globe, Palette, Zap, Building2, TrendingUp, AlertCircle,
     CheckCircle2, Server, Terminal, Lock, Unlock, Moon, Sun, Monitor,
@@ -32,6 +33,44 @@ export const SuperAdmin = () => {
     const { settings, setBrandColor, strictMode, toggleStrictMode } = useSettingsStore();
     const brandColor = settings.brandColor || '#00ff9d';
     const [activeTab, setActiveTab] = useState<'matrix' | 'branding' | 'security'>('matrix');
+    const [organizations, setOrganizations] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    React.useEffect(() => {
+        const fetchOrgs = async () => {
+            const { supabase } = await import('../services/supabase');
+            if (supabase) {
+                const { data, error } = await supabase.from('organizations').select('*');
+                if (data) setOrganizations(data);
+                if (error) console.error('Failed to fetch orgs:', error);
+                setIsLoading(false);
+            }
+        };
+        fetchOrgs();
+    }, []);
+
+    const handleSwitchContext = (orgId: string, orgName: string) => {
+
+        const user = useAuthStore.getState().user;
+        if (user) {
+            console.log('[SuperAdmin] Switching context to:', orgName, orgId);
+
+            // 1. Update Auth Store (Persisted)
+            useAuthStore.getState().setUser({ ...user, companyId: orgId });
+
+            // 2. Clear other persisted stores to ensure clean slate
+            // We use setTimeout to allow the Auth update to likely hit local storage first
+            // although synchronous, we want to be safe.
+            useSettingsStore.getState().reset();
+            useDataStore.getState().reset();
+
+            // 3. Reload
+            setTimeout(() => {
+                window.location.hash = '/';
+                window.location.reload();
+            }, 100);
+        }
+    };
 
     const handleToggleStrictMode = () => {
         toggleStrictMode();
@@ -90,52 +129,51 @@ export const SuperAdmin = () => {
                             <button className="text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Export Ledger</button>
                         </div>
                         <div className="p-4 overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                        <th className="px-6 py-4">Client Identifier</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4 text-right">Revenue (NGN)</th>
-                                        <th className="px-6 py-4">Health Index</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {mockClientBanks.map(client => (
-                                        <tr key={client.id} className="group hover:bg-white/5 transition-colors">
-                                            <td className="px-6 py-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs">{client.name[0]}</div>
-                                                    <span className="text-sm font-bold text-white uppercase tracking-tight">{client.name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-6">
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${client.status === 'Healthy' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                    client.status === 'Warning' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
-                                                    }`}>
-                                                    {client.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-6 text-right font-black text-white text-sm">
-                                                ₦{(client.revenue / 100).toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full rounded-full transition-all duration-1000"
-                                                            style={{
-                                                                width: `${client.health}%`,
-                                                                backgroundColor: client.health > 80 ? '#10b981' : client.health > 50 ? '#f59e0b' : '#ef4444'
-                                                            }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="text-xs font-black text-slate-400">{client.health}%</span>
-                                                </div>
-                                            </td>
+                            {isLoading ? (
+                                <div className="p-10 text-center text-slate-500 uppercase text-xs font-bold tracking-widest">Loading Neural Matrix...</div>
+                            ) : (
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                            <th className="px-6 py-4">Client Identifier</th>
+                                            <th className="px-6 py-4">Type</th>
+                                            <th className="px-6 py-4 text-right">Size</th>
+                                            <th className="px-6 py-4">Action</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {organizations.map(org => (
+                                            <tr key={org.id} className="group hover:bg-white/5 transition-colors">
+                                                <td className="px-6 py-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs">{org.name[0]}</div>
+                                                        <div>
+                                                            <span className="text-sm font-bold text-white uppercase tracking-tight block">{org.name}</span>
+                                                            <span className="text-[9px] text-slate-600 font-mono">{org.id}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6">
+                                                    <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400">
+                                                        {org.type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-6 text-right font-black text-white text-sm">
+                                                    {org.size}
+                                                </td>
+                                                <td className="px-6 py-6">
+                                                    <button
+                                                        onClick={() => handleSwitchContext(org.id, org.name)}
+                                                        className="bg-white/10 hover:bg-[#00ff9d] hover:text-slate-900 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                                                    >
+                                                        Switch Context
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
 

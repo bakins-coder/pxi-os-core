@@ -139,29 +139,32 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Ribbons */}
-      <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
-          { label: 'Cash at Hand', value: `₦${(dataState.financial.cash / 100).toLocaleString()}`, icon: Activity, color: 'text-emerald-600', trend: 'Healthy' },
-          { label: 'Receivables', value: `₦${(dataState.financial.receivables / 100).toLocaleString()}`, icon: Receipt, color: 'text-amber-600', trend: 'Action Needed' },
+      {/* KPI Ribbons - Protected View */}
+      {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'CEO' || user?.role === 'General Manager' || user?.role === 'Finance Manager' || user?.permissionTags?.includes('access:finance') || user?.permissionTags?.includes('access:reports')) && (
+        <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
+            { label: 'Cash at Hand', value: `₦${(dataState.financial.cash / 100).toLocaleString()}`, icon: Activity, color: 'text-emerald-600', trend: 'Healthy' },
+            { label: 'Receivables', value: `₦${(dataState.financial.receivables / 100).toLocaleString()}`, icon: Receipt, color: 'text-amber-600', trend: 'Action Needed' },
 
-          { label: 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', trend: 'Real-time' },
-        ].map((kpi, idx) => (
-          <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
-            <div className="relative z-10">
-              <kpi.icon size={20} className={`${kpi.color} mb-4`} />
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{kpi.label}</p>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tighter">{kpi.value}</h2>
-              <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-2 inline-block">
-                {kpi.trend}
-              </span>
+            { label: 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', trend: 'Real-time' },
+          ].map((kpi, idx) => (
+            <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
+              <div className="relative z-10">
+                <kpi.icon size={20} className={`${kpi.color} mb-4`} />
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{kpi.label}</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tighter">{kpi.value}</h2>
+                <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-2 inline-block">
+                  {kpi.trend}
+                </span>
+              </div>
+              <div className="absolute -bottom-10 -right-10 opacity-[0.02] group-hover:scale-125 transition-transform duration-700">
+                <kpi.icon size={160} />
+              </div>
             </div>
-            <div className="absolute -bottom-10 -right-10 opacity-[0.02] group-hover:scale-125 transition-transform duration-700">
-              <kpi.icon size={160} />
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Main Content Areas */}
       <div className="col-span-12 lg:col-span-8 space-y-8">

@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 
 export const Settings = () => {
-   const [activeTab, setActiveTab] = useState<'team' | 'system' | 'general' | 'security'>('team');
+   const { user: currentUser } = useAuthStore();
+   const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.MANAGER || currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.CHAIRMAN;
+   const [activeTab, setActiveTab] = useState<'team' | 'system' | 'general' | 'security'>(isAdmin ? 'team' : 'security');
    const { settings, updateSettings, cloudEnabled, isDemoMode, strictMode } = useSettingsStore();
    const { employees, addEmployee } = useDataStore();
-   const { user: currentUser } = useAuthStore();
+   // const { user: currentUser } = useAuthStore(); // REMOVED DUPLICATE
    const [cloudStatus, setCloudStatus] = useState<any>(null);
    const [isVerifying, setIsVerifying] = useState(false);
 
@@ -89,11 +91,15 @@ export const Settings = () => {
          <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none mb-8">Settings</h1>
          <div className="flex bg-slate-900 border border-white/5 p-1 rounded-2xl w-fit mb-10">
             {[
-               { id: 'team', label: 'Team Members' },
-               { id: 'system', label: 'Platform Management' },
-               { id: 'general', label: 'Business Profile' },
-               { id: 'security', label: 'Security & Access' }
-            ].map(tab => (
+               { id: 'team', label: 'Team Members', restricted: true },
+               { id: 'system', label: 'Platform Management', restricted: true },
+               { id: 'general', label: 'Business Profile', restricted: true },
+               { id: 'security', label: 'Security & Access', restricted: false }
+            ].filter(tab => {
+               if (!tab.restricted) return true;
+               // Only Admins and Managers see restricted tabs
+               return currentUser?.role === Role.ADMIN || currentUser?.role === Role.MANAGER || currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.CHAIRMAN;
+            }).map(tab => (
                <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                   {tab.label}
                </button>

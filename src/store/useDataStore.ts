@@ -67,7 +67,7 @@ interface DataState {
     // HR Actions
     addEmployee: (emp: Partial<Employee>) => Promise<Employee>;
     updateEmployee: (id: string, updates: Partial<Employee>) => void;
-    applyForLeave: (req: Partial<LeaveRequest>) => LeaveRequest;
+    applyForLeave: (req: Partial<LeaveRequest>) => Promise<LeaveRequest>;
     approveLeave: (id: string) => void;
     rejectLeave: (id: string) => void;
     adjustBandSalary: (band: number, percent: number) => void;
@@ -99,13 +99,14 @@ interface DataState {
     subscribeToRealtimeUpdates: () => void;
     unsubscribeFromRealtimeUpdates: () => void;
     addAgenticLog: (log: Partial<AgenticLog>) => void;
-
     // Portion Monitor Actions
     initializePortionMonitor: (eventId: string, tableCount: number, guestsPerTable: number) => void;
     markTableServed: (eventId: string, tableId: string, itemIds: string[]) => void;
     assignWaiterToTable: (eventId: string, tableId: string, waiterId: string) => void;
     logLeftover: (eventId: string, itemId: string, quantity: number, reason: string) => void;
     addHandoverEvidence: (eventId: string, url: string, note: string) => void;
+
+    reset: () => void;
 }
 
 export const useDataStore = create<DataState>()(
@@ -144,6 +145,17 @@ export const useDataStore = create<DataState>()(
             realtimeStatus: 'Disconnected',
             realtimeChannel: null,
             departmentMatrix: [], // Fetched dynamically from DB
+
+            reset: () => {
+                set({
+                    inventory: [], recipes: [], cateringEvents: [], invoices: [], tasks: [], bookkeeping: [],
+                    projects: [], aiAgents: [], ingredients: [], suppliers: [], marketingPosts: [], workflows: [],
+                    tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [], chartOfAccounts: [],
+                    bankTransactions: [], bankStatementLines: [], leaveRequests: [], calendarEvents: [],
+                    socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
+                    syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected'
+                });
+            },
 
             addInventoryItem: async (item) => {
                 const user = useAuthStore.getState().user;
@@ -609,23 +621,57 @@ export const useDataStore = create<DataState>()(
                 }));
                 get().syncWithCloud();
             },
-            applyForLeave: (req) => {
-                const newReq = {
-                    ...req,
-                    id: `lv-${Date.now()}`,
+            applyForLeave: async (req) => {
+                const user = useAuthStore.getState().user;
+                if (!supabase || !user?.companyId) {
+                    // Fallback to local if offline (legacy behavior kept for safety)
+                    const newReq = { ...req, id: `lv-${Date.now()}`, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
+                    set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
+                    return newReq;
+                }
+
+                // Prepare Payload
+                const payload = {
+                    organization_id: user.companyId,
+                    employee_id: req.employeeId, // Assuming passed from UI
+                    type: req.type,
+                    start_date: req.startDate,
+                    end_date: req.endDate,
+                    reason: req.reason,
                     status: 'Pending',
-                    appliedDate: new Date().toISOString().split('T')[0],
-                    calendarSynced: false
-                } as LeaveRequest;
+                    applied_date: new Date().toISOString().split('T')[0]
+                };
+
+                // Optimistic Update
+                const tempId = `lv-${Date.now()}`;
+                const newReq = { ...req, id: tempId, status: 'Pending', appliedDate: payload.applied_date } as LeaveRequest;
                 set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
+
+                // DB Insert
+                try {
+                    const { data, error } = await supabase.from('leave_requests').insert([payload]).select();
+                    if (data && data[0]) {
+                        // Replace temp ID with real ID
+                        set((state) => ({
+                            leaveRequests: state.leaveRequests.map(l => l.id === tempId ? { ...l, id: data[0].id } : l)
+                        }));
+                    }
+                } catch (e) { console.error("Leave Apply Error:", e); }
+
                 return newReq;
             },
-            approveLeave: (id) => set((state) => ({
-                leaveRequests: state.leaveRequests.map(l => l.id === id ? { ...l, status: 'Approved' as any } : l)
-            })),
-            rejectLeave: (id) => set((state) => ({
-                leaveRequests: state.leaveRequests.map(l => l.id === id ? { ...l, status: 'Rejected' as any } : l)
-            })),
+            approveLeave: async (id) => {
+                set((state) => ({
+                    leaveRequests: state.leaveRequests.map(l => l.id === id ? { ...l, status: 'Approved' as any } : l)
+                }));
+                if (supabase) await supabase.from('leave_requests').update({ status: 'Approved' }).eq('id', id);
+            },
+            rejectLeave: async (id) => {
+                set((state) => ({
+                    leaveRequests: state.leaveRequests.map(l => l.id === id ? { ...l, status: 'Rejected' as any } : l)
+                }));
+                if (supabase) await supabase.from('leave_requests').update({ status: 'Rejected' }).eq('id', id);
+            },
             adjustBandSalary: (band, percent) => set((state) => ({
                 departmentMatrix: state.departmentMatrix.map(dept => ({
                     ...dept,
@@ -640,52 +686,95 @@ export const useDataStore = create<DataState>()(
                 }))
             })),
 
-            addPerformanceReview: (review) => {
+            addPerformanceReview: async (review) => {
+                const user = useAuthStore.getState().user;
+                if (!supabase || !user?.companyId) return;
+
                 const newReview = { ...review, id: review.id || `rev-${Date.now()}`, status: 'Draft', totalScore: 0, metrics: review.metrics || [] } as PerformanceReview;
+
+                // Optimistic
                 set((state) => ({ performanceReviews: [newReview, ...state.performanceReviews] }));
-                get().syncWithCloud();
+
+                // DB Insert
+                const payload = {
+                    organization_id: user.companyId,
+                    employee_id: newReview.employeeId,
+                    year: newReview.year,
+                    quarter: newReview.quarter,
+                    metrics: newReview.metrics,
+                    status: 'Draft',
+                    total_score: 0
+                };
+
+                const { data, error } = await supabase.from('performance_reviews').insert([payload]).select();
+                if (data && data[0]) {
+                    set((state) => ({ performanceReviews: state.performanceReviews.map(r => r.id === newReview.id ? { ...r, id: data[0].id } : r) }));
+                } else if (error) {
+                    console.error("Failed to crate review:", error);
+                }
             },
 
-            submitSelfAssessment: (id, scores) => {
+            submitSelfAssessment: async (id, scores) => {
+                const state = get();
+                const review = state.performanceReviews.find(r => r.id === id);
+                if (!review) return;
+
+                const newMetrics = review.metrics.map((m, idx) => scores[idx] !== undefined ? { ...m, employeeScore: scores[idx] } : m);
+
+                // Optimistic
                 set((state) => ({
-                    performanceReviews: state.performanceReviews.map(r => {
-                        if (r.id !== id) return r;
-                        const newMetrics = r.metrics.map((m, idx) => scores[idx] !== undefined ? { ...m, employeeScore: scores[idx] } : m);
-                        return { ...r, metrics: newMetrics, status: 'Supervisor_Review' };
-                    })
+                    performanceReviews: state.performanceReviews.map(r => r.id === id ? { ...r, metrics: newMetrics, status: 'Supervisor_Review' } : r)
                 }));
-                get().syncWithCloud();
+
+                if (supabase) {
+                    await supabase.from('performance_reviews').update({
+                        metrics: newMetrics,
+                        status: 'Supervisor_Review',
+                        submitted_date: new Date().toISOString()
+                    }).eq('id', id);
+                }
             },
 
-            submitSupervisorReview: (id, scores, overrideReason) => {
+            submitSupervisorReview: async (id, scores, overrideReason) => {
+                const state = get();
+                const review = state.performanceReviews.find(r => r.id === id);
+                if (!review) return;
+
+                const newMetrics = review.metrics.map((m, idx) => {
+                    const supScore = scores[idx] !== undefined ? scores[idx] : m.supervisorScore;
+                    return {
+                        ...m,
+                        supervisorScore: supScore,
+                        finalScore: Math.round(((m.employeeScore + supScore) / 2) * 10) / 10,
+                        managerOverrideReason: overrideReason
+                    };
+                });
+
+                let totalWeightedScore = 0;
+                let totalWeight = 0;
+                newMetrics.forEach(m => {
+                    totalWeightedScore += (m.finalScore * m.weight);
+                    totalWeight += m.weight;
+                });
+                const finalTotal = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
+                const roundedTotal = Math.round(finalTotal * 10) / 10;
+                const finalizedDate = new Date().toISOString();
+
+                // Optimistic
                 set((state) => ({
-                    performanceReviews: state.performanceReviews.map(r => {
-                        if (r.id !== id) return r;
-                        const newMetrics = r.metrics.map((m, idx) => {
-                            const supScore = scores[idx] !== undefined ? scores[idx] : m.supervisorScore;
-                            // Average of Emp + Sup
-                            return {
-                                ...m,
-                                supervisorScore: supScore,
-                                finalScore: Math.round(((m.employeeScore + supScore) / 2) * 10) / 10,
-                                managerOverrideReason: overrideReason
-                            };
-                        });
-
-                        // Calculate Total Weighted Score (0-4 scale normalized to percentage if needed, but keeping raw 0-4 for simplicity or weighted sum)
-                        // Simple weighted average: (Sum(Score * Weight) / Sum(Weight))
-                        let totalWeightedScore = 0;
-                        let totalWeight = 0;
-                        newMetrics.forEach(m => {
-                            totalWeightedScore += (m.finalScore * m.weight);
-                            totalWeight += m.weight;
-                        });
-                        const finalTotal = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
-
-                        return { ...r, metrics: newMetrics, totalScore: Math.round(finalTotal * 10) / 10, status: 'Finalized', finalizedDate: new Date().toISOString() };
-                    })
+                    performanceReviews: state.performanceReviews.map(r => r.id === id ? {
+                        ...r, metrics: newMetrics, totalScore: roundedTotal, status: 'Finalized', finalizedDate
+                    } : r)
                 }));
-                get().syncWithCloud();
+
+                if (supabase) {
+                    await supabase.from('performance_reviews').update({
+                        metrics: newMetrics,
+                        total_score: roundedTotal,
+                        status: 'Finalized',
+                        finalized_date: finalizedDate
+                    }).eq('id', id);
+                }
             },
 
             checkPerformanceDue: () => {
@@ -1332,7 +1421,7 @@ export const useDataStore = create<DataState>()(
                         });
                     }
 
-                    const tables = ['contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions'];
+                    const tables = ['contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions', 'leave_requests'];
 
                     // Safe Pull Helper: Prevents one table failure from crashing the entire app
                     const safePull = async (table: string, cid?: string) => {
@@ -1356,7 +1445,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions,
+                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews,
                         // Inventory Base Tables
                         products, reusableItems, rentalItems, rawIngredients,
                         // Inventory Views
@@ -1374,6 +1463,8 @@ export const useDataStore = create<DataState>()(
                         safePull('requisitions', companyId),
                         safePull('chart_of_accounts', companyId),
                         safePull('bank_transactions', companyId),
+                        safePull('leave_requests', companyId),
+                        safePull('performance_reviews', companyId),
 
                         safePull('products', companyId),
                         safePull('reusable_items', companyId),
@@ -1508,6 +1599,22 @@ export const useDataStore = create<DataState>()(
                         requisitions: requisitions || [],
                         chartOfAccounts: chartOfAccounts || [],
                         bankTransactions: bankTransactions || [],
+                        leaveRequests: (leaveRequests || []).map((lr: any) => ({
+                            ...lr,
+                            startDate: lr.start_date,
+                            endDate: lr.end_date,
+                            appliedDate: lr.applied_date,
+                            employeeId: lr.employee_id,
+                            employeeName: employees?.find((e: any) => e.id === lr.employee_id)?.firstName + ' ' + employees?.find((e: any) => e.id === lr.employee_id)?.lastName || 'Unknown'
+                        })),
+                        performanceReviews: (performanceReviews || []).map((pr: any) => ({
+                            ...pr,
+                            // id, metrics, year, quarter, status match directly
+                            totalScore: pr.total_score,
+                            employeeId: pr.employee_id,
+                            submittedDate: pr.submitted_date,
+                            finalizedDate: pr.finalized_date
+                        })),
                         isSyncing: false,
                         syncStatus: 'Synced',
                         lastSyncError: null
@@ -1535,6 +1642,39 @@ export const useDataStore = create<DataState>()(
 
                 const channel = supabase
                     .channel('db-changes')
+                    // Leave Requests
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'leave_requests',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        // Helper to map DB to Local
+                        const mapRow = (r: any) => {
+                            const state = get();
+                            const emp = state.employees.find(e => e.id === r.employee_id);
+                            return {
+                                ...r,
+                                startDate: r.start_date,
+                                endDate: r.end_date,
+                                appliedDate: r.applied_date,
+                                employeeId: r.employee_id,
+                                employeeName: emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown'
+                            };
+                        };
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.leaveRequests.some(l => l.id === newRow.id)) return state;
+                                return { leaveRequests: [mapRow(newRow), ...state.leaveRequests] };
+                            } else if (eventType === 'UPDATE') {
+                                return { leaveRequests: state.leaveRequests.map(l => l.id === newRow.id ? mapRow(newRow) : l) };
+                            } else if (eventType === 'DELETE') {
+                                return { leaveRequests: state.leaveRequests.filter(l => l.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
                     // Invoices
                     .on('postgres_changes', {
                         event: '*',
@@ -1721,6 +1861,33 @@ export const useDataStore = create<DataState>()(
                                 return { bankTransactions: state.bankTransactions.map(t => t.id === newRow.id ? newRow : t) };
                             } else if (eventType === 'DELETE') {
                                 return { bankTransactions: state.bankTransactions.filter(t => t.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // Performance Reviews
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'performance_reviews',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        const mapRow = (r: any) => ({
+                            ...r,
+                            totalScore: r.total_score,
+                            employeeId: r.employee_id,
+                            submittedDate: r.submitted_date,
+                            finalizedDate: r.finalized_date
+                        });
+
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                return { performanceReviews: [mapRow(newRow), ...state.performanceReviews] };
+                            } else if (eventType === 'UPDATE') {
+                                return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapRow(newRow) : r) };
+                            } else if (eventType === 'DELETE') {
+                                return { performanceReviews: state.performanceReviews.filter(r => r.id !== oldRow.id) };
                             }
                             return state;
                         });

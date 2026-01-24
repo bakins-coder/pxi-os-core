@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User, Role } from '../types';
 import { supabase, syncTableToCloud, pullCloudState } from '../services/supabase';
 import { useSettingsStore } from './useSettingsStore';
@@ -12,6 +12,7 @@ interface AuthState {
     signup: (name: string, email: string, password?: string, role?: Role) => Promise<void>;
     resetPassword: (email: string) => Promise<{ success: boolean; message?: string; isBypass?: boolean }>;
     updatePassword: (password: string) => Promise<void>;
+    refreshSession: () => Promise<{ success: boolean; error?: any }>;
 }
 
 // Mock users for now, mirroring the initial logic
@@ -23,15 +24,28 @@ const MOCK_USERS: User[] = [
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
-            login: async (email: string, password?: string) => {
+            login: async (emailOrId: string, password?: string) => {
                 if (!supabase) throw new Error('Supabase client not initialized');
-
-                // If no password provided, try to find in legacy mock list (fallback)
-                // or just throw error demanding password. 
-                // Decision: We demand password now for real auth.
                 if (!password) throw new Error('Password required for secure login.');
+
+                let email = emailOrId;
+
+                // [LOOKUP] Resolve Staff ID to Email
+                if (!email.includes('@')) {
+                    // Assume it's a Staff ID (e.g. XQ-0001)
+                    // Use RPC to bypass RLS for anonymous users
+                    const { data: resolvedEmail, error: lookupError } = await supabase
+                        .rpc('get_email_by_staff_id', { lookup_id: emailOrId.trim() });
+
+                    if (resolvedEmail) {
+                        email = resolvedEmail;
+                        console.log(`[Auth] Resolved Staff ID ${emailOrId} -> ${email}`);
+                    } else {
+                        throw new Error(`Staff ID '${emailOrId}' not recognized.`);
+                    }
+                }
 
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email,
@@ -41,34 +55,75 @@ export const useAuthStore = create<AuthState>()(
                 if (error) throw error;
                 if (!data.user) throw new Error('No user returned from Supabase.');
 
-                // 1. Fetch Profile Source of Truth (Database Link)
-                const { data: profile } = await supabase
+                // 1. Fetch Profile Source of Truth
+                let { data: profile } = await supabase
                     .from('profiles')
-                    .select('organization_id, role, name')
+                    .select('organization_id, role, first_name, last_name')
                     .eq('id', data.user.id)
                     .single();
 
+                // [SELF-HEAL] If Profile is missing but Auth succeeded (Ghost User), create it now.
+                if (!profile) {
+                    console.warn('[Auth] Ghost User detected! Auto-healing public.profile...');
+                    const metadata = data.user.user_metadata || {};
+                    // Try to finding employee record to sync details
+                    const { data: emp } = await supabase.from('employees').select('role, organization_id, first_name, last_name, id')
+                        .or(`email.eq.${email},staff_id.eq.${email.split('@')[0]}`)
+                        .single();
+
+                    const newProfilePayload = {
+                        id: data.user.id,
+                        email: email,
+                        organization_id: emp?.organization_id ||
+                            (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(metadata.company_id) ? metadata.company_id : undefined), // Only use if valid UUID
+                        role: emp?.role || metadata.role || 'Employee',
+                        first_name: emp ? emp.first_name : (metadata.name ? metadata.name.split(' ')[0] : email.split('@')[0]),
+                        last_name: emp ? emp.last_name : (metadata.name ? metadata.name.split(' ').slice(1).join(' ') : 'User'),
+                        is_super_admin: false
+                    };
+
+                    const { error: insertError } = await supabase.from('profiles').insert([newProfilePayload]);
+                    if (insertError) {
+                        console.error('[Auth] Failed to heal profile:', insertError);
+                        throw new Error('Login failed: Profile missing and auto-recovery failed. Please contact support.');
+                    }
+
+                    // Re-fetch
+                    const { data: healedProfile } = await supabase.from('profiles').select('organization_id, role, first_name, last_name').eq('id', data.user.id).single();
+                    profile = healedProfile;
+                }
+
                 // 2. Determine Authoritative Company ID
-                // Prefer Profile (DB) > Metadata (Stale)
                 const finalCompanyId = profile?.organization_id || data.user.user_metadata.company_id;
+
+                // 3. Fetch Role Permissions if tied to an org
+                let permissionTags: string[] = [];
+                if (finalCompanyId && profile?.role) {
+                    const { data: roleData } = await supabase
+                        .from('job_roles')
+                        .select('permissions')
+                        .eq('organization_id', finalCompanyId)
+                        .eq('title', profile.role)
+                        .single();
+
+                    if (roleData?.permissions) {
+                        permissionTags = roleData.permissions;
+                    }
+                }
 
                 // Construct User object
                 const user: User = {
                     id: data.user.id,
                     email: data.user.email || '',
-                    name: profile?.name || data.user.user_metadata.name || 'User',
+                    name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || data.user.user_metadata.name || 'User',
                     role: (profile?.role as Role) || (data.user.user_metadata.role as Role) || Role.ADMIN,
                     companyId: finalCompanyId,
                     avatar: data.user.user_metadata.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
+                    isSuperAdmin: false, // Temporarily disabled
+                    permissionTags
                 };
 
-                // Debug Log for User
-                if (!finalCompanyId) {
-                    console.warn('CRITICAL: No Company ID found for user. Profile:', profile);
-                } else {
-                    console.log('Login Successful. Linked to Org:', finalCompanyId);
-                }
-
+                if (!finalCompanyId) console.warn('CRITICAL: No Company ID found for user.', profile);
                 set({ user });
             },
             logout: async () => {
@@ -81,8 +136,6 @@ export const useAuthStore = create<AuthState>()(
                 if (!supabase) throw new Error('Supabase client not initialized');
                 if (!password) throw new Error('Password required for signup.');
 
-                // const companyId = `org-${Date.now()}`; // REMOVED: Deferred to Setup Wizard
-
                 const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
@@ -90,7 +143,6 @@ export const useAuthStore = create<AuthState>()(
                         data: {
                             name,
                             role,
-                            // company_id: companyId, // DEFER: created during setup wizard
                             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`
                         }
                     }
@@ -99,43 +151,38 @@ export const useAuthStore = create<AuthState>()(
                 if (error) throw error;
 
                 if (data.user) {
-                    // Reset any previous settings to ensure clean slate
                     useSettingsStore.getState().reset();
 
-                    // CHECK FOR AUTO-LINKED PROFILE (Staff Onboarding)
-                    // The DB trigger 'on_auth_user_created_link_employee' should have linked this user 
-                    // to an organization if their email matched an employee record.
-                    let linkedCompanyId: string | undefined = undefined;
-                    let linkedRole: Role = role;
+                    // Explicitly create profile to avoid trigger race conditions
+                    const { error: profileError } = await supabase.from('profiles').insert([{
+                        id: data.user.id,
+                        email: email,
+                        first_name: name.split(' ')[0],
+                        last_name: name.split(' ').slice(1).join(' ') || 'User',
+                        role: role,
+                        // organization_id left null initially, will be filled by invite logic or remains null for new org creators
+                    }]);
 
-                    // Small delay to allow DB trigger to complete (usually instant, but safety first)
-                    await new Promise(r => setTimeout(r, 500));
-
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('organization_id, role')
-                        .eq('id', data.user.id)
-                        .single();
-
-                    if (profile?.organization_id) {
-                        console.log('[Auth] User auto-linked to organization:', profile.organization_id);
-                        linkedCompanyId = profile.organization_id;
-                        linkedRole = (profile.role as Role) || role;
+                    // Ignore duplicates (if trigger won)
+                    if (profileError && !profileError.message.includes('duplicate key')) {
+                        console.error("Manual profile creation failed:", profileError);
                     }
 
+                    // Perform immediate login context setup
                     const newUser: User = {
                         id: data.user.id,
                         name,
                         email,
-                        role: linkedRole,
+                        role: role,
                         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-                        companyId: linkedCompanyId as any // If undefined, App will show Setup Wizard. If set, Dashboard.
+                        companyId: undefined as unknown as string, // Will be set on next load or flow
+                        permissionTags: []
                     };
                     set({ user: newUser });
                 }
             },
             resetPassword: async (email: string) => {
-                // TEMPORARY BYPASS: Legacy User Migration
+                // ... (Keep existing)
                 if (email.trim().toLowerCase() === 'toxsyyb@yahoo.co.uk') {
                     const legacyUser = MOCK_USERS.find(u => u.email === 'toxsyyb@yahoo.co.uk');
                     if (legacyUser) {
@@ -162,10 +209,68 @@ export const useAuthStore = create<AuthState>()(
                 });
 
                 if (error) throw error;
+            },
+            refreshSession: async () => {
+                if (!supabase) return { success: false, error: 'No client' };
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, error: 'No user session' };
+
+                // Re-fetch Profile
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('organization_id, role, first_name, last_name, is_super_admin')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) {
+                    console.error('[Auth] Refresh failed:', error);
+                    return { success: false, error };
+                }
+
+                if (profile) {
+                    const currentUser = get().user;
+
+                    // Fetch Permissions on refresh too
+                    let permissionTags: string[] = currentUser?.permissionTags || [];
+                    const targetOrgId = (profile.is_super_admin) ? currentUser?.companyId : (profile.organization_id || currentUser?.companyId);
+                    const targetRole = (profile.role as Role) || currentUser?.role;
+
+                    if (targetOrgId && targetRole) {
+                        const { data: roleData } = await supabase
+                            .from('job_roles')
+                            .select('permissions')
+                            .eq('organization_id', targetOrgId)
+                            .eq('title', targetRole)
+                            .single();
+
+                        if (roleData?.permissions) {
+                            permissionTags = roleData.permissions;
+                        }
+                    }
+
+                    if (currentUser) {
+                        set({
+                            user: {
+                                ...currentUser,
+                                role: targetRole || currentUser.role,
+                                companyId: targetOrgId,
+                                isSuperAdmin: profile.is_super_admin || false,
+                                name: (profile.first_name || profile.last_name)
+                                    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+                                    : currentUser.name,
+                                permissionTags
+                            }
+                        });
+                        console.log('[Auth] Session refreshed. Perms:', permissionTags.length);
+                        return { success: true };
+                    }
+                }
+                return { success: false, error: 'Profile not found' };
             }
         }),
         {
             name: 'auth-storage',
+            storage: createJSONStorage(() => sessionStorage),
         }
     )
 );
