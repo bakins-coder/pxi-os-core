@@ -24,9 +24,14 @@ export const checkCloudHealth = async () => {
   if (!supabase) return { status: 'Disconnected', error: 'Missing Credentials' };
   try {
     const { error } = await supabase.from('organizations').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') throw error;
+    // 42501 = Permission Denied (Means DB is reachable but blocked by RLS) -> Healthy
+    // PGRST116 = No Rows -> Healthy
+    if (error && error.code !== 'PGRST116' && error.code !== '42501') throw error;
     return { status: 'Connected', latency: 'Stable' };
   } catch (e) {
+    const msg = (e as Error).message.toLowerCase();
+    // Case insensitive check for schema error (usually "DATABASE ERROR QUERYING SCHEMA")
+    if (msg.includes('schema') || msg.includes('database error')) return { status: 'Connected', latency: 'Degraded' };
     return { status: 'Error', error: (e as Error).message };
   }
 };

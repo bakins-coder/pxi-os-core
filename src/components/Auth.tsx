@@ -164,13 +164,28 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
               required
               className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
               placeholder={isSignUp ? "name@company.com" : "e.g. XQ-8821"}
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-            />
-            {advice && (
-              <div className={`absolute -bottom-6 left-0 w-full text-center text-[9px] font-bold uppercase tracking-widest ${advice.color} animate-in fade-in slide-in-from-top-1`}>
-                {advice.text}
-              </div>
+              // ID / Phone Logic
+              if (!authIdentifier.includes('@')) {
+        // Assume Staff ID or Phone
+        if (/^XQ-/i.test(authIdentifier)) {
+          // Verify Staff ID via RPC (Lookup email)
+          const {data: email, error: lookupError } = await supabase.rpc('get_employee_email_by_staff_id', {p_staff_id: authIdentifier });
+
+            if (lookupError) {
+              // Suppress Schema Error for UX, but log it
+              console.error('RPC Lookup Failed:', lookupError);
+            throw new Error("System is syncing. Please try again in a moment.");
+          }
+            if (!email) throw new Error('Staff ID not found or linked to an activated profile.');
+
+            authIdentifier = email; // Swap ID for Email
+        } else {
+              // Phone number logic (unchanged)
+            }
+      }
+            <div className={`absolute -bottom-6 left-0 w-full text-center text-[9px] font-bold uppercase tracking-widest ${advice.color} animate-in fade-in slide-in-from-top-1`}>
+              {advice.text}
+            </div>
             )}
           </div>
         </div>

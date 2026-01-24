@@ -1,25 +1,30 @@
--- SECURE PUBLIC LOOKUP FUNCTION
--- Reason: "employees" table is RLS protected (private). Anonymous users cannot search it.
--- Solution: A "Security Definer" function that runs with admin privileges to return ONLY the email.
+-- FIX RPC: ALIGN WITH FRONTEND (p_staff_id)
+-- Reason: Using 'staff_id' causes ambiguity or name collision.
+-- We switch to 'p_staff_id' and update frontend to match.
 
-CREATE OR REPLACE FUNCTION public.get_email_by_staff_id(lookup_id text)
+-- 1. Drop existing functions (clean up both names just in case)
+DROP FUNCTION IF EXISTS get_employee_email_by_staff_id(text);
+
+-- 2. Create with SAFE parameter name 'p_staff_id'
+CREATE OR REPLACE FUNCTION get_employee_email_by_staff_id(p_staff_id text)
 RETURNS text
 LANGUAGE plpgsql
-SECURITY DEFINER -- Runs as Creator (Admin), ignoring RLS
+SECURITY DEFINER
 AS $$
 DECLARE
     found_email text;
 BEGIN
     SELECT email INTO found_email
     FROM public.employees
-    WHERE staff_id ILIKE lookup_id
+    WHERE staff_id = p_staff_id -- No ambiguity here
     LIMIT 1;
     
     RETURN found_email;
 END;
 $$;
 
--- Grant access to public (anonymous users) for login flow
-GRANT EXECUTE ON FUNCTION public.get_email_by_staff_id(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION get_employee_email_by_staff_id(text) TO anon, authenticated, service_role;
 
-SELECT 'Secure Lookup Function Created' as status;
+NOTIFY pgrst, 'reload config';
+
+SELECT 'RPC Updated to use p_staff_id' as status;
