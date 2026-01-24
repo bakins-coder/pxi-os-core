@@ -1,0 +1,26 @@
+{
+    "name": "Pxi OS Core Dev",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "editor.formatOnSave": true
+            },
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "bradlc.vscode-tailwindcss"
+            ]
+        }
+    },
+    "forwardPorts": [
+        5173
+    ],
+    "portsAttributes": {
+        "5173": {
+            "label": "Application",
+            "onAutoForward": "notify"
+        }
+    },
+    "postCreateCommand": "npm install"
+}
