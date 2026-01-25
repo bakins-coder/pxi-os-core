@@ -349,6 +349,8 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
 
 const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[], title: string, subtitle: string }) => {
    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+   const [selectedEditItem, setSelectedEditItem] = useState<InventoryItem | null>(null);
    const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
    const [showScanModal, setShowScanModal] = useState(false);
    const [isProcessing, setIsProcessing] = useState(false);
@@ -380,41 +382,47 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
    };
 
    return (
-      <div className="space-y-6 animate-in fade-in">
-         <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-            <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/20">
-               <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Layers size={24} /></div>
-                  <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">{title}</h2><p className="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">{subtitle}</p></div>
+      <>
+         <div className="space-y-6 animate-in fade-in">
+            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
+               <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/20">
+                  <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Layers size={24} /></div>
+                     <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">{title}</h2><p className="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">{subtitle}</p></div>
+                  </div>
+                  <div className="flex gap-2">
+                     <button onClick={() => setShowScanModal(true)} className="bg-white border-2 border-indigo-50 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 shadow-sm transition-all">
+                        {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />}
+                        {isProcessing ? 'Processing' : 'Scan'}
+                     </button>
+                     <button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-2">
+                        <Plus size={16} /> Log New
+                     </button>
+                     <button onClick={() => setIsIssueModalOpen(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:scale-105 transition-all flex items-center gap-2">
+                        <Truck size={16} className="text-emerald-400" /> Dispatch
+                     </button>
+                  </div>
                </div>
-               <div className="flex gap-2">
-                  <button onClick={() => setShowScanModal(true)} className="bg-white border-2 border-indigo-50 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 shadow-sm transition-all">
-                     {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />}
-                     {isProcessing ? 'Processing' : 'Scan'}
-                  </button>
-                  <button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-2">
-                     <Plus size={16} /> Log New
-                  </button>
-                  <button onClick={() => setIsIssueModalOpen(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:scale-105 transition-all flex items-center gap-2">
-                     <Truck size={16} className="text-emerald-400" /> Dispatch
-                  </button>
-               </div>
+               <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[9px] tracking-[0.2em] border-b border-slate-100"><tr><th className="px-6 py-6 text-center">S/N</th><th className="px-10 py-6">Reference Picture</th><th className="px-10 py-6">Item Name</th><th className="px-10 py-6">Classification</th><th className="px-10 py-6">Physical Stock</th><th className="px-10 py-6 text-right">Value (Est)</th><th className="px-10 py-6 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">
+                  {assets.map((asset, index) => (
+                     <tr key={asset.id} className="hover:bg-indigo-50/10 transition-all group">
+                        <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
+                        <td className="px-10 py-4"><div className="w-16 h-16 rounded-xl border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-sm transition-transform group-hover:scale-110">{asset.image ? (<img src={asset.image} className="w-full h-full object-cover" alt={asset.name} />) : (<div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={20} /></div>)}</div></td>
+                        <td className="px-10 py-6"><div className="font-black text-slate-800 uppercase text-sm tracking-tight leading-tight">{asset.name}</div></td>
+                        <td className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">{asset.category}</td>
+                        <td className="px-10 py-6"><div className="flex items-center gap-3"><span className="font-black text-slate-900 text-xl tracking-tighter">{asset.stockQuantity}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units</span></div></td>
+                        <td className="px-10 py-6 text-right font-black text-slate-900 tracking-tight">₦{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
+                        <td className="px-10 py-6 text-right"><button onClick={() => { setSelectedEditItem(asset); setIsEditModalOpen(true); }} className="p-2.5 bg-indigo-600 text-white rounded-xl hover:scale-110 transition-all shadow-md"><Edit3 size={16} /></button></td>
+                     </tr>
+                  ))}
+                  {assets.length === 0 && (<tr><td colSpan={7} className="p-20 text-center text-slate-200"><Box size={64} className="mx-auto mb-4 opacity-10" /><p className="font-black uppercase tracking-widest text-xs">No items indexed in ledger</p></td></tr>)}
+               </tbody></table></div>
             </div>
-            <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[9px] tracking-[0.2em] border-b border-slate-100"><tr><th className="px-6 py-6 text-center">S/N</th><th className="px-10 py-6">Reference Picture</th><th className="px-10 py-6">Item Name</th><th className="px-10 py-6">Classification</th><th className="px-10 py-6">Physical Stock</th><th className="px-10 py-6 text-right">Value (Est)</th></tr></thead><tbody className="divide-y divide-slate-50">
-               {assets.map((asset, index) => (
-                  <tr key={asset.id} className="hover:bg-indigo-50/10 transition-all group">
-                     <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
-                     <td className="px-10 py-4"><div className="w-16 h-16 rounded-xl border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-sm transition-transform group-hover:scale-110">{asset.image ? (<img src={asset.image} className="w-full h-full object-cover" alt={asset.name} />) : (<div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={20} /></div>)}</div></td>
-                     <td className="px-10 py-6"><div className="font-black text-slate-800 uppercase text-sm tracking-tight leading-tight">{asset.name}</div></td>
-                     <td className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">{asset.category}</td>
-                     <td className="px-10 py-6"><div className="flex items-center gap-3"><span className="font-black text-slate-900 text-xl tracking-tighter">{asset.stockQuantity}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units</span></div></td>
-                     <td className="px-10 py-6 text-right font-black text-slate-900 tracking-tight">₦{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
-                  </tr>
-               ))}
-               {assets.length === 0 && (<tr><td colSpan={6} className="p-20 text-center text-slate-200"><Box size={64} className="mx-auto mb-4 opacity-10" /><p className="font-black uppercase tracking-widest text-xs">No items indexed in ledger</p></td></tr>)}
-            </tbody></table></div>
          </div>
-      </div>
+
+         <AddEditInventoryModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} editItem={null} />
+         <AddEditInventoryModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editItem={selectedEditItem} />
+      </>
    );
 };
 
@@ -536,11 +544,163 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
    );
 };
 
+const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean, onClose: () => void, editItem: InventoryItem | null }) => {
+   const [name, setName] = useState(editItem?.name || '');
+   const [category, setCategory] = useState(editItem?.category || 'Appetizer');
+   const [type, setType] = useState(editItem?.type || 'product');
+   const [price, setPrice] = useState(editItem?.priceCents ? editItem.priceCents / 100 : 0);
+   const [stock, setStock] = useState(editItem?.stockQuantity || 0);
+   const [description, setDescription] = useState(editItem?.description || '');
+   const [image, setImage] = useState(editItem?.image || '');
+
+   const setImageWithLog = (newImage: string) => {
+      console.log('Setting image in modal:', newImage.substring(0, 50));
+      setImage(newImage);
+   };
+
+   const [showCamera, setShowCamera] = useState(false);
+   const [isMaximized, setIsMaximized] = useState(false);
+
+   const { addInventoryItem, updateInventoryItem } = useDataStore();
+
+   const handleSave = () => {
+      if (!name) return;
+      console.log('Saving product with image:', image ? image.substring(0, 50) : 'no image');
+      if (editItem) {
+         updateInventoryItem(editItem.id, { name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
+      } else {
+         addInventoryItem({ name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
+      }
+      onClose();
+   };
+
+   useEffect(() => {
+      if (editItem) {
+         setName(editItem.name);
+         setCategory(editItem.category);
+         setType(editItem.type);
+         setPrice(editItem.priceCents / 100);
+         setStock(editItem.stockQuantity);
+         setDescription(editItem.description || '');
+         setImage(editItem.image || '');
+      } else {
+         setName('');
+         setCategory('Appetizer');
+         setType('product');
+         setPrice(0);
+         setStock(0);
+         setDescription('');
+         setImage('');
+      }
+   }, [editItem]);
+
+   if (!isOpen) return null;
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3rem]'}`}
+         >
+            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <h2 className="text-xl font-black text-slate-900 uppercase">{editItem ? 'Edit Product' : 'New Product'}</h2>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
+            </div>
+
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+               <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Name</label>
+                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Grilled Chicken" />
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Category</label>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={category} onChange={e => setCategory(e.target.value)}>
+                        <option>Hors D'Oeuvres</option><option>Starters</option><option>Salads</option><option>Nigerian Cuisine</option><option>Oriental</option><option>Continental</option><option>Hot Plates</option><option>Desserts</option>
+                     </select>
+                  </div>
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Type</label>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={type} onChange={e => setType(e.target.value)}>
+                        <option value="product">Product</option><option value="raw_material">Raw Material</option>
+                     </select>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Price (₦)</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Stock Quantity</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={stock} onChange={e => setStock(parseInt(e.target.value) || 0)} />
+                  </div>
+               </div>
+
+               <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Description</label>
+                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={description} onChange={e => setDescription(e.target.value)} placeholder="Product description" rows={3} />
+               </div>
+
+               <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Image</label>
+                  <div className="flex gap-4">
+                     {image ? (
+                        <div className="relative w-24 h-24 rounded-2xl overflow-hidden group">
+                           <img src={image} className="w-full h-full object-cover" alt="Product" />
+                           <button onClick={() => setImage('')} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-all"><Trash2 size={20} /></button>
+                        </div>
+                     ) : (
+                        <div className="w-24 h-24 bg-slate-50 border-2 border-slate-100 border-dashed rounded-2xl flex items-center justify-center text-slate-300">
+                           <ImageIcon size={24} />
+                        </div>
+                     )}
+
+                     <div className="flex-1 flex flex-col gap-2 justify-center">
+                        <button
+                           onClick={() => { console.log('Opening camera for inventory'); setShowCamera(true); }}
+                           className="py-3 px-4 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 hover:bg-indigo-100 transition-all"
+                        >
+                           <ScanLine size={14} /> Capture / Upload
+                        </button>
+                        <p className="text-[9px] text-slate-400 font-medium">Take a photo of the product or upload an image.</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-100 rounded-2xl transition-all">Cancel</button>
+               <button onClick={handleSave} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all">Save Product</button>
+            </div>
+         </div>
+
+         {showCamera && (
+            <DocumentCapture
+               title="Capture Product Image"
+               mode="general"
+               onCapture={(img) => { console.log('Image captured:', img.substring(0, 50)); setImageWithLog(img); setShowCamera(false); }}
+               onCancel={() => setShowCamera(false)}
+            />
+         )}
+      </div>
+   );
+};
+
 export const Inventory = () => {
    const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'reusable' | 'rentals' | 'fixtures'>('products');
    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
    const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
    const [selectedRental, setSelectedRental] = useState<RentalRecord | null>(null);
+   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+   const [selectedEditItem, setSelectedEditItem] = useState<InventoryItem | null>(null);
 
    // BoQ Specific States
    const [selectedBoQItem, setSelectedBoQItem] = useState<InventoryItem | null>(null);
@@ -653,7 +813,7 @@ export const Inventory = () => {
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
-                     { id: 'products', label: 'Offerings', icon: Utensils, active: isCatering, perm: 'access:inventory_offerings' },
+                     { id: 'products', label: 'Offerings', icon: Utensils, active: true, perm: 'access:inventory_offerings' },
                      { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering, perm: 'access:inventory_ingredients' },
                      { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true, perm: 'access:inventory_all' }, // Or generic?
                      { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering, perm: 'access:inventory_rentals' },
@@ -675,6 +835,7 @@ export const Inventory = () => {
                         <div className="h-56 w-full relative overflow-hidden">
                            <img src={p.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={p.name} />
                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
+                           <div className="absolute top-4 right-4"><button onClick={() => { setSelectedEditItem(p); setIsEditModalOpen(true); }} className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg"><Edit3 size={16} /></button></div>
                            <div className="absolute bottom-6 left-8"><span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-[9px] font-black uppercase text-white border border-white/10 tracking-widest">{p.category}</span></div>
                         </div>
 
@@ -767,6 +928,8 @@ export const Inventory = () => {
                onCancel={() => setShowScanModal(false)}
             />
          )}
+
+         <AddEditInventoryModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editItem={selectedEditItem} />
       </div>
    );
 };

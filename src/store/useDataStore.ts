@@ -48,6 +48,7 @@ interface DataState {
 
     // Actions
     addInventoryItem: (item: Partial<InventoryItem>) => void;
+    updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
     addRequisition: (req: Partial<Requisition>) => void;
     approveRequisition: (id: string) => void;
     receiveFoodStock: (ingId: string, qty: number, cost: number) => void;
@@ -262,6 +263,90 @@ export const useDataStore = create<DataState>()(
                     } catch (e) {
                         console.error(e);
                     }
+                }
+            },
+            updateInventoryItem: async (id, updates) => {
+                const user = useAuthStore.getState().user;
+                if (!user?.companyId) return;
+
+                // Optimistic Local Update
+                set((state) => ({
+                    inventory: state.inventory.map(item => item.id === id ? { ...item, ...updates } : item)
+                }));
+
+                // Handle Image Upload if Base64
+                let uploadedMedia: { bucket: string, path: string } | null = null;
+
+                if (updates.image && updates.image.startsWith('data:image')) {
+                    try {
+                        const entityTypeMap: Record<string, 'product' | 'asset' | 'ingredient'> = {
+                            'product': 'product',
+                            'asset': 'asset',
+                            'reusable': 'asset',
+                            'raw_material': 'ingredient',
+                            'ingredient': 'ingredient'
+                        };
+                        const entityType = (updates.type && entityTypeMap[updates.type]) || 'product';
+
+                        const uploadRes = await uploadEntityImage(user.companyId, entityType, id, updates.image);
+                        uploadedMedia = uploadRes;
+
+                        // Construct public URL and update the image field
+                        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                        if (supabaseUrl && uploadedMedia) {
+                            updates.image = `https://${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
+                        }
+                    } catch (err) {
+                        console.error("Image upload failed:", err);
+                    }
+                }
+
+                // Sync to Cloud
+                try {
+                    const item = get().inventory.find(i => i.id === id);
+                    if (!item) return;
+
+                    const updatedItem = { ...item, ...updates };
+
+                    // Determine DB Table
+                    let tableName = '';
+                    let dbPayload: any = {
+                        organization_id: user.companyId,
+                        name: updatedItem.name,
+                        category_id: (updatedItem.category as any)
+                    };
+
+                    if (updatedItem.type === 'product') {
+                        tableName = 'products';
+                        dbPayload.description = updatedItem.description;
+                        dbPayload.price_cents = updatedItem.priceCents;
+                    } else if (updatedItem.type === 'asset' || updatedItem.type === 'reusable') {
+                        tableName = 'reusable_items';
+                        dbPayload.type = updatedItem.type === 'asset' ? 'asset' : 'rental';
+                        dbPayload.price_cents = updatedItem.priceCents;
+                        dbPayload.stock_quantity = updatedItem.stockQuantity;
+                    } else if (updatedItem.type === 'raw_material') {
+                        tableName = 'ingredients';
+                        dbPayload.unit = updatedItem.unit;
+                        dbPayload.current_cost_cents = updatedItem.priceCents;
+                        dbPayload.stock_level = updatedItem.stockQuantity;
+                    }
+
+                    await syncTableToCloud(tableName, [dbPayload]);
+
+                    // Update Entity Media if uploaded
+                    if (uploadedMedia) {
+                        await saveEntityMedia({
+                            entity_type: tableName === 'products' ? 'product' : tableName === 'reusable_items' ? 'asset' : 'ingredient',
+                            entity_id: id,
+                            organization_id: user.companyId,
+                            bucket: uploadedMedia.bucket,
+                            object_path: uploadedMedia.path,
+                            is_primary: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Failed to update inventory item:", e);
                 }
             },
             addRequisition: (req) => {

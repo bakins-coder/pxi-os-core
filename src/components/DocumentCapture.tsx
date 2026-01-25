@@ -41,6 +41,7 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
 
     const handleConfirm = () => {
         if (preview) {
+            console.log('DocumentCapture handleConfirm called with preview:', preview.substring(0, 50));
             onCapture(preview);
         }
     };
