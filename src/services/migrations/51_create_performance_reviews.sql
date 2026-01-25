@@ -1,64 +1,87 @@
--- Migration: Create Performance Reviews Table
+-- PERFORMANCE REVIEWS TABLE
+-- Stores appraisal cycles, self-assessments, and manager reviews.
 
-create table if not exists public.performance_reviews (
-  id uuid default gen_random_uuid() primary key,
-  organization_id uuid references public.organizations(id) on delete cascade not null,
-  employee_id uuid references public.employees(id) on delete cascade not null,
-  year int not null,
-  quarter text not null check (quarter in ('Q1', 'Q2', 'Q3', 'Q4')),
-  metrics jsonb default '[]'::jsonb, -- Stores the array of PerformanceMetric
-  total_score numeric(4, 2) default 0,
-  status text check (status in ('Draft', 'Employee_Review', 'Supervisor_Review', 'Finalized')) default 'Draft',
-  submitted_date timestamptz,
-  finalized_date timestamptz,
-  created_at timestamptz default now(),
-  
-  -- Ensure one review per employee per quarter per year
-  unique(employee_id, year, quarter)
+CREATE TABLE IF NOT EXISTS public.performance_reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id),
+    employee_id UUID NOT NULL REFERENCES public.employees(id),
+    
+    year INTEGER NOT NULL,
+    quarter TEXT NOT NULL CHECK (quarter IN ('Q1', 'Q2', 'Q3', 'Q4')),
+    
+    -- Metrics stored as JSON array of objects:
+    -- [{ "category": "Core Values", "metric": "Ownership", "self_score": 4, "manager_score": 5, "comment": "..." }]
+    metrics JSONB DEFAULT '[]'::jsonb,
+    
+    total_score NUMERIC(5, 2) DEFAULT 0, -- e.g. 85.50
+    
+    -- Status Workflow: 
+    -- 1. Draft (Admin created cycle)
+    -- 2. Employee_Review (Employee filling self-assessment)
+    -- 3. Supervisor_Review (Manager grading)
+    -- 4. Finalized (Completed)
+    status TEXT NOT NULL DEFAULT 'Draft' CHECK (status IN ('Draft', 'Employee_Review', 'Supervisor_Review', 'Finalized')),
+    
+    start_date TIMESTAMPTZ DEFAULT NOW(),
+    submitted_date TIMESTAMPTZ,
+    finalized_date TIMESTAMPTZ,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Enable RLS
-alter table public.performance_reviews enable row level security;
+ALTER TABLE public.performance_reviews ENABLE ROW LEVEL SECURITY;
 
--- Policies
+-- POLICIES
 
--- 1. Users can view their own reviews
-create policy "Users can view own reviews"
-  on public.performance_reviews for select
-  using ( 
-    employee_id in (select id from public.employees where email = auth.jwt() ->> 'email')
-    or
-    -- Admins/Managers in the same org can view all
-    (organization_id = (select organization_id from public.profiles where id = auth.uid()) 
-     and exists (select 1 from public.profiles where id = auth.uid() and role in ('Super Admin', 'Admin', 'Manager', 'HR', 'HR Manager')))
-  );
+-- 1. View: 
+-- Employees can view their own reviews.
+-- Admins and Managers can view ALL (for their org).
+CREATE POLICY "Employees view own reviews" ON public.performance_reviews
+    FOR SELECT
+    USING (auth.uid() = employee_id);
 
--- 2. Admins/Managers can insert (Create Cycles)
-create policy "Admins can create review cycles"
-  on public.performance_reviews for insert
-  with check (
-    organization_id = (select organization_id from public.profiles where id = auth.uid())
-    and exists (select 1 from public.profiles where id = auth.uid() and role in ('Super Admin', 'Admin', 'Manager', 'HR', 'HR Manager'))
-  );
+CREATE POLICY "Admins/Managers view all reviews" ON public.performance_reviews
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() 
+            AND role IN ('Admin', 'Manager', 'Logistics Manager', 'Super Admin') -- Add more roles if needed
+        )
+    );
 
--- 3. Updates:
---    a. Employee can update if status is 'Employee_Review' AND it belongs to them
-create policy "Employees can update own draft review"
-  on public.performance_reviews for update
-  using (
-    employee_id in (select id from public.employees where email = auth.jwt() ->> 'email')
-    and status = 'Employee_Review'
-  );
+-- 2. Insert:
+-- Only Admins (HR) can create a Review Cycle (Insert rows).
+CREATE POLICY "Admins create review cycles" ON public.performance_reviews
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('Admin', 'Super Admin')
+        )
+    );
 
---    b. Managers/Admins can update if status is 'Supervisor_Review' OR they are admin (override)
-create policy "Managers can update supervisor review"
-  on public.performance_reviews for update
-  using (
-    organization_id = (select organization_id from public.profiles where id = auth.uid())
-    and exists (select 1 from public.profiles where id = auth.uid() and role in ('Super Admin', 'Admin', 'Manager', 'HR', 'HR Manager'))
-  );
+-- 3. Update:
+-- Employees can update ONLY if status is 'Employee_Review' (Self Assessment)
+CREATE POLICY "Employees update self assessment" ON public.performance_reviews
+    FOR UPDATE
+    USING (auth.uid() = employee_id AND status = 'Employee_Review')
+    WITH CHECK (auth.uid() = employee_id AND status IN ('Employee_Review', 'Supervisor_Review')); -- Allow transition to Supervisor
 
--- Indexes
-create index idx_perf_reviews_org on public.performance_reviews(organization_id);
-create index idx_perf_reviews_emp on public.performance_reviews(employee_id);
-create index idx_perf_reviews_cycle on public.performance_reviews(year, quarter);
+-- Managers can update if status is 'Supervisor_Review'
+CREATE POLICY "Managers update supervisor review" ON public.performance_reviews
+    FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('Admin', 'Manager', 'Logistics Manager', 'Super Admin')
+        )
+        AND status = 'Supervisor_Review'
+    );
+
+-- NOTIFY RELOAD
+NOTIFY pgrst, 'reload config';
+
+SELECT 'Performance Reviews Schema Created' as status;
