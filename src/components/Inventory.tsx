@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage } from '../services/supabase';
 import { Ingredient, InventoryItem, Recipe, Requisition, InventoryMovement, RentalRecord, ItemCosting } from '../types';
 import { performAgenticMarketResearch, getLiveRecipeIngredientPrices } from '../services/ai';
 import { calculateItemCosting } from '../utils/costing';
@@ -188,7 +189,7 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
             </div>
             <div className="p-10 space-y-6">
                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-6"><p className="text-[10px] font-black uppercase text-amber-600 mb-1">Active Liability</p><p className="text-sm font-bold text-amber-900">Est. replacement: ₦{(rental.estimatedReplacementValueCents / 100).toLocaleString()}</p></div>
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Return Status</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={status} onChange={e => setStatus(e.target.value as any)}><option value="Returned">Safely Returned</option><option value="Damaged">Damaged / Broken</option><option value="Lost">Lost / Unaccounted</option></select></div>
+               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Return Status</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={status} onChange={e => setStatus(e.target.value as any)}><option value="Returned">Safely Returned</option><option value="Damaged">Damaged / Broken</option><option value="Lost">Lost / Unaccounted</option></select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Discrepancy Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain damages or loss details..." /></div>
             </div>
             <div className="p-8 bg-slate-50 flex gap-4"><button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button><button onClick={handleReturn} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl">Complete Return Cycle</button></div>
@@ -229,9 +230,9 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
                </div>
             </div>
             <div className="p-10 space-y-6">
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Ingredient Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select Ingredient...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Tie to Event/Order</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}><option value="">General / Casual Order</option>{events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}</select></div>
-               <div className="grid grid-cols-1 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Quantity</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div></div>
+               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Ingredient Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select Ingredient...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
+               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Tie to Event/Order</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}><option value="">General / Casual Order</option>{events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}</select></div>
+               <div className="grid grid-cols-1 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Quantity</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g., Replacement for spoiled batch..." /></div>
             </div>
             <div className="p-8 bg-slate-50 flex gap-4"><button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button><button onClick={handleReleaseRequest} className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl">Authorize Release</button></div>
@@ -265,8 +266,8 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                </div>
             </div>
             <div className="p-10 space-y-6">
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Choose item...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></div>
-               <div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} /></div></div>
+               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Choose item...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></div>
+               <div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} /></div></div>
             </div>
             <div className="p-8 bg-slate-50 flex gap-4"><button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button><button onClick={handleReceive} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl">Commit to Stock</button></div>
          </div>
@@ -310,7 +311,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
             <div className="p-10 space-y-6">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Asset</label>
-                  <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={selectedAssetId} onChange={e => setSelectedAssetId(e.target.value)}>
+                  <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedAssetId} onChange={e => setSelectedAssetId(e.target.value)}>
                      <option value="">Choose equipment...</option>
                      {assets.map(a => <option key={a.id} value={a.id}>{a.name} ({a.stockQuantity} available)</option>)}
                   </select>
@@ -318,7 +319,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
 
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Assign to Event</label>
-                  <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}>
+                  <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}>
                      <option value="">Choose active event...</option>
                      {events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}
                   </select>
@@ -327,11 +328,11 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
                <div className="grid grid-cols-2 gap-4">
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Out</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Source / Vendor</label>
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={vendor} onChange={e => setVendor(e.target.value)}>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={vendor} onChange={e => setVendor(e.target.value)}>
                         <option>In-House</option><option>External Rental</option>
                      </select>
                   </div>
@@ -470,19 +471,19 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
             <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Item Name</label>
-                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Basmati Rice" />
+                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Basmati Rice" />
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Category</label>
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={category} onChange={e => setCategory(e.target.value)}>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={category} onChange={e => setCategory(e.target.value)}>
                         <option>Dry Goods</option><option>Produce</option><option>Proteins</option><option>Dairy</option><option>Spices</option><option>Beverages</option>
                      </select>
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit</label>
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={unit} onChange={e => setUnit(e.target.value)}>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={unit} onChange={e => setUnit(e.target.value)}>
                         <option>kg</option><option>g</option><option>L</option><option>ml</option><option>pcs</option><option>pack</option><option>tin</option>
                      </select>
                   </div>
@@ -491,11 +492,11 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
                <div className="grid grid-cols-2 gap-4">
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Stock Level</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={stock} onChange={e => setStock(parseFloat(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={stock} onChange={e => setStock(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit Cost (₦)</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
                   </div>
                </div>
 
@@ -521,6 +522,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
                            <ScanLine size={14} /> Capture / Upload
                         </button>
                         <p className="text-[9px] text-slate-400 font-medium">Take a photo of the product or upload related document.</p>
+                        {uploadStatus && <p className={`text-[10px] font-bold ${uploadStatus.includes('Success') ? 'text-emerald-500' : 'text-rose-500'}`}>{uploadStatus}</p>}
                      </div>
                   </div>
                </div>
@@ -552,7 +554,42 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
    const [stock, setStock] = useState(editItem?.stockQuantity || 0);
    const [description, setDescription] = useState(editItem?.description || '');
    const [image, setImage] = useState(editItem?.image || '');
+   const [isUploading, setIsUploading] = useState(false);
 
+   const [uploadStatus, setUploadStatus] = useState<string>('');
+
+   const { user } = useAuthStore();
+
+   const handleImageCapture = async (imgData: string) => {
+      setUploadStatus('Processing...');
+      if (!user?.companyId) {
+         setUploadStatus('Error: Missing Organization ID');
+         return;
+      }
+      setIsUploading(true);
+      setShowCamera(false);
+      try {
+         const tempId = editItem?.id || `new-${Date.now()}`;
+         const entityType = type === 'raw_material' ? 'ingredient' : 'product';
+         setUploadStatus('Uploading to Cloud...');
+
+         const { bucket, path } = await uploadEntityImage(user.companyId, entityType, tempId, imgData);
+
+         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+         const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+
+         setImage(publicUrl);
+         setUploadStatus('✅ Upload Successful!');
+         setTimeout(() => setUploadStatus(''), 3000);
+      } catch (error) {
+         console.error("[Inventory] Upload FATAL:", error);
+         setUploadStatus(`❌ Upload Failed: ${(error as Error).message}`);
+      } finally {
+         setIsUploading(false);
+      }
+   };
+
+   // Keep legacy logger for debug if needed, but we use handleImageCapture now
    const setImageWithLog = (newImage: string) => {
       console.log('Setting image in modal:', newImage.substring(0, 50));
       setImage(newImage);
@@ -615,19 +652,19 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
             <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Name</label>
-                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Grilled Chicken" />
+                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Grilled Chicken" />
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Category</label>
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={category} onChange={e => setCategory(e.target.value)}>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={category} onChange={e => setCategory(e.target.value)}>
                         <option>Hors D'Oeuvres</option><option>Starters</option><option>Salads</option><option>Nigerian Cuisine</option><option>Oriental</option><option>Continental</option><option>Hot Plates</option><option>Desserts</option>
                      </select>
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Type</label>
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={type} onChange={e => setType(e.target.value)}>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value)}>
                         <option value="product">Product</option><option value="raw_material">Raw Material</option>
                      </select>
                   </div>
@@ -636,17 +673,17 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                <div className="grid grid-cols-2 gap-4">
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Price (₦)</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Stock Quantity</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none" value={stock} onChange={e => setStock(parseInt(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={stock} onChange={e => setStock(parseInt(e.target.value) || 0)} />
                   </div>
                </div>
 
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Description</label>
-                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500" value={description} onChange={e => setDescription(e.target.value)} placeholder="Product description" rows={3} />
+                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={description} onChange={e => setDescription(e.target.value)} placeholder="Product description" rows={3} />
                </div>
 
                <div>
@@ -656,10 +693,11 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                         <div className="relative w-24 h-24 rounded-2xl overflow-hidden group">
                            <img src={image} className="w-full h-full object-cover" alt="Product" />
                            <button onClick={() => setImage('')} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-all"><Trash2 size={20} /></button>
+                           {isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 size={20} className="animate-spin text-white" /></div>}
                         </div>
                      ) : (
-                        <div className="w-24 h-24 bg-slate-50 border-2 border-slate-100 border-dashed rounded-2xl flex items-center justify-center text-slate-300">
-                           <ImageIcon size={24} />
+                        <div className="w-24 h-24 bg-slate-50 border-2 border-slate-100 border-dashed rounded-2xl flex items-center justify-center text-slate-300 relative">
+                           {isUploading ? <Loader2 size={24} className="animate-spin text-indigo-500" /> : <ImageIcon size={24} />}
                         </div>
                      )}
 
@@ -686,7 +724,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
             <DocumentCapture
                title="Capture Product Image"
                mode="general"
-               onCapture={(img) => { console.log('Image captured:', img.substring(0, 50)); setImageWithLog(img); setShowCamera(false); }}
+               onCapture={(img) => { handleImageCapture(img); }}
                onCancel={() => setShowCamera(false)}
             />
          )}

@@ -203,34 +203,38 @@ export const useDataStore = create<DataState>()(
                 let dbPayload: any = {
                     organization_id: user.companyId,
                     name: item.name,
-                    // We DO NOT send base64 to image_url. 
-                    // If we have a legacy image_url column, we might leave it null or set it if we have a URL.
-                    // For now, we omit it and rely on entity_media.
-                    // image_url: item.image, <-- REMOVED
-
-                    // Common optional fields mapping
                     category_id: (item.category as any)
                 };
 
+                // Add Image URL if available (and valid URL)
+                if (uploadedMedia) {
+                    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                    dbPayload.image = `${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
+                } else if (item.image && item.image.startsWith('http')) {
+                    dbPayload.image = item.image;
+                }
+
                 // Type Mapping
                 if (item.type === 'product') {
-                    tableName = 'products';
+                    tableName = 'inventory';
                     dbPayload.description = item.description;
                     dbPayload.price_cents = item.priceCents;
                 } else if (item.type === 'asset' || item.type === 'reusable') {
-                    tableName = 'reusable_items';
+                    tableName = 'inventory';
                 } else if (item.type === 'rental') {
-                    tableName = 'rental_items';
+                    tableName = 'inventory';
                     dbPayload.replacement_cost_cents = item.priceCents;
                 } else if (item.type === 'raw_material' || item.type === 'ingredient') {
-                    tableName = 'ingredients';
+                    tableName = 'inventory';
                 }
 
                 if (tableName && supabase) {
                     try {
                         // 1. Insert Entity
-                        if (tableName === 'products') {
-                            delete dbPayload.category_id;
+                        if (tableName === 'inventory') {
+                            delete dbPayload.category_id; // inventory table doesn't have category_id? Check schema.
+                            // Schema says: category TEXT. So we should send 'category', not 'category_id'.
+                            dbPayload.category = item.category;
                         }
 
                         // Remove 'id' from payload to let DB generate UUID if table is uuid-typed. 
@@ -313,21 +317,22 @@ export const useDataStore = create<DataState>()(
                     let dbPayload: any = {
                         organization_id: user.companyId,
                         name: updatedItem.name,
+                        image: updatedItem.image,
                         category_id: (updatedItem.category as any)
                     };
 
                     if (updatedItem.type === 'product') {
-                        tableName = 'products';
+                        tableName = 'inventory';
                         dbPayload.description = updatedItem.description;
                         dbPayload.price_cents = updatedItem.priceCents;
                     } else if (updatedItem.type === 'asset' || updatedItem.type === 'reusable') {
-                        tableName = 'reusable_items';
+                        tableName = 'inventory';
                         dbPayload.type = updatedItem.type === 'asset' ? 'asset' : 'rental';
                         dbPayload.price_cents = updatedItem.priceCents;
                         dbPayload.stock_quantity = updatedItem.stockQuantity;
                     } else if (updatedItem.type === 'raw_material') {
                         tableName = 'ingredients';
-                        dbPayload.unit = updatedItem.unit;
+                        dbPayload.unit = (updatedItem as any).unit;
                         dbPayload.current_cost_cents = updatedItem.priceCents;
                         dbPayload.stock_level = updatedItem.stockQuantity;
                     }
@@ -1532,7 +1537,7 @@ export const useDataStore = create<DataState>()(
                         // Core Tables
                         contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews,
                         // Inventory Base Tables
-                        products, reusableItems, rentalItems, rawIngredients,
+                        inventoryData, // Was products, reusableItems etc. Now just one blob.
                         // Inventory Views
                         reusableStock, rentalStock, ingredientStock,
                         // Categories
@@ -1551,10 +1556,10 @@ export const useDataStore = create<DataState>()(
                         safePull('leave_requests', companyId),
                         safePull('performance_reviews', companyId),
 
-                        safePull('products', companyId),
-                        safePull('reusable_items', companyId),
-                        safePull('rental_items', companyId),
-                        safePull('ingredients', companyId),
+                        safePull('inventory', companyId),
+                        // safePull('reusable_items', companyId), // REMOVED (Consolidated)
+                        // safePull('rental_items', companyId), // REMOVED
+                        // safePull('ingredients', companyId), // REMOVED
 
                         safeViews('v_reusable_inventory', companyId),
                         safeViews('v_rental_inventory', companyId),
@@ -1590,88 +1595,37 @@ export const useDataStore = create<DataState>()(
                     }
                     const combinedInventory: InventoryItem[] = [];
 
-                    // 1. Products (Offerings)
-                    if (products) {
-                        combinedInventory.push(...products.map((p: any) => {
-                            // Map Category ID to Name
-                            const cat = (categories as any[])?.find(c => c.id === p.productCategoryId || c.id === p.product_category_id);
+                    // 1. Process Unified Inventory Data
+                    if (inventoryData) {
+                        combinedInventory.push(...inventoryData.map((item: any) => {
+                            // Map Category ID to Name if applicable
+                            const cat = (categories as any[])?.find(c => c.id === item.categoryId || c.id === item.product_category_id);
+
+                            // Ensure proper type defaults
+                            if (!item.type) item.type = 'product';
+
                             return {
-                                ...p,
-                                type: 'product',
-                                category: cat ? cat.name : (p.category || 'General'), // Fallback to existing or General
-                                stockQuantity: 0
+                                ...item,
+                                category: cat ? cat.name : (item.category || item.category_id || 'General'),
+                                stockQuantity: item.stockQuantity || item.stock_quantity || 0,
+                                // Ensure numeric fields are numbers
+                                priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : item.priceCents,
+                                image: item.image // Ensure image is passed through
                             };
                         }));
                     }
 
-                    // 2. Reusable Items (Assets/Hardware)
-                    if (reusableItems) {
-                        combinedInventory.push(...reusableItems.map((item: any) => {
-                            // Find stock info - taking the first row's total_quantity if available
-                            const stockInfo = (reusableStock as any[])?.find((s: any) => s.item_id === item.id);
-                            // Construct Image URL
-                            const hasImage = item.image_url && item.image_url.length > 0;
-                            const imageUrl = hasImage
-                                ? `https://qbfhntvjqciardkjpfpy.supabase.co/storage/v1/object/public/asset_inventory/${encodeURIComponent(item.image_url)}`
-                                : null;
-
-                            return {
-                                ...item,
-                                type: 'reusable', // Operational Inventory
-                                category: item.category_id || 'Hardware', // Fallback or map category
-                                stockQuantity: stockInfo ? stockInfo.total_quantity : 0,
-                                image: imageUrl
-                            };
+                    // 2. Derive Ingredients State
+                    const processedIngredients: Ingredient[] = combinedInventory
+                        .filter(i => i.type === 'ingredient' || i.type === 'raw_material')
+                        .map(i => ({
+                            ...i,
+                            stockLevel: i.stockQuantity,
+                            // Ensure numeric fields
+                            currentCostCents: typeof i.priceCents === 'string' ? parseInt(i.priceCents) : i.priceCents,
+                            unit: (i as any).unit,
+                            lastUpdated: new Date().toISOString()
                         }));
-                        console.log('Processed Reusable Items:', combinedInventory.filter(i => i.type === 'reusable').length);
-                    }
-
-                    // 3. Rental Items
-                    if (rentalItems) {
-                        combinedInventory.push(...rentalItems.map((item: any) => {
-                            const stockInfo = (rentalStock as any[])?.find((s: any) => s.item_id === item.id);
-                            return {
-                                ...item,
-                                type: 'rental',
-                                stockQuantity: stockInfo ? stockInfo.total_quantity : 0,
-                                isRental: true
-                            };
-                        }));
-                    }
-
-
-                    // 5. Fixed Assets (Capex/Individual Assets)
-                    if (fixedAssets) {
-                        combinedInventory.push(...fixedAssets.map((item: any) => ({
-                            ...item,
-                            type: 'asset', // The Real Fixed Asset
-                            stockQuantity: 1, // Fixed assets are tracked individually usually
-                            priceCents: item.acquisition_cost_cents || 0,
-                            image: item.image_url // Ensure this property is mapped
-                        })));
-                    }
-
-                    // 4. Ingredients (Raw Materials)
-                    const processedIngredients: Ingredient[] = [];
-                    if (rawIngredients) {
-                        rawIngredients.forEach((item: any) => {
-                            const stockInfo = (ingredientStock as any[])?.find((s: any) => s.item_id === item.id);
-                            const stockQty = stockInfo ? stockInfo.total_quantity : 0;
-
-                            // Add to Inventory list
-                            combinedInventory.push({
-                                ...item,
-                                type: 'raw_material',
-                                stockQuantity: stockQty
-                            });
-
-                            // Add to Ingredients list
-                            processedIngredients.push({
-                                ...item,
-                                stockLevel: stockQty
-                            });
-                        });
-                    }
 
                     set({
                         inventory: combinedInventory,

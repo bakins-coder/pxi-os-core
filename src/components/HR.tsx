@@ -469,36 +469,52 @@ export const HR = () => {
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
    const isAdmin = [Role.ADMIN, Role.HR_MANAGER, Role.SUPER_ADMIN, Role.CEO].includes(currentUser?.role as any);
-   const canViewSensitiveInfo = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.HR, Role.FINANCE, Role.MANAGER, Role.CEO].includes(currentUser?.role as any);
-   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE, Role.CEO].includes(currentUser?.role as any);
+   // Allow minimal access for everyone to see their own data
+   const canViewSensitiveInfo = true;
+   const canViewPayroll = true;
 
    useEffect(() => {
-      // Refund to dashboard if on forbidden tab
+      // Refund to dashboard if on forbidden tab for totally unauthorized roles (if any)
+      // Now most roles can see most tabs but with filtered data
+      /* 
       if (!canViewSensitiveInfo && ['people', 'matrix', 'payroll', 'performance'].includes(activeTab)) {
          setActiveTab('leave');
-      } else if (activeTab === 'payroll' && !canViewPayroll) {
-         setActiveTab('dashboard');
-      }
+      } 
+      */
    }, [canViewSensitiveInfo, canViewPayroll, activeTab]);
 
    useEffect(() => {
       if (activeTab === 'payroll') {
-         setPayrollItems(employees.map(e => calculatePayrollForEmployee(e)));
+         let items = employees.map(e => calculatePayrollForEmployee(e));
+         // Filter for non-admins to only see their own
+         if (!isAdmin) {
+            items = items.filter(i => i.employeeId === currentUser?.id);
+         }
+         setPayrollItems(items);
       }
-   }, [activeTab, employees]);
+   }, [activeTab, employees, isAdmin, currentUser]);
 
    const filteredEmployees = useMemo(() => {
-      // ... existing code ...
       const query = searchQuery.toLowerCase().trim();
-      if (!query) return employees;
-      return employees.filter(e => {
+      let roster = employees;
+
+      // Filter roster for non-admins (maybe they can view all, or only themselves?)
+      // Requirement said "personal kpis", implies restricted view.
+      // Let's restrict People tab to only yourself if not admin/manager
+      const isManagerial = [Role.ADMIN, Role.HR_MANAGER, Role.SUPER_ADMIN, Role.CEO, Role.MANAGER].includes(currentUser?.role as any);
+      if (!isManagerial) {
+         roster = roster.filter(e => e.id === currentUser?.id);
+      }
+
+      if (!query) return roster;
+      return roster.filter(e => {
          const matchName = `${e.firstName} ${e.lastName}`.toLowerCase().includes(query);
          const matchEmail = e.email.toLowerCase().includes(query);
          const matchRole = e.role.toLowerCase().includes(query);
          const matchHealth = (e.healthNotes || '').toLowerCase().includes(query);
          return matchName || matchEmail || matchRole || matchHealth;
       });
-   }, [employees, searchQuery]);
+   }, [employees, searchQuery, currentUser]);
 
    const handleEditEmployee = (emp: Employee) => { setEditingEmployee(emp); setIsHireModalOpen(true); };
    const closeHireModal = () => { setIsHireModalOpen(false); setEditingEmployee(undefined); };
@@ -517,12 +533,12 @@ export const HR = () => {
                </div>
                <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0">
                   {[
-                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: true },
-                     { id: 'people', label: 'People', icon: Users, visible: canViewSensitiveInfo },
+                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: isAdmin },
+                     { id: 'people', label: 'People', icon: Users, visible: isAdmin }, // Hide People list for non-managers
                      { id: 'leave', label: 'Absence Node', icon: Plane, visible: true },
-                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: canViewPayroll },
-                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: canViewSensitiveInfo },
-                     { id: 'performance', label: 'Performance', icon: Sparkles, visible: canViewSensitiveInfo }
+                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: true }, // Visible to all, filtered data
+                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: isAdmin },
+                     { id: 'performance', label: 'Performance', icon: Sparkles, visible: true }
                   ].filter(t => t.visible).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 md:px-8 py-3 rounded-[1.2rem] md:rounded-[1.5rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-2xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                         <tab.icon size={14} className="shrink-0" /> <span className="hidden sm:inline">{tab.label}</span>
@@ -533,7 +549,7 @@ export const HR = () => {
             </div>
          </div>
 
-         {activeTab === 'dashboard' && (
+         {activeTab === 'dashboard' && isAdmin && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 w-full">
                <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Total Headcount</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{employees.length}</h3><div className="mt-6 flex items-center gap-2 text-emerald-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><TrendingUp size={14} /> Stable Growth</div></div>
                <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Departments</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{departmentMatrix.length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><LayoutGrid size={14} /> Matrix Sync</div></div>
@@ -542,7 +558,7 @@ export const HR = () => {
             </div>
          )}
 
-         {activeTab === 'people' && (
+         {activeTab === 'people' && isAdmin && (
             <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-4 w-full overflow-hidden">
                <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl">
                   <div className="flex-1 w-full relative max-w-md">
@@ -609,10 +625,10 @@ export const HR = () => {
                <div className="bg-slate-950 p-8 md:p-10 rounded-[3rem] text-white flex justify-between items-center shadow-2xl relative overflow-hidden border border-white/10">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
                   <div className="relative z-10">
-                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">Performance</h2>
+                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">{isAdmin ? 'Performance' : 'My Performance'}</h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2"><Sparkles size={14} className="text-amber-400" /> Quarterly Assessment Cycle</p>
                   </div>
-                  <button className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>
+                  {isAdmin && <button className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>}
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

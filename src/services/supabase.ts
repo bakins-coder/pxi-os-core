@@ -100,6 +100,16 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('healthNotes' in newItem) { newItem.health_notes = newItem.healthNotes; delete newItem.healthNotes; }
     if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.date_of_employment; }
 
+    // Image Mapping (General)
+    // Image Mapping (General)
+    if ('image' in newItem) {
+      // If it is NOT a URL (e.g. base64), remove it so we don't spam the DB text column.
+      // If it IS a URL, leave it alone as 'image' because the DB expects 'image'.
+      if (!newItem.image || typeof newItem.image !== 'string' || !newItem.image.startsWith('http')) {
+        delete newItem.image;
+      }
+    }
+
     return newItem;
   });
 
@@ -169,6 +179,9 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
     if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
     if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
+
+    // Image Mapping (General)
+
 
     return newItem;
   });
@@ -247,16 +260,27 @@ export const uploadEntityImage = async (
   entityId: string,
   base64Data: string
 ) => {
+  console.log('[Supabase] uploadEntityImage called');
   if (!supabase) throw new Error("Supabase not initialized");
 
   // distinct path: product/{org_id}/{product_id}/{timestamp}.jpg
   const filename = `${Date.now()}.jpg`;
-  const bucketName = 'product_media'; // As per optimisation plan
+  const bucketName = 'product_media';
   const objectPath = `${entityType}/${orgId}/${entityId}/${filename}`;
 
-  // Convert Base64 to Blob
-  const res = await fetch(base64Data);
-  const blob = await res.blob();
+  console.log('[Supabase] Converting base64...');
+
+  // Robust Base64 to Blob conversion
+  const base64Clean = base64Data.split(',')[1] || base64Data;
+  const binaryStr = atob(base64Clean);
+  const len = binaryStr.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: 'image/jpeg' });
+
+  console.log('[Supabase] Uploading to bucket:', bucketName, 'Path:', objectPath);
 
   const { data, error } = await supabase.storage
     .from(bucketName)
@@ -265,9 +289,13 @@ export const uploadEntityImage = async (
       upsert: true
     });
 
-  if (error) throw error;
+  if (error) {
+    console.error('[Supabase] Upload Error:', error);
+    throw error;
+  }
 
-  return { bucket: bucketName, path: objectPath };
+  console.log('[Supabase] Upload Success:', data);
+  return { bucket: bucketName, path: data.path };
 };
 
 export const saveEntityMedia = async (

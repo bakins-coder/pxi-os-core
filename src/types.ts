@@ -19,6 +19,7 @@ export enum Role {
   LOGISTICS_OFFICER = 'Logistics Officer',
   EVENT_MANAGER = 'Event Manager',
   EVENT_COORDINATOR = 'Event Coordinator',
+  BANQUET_MANAGER = 'Banquet Manager',
   STOCK_KEEPER = 'Stock Keeper',
   SALES = 'Sales',
   DRIVER = 'Driver',

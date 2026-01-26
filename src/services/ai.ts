@@ -248,7 +248,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
     const menuContext = dataStore.inventory
         // Include products, reusables (e.g., glasses, plates), and raw materials
         .filter(i => i.type === 'product' || i.type === 'reusable' || i.type === 'raw_material')
-        .slice(0, 30) // REDUCED LIMIT: Top 30 items to save tokens
+        .slice(0, 200) // INCREASED LIMIT: Top 200 items to ensure menu completeness
         .map(i => {
             const price = i.priceCents ? `₦${(i.priceCents / 100).toLocaleString()}` : 'Price Varies';
             const desc = i.description ? ` - ${i.description}` : '';
@@ -486,7 +486,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
                 .reduce((acc, item) => {
                     const cat = item.category || 'General';
                     if (!acc[cat]) acc[cat] = [];
-                    if (acc[cat].length < 20) { // Limit to 20 items per category
+                    if (acc[cat].length < 50) { // Limit to 50 items per category
                         acc[cat].push(`${item.name} (${item.stockQuantity})`);
                     }
                     return acc;

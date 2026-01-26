@@ -140,7 +140,7 @@ export const Dashboard = () => {
 
       {/* KPI Ribbons */}
       {/* KPI Ribbons - Protected View */}
-      {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'CEO' || user?.role === 'General Manager' || user?.role === 'Finance Manager' || user?.permissionTags?.includes('access:finance') || user?.permissionTags?.includes('access:reports')) && (
+      {((user?.role as string) === 'SUPER_ADMIN' || (user?.role as string) === 'ADMIN' || (user?.role as string) === 'CEO' || (user?.role as string) === 'General Manager' || (user?.role as string) === 'Finance Manager' || user?.permissionTags?.includes('access:finance') || user?.permissionTags?.includes('access:reports')) && !['Logistics Officer', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
         <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
@@ -184,8 +184,13 @@ export const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-8">
-          <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" />
-          <SummaryList title="Pending Procurement" items={dataState.payables} type="payable" />
+          {!['Logistics Officer', 'Logistics Manager', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
+            <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" />
+          )}
+          {/* Logistics Officer hidden, but others (Event/Banquet) can see */}
+          {(user?.role as string) !== 'Logistics Officer' && (user?.role as string) !== 'Logistics Manager' && (
+            <SummaryList title="Pending Procurement" items={dataState.payables} type="payable" />
+          )}
         </div>
       </div>
 
@@ -205,9 +210,11 @@ export const Dashboard = () => {
           )}
 
         </div>
-        <div className="h-1/2">
-          <SummaryList title="Recent Hires" items={dataState.recentHires} type="employee" />
-        </div>
+        {!['Logistics Officer', 'Logistics Manager', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
+          <div className="h-1/2">
+            <SummaryList title="Recent Hires" items={dataState.recentHires} type="employee" />
+          </div>
+        )}
       </div>
     </div>
   );
