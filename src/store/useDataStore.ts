@@ -203,7 +203,7 @@ export const useDataStore = create<DataState>()(
                 let dbPayload: any = {
                     organization_id: user.companyId,
                     name: item.name,
-                    category_id: (item.category as any)
+                    category: (item.category as any)
                 };
 
                 // Add Image URL if available (and valid URL)
@@ -216,41 +216,42 @@ export const useDataStore = create<DataState>()(
 
                 // Type Mapping
                 if (item.type === 'product') {
-                    tableName = 'inventory';
+                    tableName = 'products';
+                    // Products table schema: name, description, price_cents, category, etc.
                     dbPayload.description = item.description;
                     dbPayload.price_cents = item.priceCents;
-                } else if (item.type === 'asset' || item.type === 'reusable') {
-                    tableName = 'inventory';
+                    // Fix: category column in products schema? Yes, from fix_inventory_tables.
+                    // But we must check if category is text or ID. The migration said category TEXT in inventory, 
+                    // but for new products table, we assume it kept similar schema or is generic.
+                    // Fix: use syncTableToCloud logic which handles snake_case too.
+                    // Actually, syncTableToCloud calls 'upsert'. We can just use that?
+                    // No, here we need the inserted ID to upload media.
+                    // Let's stick to explicit insert but correct table.
+                } else if (item.type === 'reusable' || (item.type as any) === 'asset') {
+                    tableName = 'reusable_items';
+                    dbPayload.type = 'asset'; // Explicitly set asset type for reusable table if needed
+                    // Add standard fields for reusables if any specific ones exist
                 } else if (item.type === 'rental') {
-                    tableName = 'inventory';
+                    tableName = 'rental_items';
                     dbPayload.replacement_cost_cents = item.priceCents;
                 } else if (item.type === 'raw_material' || item.type === 'ingredient') {
-                    tableName = 'inventory';
+                    tableName = 'ingredients';
+                    dbPayload.unit = (item as any).unit;
+                    dbPayload.current_cost_cents = item.priceCents;
+                    // dbPayload.stock_level = item.stockQuantity; // Usually separate movement?
+                    // For initial add, maybe we can set stock? 
+                    // Let's assume stock is 0 or separate.
+                    // ingredients table has stock_level column.
+                    dbPayload.stock_level = item.stockQuantity || 0;
                 }
 
                 if (tableName && supabase) {
                     try {
-                        // 1. Insert Entity
-                        if (tableName === 'inventory') {
-                            delete dbPayload.category_id; // inventory table doesn't have category_id? Check schema.
-                            // Schema says: category TEXT. So we should send 'category', not 'category_id'.
-                            dbPayload.category = item.category;
-                        }
-
-                        // Remove 'id' from payload to let DB generate UUID if table is uuid-typed. 
-                        // But wait, if table is text-typed, we might need to provide it?
-                        // Given 'entity_id = product.id' usually implies UUID in Supabase, let's try not sending ID.
-                        // But we need to know if we should send one.
-                        // Ideally we send 'id: newItemId' ONLY IF we are confident it matches schema. 
-                        // Let's TRY to let DB generate it, and capturing it.
-
                         const { data, error } = await supabase.from(tableName).insert([dbPayload]).select();
-
                         if (error) {
-                            console.error("Failed to insert inventory item:", error);
+                            console.error("Failed to insert item:", error);
                             return;
                         }
-
                         const insertedId = data?.[0]?.id;
 
                         // 2. Insert Entity Media if uploaded
@@ -318,26 +319,36 @@ export const useDataStore = create<DataState>()(
                         organization_id: user.companyId,
                         name: updatedItem.name,
                         image: updatedItem.image,
-                        category_id: (updatedItem.category as any)
+                        category: (updatedItem.category as any)
                     };
 
                     if (updatedItem.type === 'product') {
-                        tableName = 'inventory';
+                        tableName = 'products';
                         dbPayload.description = updatedItem.description;
                         dbPayload.price_cents = updatedItem.priceCents;
-                    } else if (updatedItem.type === 'asset' || updatedItem.type === 'reusable') {
-                        tableName = 'inventory';
-                        dbPayload.type = updatedItem.type === 'asset' ? 'asset' : 'rental';
-                        dbPayload.price_cents = updatedItem.priceCents;
-                        dbPayload.stock_quantity = updatedItem.stockQuantity;
-                    } else if (updatedItem.type === 'raw_material') {
+                    } else if (updatedItem.type === 'reusable' || (updatedItem.type as any) === 'asset') {
+                        tableName = 'reusable_items';
+                        dbPayload.type = 'asset';
+                        // dbPayload.stock_quantity = updatedItem.stockQuantity; // Reusables shouldn't update stock directly via edit usually? 
+                        // But if user edits, we might allow it.
+                    } else if (updatedItem.type === 'rental') {
+                        tableName = 'rental_items';
+                        dbPayload.replacement_cost_cents = updatedItem.priceCents;
+                    } else if (updatedItem.type === 'ingredient' || updatedItem.type === 'raw_material') {
                         tableName = 'ingredients';
                         dbPayload.unit = (updatedItem as any).unit;
                         dbPayload.current_cost_cents = updatedItem.priceCents;
                         dbPayload.stock_level = updatedItem.stockQuantity;
                     }
 
-                    await syncTableToCloud(tableName, [dbPayload]);
+                    if (tableName) {
+                        // Use syncTableToCloud helper which handles upsert/mapping? 
+                        // Or just update directly?
+                        // useDataStore generally used syncTableToCloud for bulk. 
+                        // But for single item update, direct update is cleaner.
+                        // Let's try direct update.
+                        await supabase.from(tableName).update(dbPayload).eq('id', id);
+                    }
 
                     // Update Entity Media if uploaded
                     if (uploadedMedia) {
@@ -1537,7 +1548,7 @@ export const useDataStore = create<DataState>()(
                         // Core Tables
                         contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews,
                         // Inventory Base Tables
-                        inventoryData, // Was products, reusableItems etc. Now just one blob.
+                        reusableItems, rentalItems, ingredientItems, productItems,
                         // Inventory Views
                         reusableStock, rentalStock, ingredientStock,
                         // Categories
@@ -1557,9 +1568,10 @@ export const useDataStore = create<DataState>()(
                         safePull('performance_reviews', companyId),
 
                         safePull('inventory', companyId),
-                        // safePull('reusable_items', companyId), // REMOVED (Consolidated)
-                        // safePull('rental_items', companyId), // REMOVED
-                        // safePull('ingredients', companyId), // REMOVED
+                        safePull('reusable_items', companyId),
+                        safePull('rental_items', companyId),
+                        safePull('ingredients', companyId),
+                        safePull('products', companyId),
 
                         safeViews('v_reusable_inventory', companyId),
                         safeViews('v_rental_inventory', companyId),
@@ -1596,23 +1608,57 @@ export const useDataStore = create<DataState>()(
                     const combinedInventory: InventoryItem[] = [];
 
                     // 1. Process Unified Inventory Data
-                    if (inventoryData) {
-                        combinedInventory.push(...inventoryData.map((item: any) => {
-                            // Map Category ID to Name if applicable
+                    // 1. Process Split Inventory Data
+                    // Reusable Items
+                    if (reusableItems) {
+                        combinedInventory.push(...reusableItems.map((item: any) => ({
+                            ...item,
+                            type: 'reusable',
+                            category: item.category || 'General',
+                            stockQuantity: item.stockQuantity || 0,
+                            // Ensure numeric
+                            priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                            image: item.image
+                        })));
+                    }
+
+                    // Products (Menu Items)
+                    if (productItems) {
+                        combinedInventory.push(...productItems.map((item: any) => {
                             const cat = (categories as any[])?.find(c => c.id === item.categoryId || c.id === item.product_category_id);
-
-                            // Ensure proper type defaults
-                            if (!item.type) item.type = 'product';
-
                             return {
                                 ...item,
-                                category: cat ? cat.name : (item.category || item.category_id || 'General'),
-                                stockQuantity: item.stockQuantity || item.stock_quantity || 0,
-                                // Ensure numeric fields are numbers
-                                priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : item.priceCents,
-                                image: item.image // Ensure image is passed through
+                                type: 'product',
+                                category: cat ? cat.name : (item.category || 'Finished Goods'),
+                                stockQuantity: item.stockQuantity || 100000,
+                                priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                                image: item.image
                             };
                         }));
+                    }
+
+                    // Rental Items
+                    if (rentalItems) {
+                        combinedInventory.push(...rentalItems.map((item: any) => ({
+                            ...item,
+                            type: 'rental',
+                            category: item.category || 'Rental',
+                            stockQuantity: item.stockQuantity || 0,
+                            priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                            image: item.image
+                        })));
+                    }
+
+                    // Ingredients
+                    if (ingredientItems) {
+                        combinedInventory.push(...ingredientItems.map((item: any) => ({
+                            ...item,
+                            type: 'ingredient',
+                            category: item.category || 'Ingredient',
+                            stockQuantity: item.stock_level || item.stockLevel || 0, // key diff
+                            priceCents: typeof item.currentCostCents === 'string' ? parseInt(item.currentCostCents) : (item.currentCostCents || 0),
+                            image: item.image
+                        })));
                     }
 
                     // 2. Derive Ingredients State
