@@ -222,38 +222,31 @@ export const useDataStore = create<DataState>()(
                     dbPayload.price_cents = item.priceCents;
                     // Fix: category column in products schema? Yes, from fix_inventory_tables.
                     // But we must check if category is text or ID. The migration said category TEXT in inventory, 
-                    // but for new products table, we assume it kept similar schema or is generic.
-                    // Fix: use syncTableToCloud logic which handles snake_case too.
-                    // Actually, syncTableToCloud calls 'upsert'. We can just use that?
-                    // No, here we need the inserted ID to upload media.
-                    // Let's stick to explicit insert but correct table.
-                } else if (item.type === 'reusable' || (item.type as any) === 'asset') {
+                    dbPayload.category = (item.category as any);
+                } else if (item.type === 'asset' || item.type === 'reusable') {
                     tableName = 'reusable_items';
                     dbPayload.type = 'asset'; // Explicitly set asset type for reusable table if needed
-                    // Add standard fields for reusables if any specific ones exist
+                    dbPayload.category = (item.category as any);
                 } else if (item.type === 'rental') {
                     tableName = 'rental_items';
                     dbPayload.replacement_cost_cents = item.priceCents;
+                    dbPayload.category = (item.category as any);
                 } else if (item.type === 'raw_material' || item.type === 'ingredient') {
                     tableName = 'ingredients';
                     dbPayload.unit = (item as any).unit;
                     dbPayload.current_cost_cents = item.priceCents;
-                    // dbPayload.stock_level = item.stockQuantity; // Usually separate movement?
-                    // For initial add, maybe we can set stock? 
-                    // Let's assume stock is 0 or separate.
-                    // ingredients table has stock_level column.
                     dbPayload.stock_level = item.stockQuantity || 0;
+                    dbPayload.category = (item.category as any);
                 }
 
                 if (tableName && supabase) {
                     try {
-                        const { data, error } = await supabase.from(tableName).insert([dbPayload]).select();
+                        const { error } = await supabase.from(tableName).upsert({ ...dbPayload, id: newItemId });
                         if (error) {
-                            console.error("Failed to insert item:", error);
+                            console.error("Failed to update item:", error);
                             return;
                         }
-                        const insertedId = data?.[0]?.id;
-
+                        const insertedId = newItemId; // If upserting with a generated ID, use that ID for media
                         // 2. Insert Entity Media if uploaded
                         if (uploadedMedia && insertedId) {
                             await saveEntityMedia({
@@ -319,26 +312,27 @@ export const useDataStore = create<DataState>()(
                         organization_id: user.companyId,
                         name: updatedItem.name,
                         image: updatedItem.image,
-                        category: (updatedItem.category as any)
                     };
 
                     if (updatedItem.type === 'product') {
                         tableName = 'products';
                         dbPayload.description = updatedItem.description;
                         dbPayload.price_cents = updatedItem.priceCents;
-                    } else if (updatedItem.type === 'reusable' || (updatedItem.type as any) === 'asset') {
+                        dbPayload.category = (updatedItem.category as any);
+                    } else if (updatedItem.type === 'asset' || updatedItem.type === 'reusable') {
                         tableName = 'reusable_items';
                         dbPayload.type = 'asset';
-                        // dbPayload.stock_quantity = updatedItem.stockQuantity; // Reusables shouldn't update stock directly via edit usually? 
-                        // But if user edits, we might allow it.
+                        dbPayload.category = (updatedItem.category as any);
                     } else if (updatedItem.type === 'rental') {
                         tableName = 'rental_items';
                         dbPayload.replacement_cost_cents = updatedItem.priceCents;
+                        dbPayload.category = (updatedItem.category as any);
                     } else if (updatedItem.type === 'ingredient' || updatedItem.type === 'raw_material') {
                         tableName = 'ingredients';
                         dbPayload.unit = (updatedItem as any).unit;
                         dbPayload.current_cost_cents = updatedItem.priceCents;
                         dbPayload.stock_level = updatedItem.stockQuantity;
+                        dbPayload.category = (updatedItem.category as any);
                     }
 
                     if (tableName) {
@@ -1548,7 +1542,9 @@ export const useDataStore = create<DataState>()(
                         // Core Tables
                         contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews,
                         // Inventory Base Tables
-                        reusableItems, rentalItems, ingredientItems, productItems,
+                        inventoryData,
+                        // Legacy Tables
+                        reusableItems, rentalItems, ingredientItems, products,
                         // Inventory Views
                         reusableStock, rentalStock, ingredientStock,
                         // Categories
@@ -1607,7 +1603,6 @@ export const useDataStore = create<DataState>()(
                     }
                     const combinedInventory: InventoryItem[] = [];
 
-                    // 1. Process Unified Inventory Data
                     // 1. Process Split Inventory Data
                     // Reusable Items
                     if (reusableItems) {
@@ -1623,14 +1618,15 @@ export const useDataStore = create<DataState>()(
                     }
 
                     // Products (Menu Items)
-                    if (productItems) {
-                        combinedInventory.push(...productItems.map((item: any) => {
+                    if (products) {
+                        combinedInventory.push(...products.map((item: any) => {
                             const cat = (categories as any[])?.find(c => c.id === item.categoryId || c.id === item.product_category_id);
                             return {
                                 ...item,
                                 type: 'product',
                                 category: cat ? cat.name : (item.category || 'Finished Goods'),
                                 stockQuantity: item.stockQuantity || 100000,
+                                // Products usually have price_cents
                                 priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
                                 image: item.image
                             };
