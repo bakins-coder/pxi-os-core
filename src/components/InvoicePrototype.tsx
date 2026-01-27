@@ -5,6 +5,12 @@ import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Invoice, Contact } from '../types';
 
+
+// Brand Colors
+// const BRAND_COLOR = '#D32F2F'; // Old Red
+const BRAND_COLOR = '#F47C20'; // Xquisite Orange
+const ACCENT_COLOR = '#FFB74D'; // Lighter Orange
+
 export const InvoicePrototype = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
@@ -71,7 +77,7 @@ export const InvoicePrototype = () => {
     const accNum = settings.bankInfo?.accountNumber;
 
     return (
-        <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white">
+        <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white text-slate-900">
             {/* Control Bar */}
             <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center print:hidden">
                 <button
@@ -100,13 +106,7 @@ export const InvoicePrototype = () => {
                     <div className="flex justify-between items-start">
                         {/* Logo / Brand Area */}
                         <div>
-                            {logo ? (
-                                <img src={logo} alt={orgName} className="h-24 object-contain mb-2" />
-                            ) : (
-                                <div className="h-24 flex items-center mb-2">
-                                    <h1 className="text-3xl font-black text-[#ff6b6b] uppercase tracking-tighter">{orgName}</h1>
-                                </div>
-                            )}
+                            <img src="/xquisite-logo.png" alt="Xquisite Celebrations" className="h-24 object-contain mb-2" />
                         </div>
 
                         {/* Company Address */}
@@ -121,8 +121,8 @@ export const InvoicePrototype = () => {
                 </div>
 
                 <div className="px-12">
-                    <div className="border-t-2 border-[#ff6b6b] mb-1"></div>
-                    <div className="border-t border-[#ff6b6b]"></div>
+                    <div className="w-full h-0.5" style={{ backgroundColor: ACCENT_COLOR }}></div>
+                    <div className="w-full h-px" style={{ backgroundColor: ACCENT_COLOR }}></div>
                 </div>
 
                 {/* Bill To & Invoice Details */}
@@ -130,15 +130,14 @@ export const InvoicePrototype = () => {
                     <div>
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Bill To</h3>
                         <p className="font-bold text-slate-800 text-lg">{customerName}</p>
-                        <p className="text-slate-600">{customerName}</p> {/* Contact Person? */}
+
                         <p className="text-slate-500 text-sm mt-1">{customerEmail}</p>
                         {customer?.address && <p className="text-slate-500 text-sm mt-1">{customer.address}</p>}
                     </div>
 
                     <div className="flex flex-col items-end">
-                        {/* Stamp-like border for "Invoice" */}
-                        <div className="border-2 border-[#D32F2F] px-8 py-2 rounded-lg mb-6 transform rotate-[-2deg]">
-                            <h2 className="text-3xl font-serif text-[#D32F2F] uppercase tracking-widest">Invoice</h2>
+                        <div className="border-2 px-8 py-2 rounded-lg mb-6 transform rotate-[-2deg]" style={{ borderColor: BRAND_COLOR }}>
+                            <h2 className="text-3xl font-serif uppercase tracking-widest" style={{ color: BRAND_COLOR }}>Invoice</h2>
                         </div>
 
                         <div className="w-full max-w-xs space-y-2">
@@ -154,10 +153,7 @@ export const InvoicePrototype = () => {
                                 <span className="font-bold text-slate-600">Payment Due:</span>
                                 <span className="font-medium text-slate-900">{new Date(invoice.dueDate).toLocaleDateString()}</span>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 p-2 rounded print:bg-transparent">
-                                <span className="font-bold text-slate-600">Balance Due (NGN):</span>
-                                <span className="font-black text-xl text-slate-900">₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
-                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -193,30 +189,28 @@ export const InvoicePrototype = () => {
                                 )
                             })}
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-8 text-right font-bold text-slate-600 text-sm">Subtotal:</td>
-                                <td className="pt-8 text-right font-bold text-slate-800 text-sm">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                            {/* Service Charge logic can be re-added if stored in Invoice model. Currently standard Invoice doesn't have it explicitly separate from total usually unless calculated. */}
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">Total:</td>
-                                <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-4 text-right font-medium text-slate-500 text-xs">Amount Paid:</td>
-                                <td className="pt-4 text-right font-medium text-slate-800 text-xs">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-4 text-right font-black text-slate-900 text-lg uppercase">Balance Due:</td>
-                                <td className="pt-4 text-right font-black text-slate-900 text-lg">₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                        </tfoot>
+
                     </table>
+                </div>
+
+                {/* Summary Section - Outside table to avoid column width constraints */}
+                <div className="px-12 pb-8 flex flex-col items-end">
+                    <div className="w-1/2 max-w-sm space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="font-bold text-slate-600 uppercase">Total Amount:</span>
+                            <span className="font-bold text-slate-900 text-lg">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="font-medium text-slate-500">Amount Paid:</span>
+                            <span className="font-medium text-slate-800">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="pt-4 border-t border-slate-200 flex justify-between items-end">
+                            <div className="px-4 py-1 bg-slate-100 rounded text-xs font-bold text-slate-500 uppercase tracking-wider">Balance Due</div>
+                            <div className="text-3xl font-black text-slate-900 border-b-2 border-slate-900 pb-1">
+                                ₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer Section: Notes & Terms */}
@@ -227,19 +221,37 @@ export const InvoicePrototype = () => {
                             <p className="mb-4">Thank you for your patronage. Please make all payment transfers to:<br />
                                 <span className="font-bold text-slate-800 uppercase">{accName || orgName}</span></p>
 
-                            {bankName && accNum ? (
-                                <>
-                                    <p className="font-bold underline mb-1">Bank Details:-</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-6">
-                                        <div className="p-3 bg-slate-50 border border-slate-100 rounded">
-                                            <span className="font-bold block text-slate-700">{bankName}</span>
-                                            <span className="font-mono">{accNum}</span>
-                                        </div>
+                            <p className="font-bold underline mb-2">Bank Details:</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Cuisine</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">GT Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">0210736266</span>
                                     </div>
-                                </>
-                            ) : (
-                                <p className="italic text-slate-400">Please contact us for bank payment details.</p>
-                            )}
+                                </div>
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Celebrations</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">GT Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">0396426845</span>
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Celebrations</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">Zenith Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">1010951007</span>
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Cuisine</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">First Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">2022655945</span>
+                                    </div>
+                                </div>
+                            </div>
 
                             <p className="font-bold mb-1">Terms and Conditions:</p>
                             <p className="mb-4">Initial deposit of 70% is to be paid before the event and balance payable immediately after the event. Cancellation of order will result to only a 70% refund of initial deposit made.</p>
@@ -251,11 +263,11 @@ export const InvoicePrototype = () => {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="p-4 bg-[#D32F2F] text-white text-center print:hidden">
+                <div className="p-4 text-white text-center print:hidden" style={{ backgroundColor: BRAND_COLOR }}>
                     <p className="font-serif italic font-bold text-lg">Bon Apetit. We look forward to serving you again soon.</p>
                 </div>
                 {/* Print-only footer to ensure color bar appears if background graphics enabled */}
-                <div className="hidden print:block p-2 bg-[#D32F2F] text-white text-center text-xs mt-4 -mx-12 -mb-12">
+                <div className="hidden print:block p-2 text-white text-center text-xs mt-4 -mx-12 -mb-12" style={{ backgroundColor: BRAND_COLOR }}>
                     {orgName}
                 </div>
 
