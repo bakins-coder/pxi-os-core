@@ -43,7 +43,11 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   if (!supabase) return;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects', 'leave_requests'].includes(tableName);
+  const useOrgId = [
+    'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
+    'employees', 'catering_events', 'projects', 'leave_requests', 'categories',
+    'rental_stock', 'ingredient_stock_batches', 'performance_reviews'
+  ].includes(tableName);
 
   // Ensure data has the correct snake_case keys for the DB
   const sanitizedData = data.filter(item => {
@@ -143,7 +147,12 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects', 'job_roles', 'departments', 'leave_requests'].includes(tableName);
+  const useOrgId = [
+    'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
+    'employees', 'catering_events', 'projects', 'job_roles', 'departments',
+    'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches',
+    'performance_reviews'
+  ].includes(tableName);
 
   let query = supabase.from(tableName).select('*');
 
@@ -178,6 +187,8 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('is_asset' in newItem) { newItem.isAsset = newItem.is_asset; delete newItem.is_asset; }
     if ('is_rental' in newItem) { newItem.isRental = newItem.is_rental; delete newItem.is_rental; }
     if ('rental_vendor' in newItem) { newItem.rentalVendor = newItem.rental_vendor; delete newItem.rental_vendor; }
+    if ('category_id' in newItem) { newItem.categoryId = newItem.category_id; delete newItem.category_id; }
+    if ('product_category_id' in newItem) { newItem.productCategoryId = newItem.product_category_id; delete newItem.product_category_id; }
 
     // Contact Mappings
     if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }

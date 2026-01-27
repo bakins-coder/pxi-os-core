@@ -1723,8 +1723,23 @@ export const useDataStore = create<DataState>()(
                     // Products (Menu Items)
                     // Products (Menu Items)
                     if (products) {
+                        // DEBUG: Inspect first product to check field names
+                        if (products.length > 0) {
+                            console.log('[Hydration] First Product Raw:', products[0]);
+                            console.log('[Hydration] Categories Sample:', (categories as any[])?.slice(0, 3));
+                        }
+
                         combinedInventory.push(...products.map((item: any) => {
-                            const cat = (categories as any[])?.find(c => c.id === item.categoryId || c.id === item.product_category_id);
+                            // Fix: Ensure we check all possible casing (snake_case from DB vs camelCase from safePull)
+                            const catId = item.categoryId || item.category_id || item.product_category_id || item.productCategoryId;
+
+                            const cat = (categories as any[])?.find(c => c.id === catId);
+
+                            // Log failures for the first few items
+                            if (!cat && products.indexOf(item) < 3) {
+                                console.warn(`[Hydration] Category Lookup Failed for ${item.name}. ID: ${catId}`, { catId, availableCats: (categories as any[])?.length });
+                            }
+
                             return {
                                 ...item,
                                 id: item.id,
@@ -1732,7 +1747,7 @@ export const useDataStore = create<DataState>()(
                                 name: item.name,
                                 type: 'product',
                                 category: cat ? cat.name : (item.category || 'Finished Goods'),
-                                stockQuantity: item.stockQuantity || 100000, // Products technically don't have stock, they are produced
+                                stockQuantity: item.stockQuantity || 100000,
                                 priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
                                 image: item.imageUrl || item.image || item.image_url
                             };

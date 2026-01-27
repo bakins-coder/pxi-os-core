@@ -60,7 +60,14 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
         // REFACTOR: Use new strict type taxonomy
         // Only show 'product' (Menu Items) or 'raw_material' (Ingredients) in the brochure
         // Exclude 'asset' (Hardware), 'rental', 'fixture'
-        setMenuItems(inventory.filter(i => i.type === 'product' || i.type === 'raw_material'));
+        const products = inventory.filter(i => i.type === 'product' || i.type === 'raw_material');
+
+        // DEBUG: Diagnose Category Mismatch
+        const distinctCategories = Array.from(new Set(products.map(p => p.category)));
+        console.log('[OrderBrochure] Loaded Items:', products.length);
+        console.log('[OrderBrochure] Distinct Categories found:', distinctCategories);
+
+        setMenuItems(products);
     }, [inventory]);
 
     const updateQty = (id: string, qty: number) => { setSelected(prev => ({ ...prev, [id]: Math.max(0, qty) })); };
@@ -113,7 +120,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             "Continental": "Continental",
             "Hot Plates": "Hot Plates",
             "Dessert": "Desserts",
-            "Desserts": "Desserts"
+            "Desserts": "Desserts",
+            "Dessert": "Desserts",
+            "Main": "Hot Plates",
+            "Mains": "Hot Plates",
+            "Swallow": "Nigerian Cuisine",
+            "Local": "Nigerian Cuisine",
+            "Starter": "Starters"
         };
 
         menuItems.forEach(item => {
@@ -285,6 +298,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     </div>
                 </div>
             </div>
+
 
             {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
