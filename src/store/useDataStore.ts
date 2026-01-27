@@ -729,6 +729,7 @@ export const useDataStore = create<DataState>()(
                 const payload = {
                     organization_id: user.companyId,
                     employee_id: req.employeeId, // Assuming passed from UI
+                    employee_name: req.employeeName,
                     type: req.type,
                     start_date: req.startDate,
                     end_date: req.endDate,

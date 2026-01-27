@@ -339,25 +339,25 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
                            <button onClick={() => setIsNewCustomer(false)} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600"><X size={16} /></button>
                            <h4 className="font-black text-indigo-900 text-sm uppercase">New Customer Details</h4>
                            <input
-                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm font-bold"
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm font-bold text-slate-900"
                               placeholder="Full Name"
                               value={newCustomerDetails.name}
                               onChange={e => setNewCustomerDetails({ ...newCustomerDetails, name: e.target.value })}
                            />
                            <input
-                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm"
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm text-slate-900"
                               placeholder="Email Address"
                               value={newCustomerDetails.email}
                               onChange={e => setNewCustomerDetails({ ...newCustomerDetails, email: e.target.value })}
                            />
                            <input
-                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm"
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm text-slate-900"
                               placeholder="Phone Number"
                               value={newCustomerDetails.phone}
                               onChange={e => setNewCustomerDetails({ ...newCustomerDetails, phone: e.target.value })}
                            />
                            <input
-                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm"
+                              className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm text-slate-900"
                               placeholder="Billing Address"
                               value={newCustomerDetails.address}
                               onChange={e => setNewCustomerDetails({ ...newCustomerDetails, address: e.target.value })}

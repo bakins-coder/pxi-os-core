@@ -74,6 +74,7 @@ const ParadigmLogo = ({ brandColor, orgName }: { brandColor: string, orgName: st
 
 const NAV_ITEMS = [
   { label: 'Super Admin', icon: Shield, path: '/super-admin', allowedRoles: [Role.SUPER_ADMIN] },
+  { label: 'IT Console', icon: Building2, path: '/admin/settings', allowedRoles: [Role.ADMIN, Role.SUPER_ADMIN] },
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role) },
 
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },

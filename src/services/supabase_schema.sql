@@ -164,3 +164,38 @@ CREATE TABLE IF NOT EXISTS employees (
 
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Tenant isolation for employees" ON employees FOR ALL USING (company_id = (auth.jwt() -> 'user_metadata' ->> 'company_id')::uuid);
+
+-- Leave Requests
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES organizations(id) NOT NULL,
+    employee_id UUID NOT NULL, -- references employees(id) theoretically, but loosely coupled for now
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    type TEXT NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    employee_name TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Tenant isolation for leave_requests" ON leave_requests FOR ALL USING (company_id = (auth.jwt() -> 'user_metadata' ->> 'company_id')::uuid);
+
+-- Requisitions (Loans/Procurement)
+CREATE TABLE IF NOT EXISTS requisitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES organizations(id) NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    estimated_cost_cents BIGINT,
+    priority TEXT,
+    status TEXT DEFAULT 'Pending',
+    requestor_id TEXT,
+    date_required DATE,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE requisitions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Tenant isolation for requisitions" ON requisitions FOR ALL USING (company_id = (auth.jwt() -> 'user_metadata' ->> 'company_id')::uuid);

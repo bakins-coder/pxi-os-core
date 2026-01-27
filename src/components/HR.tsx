@@ -366,13 +366,23 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
    const [reason, setReason] = useState('');
    const [isMaximized, setIsMaximized] = useState(false);
 
+   const currentUser = useAuthStore(state => state.user);
    const applyForLeave = useDataStore(state => state.applyForLeave);
 
    if (!isOpen) return null;
 
    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      applyForLeave({ type, startDate, endDate, reason });
+      if (!currentUser) return;
+
+      applyForLeave({
+         type,
+         startDate,
+         endDate,
+         reason,
+         employeeId: currentUser.id,
+         employeeName: currentUser.name || 'Unknown Staff'
+      });
       onClose();
       setType(LeaveType.ANNUAL); setStartDate(''); setEndDate(''); setReason('');
    };
@@ -453,13 +463,99 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
    );
 };
 
+const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, onClose: () => void, employeeId: string }) => {
+   const [amount, setAmount] = useState('');
+   const [reason, setReason] = useState('');
+   const addRequisition = useDataStore(s => s.addRequisition);
+   const user = useAuthStore(s => s.user);
+
+   const handleSubmit = () => {
+      const cents = parseFloat(amount) * 100;
+      if (!cents || !reason) return;
+
+      addRequisition({
+         id: `req-${Date.now()}`,
+         type: 'Loan',
+         category: 'Financial',
+         itemName: 'Salary Advance Request',
+         quantity: 1,
+         pricePerUnitCents: cents,
+         totalAmountCents: cents,
+         requestorId: employeeId || user?.id || 'unknown',
+         status: 'Pending',
+         notes: reason
+      });
+      onClose();
+      alert('Loan request submitted for approval.');
+   };
+
+   if (!isOpen) return null;
+
+   return (
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-6">
+            <div className="flex justify-between items-center">
+               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Request Advance</h3>
+               <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-rose-500" /></button>
+            </div>
+            <div>
+               <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required (₦)</label>
+               <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-2xl text-slate-900 outline-none focus:border-indigo-500" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+            </div>
+            <div>
+               <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Reason / Context</label>
+               <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 min-h-[100px]" placeholder="Briefly explain the need..." value={reason} onChange={e => setReason(e.target.value)}></textarea>
+            </div>
+            <button onClick={handleSubmit} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl">Submit Request</button>
+         </div>
+      </div>
+   );
+};
+
 export const HR = () => {
    const employees = useDataStore(state => state.employees);
    const departmentMatrix = useDataStore(state => state.departmentMatrix);
    const leaveRequests = useDataStore(state => state.leaveRequests);
+   const requisitions = useDataStore(state => state.requisitions);
    const approveLeave = useDataStore(state => state.approveLeave);
    const rejectLeave = useDataStore(state => state.rejectLeave);
    const currentUser = useAuthStore(state => state.user);
+   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
+
+   // Enrich leave requests with up-to-date employee names
+   const enrichedLeaveRequests = useMemo(() => {
+      return leaveRequests.map(req => {
+         // 1. Priority: If it's the current user, use their fresh session name
+         if (currentUser && req.employeeId === currentUser.id && currentUser.name) {
+            return { ...req, employeeName: currentUser.name };
+         }
+
+         // 2. Lookup from Employee List
+         const emp = employees.find(e => e.id === req.employeeId);
+         let displayName = req.employeeName || '';
+
+         if (emp) {
+            // Check for valid names (not null, not undefined, not string "undefined")
+            const validFirst = emp.firstName && emp.firstName.toLowerCase() !== 'undefined' ? emp.firstName : '';
+            const validLast = emp.lastName && emp.lastName.toLowerCase() !== 'undefined' ? emp.lastName : '';
+
+            if (validFirst && validLast) {
+               displayName = `${validFirst} ${validLast}`;
+            } else if (validFirst) {
+               displayName = validFirst;
+            } else if ((emp as any).name && (emp as any).name.toLowerCase() !== 'undefined') {
+               displayName = (emp as any).name;
+            }
+         }
+
+         // 3. Cleanup Legacy Bad Data
+         if (!displayName || displayName.toLowerCase().includes('undefined')) {
+            displayName = 'Unknown Staff';
+         }
+
+         return { ...req, employeeName: displayName };
+      });
+   }, [leaveRequests, employees, currentUser]);
 
    const [activeTab, setActiveTab] = useState<'dashboard' | 'people' | 'payroll' | 'matrix' | 'leave' | 'performance'>('dashboard');
    const [searchQuery, setSearchQuery] = useState('');
@@ -526,12 +622,12 @@ export const HR = () => {
       <div className="space-y-6 md:space-y-10 animate-in fade-in pb-24 w-full">
          <div className="bg-slate-950 p-6 md:p-10 rounded-[3rem] md:rounded-[4rem] text-white relative overflow-hidden shadow-2xl border border-white/5 w-full">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-60 -mt-60 pointer-events-none"></div>
-            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 md:gap-10 w-full">
-               <div className="flex items-center gap-6 md:gap-8 min-w-0">
+            <div className="relative z-10 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 w-full">
+               <div className="flex items-center gap-6 md:gap-8 min-w-0 max-w-full">
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.4)] animate-float shrink-0"><Briefcase size={32} className="text-white md:w-10 md:h-10" /></div>
-                  <div className="min-w-0"><h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 truncate">Human Resources</h1><div className="flex items-center gap-3 md:gap-4 overflow-x-auto no-scrollbar"><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5 whitespace-nowrap"><ShieldCheck size={12} /> Verified</div><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-500 border border-white/5 whitespace-nowrap"><Users size={12} /> {employees.length} Staff</div></div></div>
+                  <div className="min-w-0 flex-1"><h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 truncate">Human Resources</h1><div className="flex items-center gap-3 md:gap-4 overflow-x-auto no-scrollbar"><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5 whitespace-nowrap"><ShieldCheck size={12} /> Verified</div><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-500 border border-white/5 whitespace-nowrap"><Users size={12} /> {employees.length} Staff</div></div></div>
                </div>
-               <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0">
+               <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0 self-start xl:self-auto">
                   {[
                      { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: isAdmin },
                      { id: 'people', label: 'People', icon: Users, visible: isAdmin }, // Hide People list for non-managers
@@ -553,8 +649,8 @@ export const HR = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 w-full">
                <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Total Headcount</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{employees.length}</h3><div className="mt-6 flex items-center gap-2 text-emerald-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><TrendingUp size={14} /> Stable Growth</div></div>
                <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Departments</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{departmentMatrix.length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><LayoutGrid size={14} /> Matrix Sync</div></div>
-               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Active Leave</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{leaveRequests.filter(l => l.status === LeaveStatus.APPROVED).length}</h3><div className="mt-6 flex items-center gap-2 text-amber-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><Plane size={14} /> Scheduled</div></div>
-               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Pending</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{leaveRequests.filter(l => l.status === LeaveStatus.PENDING).length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><CheckCircle2 size={14} /> Operational</div></div>
+               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Active Leave</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{enrichedLeaveRequests.filter(l => l.status === LeaveStatus.APPROVED).length}</h3><div className="mt-6 flex items-center gap-2 text-amber-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><Plane size={14} /> Scheduled</div></div>
+               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Pending</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{enrichedLeaveRequests.filter(l => l.status === LeaveStatus.PENDING).length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><CheckCircle2 size={14} /> Operational</div></div>
             </div>
          )}
 
@@ -655,7 +751,7 @@ export const HR = () => {
                   <div className="lg:col-span-2 space-y-6 w-full">
                      <div className="px-4"><h3 className="text-xs font-black uppercase text-slate-400 tracking-[0.4em]">{isAdmin ? 'Request Feed' : 'My History'}</h3></div>
                      <div className="space-y-5 md:space-y-6">
-                        {leaveRequests.filter(l => isAdmin || l.employeeId === currentUser?.id).map(req => (
+                        {enrichedLeaveRequests.filter(l => isAdmin || l.employeeId === currentUser?.id).map(req => (
                            <div key={req.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl flex flex-col sm:flex-row items-center justify-between group hover:border-indigo-100 transition-all gap-6">
                               <div className="flex items-center gap-5 md:gap-6 flex-1 min-w-0">
                                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shadow-lg shrink-0 ${req.status === LeaveStatus.APPROVED ? 'bg-emerald-50 text-emerald-600' :
@@ -694,7 +790,7 @@ export const HR = () => {
                               </div>
                            </div>
                         ))}
-                        {leaveRequests.length === 0 && (
+                        {enrichedLeaveRequests.length === 0 && (
                            <div className="text-center py-20 text-slate-200">
                               <Plane size={64} className="mx-auto mb-4 opacity-10 animate-float" />
                               <p className="font-black uppercase tracking-[0.4em] text-xs">No Absence Entries</p>
@@ -727,29 +823,181 @@ export const HR = () => {
 
          {activeTab === 'payroll' && (
             <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-4 w-full">
-               <div className="bg-slate-950 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white flex flex-col md:flex-row justify-between items-center gap-8 md:gap-10 shadow-2xl border border-white/5 w-full">
-                  <div className="flex items-center gap-6 md:gap-8 relative z-10 w-full md:w-auto min-w-0"><div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center backdrop-blur-xl shadow-inner shrink-0"><Wallet size={30} className="text-[#00ff9d] md:w-9 md:h-9" /></div><div className="min-w-0"><h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-1 truncate">Compliance Core</h2><p className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2 truncate"><ShieldCheck size={14} className="text-emerald-500 shrink-0" /> NGN ACT 2024 Baseline</p></div></div>
-                  <button className="w-full md:w-auto bg-[#00ff9d] text-slate-950 px-8 md:px-12 py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-xs active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0">Trigger Disbursement <ArrowRight size={18} /></button>
-               </div>
-               <div className="bg-white rounded-[3rem] md:rounded-[4rem] border border-slate-100 shadow-2xl overflow-hidden w-full">
-                  <div className="overflow-x-auto w-full">
-                     <table className="w-full text-left text-sm min-w-[900px]">
-                        <thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] border-b border-slate-100">
-                           <tr><th className="px-8 md:px-10 py-6 md:py-8">Personnel</th><th className="px-8 md:px-10 py-6 md:py-8">Gross</th><th className="px-8 md:px-10 py-6 md:py-8">PAYE Deductions</th><th className="px-8 md:px-10 py-6 md:py-8">Net Pay</th><th className="px-8 md:px-10 py-6 md:py-8 text-right">Audit</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                           {payrollItems.map(item => (
-                              <tr key={item.id} className="hover:bg-indigo-50/20 transition-all group"><td className="px-8 md:px-10 py-6 md:py-8"><div className="font-black text-slate-900 uppercase text-xs md:text-sm tracking-tight truncate">{item.employeeName}</div><p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mt-1">Ref: {item.employeeId.slice(-4)}</p></td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-slate-700 whitespace-nowrap">₦{(item.grossCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-rose-500 whitespace-nowrap">₦{(item.taxCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-emerald-600 text-base md:text-lg tracking-tighter whitespace-nowrap">₦{(item.netCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 text-right whitespace-nowrap">{item.anomalies.length > 0 ? (<div className="flex items-center gap-2 text-rose-500 justify-end group/tip relative cursor-help bg-rose-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-rose-100 inline-flex"><AlertTriangle size={16} /><span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">Anomaly</span></div>) : (<div className="p-2 md:p-3 bg-emerald-50 text-emerald-600 rounded-xl inline-flex shadow-sm"><CheckCircle2 size={18} /></div>)}</td></tr>
-                           ))}
-                        </tbody>
-                     </table>
+               {isAdmin ? (
+                  <>
+                     {/* Loan Approvals Section */}
+                     <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-slate-100 shadow-xl mb-8">
+                        <div className="flex items-center gap-4 mb-6">
+                           <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><AlertTriangle size={24} /></div>
+                           <div>
+                              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Pending Advances</h3>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Requires Approval</p>
+                           </div>
+                        </div>
+                        {requisitions.filter(r => r.category === 'Financial' && r.status === 'Pending').length > 0 ? (
+                           <div className="space-y-4">
+                              {requisitions.filter(r => r.category === 'Financial' && r.status === 'Pending').map(req => (
+                                 <div key={req.id} className="flex flex-col md:flex-row justify-between items-center bg-slate-50 p-6 rounded-[2rem] border border-slate-100 gap-4">
+                                    <div className="flex items-center gap-4 w-full">
+                                       <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center font-black text-slate-300 text-xs">IMG</div>
+                                       <div>
+                                          <p className="font-black text-slate-900 text-sm">{req.title}</p>
+                                          <p className="text-xs text-slate-500 mt-1">{req.description}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{new Date(req.dateRequired || new Date()).toLocaleDateString()}</p>
+                                       </div>
+                                    </div>
+                                    <div className="flex items-center gap-6 w-full md:w-auto shrink-0">
+                                       <div className="font-black text-2xl text-slate-900">₦{(req.estimatedCostCents / 100).toLocaleString()}</div>
+                                       <div className="flex gap-2">
+                                          <button onClick={() => useDataStore.getState().approveRequisition(req.id)} className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200">Approve</button>
+                                          <button onClick={() => {/* Reject logic could be added */ }} className="px-6 py-3 bg-slate-200 text-slate-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-300 transition-colors">Reject</button>
+                                       </div>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        ) : (
+                           <div className="p-8 text-center bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200">
+                              <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">No pending salary advances</p>
+                           </div>
+                        )}
+                     </div>
+
+                     <div className="bg-slate-950 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white flex flex-col md:flex-row justify-between items-center gap-8 md:gap-10 shadow-2xl border border-white/5 w-full">
+                        <div className="flex items-center gap-6 md:gap-8 relative z-10 w-full md:w-auto min-w-0"><div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center backdrop-blur-xl shadow-inner shrink-0"><Wallet size={30} className="text-[#00ff9d] md:w-9 md:h-9" /></div><div className="min-w-0"><h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-1">Salary Management</h2><p className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-500 shrink-0" /> NGN ACT 2024 Baseline</p></div></div>
+                        <button className="w-full md:w-auto bg-[#00ff9d] text-slate-950 px-8 md:px-12 py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-xs active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0">Trigger Disbursement <ArrowRight size={18} /></button>
+                     </div>
+                     <div className="bg-white rounded-[3rem] md:rounded-[4rem] border border-slate-100 shadow-2xl overflow-hidden w-full">
+                        <div className="overflow-x-auto w-full">
+                           <table className="w-full text-left text-sm min-w-[950px]">
+                              <thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] border-b border-slate-100">
+                                 <tr><th className="px-8 md:px-10 py-6 md:py-8">Personnel</th><th className="px-8 md:px-10 py-6 md:py-8">Gross</th><th className="px-8 md:px-10 py-6 md:py-8">PAYE Deductions</th><th className="px-8 md:px-10 py-6 md:py-8">Net Pay</th><th className="px-8 md:px-10 py-6 md:py-8">Sanctions</th><th className="px-8 md:px-10 py-6 md:py-8 text-right">Audit</th></tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                 {payrollItems.map(item => (
+                                    <tr key={item.id} className="hover:bg-indigo-50/20 transition-all group">
+                                       <td className="px-8 md:px-10 py-6 md:py-8"><div className="font-black text-slate-900 uppercase text-xs md:text-sm tracking-tight truncate">{item.employeeName}</div><p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mt-1">Ref: {item.employeeId.slice(-4)}</p></td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-slate-700 whitespace-nowrap">₦{(item.grossCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-rose-500 whitespace-nowrap">₦{(item.taxCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-emerald-600 text-base md:text-lg tracking-tighter whitespace-nowrap">₦{(item.netCents / 100).toLocaleString()}</td>
+
+                                       {/* Sanction Control Column */}
+                                       <td className="px-8 md:px-10 py-6 md:py-8">
+                                          {item.punishmentDeductionCents > 0 ? (
+                                             <div className="flex items-center gap-3">
+                                                <span className="font-black text-rose-500">₦{(item.punishmentDeductionCents / 100).toLocaleString()}</span>
+                                                <button onClick={() => {
+                                                   const emp = employees.find(e => e.id === item.employeeId);
+                                                   if (emp) {
+                                                      const newNotes = (emp.healthNotes || '').replace(/sanction/gi, '').trim();
+                                                      useDataStore.getState().updateEmployee(emp.id, { healthNotes: newNotes });
+                                                   }
+                                                }} className="p-2 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 hover:scale-110 transition-all"><X size={14} /></button>
+                                             </div>
+                                          ) : (
+                                             <button onClick={() => {
+                                                const emp = employees.find(e => e.id === item.employeeId);
+                                                if (emp) {
+                                                   const newNotes = (emp.healthNotes ? emp.healthNotes + ' ' : '') + 'sanction';
+                                                   useDataStore.getState().updateEmployee(emp.id, { healthNotes: newNotes });
+                                                }
+                                             }} className="px-3 py-1 bg-slate-50 text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-colors">
+                                                Apply Sanction
+                                             </button>
+                                          )}
+                                       </td>
+
+                                       <td className="px-8 md:px-10 py-6 md:py-8 text-right whitespace-nowrap">{item.anomalies.length > 0 ? (<div className="flex items-center gap-2 text-rose-500 justify-end group/tip relative cursor-help bg-rose-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-rose-100 inline-flex"><AlertTriangle size={16} /><span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">Anomaly</span></div>) : (<div className="p-2 md:p-3 bg-emerald-50 text-emerald-600 rounded-xl inline-flex shadow-sm"><CheckCircle2 size={18} /></div>)}</td></tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                  </>
+               ) : (
+                  <div className="w-full max-w-2xl mx-auto space-y-6">
+                     <div className="bg-slate-950 p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden text-center border border-white/5">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+                        <div className="relative z-10 flex flex-col items-center">
+                           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-inner mb-6 backdrop-blur-sm border border-white/10"><Banknote size={32} /></div>
+                           <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px] mb-2">Monthly Net Pay</p>
+                           <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-6">
+                              {payrollItems[0] ? `₦${(payrollItems[0].netCents / 100).toLocaleString()}` : '---'}
+                           </h2>
+
+                           {/* Download Payslip Button */}
+                           <button onClick={() => generatePayslip(payrollItems[0], employees.find(e => e.id === payrollItems[0]?.employeeId))} className="mb-8 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/5 transition-all text-white/90 hover:text-white text-[10px] uppercase font-bold tracking-widest backdrop-blur-md">
+                              <Download size={14} /> Download Payslip
+                           </button>
+
+                           <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                                 <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Gross</p>
+                                 <p className="text-lg font-black">{payrollItems[0] ? `₦${(payrollItems[0].grossCents / 100).toLocaleString()}` : '-'}</p>
+                              </div>
+                              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                                 <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Tax</p>
+                                 <p className="text-lg font-black text-rose-400">{payrollItems[0] ? `₦${(payrollItems[0].taxCents / 100).toLocaleString()}` : '-'}</p>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Sparkles size={18} /></div>
+                           <div>
+                              <p className="font-black text-slate-800 uppercase text-xs">Payroll Status</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Cycle</p>
+                           </div>
+                        </div>
+                        <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase border border-emerald-100">
+                           Active
+                        </div>
+                     </div>
+
+                     {/* Deductions Breakdown */}
+                     <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Deductions Breakdown</h3>
+                        <div className="space-y-4">
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="font-bold text-slate-600">Pension (8%)</span>
+                              <span className="font-black text-slate-900">₦{(payrollItems[0]?.pensionEmployeeCents / 100 || 0).toLocaleString()}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="font-bold text-slate-600">NHF (2.5%)</span>
+                              <span className="font-black text-slate-900">₦{(payrollItems[0]?.nhfCents / 100 || 0).toLocaleString()}</span>
+                           </div>
+
+                           {/* Conditional Punishment Deduction */}
+                           {payrollItems[0]?.punishmentDeductionCents > 0 && (
+                              <div className="flex justify-between items-center text-sm bg-rose-50 p-3 rounded-xl border border-rose-100 mt-2">
+                                 <div className="flex items-center gap-2 text-rose-600">
+                                    <AlertTriangle size={14} />
+                                    <span className="font-black uppercase text-[10px] tracking-widest">Disciplinary Deduction</span>
+                                 </div>
+                                 <span className="font-black text-rose-700">-₦{(payrollItems[0]?.punishmentDeductionCents / 100).toLocaleString()}</span>
+                              </div>
+                           )}
+
+                           <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                              <span className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Total Deductions</span>
+                              <span className="font-black text-rose-500 text-lg">
+                                 -₦{(((payrollItems[0]?.pensionEmployeeCents || 0) + (payrollItems[0]?.nhfCents || 0) + (payrollItems[0]?.taxCents || 0) + (payrollItems[0]?.punishmentDeductionCents || 0)) / 100).toLocaleString()}
+                              </span>
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* Loan / Advance Request */}
+                     <button onClick={() => setIsLoanModalOpen(true)} className="w-full bg-slate-900 text-white p-6 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white"><Plus size={16} /></div>
+                        Request Salary Advance / Loan
+                     </button>
                   </div>
-               </div>
+               )}
             </div>
          )}
          {activeTab === 'matrix' && <MatrixTab matrix={departmentMatrix} />}
          <HireStaffModal isOpen={isHireModalOpen} onClose={closeHireModal} editingEmployee={editingEmployee} />
          <LeaveModal isOpen={isLeaveModalOpen} onClose={() => setIsLeaveModalOpen(false)} />
+         <LoanRequestModal isOpen={isLoanModalOpen} onClose={() => setIsLoanModalOpen(false)} employeeId={payrollItems[0]?.employeeId} />
       </div>
    );
 };

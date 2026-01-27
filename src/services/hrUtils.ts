@@ -23,7 +23,14 @@ export const calculatePayrollForEmployee = (employee: Employee): PayrollItem => 
     const taxableIncome = grossCents - pensionEmployeeCents - nhfCents;
     const taxCents = Math.round(taxableIncome * 0.15);
 
-    const totalDeductions = pensionEmployeeCents + nhfCents + taxCents;
+    // Punishment / Disciplinary Deductions (Placeholder logic - would pull from DB in future)
+    // For now, checks if healthNotes contains specific keywords as a mockup or defaults to 0
+    let punishmentDeductionCents = 0;
+    if (employee.healthNotes?.toLowerCase().includes('sanction')) {
+        punishmentDeductionCents = 500000; // 5000 naira fixed sanction for demo
+    }
+
+    const totalDeductions = pensionEmployeeCents + nhfCents + taxCents + punishmentDeductionCents;
     const netCents = grossCents - totalDeductions;
 
     const anomalies: string[] = [];
@@ -43,6 +50,7 @@ export const calculatePayrollForEmployee = (employee: Employee): PayrollItem => 
         pensionEmployerCents,
         taxCents,
         nhfCents,
+        punishmentDeductionCents,
         netCents,
         anomalies
     };

@@ -301,8 +301,8 @@ export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | '
 
 export interface Requisition {
   id: string;
-  type: 'Purchase' | 'Release' | 'Rental' | 'Hiring';
-  category: 'Food' | 'Hardware' | 'Service';
+  type: 'Purchase' | 'Release' | 'Rental' | 'Hiring' | 'Loan';
+  category: 'Food' | 'Hardware' | 'Service' | 'Financial';
   itemName: string;
   ingredientId?: string;
   quantity: number;
@@ -401,7 +401,7 @@ export interface InventoryMovement {
 }
 
 export interface Supplier { id: string; companyId: string; name: string; email: string; phone: string; address: string; }
-export interface PayrollItem { id: string; employeeId: string; employeeName: string; grossCents: number; basicCents: number; housingCents: number; transportCents: number; pensionEmployeeCents: number; pensionEmployerCents: number; taxCents: number; nhfCents: number; netCents: number; anomalies: string[]; }
+export interface PayrollItem { id: string; employeeId: string; employeeName: string; grossCents: number; basicCents: number; housingCents: number; transportCents: number; pensionEmployeeCents: number; pensionEmployerCents: number; taxCents: number; nhfCents: number; punishmentDeductionCents: number; netCents: number; anomalies: string[]; }
 export interface Deal { id: string; companyId: string; name: string; contactId: string; valueCents: number; stage: string; items: DealItem[]; expectedCloseDate: string; }
 export enum EmployeeStatus { ACTIVE = 'Active', INACTIVE = 'Inactive', TERMINATED = 'Terminated' }
 export interface Employee {

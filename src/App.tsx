@@ -23,6 +23,7 @@ import { AuthPage } from './components/Auth';
 import { SetupWizard } from './components/SetupWizard';
 import { Welcome } from './components/Welcome';
 import { KnowledgeBase } from './components/KnowledgeBase';
+import { ITPortal } from './components/ITPortal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PortionMonitor } from './components/PortionMonitor';
 import { PublicBrochure } from './components/PublicBrochure';
@@ -224,6 +225,7 @@ function AppContent() {
         <Route path="/docs" element={<KnowledgeBase />} />
         <Route path="/analytics" element={<ProtectedRoute user={user} requiredPermission="access:reports" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.FINANCE]}><AnalyticsDashboard /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute user={user} requiredPermission="access:reports" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES]}><Reports /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.SUPER_ADMIN]}><ITPortal /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><Settings /></ProtectedRoute>} />
         <Route path="/customer-portal" element={<CustomerPortal />} />
         <Route path="/brochure" element={<PublicBrochure />} />

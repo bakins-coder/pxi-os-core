@@ -43,7 +43,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   if (!supabase) return;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects'].includes(tableName);
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects', 'leave_requests'].includes(tableName);
 
   // Ensure data has the correct snake_case keys for the DB
   const sanitizedData = data.filter(item => {
@@ -130,7 +130,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
 
   // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects', 'job_roles', 'departments'].includes(tableName);
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'projects', 'job_roles', 'departments', 'leave_requests'].includes(tableName);
 
   let query = supabase.from(tableName).select('*');
 
@@ -175,6 +175,12 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     // Employee Mappings
     if ('first_name' in newItem) { newItem.firstName = newItem.first_name; delete newItem.first_name; }
     if ('last_name' in newItem) { newItem.lastName = newItem.last_name; delete newItem.last_name; }
+
+    // Legacy Name Support: If firstName is missing but 'name' exists, map it
+    if (!newItem.firstName && 'name' in newItem) {
+      newItem.firstName = newItem.name;
+    }
+
     if ('phone_number' in newItem) { newItem.phoneNumber = newItem.phone_number; delete newItem.phone_number; }
     if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
     if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
