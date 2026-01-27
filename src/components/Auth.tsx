@@ -347,7 +347,7 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
       if (err.message?.includes('registered') || err.message?.includes('already exists')) {
         try {
           const { login } = useAuthStore.getState();
-          await login(authIdentifier, password);
+          await (useAuthStore.getState().login as any)(email.trim(), String(password || ''));
           onSuccess();
           return;
         } catch (loginErr: any) {

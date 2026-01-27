@@ -132,4 +132,132 @@ describe('useDataStore', () => {
             expect(result.current.realtimeChannel).toBe(null);
         });
     });
+
+    describe('Rental Management', () => {
+        it('should issue a rental item and decrement stock', () => {
+            const { result } = renderHook(() => useDataStore());
+
+            // Setup
+            const itemId = 'item-rental-1';
+            const eventId = 'evt-1';
+
+            act(() => {
+                // Seed Inventory
+                useDataStore.setState({
+                    inventory: [{
+                        id: itemId,
+                        name: 'Chair',
+                        type: 'reusable',
+                        category: 'Furniture',
+                        stockQuantity: 100,
+                        priceCents: 5000,
+                        companyId: 'org-1'
+                    } as any],
+                    cateringEvents: [{
+                        id: eventId,
+                        customerName: 'Test Event',
+                        eventDate: '2026-02-01',
+                        guestCount: 50,
+                        status: 'Confirmed'
+                    } as any]
+                });
+            });
+
+            // Action
+            act(() => {
+                result.current.issueRental(eventId, itemId, 10, 'In-House');
+            });
+
+            // Assert
+            expect(result.current.inventory[0].stockQuantity).toBe(90); // 100 - 10
+            expect(result.current.rentalLedger).toHaveLength(1);
+            expect(result.current.rentalLedger[0].status).toBe('Issued');
+            expect(result.current.rentalLedger[0].quantity).toBe(10);
+        });
+
+        it('should return a rental item and increment stock', () => {
+            const { result } = renderHook(() => useDataStore());
+            const itemId = 'item-rental-1';
+            const eventId = 'evt-1';
+            const rentalId = 'rent-1';
+
+            act(() => {
+                useDataStore.setState({
+                    inventory: [{
+                        id: itemId,
+                        name: 'Chair',
+                        type: 'reusable',
+                        stockQuantity: 90,
+                        priceCents: 5000,
+                        companyId: 'org-1'
+                    } as any],
+                    rentalLedger: [{
+                        id: rentalId,
+                        requisitionId: 'req-1',
+                        eventId: eventId,
+                        itemName: 'Chair',
+                        quantity: 10,
+                        estimatedReplacementValueCents: 50000,
+                        rentalVendor: 'In-House',
+                        status: 'Issued',
+                        dateIssued: new Date().toISOString()
+                    }]
+                });
+            });
+
+            // Action
+            act(() => {
+                result.current.returnRental(rentalId, 'Returned');
+            });
+
+            // Assert
+            expect(result.current.inventory[0].stockQuantity).toBe(100); // 90 + 10
+            expect(result.current.rentalLedger[0].status).toBe('Returned');
+        });
+    });
+
+    describe('Stock Management', () => {
+        it('should receive food stock and average the cost', () => {
+            const { result } = renderHook(() => useDataStore());
+            const ingId = 'ing-1';
+
+            act(() => {
+                useDataStore.setState({
+                    ingredients: [{
+                        id: ingId,
+                        name: 'Rice',
+                        unit: 'kg',
+                        currentCostCents: 1000, // Old cost
+                        stockLevel: 10,
+                        category: 'Grains',
+                        lastUpdated: '2026-01-01',
+                        companyId: 'org-1'
+                    }] as any,
+                    inventory: [{
+                        id: ingId,
+                        name: 'Rice',
+                        type: 'ingredient',
+                        stockQuantity: 10, // Synced with stockLevel
+                        priceCents: 1000,
+                        category: 'Grains',
+                        companyId: 'org-1'
+                    } as any]
+                });
+            });
+
+            // Action: Buy 10kg at 2000 cents/kg
+            // Weighted Average: (10*1000 + 10*2000) / 20 = 30000 / 20 = 1500
+            act(() => {
+                result.current.receiveFoodStock(ingId, 10, 20000); // 10 qty, 20000 total cost
+            });
+
+            // Assert
+            const updatedIng = result.current.ingredients.find(i => i.id === ingId);
+            const updatedInv = result.current.inventory.find(i => i.id === ingId);
+
+            expect(updatedIng?.stockLevel).toBe(20);
+            expect(updatedIng?.currentCostCents).toBe(1500); // Averaged
+            expect(updatedInv?.stockQuantity).toBe(20);
+        });
+    });
 });

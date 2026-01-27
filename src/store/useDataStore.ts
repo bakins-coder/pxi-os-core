@@ -225,17 +225,10 @@ export const useDataStore = create<DataState>()(
                     dbPayload.category = (item.category as any);
                 } else if (item.type === 'asset' || item.type === 'reusable') {
                     tableName = 'reusable_items';
-<<<<<<< HEAD
-                    dbPayload.type = 'asset'; // Explicitly set asset type for reusable table if needed
-                    dbPayload.category = (item.category as any);
-=======
                     dbPayload.type = 'asset';
-                    // Fix: Ensure stock and image are persisted. Reusables often use stock_level schema now.
                     dbPayload.stock_level = item.stockQuantity;
                     dbPayload.price_cents = item.priceCents;
-                    // Also set stock_quantity for backward compatibility if schema allows (optional, but safer to stick to modern schema inferred)
-                    // dbPayload.stock_quantity = item.stockQuantity;
->>>>>>> c2029bd (WIP: Saving current state before stability improvements)
+                    dbPayload.category = (item.category as any);
                 } else if (item.type === 'rental') {
                     tableName = 'rental_items';
                     dbPayload.replacement_cost_cents = item.priceCents;
@@ -350,7 +343,7 @@ export const useDataStore = create<DataState>()(
                         // useDataStore generally used syncTableToCloud for bulk. 
                         // But for single item update, direct update is cleaner.
                         // Let's try direct update.
-                        await supabase.from(tableName).update(dbPayload).eq('id', id);
+                        await (supabase as any).from(tableName).update(dbPayload).eq('id', id);
                     }
 
                     // Update Entity Media if uploaded
@@ -976,14 +969,6 @@ export const useDataStore = create<DataState>()(
                 // Actually `get().syncWithCloud()` likely does a FULL PULL or PUSH?
                 // Let's check `syncWithCloud` implementation. It seems missing here or assumes pull.
 
-                // If we want to persist regular fields:
-                const dbPayload = { ...updates };
-                delete dbPayload.image; // Don't push base64
-                // snake_case mapping happens in `syncTableToCloud`? 
-                // Wait, `syncWithCloud` isn't fully shown but `syncTableToCloud` is imported.
-                // The implementation of `updateIngredient` in previous view just called `get().syncWithCloud()`.
-                // That might just be re-fetching? Or maybe it syncs dirty state?
-
                 // For safety, let's explicitly update the row if we can.
                 try {
                     const { error } = await supabase!.from('ingredients').update({
@@ -1552,7 +1537,6 @@ export const useDataStore = create<DataState>()(
                         // Core Tables
                         contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews,
                         // Inventory Base Tables
-                        inventoryData,
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
                         // Inventory Views
@@ -1690,11 +1674,10 @@ export const useDataStore = create<DataState>()(
                             if (!item.id) return;
 
                             const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
-                            const stockCount = getStock(item.id, rentalStock, false, true);
+                            const stockCount = getStock(String(item.id), rentalStock || [], false, true);
 
                             combinedInventory.push({
                                 ...item,
-                                id: item.id,
                                 id: item.id,
                                 companyId: item.organizationId || item.companyId,
                                 name: item.name,
@@ -1713,7 +1696,7 @@ export const useDataStore = create<DataState>()(
                             if (!item.id) return;
 
                             const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
-                            const stockCount = getStock(item.id, ingredientStock, true); // isBatch = true
+                            const stockCount = getStock(String(item.id), ingredientStock || [], true); // isBatch = true
 
                             combinedInventory.push({
                                 ...item,

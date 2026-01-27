@@ -10,7 +10,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "gen:types": "supabase gen types typescript --project-id qbfhntvjqciardkjpfpy > src/types/supabase.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -45,7 +46,7 @@
     "@vitest/ui": "^4.0.16",
     "happy-dom": "^20.1.0",
     "jsdom": "^27.0.1",
-    "supabase": "^2.72.4",
+    "supabase": "^2.72.8",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^4.0.16"

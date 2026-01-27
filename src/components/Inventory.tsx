@@ -437,6 +437,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 
    const [showCamera, setShowCamera] = useState(false);
    const [isMaximized, setIsMaximized] = useState(false);
+   const [uploadStatus, setUploadStatus] = useState('');
 
    const { addIngredient, updateIngredient } = useDataStore();
 
@@ -664,7 +665,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Type</label>
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value)}>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value as any)}>
                         <option value="product">Product</option><option value="raw_material">Raw Material</option>
                      </select>
                   </div>
