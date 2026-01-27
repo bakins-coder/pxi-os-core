@@ -101,10 +101,37 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, InventoryItem[]> = {};
+
+        // Normalization Map for known DB variations
+        const catMap: Record<string, string> = {
+            "Hors D'Oeuvre": "Hors D'Oeuvres",
+            "Starters": "Starters",
+            "Salads": "Salads",
+            "Nigerian": "Nigerian Cuisine",
+            "Nigerian Cuisine": "Nigerian Cuisine",
+            "Oriental": "Oriental",
+            "Continental": "Continental",
+            "Hot Plates": "Hot Plates",
+            "Dessert": "Desserts",
+            "Desserts": "Desserts"
+        };
+
         menuItems.forEach(item => {
-            const cat = standardCategories.includes(item.category) ? item.category : "General Selections";
-            if (!groups[cat]) groups[cat] = [];
-            groups[cat].push(item);
+            let catName = item.category || "General Selections";
+
+            // Try explicit map
+            if (catMap[catName]) {
+                catName = catMap[catName];
+            } else {
+                // Try fuzzy match
+                const found = standardCategories.find(sc => sc.toLowerCase() === catName.toLowerCase());
+                if (found) catName = found;
+            }
+
+            const finalCat = standardCategories.includes(catName) ? catName : "General Selections";
+
+            if (!groups[finalCat]) groups[finalCat] = [];
+            groups[finalCat].push(item);
         });
         return groups;
     }, [menuItems]);

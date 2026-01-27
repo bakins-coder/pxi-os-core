@@ -75,7 +75,14 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     }
 
     // Inventory Reverse Mappings
-    if ('stockQuantity' in newItem) { newItem.stock_quantity = newItem.stockQuantity; delete newItem.stockQuantity; }
+    if ('stockQuantity' in newItem) {
+      newItem.stock_quantity = newItem.stockQuantity;
+      // Some tables (ingredients, maybe others) use stock_level
+      if (tableName === 'ingredients' || tableName === 'reusable_items') {
+        newItem.stock_level = newItem.stockQuantity;
+      }
+      delete newItem.stockQuantity;
+    }
     if ('priceCents' in newItem) { newItem.price_cents = newItem.priceCents; delete newItem.priceCents; }
     if ('costPriceCents' in newItem) { newItem.cost_price_cents = newItem.costPriceCents; delete newItem.costPriceCents; }
     if ('recipeId' in newItem) { newItem.recipe_id = newItem.recipeId; delete newItem.recipeId; }
@@ -146,6 +153,8 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
   if (error) throw error;
 
+
+
   // Map back snake_case to camelCase
   return data.map((item: any) => {
     const newItem = { ...item };
@@ -156,6 +165,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
     // Inventory Mappings
     if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }
+    if ('stock_level' in newItem) { newItem.stockQuantity = newItem.stock_level; delete newItem.stock_level; }
     if ('price_cents' in newItem) { newItem.priceCents = newItem.price_cents; delete newItem.price_cents; }
     if ('cost_price_cents' in newItem) { newItem.costPriceCents = newItem.cost_price_cents; delete newItem.cost_price_cents; }
     if ('recipe_id' in newItem) { newItem.recipeId = newItem.recipe_id; delete newItem.recipe_id; }
@@ -187,6 +197,16 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
 
     // Image Mapping (General)
+    if ('image_url' in newItem) {
+      if (!newItem.image) newItem.image = newItem.image_url;
+      delete newItem.image_url;
+    }
+
+    // Fallback for stock_level if stock_quantity is missing (common schema variance)
+    if (!('stockQuantity' in newItem) && 'stock_level' in newItem) {
+      newItem.stockQuantity = newItem.stock_level;
+      delete newItem.stock_level;
+    }
 
 
     return newItem;

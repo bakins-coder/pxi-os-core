@@ -225,8 +225,17 @@ export const useDataStore = create<DataState>()(
                     dbPayload.category = (item.category as any);
                 } else if (item.type === 'asset' || item.type === 'reusable') {
                     tableName = 'reusable_items';
+<<<<<<< HEAD
                     dbPayload.type = 'asset'; // Explicitly set asset type for reusable table if needed
                     dbPayload.category = (item.category as any);
+=======
+                    dbPayload.type = 'asset';
+                    // Fix: Ensure stock and image are persisted. Reusables often use stock_level schema now.
+                    dbPayload.stock_level = item.stockQuantity;
+                    dbPayload.price_cents = item.priceCents;
+                    // Also set stock_quantity for backward compatibility if schema allows (optional, but safer to stick to modern schema inferred)
+                    // dbPayload.stock_quantity = item.stockQuantity;
+>>>>>>> c2029bd (WIP: Saving current state before stability improvements)
                 } else if (item.type === 'rental') {
                     tableName = 'rental_items';
                     dbPayload.replacement_cost_cents = item.priceCents;
@@ -1547,7 +1556,7 @@ export const useDataStore = create<DataState>()(
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
                         // Inventory Views
-                        reusableStock, rentalStock, ingredientStock,
+                        rentalStock, ingredientStock,
                         // Categories
                         categories,
                         // Fixed Assets
@@ -1564,16 +1573,16 @@ export const useDataStore = create<DataState>()(
                         safePull('leave_requests', companyId),
                         safePull('performance_reviews', companyId),
 
-                        safePull('inventory', companyId),
+
                         safePull('reusable_items', companyId),
                         safePull('rental_items', companyId),
                         safePull('ingredients', companyId),
                         safePull('products', companyId),
 
-                        safeViews('v_reusable_inventory', companyId),
-                        safeViews('v_rental_inventory', companyId),
-                        safeViews('v_ingredient_inventory', companyId),
-                        safePull('product_categories'), // Fetch categories to map IDs
+                        // safePull('reusable_stock', companyId), // REMOVED: Broken view/table without link
+                        safePull('rental_stock', companyId),
+                        safePull('ingredient_stock_batches', companyId),
+                        safePull('categories', companyId), // Correct Table Name
                         safePull('assets', companyId), // Fetch Fixed Assets
                     ]); // End Promise.all
 
@@ -1605,57 +1614,119 @@ export const useDataStore = create<DataState>()(
                     const combinedInventory: InventoryItem[] = [];
 
                     // 1. Process Split Inventory Data
-                    // Reusable Items
+
+                    // DEBUG: Log Raw Data to confirm fetch
+                    console.log('[Hydration] Reusable Items:', reusableItems?.length, reusableItems?.[0]);
+
+                    // Helper to sum stock
+                    const getStock = (itemId: string, stockList: any[], isBatch = false, isRental = false) => {
+                        if (!stockList) return 0;
+                        // safePull converts to CamelCase: item_id -> itemId, quantity_on_hand -> quantityOnHand
+                        const key = isRental ? 'rentalItemId' : (isBatch ? 'ingredientId' : 'itemId');
+                        const qtyKey = isBatch ? 'quantity' : 'quantityOnHand';
+
+                        return stockList
+                            .filter((s: any) => s[key] === itemId && (isBatch ? s.status === 'available' : true))
+                            .reduce((sum: number, s: any) => sum + (Number(s[qtyKey]) || 0), 0);
+                    };
+
+                    // Reusable Items (Master List)
                     if (reusableItems) {
-                        combinedInventory.push(...reusableItems.map((item: any) => ({
-                            ...item,
-                            type: 'reusable',
-                            category: item.category || 'General',
-                            stockQuantity: item.stockQuantity || 0,
-                            // Ensure numeric
-                            priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
-                            image: item.image
-                        })));
+                        reusableItems.forEach((item: any) => {
+                            // Data Integrity: Skip if no ID
+                            if (!item.id) return;
+
+                            const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
+                            // Fix: Use base table stock ONLY. reusable_stock is disconnected.
+                            const stockCount = item.stockQuantity || 0;
+
+                            // Fallback for missing unit
+                            const unit = item.unit || { name: 'Units', key: 'each' }; // Default to 'Units' if null
+
+                            // Fallback for missing image
+                            // Check for validity of image string (basic check)
+                            let img = item.imageUrl || item.image || item.image_url;
+                            if (!img || (typeof img === 'string' && img.length < 5)) {
+                                img = 'https://placehold.co/100x100?text=No+Image';
+                            }
+
+                            combinedInventory.push({
+                                ...item,
+                                id: item.id,
+                                companyId: item.organizationId || item.companyId,
+                                name: item.name,
+                                type: 'reusable',
+                                category: cat ? cat.name : (item.category || 'General'),
+                                stockQuantity: stockCount,
+                                priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                                image: img,
+                                unit: unit
+                            });
+                        });
                     }
 
+                    // Products (Menu Items)
                     // Products (Menu Items)
                     if (products) {
                         combinedInventory.push(...products.map((item: any) => {
                             const cat = (categories as any[])?.find(c => c.id === item.categoryId || c.id === item.product_category_id);
                             return {
                                 ...item,
+                                id: item.id,
+                                companyId: item.organizationId || item.companyId,
+                                name: item.name,
                                 type: 'product',
                                 category: cat ? cat.name : (item.category || 'Finished Goods'),
-                                stockQuantity: item.stockQuantity || 100000,
-                                // Products usually have price_cents
-                                priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
-                                image: item.image
+                                stockQuantity: item.stockQuantity || 100000, // Products technically don't have stock, they are produced
+                                priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                                image: item.imageUrl || item.image || item.image_url
                             };
                         }));
                     }
 
                     // Rental Items
                     if (rentalItems) {
-                        combinedInventory.push(...rentalItems.map((item: any) => ({
-                            ...item,
-                            type: 'rental',
-                            category: item.category || 'Rental',
-                            stockQuantity: item.stockQuantity || 0,
-                            priceCents: typeof item.priceCents === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
-                            image: item.image
-                        })));
+                        rentalItems.forEach((item: any) => {
+                            if (!item.id) return;
+
+                            const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
+                            const stockCount = getStock(item.id, rentalStock, false, true);
+
+                            combinedInventory.push({
+                                ...item,
+                                id: item.id,
+                                id: item.id,
+                                companyId: item.organizationId || item.companyId,
+                                name: item.name,
+                                type: 'rental',
+                                category: cat ? cat.name : (item.category || 'Rental'),
+                                stockQuantity: stockCount,
+                                priceCents: typeof (item.replacementCostCents || item.priceCents) === 'string' ? parseInt(item.replacementCostCents || item.priceCents) : (item.replacementCostCents || item.priceCents || 0),
+                                image: item.imageUrl || item.image || item.image_url
+                            });
+                        });
                     }
 
                     // Ingredients
                     if (ingredientItems) {
-                        combinedInventory.push(...ingredientItems.map((item: any) => ({
-                            ...item,
-                            type: 'ingredient',
-                            category: item.category || 'Ingredient',
-                            stockQuantity: item.stock_level || item.stockLevel || 0, // key diff
-                            priceCents: typeof item.currentCostCents === 'string' ? parseInt(item.currentCostCents) : (item.currentCostCents || 0),
-                            image: item.image
-                        })));
+                        ingredientItems.forEach((item: any) => {
+                            if (!item.id) return;
+
+                            const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
+                            const stockCount = getStock(item.id, ingredientStock, true); // isBatch = true
+
+                            combinedInventory.push({
+                                ...item,
+                                id: item.id,
+                                companyId: item.organizationId || item.companyId,
+                                name: item.name,
+                                type: 'ingredient',
+                                category: cat ? cat.name : (item.category || 'Ingredient'),
+                                stockQuantity: stockCount,
+                                priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                                image: item.imageUrl || item.image || item.image_url
+                            });
+                        });
                     }
 
                     // 2. Derive Ingredients State
@@ -1795,19 +1866,28 @@ export const useDataStore = create<DataState>()(
                             return state;
                         });
                     })
-                    // Inventory
+                    // Products
                     .on('postgres_changes', {
                         event: '*',
                         schema: 'public',
-                        table: 'inventory',
-                        filter: `company_id=eq.${companyId}`
+                        table: 'products',
+                        filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
                         set((state) => {
+                            // Map to internal format
+                            const mapItem = (item: any) => ({
+                                ...item,
+                                type: 'product',
+                                category: item.category || 'Finished Goods',
+                                stockQuantity: item.stockQuantity || 100000,
+                                priceCents: item.price_cents || 0
+                            });
+
                             if (eventType === 'INSERT') {
-                                return { inventory: [newRow, ...state.inventory] };
+                                return { inventory: [mapItem(newRow), ...state.inventory] };
                             } else if (eventType === 'UPDATE') {
-                                return { inventory: state.inventory.map(i => i.id === newRow.id ? newRow : i) };
+                                return { inventory: state.inventory.map(i => i.id === newRow.id ? mapItem(newRow) : i) };
                             } else if (eventType === 'DELETE') {
                                 return { inventory: state.inventory.filter(i => i.id !== oldRow.id) };
                             }

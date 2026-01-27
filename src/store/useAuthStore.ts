@@ -62,9 +62,9 @@ export const useAuthStore = create<AuthState>()(
                     .eq('id', data.user.id)
                     .single();
 
-                // [SELF-HEAL] If Profile is missing but Auth succeeded (Ghost User), create it now.
-                if (!profile) {
-                    console.warn('[Auth] Ghost User detected! Auto-healing public.profile...');
+                // [SELF-HEAL] If Profile is missing OR missing Organization ID, try to heal it.
+                if (!profile || !profile.organization_id) {
+                    console.warn('[Auth] Incomplete Profile detected! Auto-healing...');
                     const metadata = data.user.user_metadata || {};
                     // Try to finding employee record to sync details
                     const { data: emp } = await supabase.from('employees').select('role, organization_id, first_name, last_name, id')
@@ -74,23 +74,23 @@ export const useAuthStore = create<AuthState>()(
                     const newProfilePayload = {
                         id: data.user.id,
                         email: email,
-                        organization_id: emp?.organization_id ||
-                            (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(metadata.company_id) ? metadata.company_id : undefined), // Only use if valid UUID
-                        role: emp?.role || metadata.role || 'Employee',
-                        first_name: emp ? emp.first_name : (metadata.name ? metadata.name.split(' ')[0] : email.split('@')[0]),
-                        last_name: emp ? emp.last_name : (metadata.name ? metadata.name.split(' ').slice(1).join(' ') : 'User'),
+                        organization_id: emp?.organization_id || profile?.organization_id ||
+                            (typeof metadata.company_id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(metadata.company_id) ? metadata.company_id : undefined),
+                        role: emp?.role || metadata.role || profile?.role || 'Employee',
+                        first_name: emp?.first_name || profile?.first_name || (metadata.name ? metadata.name.split(' ')[0] : email.split('@')[0]),
+                        last_name: emp?.last_name || profile?.last_name || (metadata.name ? metadata.name.split(' ').slice(1).join(' ') : 'User'),
                         is_super_admin: false
                     };
 
-                    const { error: insertError } = await supabase.from('profiles').insert([newProfilePayload]);
-                    if (insertError) {
-                        console.error('[Auth] Failed to heal profile:', insertError);
-                        throw new Error('Login failed: Profile missing and auto-recovery failed. Please contact support.');
+                    const { error: upsertError } = await supabase.from('profiles').upsert(newProfilePayload);
+                    if (upsertError) {
+                        console.error('[Auth] Failed to heal profile:', upsertError);
+                        // Don't block login if it fails, filtering will just return empty which is safer than crashing
+                    } else {
+                        // Re-fetch only if successful
+                        const { data: healedProfile } = await supabase.from('profiles').select('organization_id, role, first_name, last_name').eq('id', data.user.id).single();
+                        profile = healedProfile;
                     }
-
-                    // Re-fetch
-                    const { data: healedProfile } = await supabase.from('profiles').select('organization_id, role, first_name, last_name').eq('id', data.user.id).single();
-                    profile = healedProfile;
                 }
 
                 // 2. Determine Authoritative Company ID
