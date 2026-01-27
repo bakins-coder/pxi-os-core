@@ -99,6 +99,12 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     // Ledger Reverse Mappings
     if ('balanceCents' in newItem) { newItem.balance_cents = newItem.balanceCents; delete newItem.balanceCents; }
 
+    // Invoice/General Reverse Mappings
+    if ('contactId' in newItem) { newItem.contact_id = newItem.contactId; delete newItem.contactId; }
+    if ('totalCents' in newItem) { newItem.total_cents = newItem.totalCents; delete newItem.totalCents; }
+    if ('paidAmountCents' in newItem) { newItem.paid_amount_cents = newItem.paidAmountCents; delete newItem.paidAmountCents; }
+    if ('unitPriceCents' in newItem) { newItem.unit_price_cents = newItem.unitPriceCents; delete newItem.unitPriceCents; }
+
     // Employee Reverse Mappings
     if ('firstName' in newItem) { newItem.first_name = newItem.firstName; delete newItem.firstName; }
     if ('lastName' in newItem) { newItem.last_name = newItem.lastName; delete newItem.lastName; }
@@ -196,11 +202,13 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
     if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
 
+    // Invoice / General Detail Mappings
+    if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
+    if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
+    if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }
+    if ('unit_price_cents' in newItem) { newItem.unitPriceCents = newItem.unit_price_cents; delete newItem.unit_price_cents; }
+
     // Image Mapping (General)
-    if ('image_url' in newItem) {
-      if (!newItem.image) newItem.image = newItem.image_url;
-      delete newItem.image_url;
-    }
 
     // Fallback for stock_level if stock_quantity is missing (common schema variance)
     if (!('stockQuantity' in newItem) && 'stock_level' in newItem) {

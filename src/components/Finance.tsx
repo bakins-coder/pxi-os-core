@@ -5,7 +5,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Invoice, InvoiceStatus, BookkeepingEntry, Contact, Role } from '../types';
 import {
-   Plus, FileText, Download, X, ArrowRight,
+   Plus, FileText, Download, X, ArrowRight, Eye,
    ChevronRight, Receipt,
    CheckCircle2, Banknote, ArrowDownLeft, TrendingDown, TrendingUp, ShoppingBag, Zap, Clock, GripHorizontal, Check, ShieldCheck, Users,
    BookOpen, Bot, Landmark, RefreshCw, ShieldAlert, AlertTriangle, Cloud, Activity, Camera, Upload, FileSpreadsheet, Maximize2, Minimize2
@@ -229,35 +229,42 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
    };
 
    const addLine = () => {
-      setLines([...lines, { id: `line-${Date.now()}`, description: '', quantity: 1, price: 0 }]);
+      setLines(prev => [...prev, { id: `line-${Date.now()}`, description: '', quantity: 1, price: 0 }]);
    };
 
    const removeLine = (id: string) => {
-      setLines(lines.filter(l => l.id !== id));
+      setLines(prev => prev.filter(l => l.id !== id));
    };
 
    const updateLine = (id: string, field: string, value: any) => {
-      setLines(lines.map(l => l.id === id ? { ...l, [field]: value } : l));
+      setLines(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
    };
 
    // Line Item Selection
    const handleItemSelect = (id: string, itemName: string) => {
       const item = productInventory.find(i => i.name === itemName);
-      if (item) {
-         updateLine(id, 'description', item.name);
-         updateLine(id, 'price', (item.priceCents || 0) / 100);
-      } else {
-         updateLine(id, 'description', itemName); // Allow custom entry
-      }
+
+      setLines(prev => prev.map(l => {
+         if (l.id !== id) return l;
+
+         if (item) {
+            return {
+               ...l,
+               description: item.name,
+               price: (item.priceCents || 0) / 100
+            };
+         }
+         return { ...l, description: itemName };
+      }));
    };
 
-   const handleSubmit = () => {
+   const handleSubmit = async () => {
       let contactId = selectedContact?.id;
 
       if (isNewCustomer) {
          if (!newCustomerDetails.name) return alert("Customer Name is required");
-         contactId = `con-${Date.now()}`;
-         addContact({
+         contactId = crypto.randomUUID();
+         await addContact({
             id: contactId,
             name: newCustomerDetails.name,
             email: newCustomerDetails.email,
@@ -270,12 +277,16 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
          return alert("Please select a customer or create a new one");
       }
 
-      const totalCents = lines.reduce((sum, l) => sum + (l.quantity * l.price * 100), 0);
+      const totalCents = lines.reduce((sum, l) => sum + ((l.quantity || 0) * (l.price || 0) * 100), 0);
+
+      if (!user?.companyId) {
+         return alert("User company ID is missing. Please reload or contact support.");
+      }
 
       const newInvoice: Invoice = {
-         id: `inv-${Date.now()}`,
+         id: crypto.randomUUID(),
          number: `${Math.floor(Math.random() * 10000)}`, // Simple random number for now
-         companyId: user?.companyId || 'org-xquisite',
+         companyId: user.companyId,
          contactId: contactId!,
          date: date,
          dueDate: dueDate || date,
@@ -284,10 +295,10 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
          lines: lines.map(l => ({
             id: l.id,
             description: l.description,
-            quantity: l.quantity,
-            unitPriceCents: l.price * 100
+            quantity: l.quantity || 0,
+            unitPriceCents: (l.price || 0) * 100
          })),
-         totalCents: totalCents,
+         totalCents: totalCents || 0,
          paidAmountCents: 0
       };
 
@@ -391,7 +402,7 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
                            <div className="flex-1 relative group">
                               <input
                                  list={`inventory-list-${line.id}`}
-                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500"
+                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-slate-900"
                                  placeholder="Description or Select Item"
                                  value={line.description}
                                  onChange={e => handleItemSelect(line.id, e.target.value)}
@@ -404,7 +415,7 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
                            </div>
                            <input
                               type="number"
-                              className="w-20 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-center"
+                              className="w-20 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-center text-slate-900"
                               placeholder="Qty"
                               value={line.quantity}
                               onChange={e => updateLine(line.id, 'quantity', parseFloat(e.target.value))}
@@ -413,7 +424,7 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₦</span>
                               <input
                                  type="number"
-                                 className="w-full pl-6 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-right"
+                                 className="w-full pl-6 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-right text-slate-900"
                                  placeholder="Price"
                                  value={line.price}
                                  onChange={e => updateLine(line.id, 'price', parseFloat(e.target.value))}
@@ -638,7 +649,7 @@ export const Finance = () => {
                <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                      <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Reference</th><th className="px-8 py-4 text-right">Amount</th><th className="px-8 py-4">Status</th><th className="px-8 py-4 text-right">Ops</th></tr></thead>
-                     <tbody className="divide-y divide-slate-50">{invoices.map(inv => (<tr key={inv.id} className="hover:bg-indigo-50/20 transition-all group"><td className="px-8 py-6 font-black text-slate-800 uppercase">INV-{inv.number}</td><td className="px-8 py-6 text-right font-black text-indigo-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2"><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
+                     <tbody className="divide-y divide-slate-50">{invoices.map(inv => (<tr key={inv.id} className="hover:bg-indigo-50/20 transition-all group"><td className="px-8 py-6 font-black text-slate-800 uppercase">INV-{inv.number}</td><td className="px-8 py-6 text-right font-black text-indigo-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2"><button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View formatted invoice"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
                   </table>
                </div>
             </div>

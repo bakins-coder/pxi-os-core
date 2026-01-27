@@ -605,10 +605,46 @@ export const useDataStore = create<DataState>()(
 
                 return { agenticLogs: [...uniqueLogs, ...state.agenticLogs] };
             }),
-            addContact: (contact) => {
+            addContact: async (contact) => {
+                const user = useAuthStore.getState().user;
+                const contactId = contact.id || `con-${Date.now()}`;
+
+                // Optimistic Local Update
+                const newContact = {
+                    ...contact,
+                    id: contactId,
+                    companyId: user?.companyId || contact.companyId || 'org-xquisite'
+                } as Contact;
+
                 set((state) => ({
-                    contacts: [{ ...contact, id: contact.id || `con-${Date.now()}`, companyId: contact.companyId || 'org-xquisite' } as Contact, ...state.contacts]
+                    contacts: [newContact, ...state.contacts]
                 }));
+
+                // Persistence
+                if (supabase && user?.companyId) {
+                    try {
+                        const payload = {
+                            id: contactId,
+                            company_id: user.companyId,
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            address: contact.address,
+                            type: contact.type || 'Individual',
+                            customer_type: (contact as any).customerType || 'Individual'
+                        };
+
+                        const { error } = await supabase.from('contacts').upsert(payload);
+                        if (error) {
+                            console.error("Failed to persist contact:", error);
+                            alert(`Customer Save Failed: ${error.message}`);
+                        }
+                    } catch (e: any) {
+                        console.error("Contact Persistence Error:", e);
+                        alert(`Customer Persistence Error: ${e.message || e}`);
+                    }
+                }
+
                 get().syncWithCloud();
             },
             addContactsBulk: (contacts) => set((state) => ({
@@ -617,7 +653,42 @@ export const useDataStore = create<DataState>()(
             deleteContact: (id) => set((state) => ({
                 contacts: state.contacts.filter(c => c.id !== id)
             })),
-            addInvoice: (invoice) => set((state) => ({ invoices: [invoice, ...state.invoices] })),
+            addInvoice: async (invoice) => {
+                set((state) => ({ invoices: [invoice, ...state.invoices] }));
+
+                const user = useAuthStore.getState().user;
+                if (!supabase || !user?.companyId) return;
+
+                // Sync to DB
+                try {
+                    // 1. Insert Invoice Header (Exclude 'lines' to avoid column error)
+                    const { lines, ...invoiceHeader } = invoice;
+
+                    const payload = {
+                        id: invoice.id,
+                        company_id: user.companyId,
+                        contact_id: invoice.contactId,
+                        number: invoice.number,
+                        date: invoice.date,
+                        due_date: invoice.dueDate,
+                        status: invoice.status,
+                        type: invoice.type || 'Sales',
+                        total_cents: invoice.totalCents || 0,
+                        paid_amount_cents: invoice.paidAmountCents || 0,
+                        lines: invoice.lines
+                    };
+
+                    const { error } = await supabase.from('invoices').upsert(payload);
+                    if (error) {
+                        console.error("Failed to persist invoice:", error);
+                        alert(`Invoice Save Failed: ${error.message}`);
+                    }
+
+                } catch (e: any) {
+                    console.error("Invoice Persistence Error:", e);
+                    alert(`Invoice Persistence Error: ${e.message || e}`);
+                }
+            },
             updateInvoiceStatus: (id, status) => set((state) => ({
                 invoices: state.invoices.map(inv => inv.id === id ? { ...inv, status } : inv)
             })),
