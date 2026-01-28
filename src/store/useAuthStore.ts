@@ -106,7 +106,8 @@ export const useAuthStore = create<AuthState>()(
                         const newProfile = {
                             id: data.user.id,
                             email: email,
-                            role: Role.ADMIN, // Default
+                            // SECURITY FIX: Default to EMPLOYEE, only specific emails get ADMIN if profile fails
+                            role: (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') ? Role.ADMIN : Role.EMPLOYEE,
                             first_name: 'User',
                             last_name: ''
                         };
@@ -203,15 +204,20 @@ export const useAuthStore = create<AuthState>()(
 
                 // If no user in store, hydrate basic info from Auth User
                 const metadata = user.user_metadata || {};
+
+                // SECURITY FIX: Safe Defaults
+                const isKnownAdmin = user.email === 'oreoluwatomiwab@gmail.com' || user.email === 'toxsyyb@yahoo.co.uk';
+                const safeRole = (metadata.role as Role) || (isKnownAdmin ? Role.ADMIN : Role.EMPLOYEE);
+
                 set({
                     user: {
                         id: user.id,
                         email: user.email || '',
-                        role: (metadata.role as Role) || Role.ADMIN,
+                        role: safeRole,
                         companyId: metadata.company_id || 'org-xquisite',
                         name: metadata.name || 'User',
                         avatar: metadata.avatar || '',
-                        permissionTags: ['*'], // Default to full access on refresh to avoid lockout
+                        permissionTags: isKnownAdmin ? ['*'] : [], // Only admins get wildcard if profile fails
                         isSuperAdmin: false
                     }
                 });
