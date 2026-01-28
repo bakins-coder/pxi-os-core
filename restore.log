@@ -1,0 +1,14 @@
+--- RESTORING ACCESS FOR oreoluwatomiwab@gmail.com ---
+❌ User Profile not found: null
+--- RESTORING ACCESS FOR oreoluwatomiwab@gmail.com ---
+❌ User Profile not found: null
+--- RESTORING ACCESS FOR oreoluwatomiwab@gmail.com ---
+✅ Found Auth User: 485bf3dd-b7a4-4bc9-9f83-528646e3b2ae
+✅ Found Existing Organization: Xquisite Celebrations Limited (10959119-72e4-4e57-ba54-923e36bba6a6)
+Linking User oreoluwatomiwab@gmail.com to Org 10959119-72e4-4e57-ba54-923e36bba6a6...
+❌ Failed to update profile: {"code":"PGRST204","details":null,"hint":null,"message":"Could not find the 'company_id' column of 'profiles' in the schema cache"}
+--- RESTORING ACCESS FOR oreoluwatomiwab@gmail.com ---
+✅ Found Auth User: 485bf3dd-b7a4-4bc9-9f83-528646e3b2ae
+✅ Found Existing Organization: Xquisite Celebrations Limited (10959119-72e4-4e57-ba54-923e36bba6a6)
+Linking User oreoluwatomiwab@gmail.com to Org 10959119-72e4-4e57-ba54-923e36bba6a6...
+✅ SUCCESS! User access restored.

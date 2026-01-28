@@ -538,8 +538,95 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
   );
 };
 
-export const AuthPage = () => {
-  const [view, setView] = useState<'login' | 'signup' | 'forgot'>('login');
+export const UpdatePassword = ({ onSuccess }: { onSuccess: () => void }) => {
+  const { updatePassword } = useAuthStore();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await updatePassword(password);
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update password.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-sm animate-in fade-in slide-in-from-bottom-4">
+      <div className="mb-10 text-center">
+        <h2 className="text-4xl font-black text-white tracking-tighter mb-3 uppercase">New Password</h2>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Secure your account with a new credential.</p>
+      </div>
+
+      <form onSubmit={handleUpdate} className="flex flex-col space-y-6">
+        {error && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-xs font-bold uppercase tracking-widest leading-relaxed">
+            <AlertCircle size={16} className="shrink-0" /> {error}
+          </div>
+        )}
+
+        <div className="relative group w-1/2 mx-auto">
+          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">New Password</label>
+          <div className="relative">
+            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <input
+              type="password"
+              required
+              className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="relative group w-1/2 mx-auto">
+          <label className="block text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-3 text-center">Confirm Password</label>
+          <div className="relative">
+            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <input
+              type="password"
+              required
+              className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-1/3 mx-auto bg-[#00ff9d] py-5 rounded-2xl font-black text-slate-950 uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 text-[10px]"
+        >
+          {isLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : 'Update Password'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export const AuthPage = ({ initialView = 'login' }: { initialView?: 'login' | 'signup' | 'forgot' | 'update-password' }) => {
+  const [view, setView] = useState<'login' | 'signup' | 'forgot' | 'update-password'>(initialView);
 
   return (
     <div className="min-h-screen bg-[#020617] flex">
@@ -582,6 +669,14 @@ export const AuthPage = () => {
           <ForgotPassword
             onBack={() => setView('login')}
             onSuccess={() => window.location.hash = '/'}
+          />
+        )}
+        {view === 'update-password' && (
+          <UpdatePassword
+            onSuccess={() => {
+              setView('login');
+              // Optional: Show success message/toast
+            }}
           />
         )}
       </div>

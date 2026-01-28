@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { CRM } from './components/CRM';
@@ -124,6 +124,10 @@ function AppContent() {
     const handleOffline = () => console.log('Network status: OFFLINE. Local mode active.');
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Initialize Auth Listener
+    useAuthStore.getState().initializeAuthListener();
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -181,10 +185,18 @@ function AppContent() {
     );
   }
 
+  // [RECOVERY FIX] Allow authenticated users (who just clicked reset link) to see the update password screen
+  // instead of being redirected to Dashboard.
+  const location = useLocation();
+  if (user && location.pathname === '/update-password') {
+    return <AuthPage initialView="update-password" />;
+  }
+
   if (!user) {
     return (
       <Routes>
         <Route path="/login" element={<AuthPage />} />
+        <Route path="/update-password" element={<AuthPage initialView="update-password" />} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

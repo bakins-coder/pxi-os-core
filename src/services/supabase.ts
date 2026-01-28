@@ -26,10 +26,20 @@ export const checkCloudHealth = async () => {
     const { error } = await supabase.from('organizations').select('id').limit(1);
     // 42501 = Permission Denied (Means DB is reachable but blocked by RLS) -> Healthy
     // PGRST116 = No Rows -> Healthy
-    if (error && error.code !== 'PGRST116' && error.code !== '42501') throw error;
+    if (error && error.code !== 'PGRST116' && error.code !== '42501') {
+      // Ignore UUID casting errors (caused by bad metadata RLS) - Treat as healthy/blocked
+      if (error.message?.includes('input syntax for type uuid')) {
+        console.warn('[Cloud] RLS UUID Mismatch detected (Harmless for health check)');
+        return { status: 'Connected', latency: 'Stable' };
+      }
+      throw error;
+    }
     return { status: 'Connected', latency: 'Stable' };
   } catch (e) {
     const msg = (e as Error).message.toLowerCase();
+    if (msg.includes('input syntax for type uuid')) {
+      return { status: 'Connected', latency: 'Stable' };
+    }
     // Case insensitive check for schema error (usually "DATABASE ERROR QUERYING SCHEMA")
     if (msg.includes('schema') || msg.includes('database error')) return { status: 'Connected', latency: 'Degraded' };
     return { status: 'Error', error: (e as Error).message };
