@@ -230,7 +230,8 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('unit_price_cents' in newItem) { newItem.unitPriceCents = newItem.unit_price_cents; delete newItem.unit_price_cents; }
 
     // Image Mapping (General)
-
+    if ('image_url' in newItem) { newItem.imageUrl = newItem.image_url; delete newItem.image_url; }
+    if ('primary_image_url' in newItem) { newItem.primaryImageUrl = newItem.primary_image_url; delete newItem.primary_image_url; }
     // Fallback for stock_level if stock_quantity is missing (common schema variance)
     if (!('stockQuantity' in newItem) && 'stock_level' in newItem) {
       newItem.stockQuantity = newItem.stock_level;

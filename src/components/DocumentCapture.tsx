@@ -29,13 +29,22 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
     }, [webcamRef]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        console.log('[DocumentCapture] handleFileUpload triggered');
+        console.log('[DocumentCapture] e.target.files:', e.target.files);
         const file = e.target.files?.[0];
         if (file) {
+            console.log('[DocumentCapture] File selected:', file.name, file.type, file.size);
             const reader = new FileReader();
+            reader.onerror = (err) => {
+                console.error('[DocumentCapture] FileReader error:', err);
+            };
             reader.onloadend = () => {
+                console.log('[DocumentCapture] FileReader complete, result length:', (reader.result as string)?.length);
                 setPreview(reader.result as string);
             };
             reader.readAsDataURL(file);
+        } else {
+            console.warn('[DocumentCapture] No file selected or file is undefined');
         }
     };
 
@@ -97,17 +106,22 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
                                     <span className="text-xs text-slate-400 mt-1">Take a photo</span>
                                 </button>
 
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
-                                    className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all group"
+                                <label
+                                    onClick={() => console.log('[DocumentCapture] Upload label clicked')}
+                                    className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all group cursor-pointer relative"
                                 >
-                                    <div className="p-4 bg-emerald-50 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                                    <input
+                                        type="file"
+                                        onChange={handleFileUpload}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        accept="image/*"
+                                    />
+                                    <div className="p-4 bg-emerald-50 rounded-2xl mb-4 group-hover:scale-110 transition-transform pointer-events-none">
                                         <Upload size={32} className="text-emerald-600" />
                                     </div>
-                                    <span className="font-bold text-slate-700">Upload File</span>
-                                    <span className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP</span>
-                                </button>
+                                    <span className="font-bold text-slate-700 pointer-events-none">Upload File</span>
+                                    <span className="text-xs text-slate-400 mt-1 pointer-events-none">JPG, PNG, WEBP</span>
+                                </label>
                             </div>
 
                             <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto leading-relaxed">
@@ -173,6 +187,7 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
             </div>
 
             <input
+                id="document-capture-file-input"
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
