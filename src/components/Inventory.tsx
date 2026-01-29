@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -9,7 +9,7 @@ import { calculateItemCosting } from '../utils/costing';
 import {
    Package, Plus, RefreshCw, Layers, TrendingUp, Utensils,
    Zap, X, Trash2, Edit3, BookOpen, Info, Truck, Hammer, AlertTriangle, History, Clock, Box, Search, Check, Image as ImageIcon, Sparkles, Loader2,
-   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2
+   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2, Upload
 } from 'lucide-react';
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
@@ -558,8 +558,34 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
    const [isUploading, setIsUploading] = useState(false);
 
    const [uploadStatus, setUploadStatus] = useState<string>('');
+   const fileInputRef = useRef<HTMLInputElement>(null);
 
    const { user } = useAuthStore();
+
+   // Direct file upload handler - bypasses DocumentCapture
+   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      console.log('[AddEditInventoryModal] handleFileUpload triggered');
+      const file = e.target.files?.[0];
+      if (!file) {
+         console.warn('[AddEditInventoryModal] No file selected');
+         return;
+      }
+      console.log('[AddEditInventoryModal] File:', file.name, file.type, file.size);
+
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onerror = () => console.error('[AddEditInventoryModal] FileReader error');
+      reader.onloadend = async () => {
+         const base64Data = reader.result as string;
+         console.log('[AddEditInventoryModal] File read, length:', base64Data?.length);
+         // Use the same upload flow as camera capture
+         await handleImageCapture(base64Data);
+      };
+      reader.readAsDataURL(file);
+
+      // Reset the input so the same file can be selected again
+      if (e.target) e.target.value = '';
+   };
 
    const handleImageCapture = async (imgData: string) => {
       setUploadStatus('Processing...');
@@ -635,7 +661,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
    if (!isOpen) return null;
 
    return (
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={() => { if (!showCamera) onClose(); }}>
          <div
             onClick={e => e.stopPropagation()}
             className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3rem]'}`}
@@ -707,9 +733,21 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                            onClick={() => { console.log('Opening camera for inventory'); setShowCamera(true); }}
                            className="py-3 px-4 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 hover:bg-indigo-100 transition-all"
                         >
-                           <ScanLine size={14} /> Capture / Upload
+                           <ScanLine size={14} /> Camera
                         </button>
-                        <p className="text-[9px] text-slate-400 font-medium">Take a photo of the product or upload an image.</p>
+                        <label
+                           className="py-3 px-4 bg-emerald-50 text-emerald-600 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 hover:bg-emerald-100 transition-all cursor-pointer"
+                        >
+                           <Upload size={14} /> Upload File
+                           <input
+                              type="file"
+                              onChange={handleFileUpload}
+                              accept="image/*"
+                              className="hidden"
+                           />
+                        </label>
+                        <p className="text-[9px] text-slate-400 font-medium">Take a photo or upload an image.</p>
+                        {uploadStatus && <p className="text-[10px] font-bold text-indigo-600">{uploadStatus}</p>}
                      </div>
                   </div>
                </div>

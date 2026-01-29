@@ -209,9 +209,9 @@ export const useDataStore = create<DataState>()(
                 // Add Image URL if available (and valid URL)
                 if (uploadedMedia) {
                     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                    dbPayload.image = `${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
+                    dbPayload.image_url = `${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
                 } else if (item.image && item.image.startsWith('http')) {
-                    dbPayload.image = item.image;
+                    dbPayload.image_url = item.image;
                 }
 
                 // Type Mapping
@@ -294,7 +294,8 @@ export const useDataStore = create<DataState>()(
                         // Construct public URL and update the image field
                         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                         if (supabaseUrl && uploadedMedia) {
-                            updates.image = `https://${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
+                            // VITE_SUPABASE_URL already includes https://, so don't add it again
+                            updates.image = `${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
                         }
                     } catch (err) {
                         console.error("Image upload failed:", err);
@@ -313,14 +314,15 @@ export const useDataStore = create<DataState>()(
                     let dbPayload: any = {
                         organization_id: user.companyId,
                         name: updatedItem.name,
-                        image: updatedItem.image,
+                        image_url: updatedItem.image, // Use image_url column to match DB schema
                     };
 
                     if (updatedItem.type === 'product') {
                         tableName = 'products';
                         dbPayload.description = updatedItem.description;
                         dbPayload.price_cents = updatedItem.priceCents;
-                        dbPayload.category = (updatedItem.category as any);
+                        // Note: products table uses category_id (UUID), not category (string)
+                        // Category updates need a separate lookup - skipping for now to fix image persistence
                     } else if (updatedItem.type === 'asset' || updatedItem.type === 'reusable') {
                         tableName = 'reusable_items';
                         dbPayload.type = 'asset';
@@ -343,7 +345,17 @@ export const useDataStore = create<DataState>()(
                         // useDataStore generally used syncTableToCloud for bulk. 
                         // But for single item update, direct update is cleaner.
                         // Let's try direct update.
-                        await (supabase as any).from(tableName).update(dbPayload).eq('id', id);
+                        console.log('[updateInventoryItem] Updating DB:', { tableName, id, dbPayload });
+                        const { data, error, count } = await (supabase as any)
+                            .from(tableName)
+                            .update(dbPayload)
+                            .eq('id', id)
+                            .select();
+                        if (error) {
+                            console.error('[updateInventoryItem] DB Update Error:', error);
+                        } else {
+                            console.log('[updateInventoryItem] DB Update Success. Rows:', data?.length, 'Data:', data);
+                        }
                     }
 
                     // Update Entity Media if uploaded
@@ -1615,7 +1627,9 @@ export const useDataStore = create<DataState>()(
                         // Categories
                         categories,
                         // Fixed Assets
-                        fixedAssets
+                        fixedAssets,
+                        // Recipes (for BOQ)
+                        recipesRaw, recipeIngredientsRaw
                     ] = await Promise.all([
                         safePull('contacts', companyId),
                         safePull('invoices', companyId),
@@ -1639,6 +1653,9 @@ export const useDataStore = create<DataState>()(
                         safePull('ingredient_stock_batches', companyId),
                         safePull('categories', companyId), // Correct Table Name
                         safePull('assets', companyId), // Fetch Fixed Assets
+                        // BOQ: Recipes
+                        safePull('recipes', companyId),
+                        safePull('recipe_ingredients', undefined), // No org filter - joins through recipes
                     ]); // End Promise.all
 
                     // Separate fetch for Department Matrix to keep things clean
@@ -1810,9 +1827,29 @@ export const useDataStore = create<DataState>()(
                             lastUpdated: new Date().toISOString()
                         }));
 
+                    // 3. Process Recipes for BOQ
+                    const processedRecipes: Recipe[] = (recipesRaw || []).map((r: any) => ({
+                        id: r.id,
+                        name: r.name,
+                        category: r.category || 'General',
+                        portions: [r.basePortions || r.base_portions || 100],
+                        ingredients: (recipeIngredientsRaw || [])
+                            .filter((ri: any) => ri.recipeId === r.id || ri.recipe_id === r.id)
+                            .map((ri: any) => ({
+                                name: ri.ingredientName || ri.ingredient_name,
+                                qtyPerPortion: ri.qtyPerPortion || ri.qty_per_portion || 0,
+                                unit: ri.unit || 'unit',
+                                priceSourceQuery: ri.priceSourceQuery || ri.price_source_query || ''
+                            }))
+                    }));
+
+                    console.log('[Hydration] Recipes loaded:', processedRecipes.length);
+
+
                     set({
                         inventory: combinedInventory,
                         ingredients: processedIngredients,
+                        recipes: processedRecipes,
                         contacts: contacts || [],
                         invoices: invoices || [],
                         cateringEvents: cateringEvents || [],

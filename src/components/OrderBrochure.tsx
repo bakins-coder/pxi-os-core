@@ -121,7 +121,6 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             "Hot Plates": "Hot Plates",
             "Dessert": "Desserts",
             "Desserts": "Desserts",
-            "Dessert": "Desserts",
             "Main": "Hot Plates",
             "Mains": "Hot Plates",
             "Swallow": "Nigerian Cuisine",
