@@ -53,6 +53,7 @@ interface DataState {
     addInventoryItem: (item: Partial<InventoryItem>) => void;
     updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
     addRequisition: (req: Partial<Requisition>) => void;
+    updateRequisition: (id: string, updates: Partial<Requisition>) => void;
     approveRequisition: (id: string) => void;
     receiveFoodStock: (ingId: string, qty: number, cost: number) => void;
     issueRental: (eventId: string, itemId: string, qty: number, vendor?: string) => void;
@@ -389,11 +390,21 @@ export const useDataStore = create<DataState>()(
                 const user = useAuthStore.getState().user;
                 set((state) => ({
                     requisitions: [{ ...req, id: req.id || `req-${Date.now()}`, companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
-                }))
+                }));
+                get().syncWithCloud();
             },
-            approveRequisition: (id) => set((state) => ({
-                requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
-            })),
+            updateRequisition: (id, updates) => {
+                set((state) => ({
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, ...updates } : r)
+                }));
+                get().syncWithCloud();
+            },
+            approveRequisition: (id) => {
+                set((state) => ({
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
+                }));
+                get().syncWithCloud();
+            },
             receiveFoodStock: async (ingId, qty, cost) => {
                 const user = useAuthStore.getState().user;
                 if (!user?.companyId) return;
