@@ -67,14 +67,11 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
    const createProcurementInvoice = useDataStore(state => state.createProcurementInvoice);
 
    const handleFinalizePlan = async () => {
-      // 1. Authorize Requisitions
-      requisitions.forEach(r => addRequisition({ ...r, referenceId: event.id }));
+      // 1. Submit Requisitions as Pending
+      requisitions.forEach(r => addRequisition({ ...r, referenceId: event.id, status: 'Pending' }));
 
-      // 2. Generate Procurement (Purchase) Invoice
-      const invoice = await createProcurementInvoice(event.id, requisitions);
-
-      // 3. Notify UI
-      onFinalize(invoice);
+      // 2. Notify UI (No Invoice yet)
+      alert("Requisitions submitted for Finance Approval.");
       onClose();
    };
 
@@ -155,7 +152,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                      <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: ₦{(event.financials.revenueCents / 100).toLocaleString()}</p>
                      <div className="flex gap-4">
                         <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400">Abort</button>
-                        <button onClick={handleFinalizePlan} className="px-12 py-5 bg-[#00ff9d] text-slate-950 rounded-[2rem] font-black uppercase text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3">Authorize Procurement <ArrowRight size={18} /></button>
+                        <button onClick={handleFinalizePlan} className="px-12 py-5 bg-[#00ff9d] text-slate-950 rounded-[2rem] font-black uppercase text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3">Submit for Finance Approval <ArrowRight size={18} /></button>
                      </div>
                   </div>
                </div>
@@ -320,6 +317,19 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
       }
    };
 
+   const requisitions = useDataStore(state => state.requisitions);
+   const createProcurementInvoice = useDataStore(state => state.createProcurementInvoice);
+
+   const eventRequisitions = requisitions.filter(r => r.referenceId === event.id);
+   const procurementStatus = eventRequisitions.length === 0 ? 'None'
+      : eventRequisitions.every(r => r.status === 'Approved') ? 'Approved'
+         : 'Pending';
+
+   const handleGeneratePO = async () => {
+      await createProcurementInvoice(event.id, eventRequisitions);
+      alert("Purchase Order Generated. Event moved to Execution.");
+   };
+
    return (
       <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-12">
          <div className="flex justify-between items-start">
@@ -423,9 +433,19 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
                </div>
             </div>
             <div className="flex gap-4">
-               {event.currentPhase === 'Procurement' && (
+               {event.currentPhase === 'Procurement' && procurementStatus === 'None' && (
                   <button onClick={() => window.dispatchEvent(new CustomEvent('open-procurement'))} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
                      <Truck size={18} /> Plan Fulfillment Execution
+                  </button>
+               )}
+               {event.currentPhase === 'Procurement' && procurementStatus === 'Pending' && (
+                  <div className="flex items-center gap-3 px-8 py-4 bg-amber-50 text-amber-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-amber-100">
+                     <Clock size={18} className="animate-pulse" /> Awaiting Finance Approval
+                  </div>
+               )}
+               {event.currentPhase === 'Procurement' && procurementStatus === 'Approved' && (
+                  <button onClick={handleGeneratePO} className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                     <CheckCircle2 size={18} /> Generate Purchase Order
                   </button>
                )}
                {event.currentPhase === 'Execution' && (
