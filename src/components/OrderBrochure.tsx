@@ -91,11 +91,12 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     }, [selected]);
 
     const isPortionLocked = useMemo(() => {
-        return mandatoryLockCategories.every(cat => {
-            const total = categoryTotals[cat] || 0;
-            return total > 0;
-        });
-    }, [categoryTotals]);
+        // Relaxed Logic: Check if TOTAL portions from ANY category meet the guest count
+        // This allows users to create Dessert-only or Starter-only events.
+        const totalPortions = Object.values(categoryTotals).reduce((sum, count) => sum + count, 0);
+
+        return totalPortions >= guestCount;
+    }, [categoryTotals, guestCount]);
 
     const projections = useMemo(() => {
         const costings = (Object.entries(selected) as [string, number][])
@@ -195,7 +196,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
         try {
             if (initialEvent) {
-                updateCateringOrder(initialEvent.id, {
+                await updateCateringOrder(initialEvent.id, {
                     customerName,
                     eventDate,
                     guestCount,

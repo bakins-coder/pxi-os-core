@@ -762,7 +762,11 @@ export const Catering = () => {
                      setShowBrochure(false);
                      setAmendEvent(null);
                   }}
-                  onFinalize={handleFinalizePush}
+                  onFinalize={(inv) => {
+                     setShowBrochure(false);
+                     setAmendEvent(null);
+                     handleFinalizePush(inv);
+                  }}
                />
             </div>
          )}
