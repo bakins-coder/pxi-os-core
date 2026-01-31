@@ -18,8 +18,8 @@ interface AuthState {
 
 // Mock users for now, mirroring the initial logic
 const MOCK_USERS: User[] = [
-    { id: 'sys-admin-1', name: 'Xquisite Admin', email: 'toxsyyb@yahoo.co.uk', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Xquisite', companyId: 'org-xquisite' },
-    { id: 'sys-admin-ore', name: 'Ore Braithwaite', email: 'oreoluwatomiwab@gmail.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=OreBraithwaite', companyId: 'org-xquisite' },
+    { id: 'sys-admin-1', name: 'Xquisite Admin', email: 'toxsyyb@yahoo.co.uk', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Xquisite', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6' },
+    { id: 'sys-admin-ore', name: 'Ore Braithwaite', email: 'oreoluwatomiwab@gmail.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=OreBraithwaite', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6' },
     { id: 'super-admin-root', name: 'Platform Architect', email: 'root@paradigm-xi.com', role: Role.SUPER_ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Architect', companyId: 'platform-global' }
 ];
 
@@ -147,7 +147,7 @@ export const useAuthStore = create<AuthState>()(
                     email: data.user.email || '',
                     name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || 'User',
                     role: targetRole,
-                    companyId: targetOrgId || 'org-xquisite', // Fallback to ensure not undefined
+                    companyId: targetOrgId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback to ensure not undefined
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
                     isSuperAdmin: profile?.is_super_admin || false,
                     permissionTags
@@ -214,7 +214,7 @@ export const useAuthStore = create<AuthState>()(
                         id: user.id,
                         email: user.email || '',
                         role: safeRole,
-                        companyId: metadata.company_id || 'org-xquisite',
+                        companyId: metadata.company_id || '10959119-72e4-4e57-ba54-923e36bba6a6',
                         name: metadata.name || 'User',
                         avatar: metadata.avatar || '',
                         permissionTags: isKnownAdmin ? ['*'] : [], // Only admins get wildcard if profile fails

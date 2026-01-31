@@ -55,7 +55,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   // Tables that use 'organization_id' instead of 'company_id'
   const useOrgId = [
     'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
-    'employees', 'catering_events', 'projects', 'leave_requests', 'categories',
+    'employees', 'catering_events', 'leave_requests', 'categories',
     'rental_stock', 'ingredient_stock_batches', 'performance_reviews'
   ].includes(tableName);
 
@@ -69,20 +69,25 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   }).map(item => {
     const newItem = { ...item };
 
+    const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
+
     if (useOrgId) {
       // Map camelCase companyId if present
       if ('companyId' in newItem) {
+        if (newItem.companyId === 'org-xquisite') newItem.companyId = VALID_UUID;
         newItem.organization_id = newItem.companyId;
         delete newItem.companyId;
       }
       // Safety: If company_id (snake_case) is present, move it to organization_id or just ensure it's removed
       if ('company_id' in newItem) {
+        if (newItem.company_id === 'org-xquisite') newItem.company_id = VALID_UUID;
         if (!newItem.organization_id) newItem.organization_id = newItem.company_id;
         delete newItem.company_id;
       }
     } else {
       // Standard tables: ensure company_id is set from companyId
       if ('companyId' in newItem) {
+        if (newItem.companyId === 'org-xquisite') newItem.companyId = VALID_UUID;
         newItem.company_id = newItem.companyId;
         delete newItem.companyId;
       }
@@ -118,16 +123,65 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('totalCents' in newItem) { newItem.total_cents = newItem.totalCents; delete newItem.totalCents; }
     if ('paidAmountCents' in newItem) { newItem.paid_amount_cents = newItem.paidAmountCents; delete newItem.paidAmountCents; }
     if ('unitPriceCents' in newItem) { newItem.unit_price_cents = newItem.unitPriceCents; delete newItem.unitPriceCents; }
+    if ('dueDate' in newItem) { newItem.due_date = newItem.dueDate; delete newItem.dueDate; }
 
+    // Project Mappings
+    if ('budgetCents' in newItem) { newItem.budget_cents = newItem.budgetCents; delete newItem.budgetCents; }
+    if ('clientContactId' in newItem) { newItem.client_contact_id = newItem.clientContactId; delete newItem.clientContactId; }
+    if ('referenceId' in newItem) { newItem.reference_id = newItem.referenceId; delete newItem.referenceId; }
+    if ('aiAlerts' in newItem) { newItem.ai_alerts = newItem.aiAlerts; delete newItem.aiAlerts; }
+    if ('startDate' in newItem) { newItem.start_date = newItem.startDate; delete newItem.startDate; }
+
+    // Task Mappings
+    if ('projectId' in newItem) { newItem.project_id = newItem.projectId; delete newItem.projectId; }
+    if ('assigneeId' in newItem) { newItem.assignee_id = newItem.assigneeId; delete newItem.assigneeId; }
+    if ('assigneeRole' in newItem) { newItem.assignee_role = newItem.assigneeRole; delete newItem.assigneeRole; }
+    if ('createdDate' in newItem) { newItem.created_at = newItem.createdDate; delete newItem.createdDate; }
+
+    // Contact/General Mappings
+    if ('sentimentScore' in newItem) { newItem.sentiment_score = newItem.sentimentScore; delete newItem.sentimentScore; }
     // Employee Reverse Mappings
-    if ('firstName' in newItem) { newItem.first_name = newItem.firstName; delete newItem.firstName; }
-    if ('lastName' in newItem) { newItem.last_name = newItem.lastName; delete newItem.lastName; }
     if ('phoneNumber' in newItem) { newItem.phone_number = newItem.phoneNumber; delete newItem.phoneNumber; }
     if ('salaryCents' in newItem) { newItem.salary_cents = newItem.salaryCents; delete newItem.salaryCents; }
     if ('healthNotes' in newItem) { newItem.health_notes = newItem.healthNotes; delete newItem.healthNotes; }
-    if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.date_of_employment; }
+    if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.dateOfEmployment; }
 
-    // Image Mapping (General)
+    // Name Mapping Logic
+    // Name Mapping Logic
+    // Name Mapping Logic
+    if ('firstName' in newItem || 'lastName' in newItem) {
+      if (tableName === 'contacts') {
+        // Contacts table only has 'name'
+        if (!newItem.name) {
+          const f = newItem.firstName || '';
+          const l = newItem.lastName || '';
+          newItem.name = `${f} ${l}`.trim();
+        }
+      } else if (tableName === 'employees') {
+        // Employees use snake_case
+        if (newItem.firstName) newItem.first_name = newItem.firstName;
+        if (newItem.lastName) newItem.last_name = newItem.lastName;
+      }
+
+      // ALWAYS delete the camelCase versions to prevent DB errors
+      delete newItem.firstName;
+      delete newItem.lastName;
+    }
+
+    // Catering Event Mappings
+    if ('customerName' in newItem) { newItem.customer_name = newItem.customerName; delete newItem.customerName; }
+    if ('eventDate' in newItem) { newItem.event_date = newItem.eventDate; delete newItem.eventDate; }
+    if ('endDate' in newItem) { newItem.end_date = newItem.endDate; delete newItem.endDate; }
+    if ('guestCount' in newItem) { newItem.guest_count = newItem.guestCount; delete newItem.guestCount; }
+    if ('currentPhase' in newItem) { newItem.current_phase = newItem.currentPhase; delete newItem.currentPhase; }
+    if ('readinessScore' in newItem) { newItem.readiness_score = newItem.readinessScore; delete newItem.readinessScore; }
+    if ('banquetDetails' in newItem) { newItem.banquet_details = newItem.banquetDetails; delete newItem.banquetDetails; }
+    if ('hardwareChecklist' in newItem) { newItem.hardware_checklist = newItem.hardwareChecklist; delete newItem.hardwareChecklist; }
+    if ('reconciliationStatus' in newItem) { newItem.reconciliation_status = newItem.reconciliationStatus; delete newItem.reconciliationStatus; }
+    if ('costingSheet' in newItem) { newItem.costing_sheet = newItem.costingSheet; delete newItem.costingSheet; }
+
+    if ('portionMonitor' in newItem) { newItem.portion_monitor = newItem.portionMonitor; delete newItem.portionMonitor; }
+
     // Image Mapping (General)
     if ('image' in newItem) {
       // If it is NOT a URL (e.g. base64), remove it so we don't spam the DB text column.
@@ -159,7 +213,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   // Tables that use 'organization_id' instead of 'company_id'
   const useOrgId = [
     'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
-    'employees', 'catering_events', 'projects', 'job_roles', 'departments',
+    'employees', 'catering_events', 'job_roles', 'departments',
     'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches',
     'performance_reviews'
   ].includes(tableName);
@@ -228,6 +282,19 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
     if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }
     if ('unit_price_cents' in newItem) { newItem.unitPriceCents = newItem.unit_price_cents; delete newItem.unit_price_cents; }
+
+    // Catering Event Mappings
+    if ('customer_name' in newItem) { newItem.customerName = newItem.customer_name; delete newItem.customer_name; }
+    if ('event_date' in newItem) { newItem.eventDate = newItem.event_date; delete newItem.event_date; }
+    if ('end_date' in newItem) { newItem.endDate = newItem.end_date; delete newItem.end_date; }
+    if ('guest_count' in newItem) { newItem.guestCount = newItem.guest_count; delete newItem.guest_count; }
+    if ('current_phase' in newItem) { newItem.currentPhase = newItem.current_phase; delete newItem.current_phase; }
+    if ('readiness_score' in newItem) { newItem.readinessScore = newItem.readiness_score; delete newItem.readiness_score; }
+    if ('banquet_details' in newItem) { newItem.banquetDetails = newItem.banquet_details; delete newItem.banquet_details; }
+    if ('hardware_checklist' in newItem) { newItem.hardwareChecklist = newItem.hardware_checklist; delete newItem.hardware_checklist; }
+    if ('reconciliation_status' in newItem) { newItem.reconciliationStatus = newItem.reconciliation_status; delete newItem.reconciliation_status; }
+    if ('costing_sheet' in newItem) { newItem.costingSheet = newItem.costing_sheet; delete newItem.costing_sheet; }
+    if ('portion_monitor' in newItem) { newItem.portionMonitor = newItem.portion_monitor; delete newItem.portion_monitor; }
 
     // Image Mapping (General)
     if ('image_url' in newItem) { newItem.imageUrl = newItem.image_url; delete newItem.image_url; }

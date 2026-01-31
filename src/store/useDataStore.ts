@@ -1265,13 +1265,39 @@ export const useDataStore = create<DataState>()(
             }),
 
             createCateringOrder: async (d) => {
-                const evId = `ev-${Date.now()}`;
-                const invoiceId = `inv-${Date.now()}`;
+                // [CRITICAL] Ensure Contact exists in state before proceeding
+                const state = get();
+                let validContactId = d.contactId;
+
+                const existingContact = state.contacts.find(c => c.id === validContactId);
+                if (!existingContact && d.customerName) {
+                    console.log(`[createCateringOrder] Contact ${validContactId} not found in state. Creating now...`);
+                    // If no ID was provided, generate one
+                    if (!validContactId) validContactId = crypto.randomUUID();
+
+                    const newContact: Contact = {
+                        id: validContactId,
+                        companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        name: d.customerName,
+                        email: d.banquetDetails?.contactEmail || '',
+                        phone: d.banquetDetails?.contactPhone || '',
+                        type: 'Individual',
+                        category: 'Customer',
+                        contactPerson: d.banquetDetails?.contactPerson || d.customerName,
+                        sentimentScore: 0.5,
+                    };
+
+                    // Synchronously update state so the subsequent syncWithCloud picks it up
+                    set(prev => ({ contacts: [newContact, ...prev.contacts] }));
+                }
+
+                const evId = crypto.randomUUID();
+                const invoiceId = crypto.randomUUID();
                 const totalRev = d.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0 as number);
 
                 const event: CateringEvent = {
                     id: evId,
-                    companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                     customerName: d.customerName,
                     eventDate: d.eventDate,
                     guestCount: d.guestCount,
@@ -1294,7 +1320,7 @@ export const useDataStore = create<DataState>()(
                 const invoice: Invoice = {
                     id: invoiceId,
                     number: `SALES-${Date.now()}`,
-                    companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                     contactId: d.contactId,
                     date: new Date().toISOString().split('T')[0],
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
@@ -1317,43 +1343,43 @@ export const useDataStore = create<DataState>()(
 
                 const taskList: Task[] = [
                     {
-                        id: `task-proc-${Date.now()}`, companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Procurement & Requisitions',
                         description: 'Generate and approve requisitions for all deal items.',
                         dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'High', status: 'Todo'
                     },
                     {
-                        id: `task-prep-${Date.now()}`, companyId: 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Mise en Place (Food Prep)',
                         description: 'Initial ingredient preparation and marination.',
                         dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
                     },
                     {
-                        id: `task-cook-${Date.now()}`, companyId: 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Live Cooking / Final Production',
                         description: 'CRITICAL: Main cooking execution on event day.',
                         dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
                     },
                     {
-                        id: `task-asset-out-${Date.now()}`, companyId: 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Asset Checkout & Loading',
                         description: 'Checkout hardware, cutlery, and equipment from store.',
                         dueDate: d.eventDate, priority: 'High', status: 'Todo'
                     },
                     {
-                        id: `task-setup-${Date.now()}`, companyId: 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Event Setup',
                         description: 'Setup service points, tables, and chaffing dishes.',
                         dueDate: d.eventDate, priority: 'High', status: 'Todo'
                     },
                     {
-                        id: `task-service-${Date.now()}`, companyId: 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Service Delivery',
                         description: 'Execute food service and guest management.',
                         dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
                     },
                     {
-                        id: `task-asset-in-${Date.now()}`, companyId: 'org-xquisite',
+                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Asset Return & Reconciliation',
                         description: 'Return all assets to store and log breakages/losses.',
                         dueDate: oneDayAfter.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
@@ -1364,7 +1390,7 @@ export const useDataStore = create<DataState>()(
                 // Mock logic: If guest count > 50, assume vehicle hire needed
                 if (d.guestCount > 50) {
                     taskList.push({
-                        id: `task-veh-${Date.now()}`, companyId: 'org-xquisite',
+                        id: `task-veh-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                         title: 'Vehicle Hire & Logistics',
                         description: 'Coordinate transport for team and equipment.',
                         dueDate: d.eventDate, priority: 'Medium', status: 'Todo'
@@ -1376,13 +1402,13 @@ export const useDataStore = create<DataState>()(
                 if (hasRentals) {
                     taskList.push(
                         {
-                            id: `task-rent-out-${Date.now()}`, companyId: 'org-xquisite',
+                            id: `task-rent-out-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                             title: 'Rental Pickup',
                             description: 'Collect rental items from vendors.',
                             dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
                         },
                         {
-                            id: `task-rent-in-${Date.now()}`, companyId: 'org-xquisite',
+                            id: `task-rent-in-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                             title: 'Rental Return',
                             description: 'Return items to vendors (Clean/Dirty as agreed).',
                             dueDate: oneDayAfter.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
@@ -1391,9 +1417,9 @@ export const useDataStore = create<DataState>()(
                 }
 
                 const project: Project = {
-                    id: `proj-${Date.now()}`,
-                    companyId: useAuthStore.getState().user?.companyId || 'org-xquisite',
-                    name: `${evId.toUpperCase()} - ${d.customerName} - Event Project`,
+                    id: crypto.randomUUID(),
+                    companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    name: `Event: ${d.customerName} (${d.eventDate})`,
                     clientContactId: d.contactId || '',
                     status: 'Planning',
                     startDate: d.eventDate,
@@ -1406,7 +1432,7 @@ export const useDataStore = create<DataState>()(
                 };
 
                 const calendarEntry = {
-                    id: `cal-${Date.now()}`,
+                    id: crypto.randomUUID(),
                     title: `Catering: ${d.customerName} (${d.guestCount} guests)`,
                     start: d.eventDate,
                     type: 'Catering',
@@ -1420,46 +1446,59 @@ export const useDataStore = create<DataState>()(
                     projects: [project, ...state.projects]
                 }));
 
-                get().syncWithCloud();
+                try {
+                    await get().syncWithCloud();
+                } catch (err: any) {
+                    console.error("FATAL: Sync Failed during Event Creation", err);
+                    alert(`Sync Failed: ${err.message}`);
+                }
                 return { event, invoice };
             },
 
-            updateCateringOrder: (eventId: string, updates: any) => set((state) => {
-                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
-                if (eventIndex === -1) return state;
+            updateCateringOrder: async (eventId: string, updates: any) => {
+                set((state) => {
+                    const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                    if (eventIndex === -1) return state;
 
-                const updatedEvents = [...state.cateringEvents];
-                const oldEvent = updatedEvents[eventIndex];
-                const newEvent = { ...oldEvent, ...updates };
-                updatedEvents[eventIndex] = newEvent;
+                    const updatedEvents = [...state.cateringEvents];
+                    const oldEvent = updatedEvents[eventIndex];
+                    const newEvent = { ...oldEvent, ...updates };
+                    updatedEvents[eventIndex] = newEvent;
 
-                // Update associated invoice if items changed
-                let updatedInvoices = state.invoices;
-                if (updates.items && newEvent.financials?.invoiceId) {
-                    const totalRev = updates.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0);
-                    updatedInvoices = state.invoices.map(inv => {
-                        if (inv.id === newEvent.financials.invoiceId) {
-                            return {
-                                ...inv,
-                                totalCents: totalRev,
-                                lines: updates.items.map((it: any, idx: number) => ({
-                                    id: `line-${idx}`,
-                                    description: it.name,
-                                    quantity: it.quantity,
-                                    unitPriceCents: it.priceCents
-                                }))
-                            };
-                        }
-                        return inv;
-                    });
+                    // Update associated invoice if items changed
+                    let updatedInvoices = state.invoices;
+                    if (updates.items && newEvent.financials?.invoiceId) {
+                        const totalRev = updates.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0);
+                        updatedInvoices = state.invoices.map(inv => {
+                            if (inv.id === newEvent.financials.invoiceId) {
+                                return {
+                                    ...inv,
+                                    totalCents: totalRev,
+                                    lines: updates.items.map((it: any, idx: number) => ({
+                                        id: `line-${idx}`,
+                                        description: it.name,
+                                        quantity: it.quantity,
+                                        unitPriceCents: it.priceCents
+                                    }))
+                                };
+                            }
+                            return inv;
+                        });
+                    }
+
+                    return {
+                        ...state,
+                        cateringEvents: updatedEvents,
+                        invoices: updatedInvoices
+                    };
+                });
+                try {
+                    await get().syncWithCloud();
+                } catch (e) {
+                    console.error("FATAL: Sync Failed during Event Update", e);
+                    alert("Update saved locally but Cloud Sync Failed.");
                 }
-
-                return {
-                    ...state,
-                    cateringEvents: updatedEvents,
-                    invoices: updatedInvoices
-                };
-            }),
+            },
 
             createProcurementInvoice: async (eventId, reqs) => {
                 const user = useAuthStore.getState().user;
@@ -1467,7 +1506,7 @@ export const useDataStore = create<DataState>()(
                 const invoice: Invoice = {
                     id: `pinv-${Date.now()}`,
                     number: `PURCH-${Date.now()}`,
-                    companyId: user?.companyId || 'org-xquisite', // Fallback only if no user (shouldn't happen)
+                    companyId: user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback only if no user (shouldn't happen)
                     date: new Date().toISOString().split('T')[0],
                     dueDate: new Date().toISOString().split('T')[0],
                     status: InvoiceStatus.UNPAID,
@@ -1552,25 +1591,35 @@ export const useDataStore = create<DataState>()(
 
                 set({ isSyncing: true, syncStatus: 'Syncing', lastSyncError: null });
 
+                const safeSync = async (table: string, data: any[]) => {
+                    try {
+                        await syncTableToCloud(table, data);
+                    } catch (e: any) {
+                        // Enhance error message to include table name
+                        throw new Error(`Table '${table}': ${e.message}`);
+                    }
+                };
+
                 try {
                     await Promise.all([
-                        // syncTableToCloud('inventory', state.inventory), // DISABLED: Inventory is now split
-                        syncTableToCloud('contacts', state.contacts),
-                        syncTableToCloud('invoices', state.invoices),
-                        syncTableToCloud('catering_events', state.cateringEvents),
-                        syncTableToCloud('projects', state.projects),
-                        syncTableToCloud('bookkeeping', state.bookkeeping),
-                        syncTableToCloud('tasks', state.tasks),
-                        syncTableToCloud('employees', state.employees),
-                        syncTableToCloud('requisitions', state.requisitions),
-                        syncTableToCloud('chart_of_accounts', state.chartOfAccounts),
-                        syncTableToCloud('bank_transactions', state.bankTransactions)
+                        // syncTableToCloud('inventory', state.inventory), // DISABLED
+                        safeSync('contacts', state.contacts),
+                        safeSync('invoices', state.invoices),
+                        safeSync('catering_events', state.cateringEvents),
+                        safeSync('projects', state.projects),
+                        safeSync('bookkeeping', state.bookkeeping),
+                        safeSync('tasks', state.tasks),
+                        safeSync('employees', state.employees),
+                        safeSync('requisitions', state.requisitions),
+                        safeSync('chart_of_accounts', state.chartOfAccounts),
+                        safeSync('bank_transactions', state.bankTransactions)
                     ]);
                     set({ isSyncing: false, syncStatus: 'Synced' });
                 } catch (e) {
                     const errorMsg = (e as Error).message;
                     set({ isSyncing: false, syncStatus: 'Error', lastSyncError: errorMsg });
                     console.error('Cloud Sync Failed:', e);
+                    throw e;
                 }
             },
 
