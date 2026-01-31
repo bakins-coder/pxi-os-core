@@ -322,7 +322,7 @@ export const ChatWidget = () => {
                 role: payload.role || 'Employee',
                 salaryCents: 0,
                 status: EmployeeStatus.ACTIVE,
-                companyId: 'org-xquisite',
+                companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                 dob: payload.dob || new Date().toISOString(),
                 gender: payload.gender as any || 'Male',
                 dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
@@ -474,7 +474,7 @@ export const ChatWidget = () => {
                 role: payload.role || 'Employee',
                 salaryCents: 0,
                 status: EmployeeStatus.ACTIVE,
-                companyId: 'org-xquisite',
+                companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                 dob: payload.dob || new Date().toISOString(),
                 gender: payload.gender as any || 'Male',
                 dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
@@ -501,7 +501,7 @@ export const ChatWidget = () => {
               category: payload.category || 'General',
               type: 'raw_material',
               priceCents: 0,
-              companyId: 'org-xquisite',
+              companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
               id: `inv-voice-${Date.now()}`
             });
             replyText = `✅ Voice Action: Added ${payload.quantity} ${payload.itemName} to inventory.`;

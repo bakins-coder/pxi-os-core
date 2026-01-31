@@ -191,7 +191,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 
          // Update store with new findings
          Object.entries(groundedPriceMap).forEach(([ingName, price]) => {
-            const ing = ingredients.find(i => i.name.toLowerCase() === ingName.toLowerCase());
+            const ing = ingredients.find(i => i.name.toLowerCase().trim() === ingName.toLowerCase().trim());
             if (ing) {
                updateIngredientPrice(ing.id, price, {
                   marketPriceCents: price,

@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { CustomerEventsModal } from './CustomerEventsModal';
+import { Customer360Modal } from './Customer360Modal';
+import { LayoutPanelLeft } from 'lucide-react';
 
 const AddContactModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose: () => void, onAdd: (c: Partial<Contact>) => void }) => {
    const [segment, setSegment] = useState<'Individual' | 'Company'>('Individual');
@@ -152,6 +154,7 @@ export const CRM = () => {
    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
    const [selectedContactForStatement, setSelectedContactForStatement] = useState<Contact | null>(null);
    const [selectedContactForEvents, setSelectedContactForEvents] = useState<Contact | null>(null);
+   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
    const { contacts, deals, tasks, addContact, addContactsBulk, deleteContact } = useDataStore();
@@ -251,8 +254,10 @@ export const CRM = () => {
                         <tbody className="divide-y divide-slate-50">
                            {contacts.map(con => (
                               <tr key={con.id} className="hover:bg-indigo-50/20 transition-all">
-                                 <td className="px-8 py-6">
-                                    <p className="uppercase font-black text-xs text-slate-800">{con.name}</p>
+                                 <td className="px-8 py-6 cursor-pointer group/name" onClick={() => setSelectedContactId(con.id)}>
+                                    <p className="uppercase font-black text-xs text-slate-800 group-hover/name:text-indigo-600 transition-colors flex items-center gap-2">
+                                       {con.name} <LayoutPanelLeft size={14} className="opacity-0 group-hover/name:opacity-100" />
+                                    </p>
                                     <p className="text-[10px] text-slate-400 font-bold">{con.email}</p>
                                  </td>
                                  <td className="px-8 py-6">
@@ -271,7 +276,8 @@ export const CRM = () => {
                                     </div>
                                  </td>
                                  <td className="px-8 py-6 text-right flex justify-end gap-2">
-                                    <button onClick={() => setSelectedContactForStatement(con)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all" title="View Statement"><FileText size={16} /></button>
+                                    <button onClick={() => setSelectedContactId(con.id)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all" title="360 View"><LayoutPanelLeft size={16} /></button>
+                                    <button onClick={() => setSelectedContactForStatement(con)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View Statement"><FileText size={16} /></button>
                                     <button onClick={() => setSelectedContactForEvents(con)} className="p-2.5 bg-sky-50 text-sky-600 rounded-xl hover:bg-sky-600 hover:text-white transition-all" title="Event History"><CalendarDays size={16} /></button>
                                     <button onClick={() => deleteContact(con.id)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16} /></button>
                                  </td>
@@ -309,6 +315,13 @@ export const CRM = () => {
             <CustomerEventsModal
                contact={selectedContactForEvents}
                onClose={() => setSelectedContactForEvents(null)}
+            />
+         )}
+
+         {selectedContactId && (
+            <Customer360Modal
+               contactId={selectedContactId}
+               onClose={() => setSelectedContactId(null)}
             />
          )}
       </div>
