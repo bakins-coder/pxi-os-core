@@ -90,6 +90,8 @@ export interface RecipeIngredient {
   qtyPerPortion: number;
   unit: string;
   priceSourceQuery: string;
+  scaling_tiers?: Record<string, number>;
+  subRecipeGroup?: string; // e.g. "Jollof Rice", "Special Fried Rice"
 }
 
 export interface Recipe {
@@ -133,6 +135,8 @@ export interface ItemCosting {
     unit: string;
     unitCostCents: number;
     totalCostCents: number;
+    scalingTierUsed?: string;
+    subRecipeGroup?: string;
   }[];
 }
 
@@ -250,6 +254,17 @@ export interface InventoryItem {
   rentalVendor?: string;
 }
 
+
+export interface InteractionLog {
+  id: string;
+  contactId: string;
+  type: 'Call' | 'Email' | 'Meeting' | 'Note';
+  summary: string;
+  content: string;
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface InventoryViewItem {
   organization_id: string;
   item_id: string;
@@ -277,6 +292,22 @@ export interface MovementParams {
 export type CustomerType = 'Individual' | 'Corporate';
 export type ContactCategory = 'Customer' | 'Supplier' | 'Bank_Partner' | 'Vendor' | 'Employee';
 
+export interface InteractionLog {
+  id: string;
+  contactId: string;
+  type: 'Call' | 'Email' | 'Meeting' | 'Note' | 'Other';
+  summary: string;
+  content?: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface DocumentLink {
+  name: string;
+  url: string;
+  date: string;
+}
+
 export interface Contact {
   id: string;
   name: string;
@@ -293,6 +324,8 @@ export interface Contact {
   contactPerson?: string;
   address?: string;
   jobTitle?: string;
+  preferences?: Record<string, any>;
+  documentLinks?: DocumentLink[];
 }
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
 export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; }

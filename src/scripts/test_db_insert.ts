@@ -40,7 +40,7 @@ async function testInsert() {
 
     const payload = {
         id: testId,
-        organization_id: 'org-xquisite', // Existing seed org
+        organization_id: '10959119-72e4-4e57-ba54-923e36bba6a6', // Existing seed org
         first_name: 'Test',
         last_name: 'Bot',
         role: 'Tester',

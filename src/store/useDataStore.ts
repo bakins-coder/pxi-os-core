@@ -5,12 +5,14 @@ import {
     BookkeepingEntry, Project, AIAgent, Ingredient, Supplier,
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
-    LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview
+    LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview,
+    RecipeIngredient, InteractionLog
 } from '../types';
 
 import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 import { useSettingsStore } from './useSettingsStore';
+import { calculateItemCosting as utilsCalculateCosting } from '../utils/costing';
 
 interface DataState {
     inventory: InventoryItem[];
@@ -40,6 +42,7 @@ interface DataState {
     socialInteractions: SocialInteraction[];
     agenticLogs: AgenticLog[];
     performanceReviews: PerformanceReview[];
+    interactionLogs: InteractionLog[];
     syncStatus: 'Synced' | 'Syncing' | 'Error' | 'Offline';
     lastSyncError: string | null;
     isSyncing: boolean;
@@ -50,6 +53,7 @@ interface DataState {
     addInventoryItem: (item: Partial<InventoryItem>) => void;
     updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
     addRequisition: (req: Partial<Requisition>) => void;
+    updateRequisition: (id: string, updates: Partial<Requisition>) => void;
     approveRequisition: (id: string) => void;
     receiveFoodStock: (ingId: string, qty: number, cost: number) => void;
     issueRental: (eventId: string, itemId: string, qty: number, vendor?: string) => void;
@@ -57,7 +61,9 @@ interface DataState {
     checkOverdueAssets: () => void;
     addContact: (contact: Partial<Contact>) => void;
     addContactsBulk: (contacts: Partial<Contact>[]) => void;
+    updateContact: (id: string, updates: Partial<Contact>) => void;
     deleteContact: (id: string) => void;
+    addInteractionLog: (log: Partial<InteractionLog>) => void;
     addInvoice: (invoice: Invoice) => void;
     updateInvoiceStatus: (id: string, status: any) => void;
     addBookkeepingEntry: (entry: BookkeepingEntry) => void;
@@ -86,6 +92,11 @@ interface DataState {
     addAIAgent: (agent: Partial<AIAgent>) => void;
     addWorkflow: (wf: Partial<Workflow>) => void;
     addProject: (proj: Partial<Project>) => void;
+    addRecipe: (recipe: Partial<Recipe>) => void;
+    updateRecipe: (id: string, updates: Partial<Recipe>) => void;
+    deleteRecipe: (id: string) => void;
+    addRecipeIngredient: (recipeId: string, ingredient: RecipeIngredient) => void;
+    deleteRecipeIngredient: (recipeId: string, ingredientName: string) => void;
 
     // Catering Actions
     createCateringOrder: (data: any) => Promise<{ event: CateringEvent, invoice: Invoice }>;
@@ -140,6 +151,7 @@ export const useDataStore = create<DataState>()(
             socialInteractions: [],
             agenticLogs: [],
             performanceReviews: [],
+            interactionLogs: [],
             syncStatus: 'Synced',
             lastSyncError: null,
             isSyncing: false,
@@ -154,6 +166,7 @@ export const useDataStore = create<DataState>()(
                     tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [], chartOfAccounts: [],
                     bankTransactions: [], bankStatementLines: [], leaveRequests: [], calendarEvents: [],
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
+                    interactionLogs: [],
                     syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected'
                 });
             },
@@ -377,11 +390,21 @@ export const useDataStore = create<DataState>()(
                 const user = useAuthStore.getState().user;
                 set((state) => ({
                     requisitions: [{ ...req, id: req.id || `req-${Date.now()}`, companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
-                }))
+                }));
+                get().syncWithCloud();
             },
-            approveRequisition: (id) => set((state) => ({
-                requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
-            })),
+            updateRequisition: (id, updates) => {
+                set((state) => ({
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, ...updates } : r)
+                }));
+                get().syncWithCloud();
+            },
+            approveRequisition: (id) => {
+                set((state) => ({
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
+                }));
+                get().syncWithCloud();
+            },
             receiveFoodStock: async (ingId, qty, cost) => {
                 const user = useAuthStore.getState().user;
                 if (!user?.companyId) return;
@@ -625,7 +648,9 @@ export const useDataStore = create<DataState>()(
                 const newContact = {
                     ...contact,
                     id: contactId,
-                    companyId: user?.companyId || contact.companyId || 'org-xquisite'
+                    companyId: user?.companyId || contact.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    preferences: {},
+                    documentLinks: []
                 } as Contact;
 
                 set((state) => ({
@@ -637,30 +662,93 @@ export const useDataStore = create<DataState>()(
                     try {
                         const payload = {
                             id: contactId,
-                            company_id: user.companyId,
+                            organization_id: user.companyId,
                             name: contact.name,
                             email: contact.email,
                             phone: contact.phone,
                             address: contact.address,
                             type: contact.type || 'Individual',
-                            customer_type: (contact as any).customerType || 'Individual'
+                            customer_type: (contact as any).customerType || 'Individual',
+                            preferences: {},
+                            document_links: []
                         };
 
                         const { error } = await supabase.from('contacts').upsert(payload);
                         if (error) {
                             console.error("Failed to persist contact:", error);
-                            alert(`Customer Save Failed: ${error.message}`);
                         }
                     } catch (e: any) {
                         console.error("Contact Persistence Error:", e);
-                        alert(`Customer Persistence Error: ${e.message || e}`);
                     }
                 }
+            },
+            updateContact: async (id, updates) => {
+                const user = useAuthStore.getState().user;
+                if (!user?.companyId) return;
 
-                get().syncWithCloud();
+                set((state) => ({
+                    contacts: state.contacts.map(c => c.id === id ? { ...c, ...updates } : c)
+                }));
+
+                if (supabase) {
+                    try {
+                        const contact = get().contacts.find(c => c.id === id);
+                        if (contact) {
+                            const payload = {
+                                id: contact.id,
+                                organization_id: user.companyId,
+                                name: contact.name,
+                                email: contact.email,
+                                phone: contact.phone,
+                                address: contact.address,
+                                type: contact.type,
+                                customer_type: contact.customerType,
+                                preferences: contact.preferences,
+                                document_links: contact.documentLinks
+                            };
+                            await supabase.from('contacts').upsert(payload);
+                        }
+                    } catch (e) {
+                        console.error("Update Contact Error:", e);
+                    }
+                }
+            },
+            addInteractionLog: async (log) => {
+                const user = useAuthStore.getState().user;
+                if (!user?.companyId) return;
+
+                const logId = log.id || `log-${Date.now()}`;
+                const newLog = {
+                    ...log,
+                    id: logId,
+                    createdAt: new Date().toISOString(),
+                    createdBy: user.id
+                } as unknown as InteractionLog;
+
+                set((state) => ({
+                    interactionLogs: [newLog, ...state.interactionLogs]
+                }));
+
+                if (supabase) {
+                    try {
+                        const payload = {
+                            id: logId,
+                            contact_id: log.contactId,
+                            type: log.type,
+                            summary: log.summary,
+                            content: log.content,
+                            created_at: newLog.createdAt,
+                            created_by: user.id,
+                            organization_id: user.companyId
+                        };
+                        await supabase.from('interaction_logs').upsert(payload);
+                    } catch (e) {
+                        console.error("Add Interaction Log Error:", e);
+                    }
+                }
             },
             addContactsBulk: (contacts) => set((state) => ({
-                contacts: [...contacts.map(c => ({ ...c, id: c.id || `c-${Math.random()}`, companyId: c.companyId || 'org-xquisite' }) as Contact), ...state.contacts]
+                contacts: [...contacts.map(c => ({ ...c, id: c.id || `c-${Math.random()}`, companyId: c.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' }) as Contact), ...state.contacts]
             })),
             deleteContact: (id) => set((state) => ({
                 contacts: state.contacts.filter(c => c.id !== id)
@@ -979,7 +1067,7 @@ export const useDataStore = create<DataState>()(
             },
 
             addMeetingTask: (t) => {
-                const newTask = { ...t, id: `task-${Date.now()}`, companyId: 'org-xquisite', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
+                const newTask = { ...t, id: `task-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
                 set((state) => ({ tasks: [newTask, ...state.tasks] }));
                 get().syncWithCloud();
             },
@@ -988,7 +1076,7 @@ export const useDataStore = create<DataState>()(
                 const newProject = {
                     ...proj,
                     id: proj.id || `proj-${Date.now()}`,
-                    companyId: useAuthStore.getState().user?.companyId || proj.companyId || 'org-xquisite',
+                    companyId: useAuthStore.getState().user?.companyId || proj.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                     status: proj.status || 'Planning',
                     progress: 0,
                     tasks: [],
@@ -1002,7 +1090,7 @@ export const useDataStore = create<DataState>()(
                 const newIng = {
                     ...ing,
                     id: ing.id || `ing-${Date.now()}`,
-                    companyId: 'org-xquisite',
+                    companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
                     lastUpdated: new Date().toISOString(),
                     stockLevel: ing.stockLevel || 0,
                     currentCostCents: ing.currentCostCents || 0
@@ -1091,13 +1179,13 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
             addMarketingPost: (p) => {
-                const post = { ...p, id: `mp-${Date.now()}`, companyId: 'org-xquisite', generatedByAI: p.generatedByAI || false } as MarketingPost;
+                const post = { ...p, id: `mp-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', generatedByAI: p.generatedByAI || false } as MarketingPost;
                 set((state) => ({ marketingPosts: [post, ...state.marketingPosts] }));
                 get().syncWithCloud();
                 return post;
             },
             addAIAgent: (a) => {
-                const agent = { ...a, id: `a-${Date.now()}`, companyId: 'org-xquisite', status: 'Deployed' } as AIAgent;
+                const agent = { ...a, id: `a-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', status: 'Deployed' } as AIAgent;
                 set((state) => ({ aiAgents: [agent, ...state.aiAgents] }));
                 get().syncWithCloud();
             },
@@ -1539,41 +1627,29 @@ export const useDataStore = create<DataState>()(
                 });
             },
 
+            addRecipe: (recipe) => set((state) => ({
+                recipes: [{ id: `rec-${Date.now()}`, name: '', category: '', portions: [], ingredients: [], ...recipe } as Recipe, ...state.recipes]
+            })),
+
+            updateRecipe: (id, updates) => set((state) => ({
+                recipes: state.recipes.map((r) => r.id === id ? { ...r, ...updates } : r)
+            })),
+
+            deleteRecipe: (id) => set((state) => ({
+                recipes: state.recipes.filter((r) => r.id !== id)
+            })),
+
+            addRecipeIngredient: (recipeId, ingredient) => set((state) => ({
+                recipes: state.recipes.map((r) => r.id === recipeId ? { ...r, ingredients: [...r.ingredients, ingredient] } : r)
+            })),
+
+            deleteRecipeIngredient: (recipeId, ingredientName) => set((state) => ({
+                recipes: state.recipes.map((r) => r.id === recipeId ? { ...r, ingredients: r.ingredients.filter(i => i.name !== ingredientName) } : r)
+            })),
+
             calculateItemCosting: (id: string, qty: number) => {
                 const state = get();
-                const item = state.inventory.find(i => i.id === id);
-                if (!item) return null;
-                let totalCost = 0;
-                const recipe = state.recipes.find(r => r.id === item.recipeId);
-
-                const breakdown = recipe ? recipe.ingredients.map((ri: any) => {
-                    const ing = state.ingredients.find(i => i.name === ri.name);
-                    const unitCost = (ing?.marketPriceCents) ? ing.marketPriceCents : (ing?.currentCostCents || 50000);
-                    const subTotal = ri.qtyPerPortion * qty * unitCost;
-                    totalCost += subTotal;
-                    return {
-                        name: ri.name,
-                        qtyRequired: ri.qtyPerPortion * qty,
-                        unit: ri.unit,
-                        unitCostCents: unitCost,
-                        totalCostCents: subTotal,
-                        isGrounded: !!ing?.marketPriceCents
-                    };
-                }) : [];
-
-                const revenue = item.priceCents * qty;
-                const grossMarginCents = revenue - totalCost;
-                const grossMarginPercentage = revenue > 0 ? (grossMarginCents / revenue) * 100 : 0;
-
-                return {
-                    inventoryItemId: id,
-                    name: item.name,
-                    totalIngredientCostCents: totalCost,
-                    revenueCents: revenue,
-                    grossMarginCents,
-                    grossMarginPercentage,
-                    ingredientBreakdown: breakdown
-                };
+                return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
             },
 
             approveInvoice: (id: string) => set((state) => ({
@@ -1643,7 +1719,7 @@ export const useDataStore = create<DataState>()(
                         });
                     }
 
-                    const tables = ['contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions', 'leave_requests'];
+                    const tables = ['contacts', 'invoices', 'catering_events', 'tasks', 'employees_api', 'requisitions', 'chart_of_accounts', 'bank_transactions', 'leave_requests', 'interaction_logs'];
 
                     // Safe Pull Helper: Prevents one table failure from crashing the entire app
                     const safePull = async (table: string, cid?: string) => {
@@ -1667,7 +1743,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews,
+                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs,
                         // Inventory Base Tables
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
@@ -1690,6 +1766,7 @@ export const useDataStore = create<DataState>()(
                         safePull('bank_transactions', companyId),
                         safePull('leave_requests', companyId),
                         safePull('performance_reviews', companyId),
+                        safePull('interaction_logs', companyId),
 
 
                         safePull('reusable_items', companyId),
@@ -1732,6 +1809,7 @@ export const useDataStore = create<DataState>()(
                             set({ departmentMatrix: constructedMatrix });
                         }
                     }
+                    if (interactionLogs) set({ interactionLogs });
                     const combinedInventory: InventoryItem[] = [];
 
                     // 1. Process Split Inventory Data
@@ -1781,7 +1859,8 @@ export const useDataStore = create<DataState>()(
                                 stockQuantity: stockCount,
                                 priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
                                 image: img,
-                                unit: unit
+                                unit: unit,
+                                recipeId: item.recipeId || item.recipe_id
                             });
                         });
                     }
@@ -1815,7 +1894,8 @@ export const useDataStore = create<DataState>()(
                                 category: cat ? cat.name : (item.category || 'Finished Goods'),
                                 stockQuantity: item.stockQuantity || 100000,
                                 priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
-                                image: item.imageUrl || item.image || item.image_url
+                                image: item.imageUrl || item.image || item.image_url,
+                                recipeId: item.recipeId || item.recipe_id  // Map recipe_id for BOQ
                             };
                         }));
                     }
@@ -1837,7 +1917,8 @@ export const useDataStore = create<DataState>()(
                                 category: cat ? cat.name : (item.category || 'Rental'),
                                 stockQuantity: stockCount,
                                 priceCents: typeof (item.replacementCostCents || item.priceCents) === 'string' ? parseInt(item.replacementCostCents || item.priceCents) : (item.replacementCostCents || item.priceCents || 0),
-                                image: item.imageUrl || item.image || item.image_url
+                                image: item.imageUrl || item.image || item.image_url,
+                                recipeId: item.recipeId || item.recipe_id
                             });
                         });
                     }
@@ -1859,7 +1940,8 @@ export const useDataStore = create<DataState>()(
                                 category: cat ? cat.name : (item.category || 'Ingredient'),
                                 stockQuantity: stockCount,
                                 priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
-                                image: item.imageUrl || item.image || item.image_url
+                                image: item.imageUrl || item.image || item.image_url,
+                                recipeId: item.recipeId || item.recipe_id
                             });
                         });
                     }
@@ -1888,7 +1970,9 @@ export const useDataStore = create<DataState>()(
                                 name: ri.ingredientName || ri.ingredient_name,
                                 qtyPerPortion: ri.qtyPerPortion || ri.qty_per_portion || 0,
                                 unit: ri.unit || 'unit',
-                                priceSourceQuery: ri.priceSourceQuery || ri.price_source_query || ''
+                                priceSourceQuery: ri.priceSourceQuery || ri.price_source_query || '',
+                                scaling_tiers: ri.scalingTiers || ri.scaling_tiers || {},
+                                subRecipeGroup: ri.subRecipeGroup || ri.sub_recipe_group || ''
                             }))
                     }));
 

@@ -43,7 +43,7 @@ export const ITPortal = () => {
             email: newStaff.email,
             role: newStaff.role,
             status: EmployeeStatus.ACTIVE,
-            companyId: user?.companyId || 'org-xquisite' // Fallback for safety
+            companyId: user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' // Fallback for safety
         });
         setIsAddingStaff(false);
         setNewStaff({ firstName: '', lastName: '', email: '', role: 'Employee' });

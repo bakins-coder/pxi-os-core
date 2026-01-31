@@ -215,7 +215,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
     'employees', 'catering_events', 'job_roles', 'departments',
     'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches',
-    'performance_reviews'
+    'performance_reviews', 'recipes'
   ].includes(tableName);
 
   let query = supabase.from(tableName).select('*');
@@ -253,6 +253,13 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('rental_vendor' in newItem) { newItem.rentalVendor = newItem.rental_vendor; delete newItem.rental_vendor; }
     if ('category_id' in newItem) { newItem.categoryId = newItem.category_id; delete newItem.category_id; }
     if ('product_category_id' in newItem) { newItem.productCategoryId = newItem.product_category_id; delete newItem.product_category_id; }
+
+    // Recipe Mappings
+    if ('base_portions' in newItem) { newItem.basePortions = newItem.base_portions; delete newItem.base_portions; }
+    if ('ingredient_name' in newItem) { newItem.ingredientName = newItem.ingredient_name; delete newItem.ingredient_name; }
+    if ('qty_per_portion' in newItem) { newItem.qtyPerPortion = newItem.qty_per_portion; delete newItem.qty_per_portion; }
+    if ('price_source_query' in newItem) { newItem.priceSourceQuery = newItem.price_source_query; delete newItem.price_source_query; }
+    if ('sub_recipe_group' in newItem) { newItem.subRecipeGroup = newItem.sub_recipe_group; delete newItem.sub_recipe_group; }
 
     // Contact Mappings
     if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }

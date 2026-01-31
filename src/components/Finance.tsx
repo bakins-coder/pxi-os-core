@@ -456,6 +456,91 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
    );
 };
 
+const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolean, onClose: () => void, requisition: any | null }) => {
+   const [qty, setQty] = useState(requisition?.quantity || 0);
+   const [price, setPrice] = useState(requisition?.pricePerUnitCents ? requisition.pricePerUnitCents / 100 : 0);
+   const [isMaximized, setIsMaximized] = useState(false);
+   const { updateRequisition, approveRequisition } = useDataStore();
+
+   useEffect(() => {
+      if (requisition) {
+         setQty(requisition.quantity);
+         setPrice(requisition.pricePerUnitCents / 100);
+      }
+   }, [requisition]);
+
+   if (!isOpen || !requisition) return null;
+
+   const handleSave = () => {
+      const totalAmountCents = Math.round(qty * price * 100);
+      updateRequisition(requisition.id, {
+         quantity: qty,
+         pricePerUnitCents: Math.round(price * 100),
+         totalAmountCents
+      });
+      onClose();
+   };
+
+   const handleApprove = () => {
+      const totalAmountCents = Math.round(qty * price * 100);
+      updateRequisition(requisition.id, {
+         quantity: qty,
+         pricePerUnitCents: Math.round(price * 100),
+         totalAmountCents
+      });
+      approveRequisition(requisition.id);
+      onClose();
+   };
+
+   return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className={`bg-white shadow-2xl w-full border border-slate-200 flex flex-col transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[3.5rem] max-h-[90vh]'}`}>
+            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <div>
+                  <h2 className="text-xl font-black text-slate-900 uppercase leading-none">Modify Request</h2>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-2">{requisition.itemName}</p>
+               </div>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
+            </div>
+            <div className="p-10 space-y-8 overflow-y-auto">
+               <div className="p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100/50">
+                  <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1 text-center">Current Total Valuation</p>
+                  <p className="text-4xl font-black text-indigo-600 text-center tracking-tighter">₦{(qty * price).toLocaleString()}</p>
+               </div>
+
+               <div className="space-y-6">
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Quantity Required</label>
+                     <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                        <button onClick={() => setQty(Math.max(0, qty - 1))} className="w-12 h-12 bg-white rounded-xl shadow-sm hover:text-rose-500 transition-all flex items-center justify-center font-black">-</button>
+                        <input type="number" className="flex-1 bg-transparent text-center text-2xl font-black text-slate-900 outline-none" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+                        <button onClick={() => setQty(qty + 1)} className="w-12 h-12 bg-white rounded-xl shadow-sm hover:text-emerald-500 transition-all flex items-center justify-center font-black">+</button>
+                     </div>
+                  </div>
+
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Unit Cost Rate (₦)</label>
+                     <div className="relative">
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-lg">₦</span>
+                        <input type="number" className="w-full p-5 pl-12 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-2xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} />
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={handleSave} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-500 hover:bg-slate-100 rounded-2xl transition-all">Save Changes</button>
+               <button onClick={handleApprove} className="flex-2 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-200 hover:scale-105 active:scale-95 transition-all">Approve & Log</button>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 export const Finance = () => {
    const [activeTab, setActiveTab] = useState<'collections' | 'bookkeeping' | 'requisitions' | 'ledger' | 'reports' | 'advisor' | 'reconcile' | 'watchdog'>('collections');
 
@@ -470,6 +555,7 @@ export const Finance = () => {
    const currentUser = useAuthStore(state => state.user);
 
    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+   const [selectedReqForEdit, setSelectedReqForEdit] = useState<any | null>(null);
    const [selectedContactForStatement, setSelectedContactForStatement] = useState<Contact | null>(null);
    const [paymentAmount, setPaymentAmount] = useState<string>('');
    const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -679,7 +765,41 @@ export const Finance = () => {
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                      <div className="p-8 border-b border-slate-50 flex justify-between items-center"><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Active Requisitions</h3><button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest">Global Filter</button></div>
-                     <div className="p-8 space-y-6">{requisitions.map(req => (<div key={req.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:border-indigo-200 transition-all"><div className="flex items-center gap-5"><div className={`w-12 h-12 rounded-xl flex items-center justify-center ${req.type === 'Purchase' ? 'bg-indigo-50 text-indigo-600' : req.type === 'Hiring' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{req.type === 'Purchase' ? <ShoppingBag size={20} /> : req.type === 'Hiring' ? <Users size={20} /> : <Clock size={20} />}</div><div><p className="font-black text-slate-800 uppercase text-xs">{req.itemName}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{req.category} • Qty: {req.quantity} {req.notes ? `(${req.notes})` : ''}</p></div></div><div className="flex items-center gap-6"><div className="text-right"><p className="font-black text-slate-900">₦{(req.totalAmountCents / 100).toLocaleString()}</p><span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{req.status}</span></div>{req.status === 'Pending' && (<button onClick={() => handleApproveReq(req.id)} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all"><Check size={18} strokeWidth={3} /></button>)}</div></div>))}</div>
+                     <div className="p-8 space-y-6">
+                        {requisitions.map(req => (
+                           <div
+                              key={req.id}
+                              onClick={() => { if (req.status === 'Pending') setSelectedReqForEdit(req); }}
+                              className={`p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group transition-all ${req.status === 'Pending' ? 'hover:border-indigo-400 hover:bg-white cursor-pointer hover:shadow-xl hover:scale-[1.01]' : ''}`}
+                           >
+                              <div className="flex items-center gap-5">
+                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${req.type === 'Purchase' ? 'bg-indigo-50 text-indigo-600' : req.type === 'Hiring' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                    {req.type === 'Purchase' ? <ShoppingBag size={20} /> : req.type === 'Hiring' ? <Users size={20} /> : <Clock size={20} />}
+                                 </div>
+                                 <div>
+                                    <p className="font-black text-slate-800 uppercase text-xs">{req.itemName}</p>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{req.category} • Qty: {req.quantity} {req.notes ? `(${req.notes})` : ''}</p>
+                                 </div>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                 <div className="text-right">
+                                    <p className="font-black text-slate-900">₦{(req.totalAmountCents / 100).toLocaleString()}</p>
+                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                       {req.status}
+                                    </span>
+                                 </div>
+                                 {req.status === 'Pending' && (
+                                    <button
+                                       onClick={(e) => { e.stopPropagation(); handleApproveReq(req.id); }}
+                                       className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all"
+                                    >
+                                       <Check size={18} strokeWidth={3} />
+                                    </button>
+                                 )}
+                              </div>
+                           </div>
+                        ))}
+                     </div>
                   </div>
                   <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden h-fit"><div className="absolute top-0 right-0 w-32 h-32 bg-[#ff6b6b]/10 rounded-full blur-2xl"></div><h3 className="text-[10px] font-black text-[#ff6b6b] uppercase tracking-[0.3em] mb-8">Internal Budget Guard</h3><div className="space-y-6"><div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pending Authorization</p><p className="text-3xl font-black text-white">₦{(requisitions.filter(r => r.status === 'Pending').reduce((s, r) => s + r.totalAmountCents, 0) / 100).toLocaleString()}</p></div><div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Approved Fulfillment</p><p className="text-3xl font-black text-emerald-400">₦{(requisitions.filter(r => r.status === 'Approved').reduce((s, r) => s + r.totalAmountCents, 0) / 100).toLocaleString()}</p></div></div></div>
                </div>
@@ -751,6 +871,7 @@ export const Finance = () => {
          )}
 
          <ManualEntryModal isOpen={isEntryModalOpen} onClose={() => setIsEntryModalOpen(false)} onAdd={handleAddBookkeeping} />
+         <RequisitionEditModal isOpen={!!selectedReqForEdit} onClose={() => setSelectedReqForEdit(null)} requisition={selectedReqForEdit} />
 
          {selectedInvoice && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in zoom-in" onClick={() => setSelectedInvoice(null)}>

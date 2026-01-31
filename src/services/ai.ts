@@ -395,7 +395,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
                         type: SchemaType.OBJECT,
                         properties: {
                             response: { type: SchemaType.STRING },
-                            intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY'] } as any,
+                            intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'] } as any,
                             payload: {
                                 type: SchemaType.OBJECT,
                                 properties: {
@@ -416,6 +416,17 @@ export async function processAgentRequest(input: string, context: string, mode: 
                                     itemName: { type: SchemaType.STRING },
                                     quantity: { type: SchemaType.NUMBER },
                                     category: { type: SchemaType.STRING },
+
+                                    // CRM / Event Fields
+                                    name: { type: SchemaType.STRING },
+                                    customerName: { type: SchemaType.STRING },
+                                    date: { type: SchemaType.STRING },
+                                    guestCount: { type: SchemaType.NUMBER },
+                                    location: { type: SchemaType.STRING },
+                                    eventType: { type: SchemaType.STRING },
+                                    budget: { type: SchemaType.STRING },
+                                    clientContactId: { type: SchemaType.STRING },
+
                                     // Common/Other
                                     unit: { type: SchemaType.STRING }
                                 }

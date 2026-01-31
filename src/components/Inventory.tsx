@@ -9,7 +9,7 @@ import { calculateItemCosting } from '../utils/costing';
 import {
    Package, Plus, RefreshCw, Layers, TrendingUp, Utensils,
    Zap, X, Trash2, Edit3, BookOpen, Info, Truck, Hammer, AlertTriangle, History, Clock, Box, Search, Check, Image as ImageIcon, Sparkles, Loader2,
-   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2, Upload
+   CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2, Upload, Coffee
 } from 'lucide-react';
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
@@ -17,15 +17,65 @@ import { parseInventoryList } from '../services/ocrService';
 const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: InventoryItem, portions: number, onClose: () => void, onPortionChange: (val: number) => void }) => {
    const [isGrounding, setIsGrounding] = useState(false);
    const [costing, setCosting] = useState<ItemCosting | null>(null);
+   const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({});
    const [isMaximized, setIsMaximized] = useState(false);
-   const { inventory, recipes, ingredients, updateIngredientPrice } = useDataStore();
+   const [showAddIngredient, setShowAddIngredient] = useState<string | null>(null); // group name or 'unassigned'
+   const [newIng, setNewIng] = useState({ name: '', qty: 0, unit: 'kg', group: '' });
+
+   const { inventory, recipes, ingredients, updateIngredientPrice, deleteRecipeIngredient, addRecipeIngredient, updateRecipe } = useDataStore();
+
+   const matchedRecipe = recipes.find(r => r.id === item.recipeId);
 
    const refreshCosting = () => {
-      const data = calculateItemCosting(item.id, portions, inventory, recipes, ingredients);
+      const data = calculateItemCosting(item.id, portions, inventory, recipes, ingredients, qtyOverrides);
       setCosting(data);
    };
 
-   useEffect(() => { refreshCosting(); }, [item, portions, inventory, recipes, ingredients]);
+   useEffect(() => { refreshCosting(); }, [item, portions, inventory, recipes, ingredients, qtyOverrides]);
+
+   const handleQtyOverride = (name: string, value: string) => {
+      const val = parseFloat(value);
+      if (isNaN(val)) return;
+      setQtyOverrides(prev => ({ ...prev, [name]: val }));
+   };
+
+   // Grouping Logic
+   const groupedBreakdown = useMemo(() => {
+      if (!costing) return {};
+      const groups: Record<string, any[]> = {};
+      costing.ingredientBreakdown.forEach(ing => {
+         const groupName = ing.subRecipeGroup || 'Main Recipe';
+         if (!groups[groupName]) groups[groupName] = [];
+         groups[groupName].push(ing);
+      });
+      return groups;
+   }, [costing]);
+
+   const aggregates = useMemo(() => {
+      if (!costing) return [];
+      const agg: Record<string, { name: string, qty: number, unit: string, cost: number }> = {};
+      costing.ingredientBreakdown.forEach(ing => {
+         if (!agg[ing.name]) {
+            agg[ing.name] = { name: ing.name, qty: 0, unit: ing.unit, cost: 0 };
+         }
+         agg[ing.name].qty += ing.qtyRequired;
+         agg[ing.name].cost += ing.totalCostCents;
+      });
+      return Object.values(agg);
+   }, [costing]);
+
+   const addIngredientToRecipe = (group: string) => {
+      if (!matchedRecipe || !newIng.name) return;
+      addRecipeIngredient(matchedRecipe.id, {
+         name: newIng.name,
+         qtyPerPortion: newIng.qty,
+         unit: newIng.unit,
+         subRecipeGroup: group === 'Main Recipe' ? '' : group,
+         priceSourceQuery: ''
+      });
+      setNewIng({ name: '', qty: 0, unit: 'kg', group: '' });
+      setShowAddIngredient(null);
+   };
 
    const handleGroundPrices = async () => {
       const recipe = recipes.find(r => r.id === item.recipeId);
@@ -68,98 +118,217 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                      <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
-            </div>
-            <div className="flex gap-2">
-               <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
-                  {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-               </button>
-               <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
-            </div>
-         </div>
 
-         <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-thin">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-4">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Portion Multiplier</label>
-                  <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200">
-                     <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={18} /></button>
-                     <input
-                        type="number"
-                        className="flex-1 bg-transparent text-center text-3xl font-black text-slate-900 outline-none"
-                        value={portions}
-                        onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
-                     />
-                     <button onClick={() => onPortionChange(portions + 50)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={18} /></button>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
+               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-thin">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Portion Multiplier</label>
+                     <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200">
+                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={18} /></button>
+                        <input
+                           type="number"
+                           className="flex-1 bg-transparent text-center text-3xl font-black text-slate-900 outline-none"
+                           value={portions}
+                           onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
+                        />
+                        <button onClick={() => onPortionChange(portions + 50)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={18} /></button>
+                     </div>
+                  </div>
+                  <div className="flex items-end">
+                     <button
+                        onClick={handleGroundPrices}
+                        disabled={isGrounding}
+                        className={`w-full py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
+                     >
+                        {isGrounding ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
+                        {isGrounding ? 'Grounding Neural Data...' : 'Ground Market Prices via AI'}
+                     </button>
                   </div>
                </div>
-               <div className="flex items-end">
-                  <button
-                     onClick={handleGroundPrices}
-                     disabled={isGrounding}
-                     className={`w-full py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
-                  >
-                     {isGrounding ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
-                     {isGrounding ? 'Grounding Neural Data...' : 'Ground Market Prices via AI'}
-                  </button>
-               </div>
-            </div>
 
-            <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-               <table className="w-full text-left text-[11px]">
-                  <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
-                     <tr>
-                        <th className="px-8 py-5">Ingredient Component</th>
-                        <th className="px-8 py-5 text-center">Std. Portion</th>
-                        <th className="px-8 py-5">Net Requirement</th>
-                        <th className="px-8 py-5 text-right">Unit Rate</th>
-                        <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-indigo-50">
-                     {costing?.ingredientBreakdown.map((ing: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
-                           <td className="px-8 py-5">
-                              <div className="flex items-center gap-2">
-                                 <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
-                                 {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
-                              </div>
-                           </td>
-                           <td className="px-8 py-5 text-center font-mono text-slate-400 text-[10px]">{ing.qtyPerPortion} {ing.unit}</td>
-                           <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
-                           <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+               <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
+                  <table className="w-full text-left text-[11px]">
+                     <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
+                        <tr>
+                           <th className="px-8 py-5">Ingredient Component</th>
+                           <th className="px-8 py-5 text-center">MD Scaling Standard</th>
+                           <th className="px-8 py-5 text-center">Net Requirement (MD Tier)</th>
+                           <th className="px-8 py-5 text-right">Unit Rate</th>
+                           <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
                         </tr>
-                     ))}
-                     <tr className="bg-slate-50 border-t-2 border-slate-100">
-                        <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
-                        <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
-                     </tr>
-                  </tbody>
-               </table>
+                     </thead>
+                     <tbody className="divide-y divide-indigo-50">
+                        {Object.entries(groupedBreakdown).map(([groupName, ings]) => (
+                           <React.Fragment key={groupName}>
+                              <tr className="bg-slate-50/50">
+                                 <td colSpan={5} className="px-8 py-3">
+                                    <div className="flex justify-between items-center">
+                                       <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{groupName}</span>
+                                       <button
+                                          onClick={() => setShowAddIngredient(groupName)}
+                                          className="text-[9px] font-black text-indigo-600 uppercase hover:text-indigo-800 flex items-center gap-1"
+                                       >
+                                          <Plus size={10} /> Add to Group
+                                       </button>
+                                    </div>
+                                 </td>
+                              </tr>
+                              {ings.map((ing: any, idx: number) => (
+                                 <tr key={`${groupName}-${idx}`} className={`hover:bg-indigo-50/30 transition-all ${ing.hasError ? 'bg-rose-50/50' : ''}`}>
+                                    <td className="px-8 py-5">
+                                       <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                             <span className={`font-black uppercase text-xs ${ing.hasError ? 'text-rose-600' : 'text-slate-800'}`}>{ing.name}</span>
+                                             {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                                             {ing.hasError && (
+                                                <div className="flex items-center gap-1 text-[8px] font-black text-rose-500 uppercase tracking-tighter bg-rose-100 px-2 py-0.5 rounded-full">
+                                                   <AlertTriangle size={8} /> {ing.errorDetail}
+                                                </div>
+                                             )}
+                                          </div>
+                                          <button
+                                             onClick={() => matchedRecipe && deleteRecipeIngredient(matchedRecipe.id, ing.name)}
+                                             className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-rose-500 transition-all"
+                                          >
+                                             <Trash2 size={12} />
+                                          </button>
+                                       </div>
+                                    </td>
+                                    <td className="px-8 py-5 text-center font-mono">
+                                       <div className="flex items-center justify-center gap-2">
+                                          <input
+                                             type="number"
+                                             step="0.0001"
+                                             className="w-24 bg-indigo-50/50 border-2 border-indigo-100 rounded-xl text-center font-black text-indigo-600 outline-none focus:border-indigo-400 focus:bg-white transition-all text-[11px] py-1.5 shadow-inner"
+                                             value={ing.qtyPerPortion}
+                                             onChange={(e) => handleQtyOverride(ing.name, e.target.value)}
+                                          />
+                                          <span className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{ing.unit}</span>
+                                       </div>
+                                    </td>
+                                    <td className="px-8 py-5 font-bold text-slate-500 text-xs text-center">{ing.qtyRequired.toFixed(3)} {ing.unit}</td>
+                                    <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                    <td className="px-8 py-5 text-right font-black text-slate-1000 text-sm">
+                                       <span className={ing.hasError ? 'text-rose-600' : 'text-slate-900'}>
+                                          ₦{(ing.totalCostCents / 100).toLocaleString()}
+                                       </span>
+                                    </td>
+                                 </tr>
+                              ))}
+                              {showAddIngredient === groupName && (
+                                 <tr className="bg-indigo-50/20">
+                                    <td className="px-8 py-4">
+                                       <input
+                                          placeholder="Ingredient Name..."
+                                          className="w-full bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
+                                          value={newIng.name}
+                                          onChange={e => setNewIng({ ...newIng, name: e.target.value })}
+                                       />
+                                    </td>
+                                    <td className="px-8 py-4">
+                                       <div className="flex gap-2">
+                                          <input
+                                             type="number"
+                                             placeholder="Qty..."
+                                             className="w-20 bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
+                                             value={newIng.qty}
+                                             onChange={e => setNewIng({ ...newIng, qty: parseFloat(e.target.value) || 0 })}
+                                          />
+                                          <select
+                                             className="bg-white border border-indigo-100 rounded-lg p-2 text-[10px] font-bold"
+                                             value={newIng.unit}
+                                             onChange={e => setNewIng({ ...newIng, unit: e.target.value })}
+                                          >
+                                             <option>kg</option><option>g</option><option>litre</option><option>ml</option><option>pcs</option>
+                                          </select>
+                                       </div>
+                                    </td>
+                                    <td colSpan={3} className="px-8 py-4 text-right">
+                                       <div className="flex justify-end gap-2">
+                                          <button onClick={() => setShowAddIngredient(null)} className="px-3 py-1.5 text-[9px] font-black uppercase text-slate-400">Cancel</button>
+                                          <button onClick={() => addIngredientToRecipe(groupName)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg">Confirm Add</button>
+                                       </div>
+                                    </td>
+                                 </tr>
+                              )}
+                           </React.Fragment>
+                        ))}
+                        {costing?.ingredientBreakdown.some((ing: any) => ing.hasError) && (
+                           <tr className="bg-rose-500 text-white">
+                              <td colSpan={5} className="px-8 py-3 text-[9px] font-black uppercase tracking-widest text-center">
+                                 ⚠️ Warning: Some costs are estimated or involve data quality issues.
+                              </td>
+                           </tr>
+                        )}
+                        <tr className="bg-slate-50 border-t-2 border-slate-100">
+                           <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
+                           <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
+                        </tr>
+                     </tbody>
+                  </table>
+               </div>
+
+               <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden">
+                  <div className="px-8 py-4 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
+                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Ingredient Aggregate Summary</span>
+                     <span className="text-[9px] text-slate-500 font-bold">Consolidated Procurement View</span>
+                  </div>
+                  <table className="w-full text-left text-[11px]">
+                     <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest">
+                        <tr>
+                           <th className="px-8 py-4">Total Component</th>
+                           <th className="px-8 py-4 text-center">Combined Guest Need</th>
+                           <th className="px-8 py-4 text-right">Aggregate Cost (₦)</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-800">
+                        {aggregates.map((agg, idx) => (
+                           <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
+                              <td className="px-8 py-4 font-black text-slate-200 uppercase">{agg.name}</td>
+                              <td className="px-8 py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
+                              <td className="px-8 py-4 text-right font-black text-emerald-400">₦{(agg.cost / 100).toLocaleString()}</td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex justify-between items-center">
+                     <div>
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Projected Revenue</p>
+                        <h5 className="text-2xl font-black text-indigo-900">₦{(costing?.revenueCents! / 100).toLocaleString()}</h5>
+                     </div>
+                     <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Gross Margin</p>
+                        <h5 className={`text-2xl font-black ${costing?.grossMarginPercentage! > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                           {costing?.grossMarginPercentage.toFixed(1)}%
+                        </h5>
+                     </div>
+                  </div>
+                  <div className="p-8 bg-slate-950 rounded-[2rem] text-white flex justify-between items-center">
+                     <div>
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Aggregate Cost</p>
+                        <h5 className="text-2xl font-black">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
+                     </div>
+                     <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center"><TrendingUp size={24} className={costing?.grossMarginPercentage! > 50 ? 'text-emerald-400' : 'text-amber-400'} /></div>
+                  </div>
+               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               <div className="p-8 bg-slate-950 rounded-[2rem] text-white">
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Aggregate Cost</p>
-                  <h5 className="text-2xl font-black">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
-               </div>
-               <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100">
-                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Projected Revenue</p>
-                  <h5 className="text-2xl font-black text-indigo-900">₦{(costing?.revenueCents! / 100).toLocaleString()}</h5>
-               </div>
-               <div className="p-8 bg-white border-2 border-slate-100 rounded-[2rem]">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Margin</p>
-                  <h5 className={`text-2xl font-black ${costing?.grossMarginPercentage! > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                     {costing?.grossMarginPercentage.toFixed(1)}%
-                  </h5>
-               </div>
+            <div className="p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
+               <button onClick={onClose} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
             </div>
          </div>
-
-         <div className="p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
-            <button onClick={onClose} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
-         </div>
-      </div>
+      </div >
 
    );
 };
@@ -894,6 +1063,7 @@ export const Inventory = () => {
                      { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering, perm: 'access:inventory_ingredients' },
                      { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true, perm: 'access:inventory_all' }, // Or generic?
                      { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering, perm: 'access:inventory_rentals' },
+                     { id: 'recipes', label: 'Neural Recipes', icon: Coffee, active: isCatering, perm: 'access:inventory_offerings' },
                      { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true, perm: 'access:inventory_reusables' },
                      { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true, perm: 'access:inventory_fixed_assets' },
                      { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true, perm: 'access:inventory_fixtures' }
@@ -992,6 +1162,48 @@ export const Inventory = () => {
 
          {activeTab === 'hardware' && <InventoryCatalog assets={assets} title="Fixed Asset Ledger" subtitle="Capital Equipment & Infrastructure" />}
          {activeTab === 'reusable' && <InventoryCatalog assets={reusableItems} title="Reusable Items Catalog" subtitle="Operational Inventory (Plates, Linens, etc.)" />}
+
+         {activeTab === 'recipes' && (
+            <div className="space-y-8 animate-in slide-in-from-bottom-4">
+               <div className="flex justify-between items-center bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
+                  <div>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Recipe Matrix Hub</h2>
+                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Central sanitation for ingredients and scaling definitions</p>
+                  </div>
+                  <button onClick={() => addRecipe({ name: 'New Recipe' })} className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all">Add New Recipe</button>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {recipes.map(recipe => (
+                     <div key={recipe.id} className="bg-white rounded-[2.5rem] border-2 border-slate-50 shadow-xl overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
+                        <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                           <input
+                              className="bg-transparent text-lg font-black text-slate-800 uppercase outline-none focus:text-indigo-600 w-full"
+                              value={recipe.name}
+                              onChange={e => updateRecipe(recipe.id, { name: e.target.value })}
+                           />
+                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{recipe.ingredients.length} Major Components</p>
+                        </div>
+                        <div className="p-8 flex-1 space-y-4 max-h-64 overflow-y-auto scrollbar-thin">
+                           {recipe.ingredients.map((ing, idx) => (
+                              <div key={idx} className="flex justify-between items-center group">
+                                 <div>
+                                    <p className="text-xs font-black text-slate-700 uppercase">{ing.name}</p>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.qtyPerPortion} {ing.unit} {ing.subRecipeGroup ? `• ${ing.subRecipeGroup}` : ''}</p>
+                                 </div>
+                                 <button onClick={() => deleteRecipeIngredient(recipe.id, ing.name)} className="opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all"><X size={12} /></button>
+                              </div>
+                           ))}
+                        </div>
+                        <div className="p-6 bg-slate-50/50 border-t border-slate-50 mt-auto flex gap-2">
+                           <button onClick={() => deleteRecipe(recipe.id)} className="flex-1 py-3 text-[9px] font-black uppercase text-rose-400 hover:bg-rose-50 rounded-xl transition-all">Delete</button>
+                           <button onClick={() => setSelectedBoQItem(inventory.find(i => i.recipeId === recipe.id) || null)} className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg">View BOQ</button>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            </div>
+         )}
          {activeTab === 'fixtures' && <InventoryCatalog assets={fixtures} title="Fixtures & Fittings" subtitle="Built-in Infrastructure" />}
          <ReceiveStockModal isOpen={isReceiveModalOpen} onClose={() => setIsReceiveModalOpen(false)} ingredients={storeIngredients} />
          <KitchenReleaseModal isOpen={isReleaseModalOpen} onClose={() => setIsReleaseModalOpen(false)} ingredients={storeIngredients} events={events} />
