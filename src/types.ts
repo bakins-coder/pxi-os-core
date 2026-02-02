@@ -206,6 +206,14 @@ export interface CateringEvent {
   portionMonitor?: PortionMonitor;
 }
 
+export interface Seat {
+  id: string;
+  number: number;
+  servingCount: number;
+  status: 'Empty' | 'Occupied';
+  servedItems: { itemId: string; name: string; quantity: number }[];
+}
+
 export interface ServingTable {
   id: string;
   name: string;
@@ -214,6 +222,7 @@ export interface ServingTable {
   status: 'Waiting' | 'Served' | 'Partially Served';
   servedItems: { itemId: string; name: string; quantity: number; servedAt: string }[];
   isLocked: boolean;
+  seats: Seat[];
 }
 
 export interface PortionMonitor {

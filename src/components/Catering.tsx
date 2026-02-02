@@ -6,10 +6,11 @@ import { CateringEvent, InventoryItem, ItemCosting, Invoice, Requisition, Contac
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
-   ArrowDownLeft, ArrowUpRight, ShoppingBag, User, Flame, UtensilsCrossed, Clock, Users, Palette, AlertCircle,
-   ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail
+   ArrowDownLeft, ArrowUpRight, ShoppingBag, User, Flame, UtensilsCrossed, Clock, Users, Palette, AlertCircle, Activity,
+   ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag
 } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
+import { PortionMonitor } from './PortionMonitor';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
@@ -305,15 +306,246 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 
 
 
+const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void }) => {
+   const isPurchase = invoice.type === 'Purchase';
+   const { settings: org } = useSettingsStore();
+   const contacts = useDataStore(state => state.contacts);
+   const contact = contacts.find(c => c.id === invoice.contactId);
+
+   // Helper for currency formatting
+   const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in zoom-in duration-200">
+         <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl flex flex-col h-[90vh] overflow-hidden">
+
+            {/* INVOICE DOCUMENT SCROLLABLE AREA */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-8 md:p-12 relative">
+
+               {/* 1. Header */}
+               <div className="flex justify-between items-start mb-6">
+                  {/* Logo Area */}
+                  <div className="w-64">
+                     {/* Explicitly using the new uploaded branding asset */}
+                     <img src="/xquisite-logo-full.png" alt="Xquisite Celebrations" className="w-full object-contain" />
+                  </div>
+                  {/* Company Name */}
+                  <div className="text-right">
+                     <h2 className="text-sm font-bold text-slate-900">{org.name || 'Xquisite Celebrations Limited'}</h2>
+                  </div>
+               </div>
+
+               {/* Orange Divider */}
+               <div className="h-1 w-full bg-orange-400 mb-10"></div>
+
+               {/* 2. Info Section (Bill To & Invoice Details) */}
+               <div className="flex flex-col md:flex-row justify-between items-start gap-10 mb-12">
+
+                  {/* Bill To */}
+                  <div className="flex-1">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">BILL TO</p>
+                     <div className="space-y-1">
+                        <h3 className="text-xl font-bold text-slate-900">{contact?.name || invoice.contactId || 'Valued Customer'}</h3>
+                        <p className="text-sm text-slate-500">{contact?.email}</p>
+                        <p className="text-sm text-slate-500 max-w-[200px]">{contact?.address || 'Address on file'}</p>
+                     </div>
+                  </div>
+
+                  {/* Invoice Meta */}
+                  <div className="flex-[0.8] flex flex-col items-end">
+                     {/* Orange Invoice Box */}
+                     <div className="border-2 border-orange-400 px-6 py-2 rounded-lg mb-6 transform -rotate-2">
+                        <span className="text-xl md:text-2xl font-black text-orange-500 uppercase tracking-widest text-opacity-80">INVOICE</span>
+                     </div>
+
+                     {/* Details Grid */}
+                     <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-right">
+                        <span className="text-xs font-bold text-slate-500">Invoice Number:</span>
+                        <span className="text-xs font-bold text-slate-900">{invoice.number}</span>
+
+                        <span className="text-xs font-bold text-slate-500">Invoice Date:</span>
+                        <span className="text-xs font-bold text-slate-900">{new Date(invoice.date).toLocaleDateString('en-US')}</span>
+
+                        <span className="text-xs font-bold text-slate-500">Payment Due:</span>
+                        <span className="text-xs font-bold text-slate-900">{new Date(invoice.dueDate).toLocaleDateString('en-US') || 'On Receipt'}</span>
+                     </div>
+                  </div>
+               </div>
+
+               {/* 3. Items Table */}
+               <div className="mb-12">
+                  <div className="grid grid-cols-[3fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
+                     <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-right">PRICE</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-right">AMOUNT</span>
+                  </div>
+
+                  <div className="space-y-4">
+                     {(!invoice.lines || invoice.lines.length === 0) ? (
+                        <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
+                     ) : (
+                        invoice.lines.map((line, idx) => (
+                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr] items-start text-sm">
+                              <span className="text-slate-800 font-medium pr-4">{line.description}</span>
+                              <span className="text-slate-600 text-center">{line.quantity}</span>
+                              <span className="text-slate-600 text-right">{formatCurrency(line.unitPriceCents)}</span>
+                              <span className="text-slate-900 font-bold text-right">{formatCurrency(line.quantity * line.unitPriceCents)}</span>
+                           </div>
+                        ))
+                     )}
+                  </div>
+               </div>
+
+               {/* 4. Payment Information & Terms (Footer) */}
+               <div className="border-t-2 border-orange-400 pt-8 mt-8">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+                     {/* Left Side: Payment Details & Terms */}
+                     <div className="flex-1 space-y-8">
+
+                        {/* Payment Section */}
+                        <div>
+                           <h3 className="font-bold text-slate-900 mb-2">Payment Information</h3>
+                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">XQUISITE CELEBRATIONS LIMITED</span></p>
+
+                           <p className="text-xs font-bold text-slate-900 underline mb-3">Bank Details:</p>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CUISINE</p>
+                                 <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-slate-500">GT Bank</span>
+                                    <span className="text-xs font-bold text-slate-900 font-mono">0210736266</span>
+                                 </div>
+                              </div>
+                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CELEBRATIONS</p>
+                                 <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-slate-500">GT Bank</span>
+                                    <span className="text-xs font-bold text-slate-900 font-mono">0396426845</span>
+                                 </div>
+                              </div>
+                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CELEBRATIONS</p>
+                                 <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-slate-500">Zenith Bank</span>
+                                    <span className="text-xs font-bold text-slate-900 font-mono">1010951007</span>
+                                 </div>
+                              </div>
+                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CUISINE</p>
+                                 <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-slate-500">First Bank</span>
+                                    <span className="text-xs font-bold text-slate-900 font-mono">2022655945</span>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Terms & Disclaimer */}
+                        <div className="space-y-4">
+                           <div>
+                              <h4 className="font-bold text-slate-900 text-xs mb-1">Terms and Conditions:</h4>
+                              <p className="text-[10px] text-slate-500 leading-relaxed">
+                                 Initial deposit of 70% is to be paid before the event and balance payable immediately after the event.
+                                 Cancellation of order will result to only a 70% refund of initial deposit made.
+                              </p>
+                           </div>
+                           <div>
+                              <h4 className="font-bold text-slate-900 text-xs mb-1">Disclaimer:</h4>
+                              <p className="text-[10px] text-slate-500 leading-relaxed">
+                                 In the event of cancellation of order, it should be communicated to our contact person 48 hours before the event. Failure to do so will mean that initial deposit made has been forfeited.
+                              </p>
+                           </div>
+                        </div>
+
+                     </div>
+
+                     {/* Right Side: Totals */}
+                     <div className="w-full md:w-1/3">
+                        <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100">
+                           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</p>
+                           <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-slate-900'}`}>
+                              {formatCurrency(invoice.totalCents)}
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* 5. Orange Footer Brand Message */}
+               <div className="bg-orange-500 py-4 px-8 -mx-8 md:-mx-12 mt-12 mb-[-3rem] md:mb-[-4rem]">
+                  <p className="text-white font-bold italic text-center text-sm md:text-base font-serif">
+                     Bon Apetit. We look forward to serving you again soon.
+                  </p>
+               </div>
+
+               <div className="h-16"></div>
+            </div>
+
+            {/* ACTION BAR (Not Printed) */}
+            <div className="bg-slate-100 p-4 md:p-6 flex flex-col md:flex-row gap-4 border-t border-slate-200 shrink-0">
+               <div className="flex gap-2 flex-1">
+                  <button
+                     onClick={() => {
+                        const win = window.open('', '_blank');
+                        // Inject simplified styles for print
+                        win?.document.write(`
+                           <html>
+                              <head>
+                                 <title>Invoice ${invoice.number}</title>
+                                 <base href="${window.location.origin}/" />
+                                 <script src="https://cdn.tailwindcss.com"></script>
+                                 <style>
+                                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                                    body { font-family: 'Inter', sans-serif; padding: 40px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                                    .invoice-box { transform: rotate(-2deg); border: 2px solid #fb923c; color: #f97316; display: inline-block; padding: 5px 15px; font-weight: 900; letter-spacing: 0.1em; }
+                                 </style>
+                              </head>
+                              <body>
+                                 ${document.querySelector('.WaveInvoiceContent')?.innerHTML || ''}
+                              </body>
+                           </html>
+                        `);
+                        setTimeout(() => win?.print(), 500);
+                     }}
+                     className="flex-1 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2"
+                  >
+                     <Printer size={16} /> Print
+                  </button>
+                  <button className="flex-1 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2">
+                     <Share2 size={16} /> Share
+                  </button>
+               </div>
+               <div className="flex gap-2 flex-[1.5]">
+                  <button onClick={onClose} className="px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
+                  <button onClick={() => onSave(invoice)} className="flex-1 py-3 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg">
+                     Verified & Correct <ArrowRight size={16} />
+                  </button>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (ev: CateringEvent) => void }) => {
    const estimatedCost = event.financials.revenueCents * 0.4;
    const estimatedNet = event.financials.revenueCents - estimatedCost;
 
    const deductStockFromCooking = useDataStore(state => state.deductStockFromCooking);
 
+   const completeEvent = useDataStore(state => state.completeCateringEvent);
+
    const handleCook = () => {
-      if (confirm("Proceed to deduct ingredient stock for this event production?")) {
+      if (confirm("Confirm Kitchen Production Phase?\n\nThis will assume cooking is in progress. You can then launch the Portion Monitor.")) {
          deductStockFromCooking(event.id);
+         alert("Production Confirmed. Launch Portion Monitor to track service.");
+      }
+   };
+
+   const handleComplete = () => {
+      if (confirm("Are you sure you want to close this event? This will archive it as 'Completed'.")) {
+         completeEvent(event.id);
       }
    };
 
@@ -330,16 +562,43 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
       alert("Purchase Order Generated. Event moved to Execution.");
    };
 
+   // INVOICE LOGIC
+   const invoices = useDataStore(state => state.invoices);
+   const salesInvoice = useMemo(() => invoices.find(inv => inv.id === event.financials.invoiceId), [invoices, event.financials.invoiceId]);
+   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+   const [showMonitor, setShowMonitor] = useState(false);
+
+   if (showMonitor) {
+      return (
+         <div className="fixed inset-0 z-[200] bg-white animate-in slide-in-from-right">
+            <PortionMonitor initialEventId={event.id} onClose={() => setShowMonitor(false)} />
+         </div>
+      );
+   }
+
    return (
-      <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-12">
+      <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-12 relative">
+         {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => { }} onClose={() => setViewingInvoice(null)} />}
+
          <div className="flex justify-between items-start">
             <div className="space-y-4">
                <div className="flex gap-4">
                   <button onClick={() => onAmend(event)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 items-center">
                      <FileText size={14} /> Amend Record
                   </button>
+                  {salesInvoice && (
+                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 items-center">
+                        <Printer size={14} /> View Invoice
+                     </button>
+                  )}
                   <button onClick={handleCook} className="px-6 py-2 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-rose-700 transition-all flex items-center gap-2 items-center">
                      <Flame size={14} /> Production Run
+                  </button>
+                  <button onClick={() => setShowMonitor(true)} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2 items-center">
+                     <Activity size={14} /> Live Monitor
+                  </button>
+                  <button onClick={handleComplete} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 items-center">
+                     <Flag size={14} /> Finalize Event
                   </button>
                </div>
                <div>
@@ -449,9 +708,14 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
                   </button>
                )}
                {event.currentPhase === 'Execution' && (
-                  <button onClick={handleCook} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
-                     <Flame size={18} /> Confirm Kitchen Production
-                  </button>
+                  <>
+                     <button onClick={() => setShowMonitor(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                        <Activity size={18} /> Launch Live Monitor
+                     </button>
+                     <button onClick={handleCook} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                        <Flame size={18} /> Confirm Kitchen Production
+                     </button>
+                  </>
                )}
             </div>
          </div>
@@ -459,153 +723,7 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
    );
 };
 
-const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void }) => {
-   const isPurchase = invoice.type === 'Purchase';
-   const { settings: org } = useSettingsStore();
 
-   return (
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in zoom-in duration-200">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200">
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <div className="flex items-center gap-4">
-                  {org.logo && <img src={org.logo} alt="Organization Logo" className="w-12 h-12 rounded-xl object-contain bg-white p-1 shadow-sm" />}
-                  <div className="flex items-center gap-3">
-                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${isPurchase ? 'bg-rose-500' : 'bg-indigo-600'}`}>
-                        {isPurchase ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
-                     </div>
-                     <div>
-                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                           {isPurchase ? 'Expenditure' : 'Sales Invoice'}
-                        </h2>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{org.name}</p>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-xl transition-all"><X size={24} /></button>
-            </div>
-            <div className="p-10 space-y-8 overflow-y-auto max-h-[60vh] scrollbar-thin WaveInvoiceContent">
-               <div className="flex justify-between items-start">
-                  <div>
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Serial Number</p>
-                     <p className="text-xl font-black text-slate-900">#{invoice.number}</p>
-                     <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase italic">{new Date(invoice.date).toLocaleDateString('en-GB')}</p>
-                  </div>
-                  <div className="text-right">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${isPurchase ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
-                        {isPurchase ? 'UNPAID SPEND' : invoice.status}
-                     </span>
-                  </div>
-               </div>
-
-               {/* Event Summary Section */}
-               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2">
-                     <Sparkles size={16} className="text-indigo-600" />
-                     <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Event Specification</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                     <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Reference ID</p>
-                        <p className="text-sm font-black text-slate-800 uppercase">{invoice.id}</p>
-                     </div>
-                     <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Category</p>
-                        <p className="text-sm font-black text-slate-800 uppercase">Hospitality Node</p>
-                     </div>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-2 gap-8 text-[10px] py-4 border-y border-slate-50">
-                  <div className="space-y-1">
-                     <p className="font-black text-slate-400 uppercase tracking-widest">From:</p>
-                     <p className="font-black text-slate-800 uppercase">{org.name}</p>
-                     <p className="text-slate-500 font-medium leading-relaxed">{org.address}</p>
-                  </div>
-                  <div className="space-y-1">
-                     <p className="font-black text-slate-400 uppercase tracking-widest">Beneficiary:</p>
-                     <p className="font-black text-slate-800 uppercase">{invoice.companyId === org.id ? 'Client Node' : org.name}</p>
-                     <p className="text-slate-500 font-medium italic">Reference ID: {invoice.id}</p>
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Allocation Breakdown</p>
-                  {invoice.lines.map((line, idx) => (
-                     <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-50">
-                        <div>
-                           <p className="text-sm font-black text-slate-800 uppercase">{line.description}</p>
-                           <p className="text-[10px] text-slate-400 font-bold uppercase">{line.quantity} Unit(s) @ ₦{(line.unitPriceCents / 100).toLocaleString()}</p>
-                        </div>
-                        <p className="text-sm font-black text-slate-900">₦{((line.quantity * line.unitPriceCents) / 100).toLocaleString()}</p>
-                     </div>
-                  ))}
-               </div>
-
-               <div className="pt-6 flex justify-between items-center bg-slate-50 -mx-10 px-10 py-6 border-y border-slate-100">
-                  <p className="text-lg font-black text-slate-900 uppercase tracking-tight">Net Aggregated Value</p>
-                  <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-indigo-600'}`}>₦{(invoice.totalCents / 100).toLocaleString()}</p>
-               </div>
-
-               {!isPurchase && org.bankInfo && (
-                  <div className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100/50 space-y-4">
-                     <div className="flex items-center gap-2">
-                        <Banknote size={16} className="text-indigo-600" />
-                        <p className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Settlement Instructions</p>
-                     </div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Bank Entity</p>
-                           <p className="text-sm font-black text-slate-900 uppercase">{org.bankInfo.bankName}</p>
-                        </div>
-                        <div>
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Account Number</p>
-                           <p className="text-sm font-black text-slate-900 tracking-widest">{org.bankInfo.accountNumber}</p>
-                        </div>
-                        <div className="col-span-2">
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Account Name</p>
-                           <p className="text-sm font-black text-slate-900 uppercase">{org.bankInfo.accountName}</p>
-                        </div>
-                     </div>
-                  </div>
-               )}
-            </div>
-            <div className="p-8 border-t border-slate-100 bg-white flex flex-col gap-4">
-               <div className="flex gap-4">
-                  <button
-                     onClick={() => {
-                        const win = window.open('', '_blank');
-                        win?.document.write(`<html><head><title>Invoice #${invoice.number}</title><style>body{font-family:sans-serif;padding:40px;}</style></head><body>${document.querySelector('.WaveInvoiceContent')?.innerHTML || ''}</body></html>`);
-                        win?.print();
-                     }}
-                     className="flex-1 py-4 bg-slate-100 text-slate-800 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-                  >
-                     <Printer size={16} /> Print
-                  </button>
-                  <button
-                     onClick={() => window.open(`https://wa.me/?text=Invoice%20${invoice.number}%20Summary:%20₦${(invoice.totalCents / 100).toLocaleString()}`, '_blank')}
-                     className="flex-1 py-4 bg-emerald-100 text-emerald-800 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-200 transition-all flex items-center justify-center gap-2"
-                  >
-                     <Share2 size={16} /> WhatsApp
-                  </button>
-                  <button
-                     onClick={() => window.location.href = `mailto:?subject=Invoice ${invoice.number}&body=Total: ₦${(invoice.totalCents / 100).toLocaleString()}`}
-                     className="flex-1 py-4 bg-indigo-100 text-indigo-800 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-200 transition-all flex items-center justify-center gap-2"
-                  >
-                     <Mail size={16} /> Email
-                  </button>
-               </div>
-               <div className="flex gap-4">
-                  <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-200">Amend Items</button>
-                  <button onClick={() => onSave(invoice)} className={`flex-[2] py-4 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all ${isPurchase ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-950 hover:bg-slate-800'}`}>
-                     Commit to OS Ledger <ArrowRight size={16} />
-                  </button>
-               </div>
-            </div>
-         </div>
-      </div>
-   );
-};
 
 const CostingMatrix = () => {
    const [costings, setCostings] = useState<ItemCosting[]>([]);

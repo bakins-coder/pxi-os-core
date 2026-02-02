@@ -104,6 +104,7 @@ interface DataState {
     updateCateringEvent: (id: string, updates: Partial<CateringEvent>) => void;
     createProcurementInvoice: (eventId: string, reqs: Partial<Requisition>[]) => Promise<Invoice>;
     deductStockFromCooking: (eventId: string) => void;
+    completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
@@ -113,10 +114,15 @@ interface DataState {
     addAgenticLog: (log: Partial<AgenticLog>) => void;
     // Portion Monitor Actions
     initializePortionMonitor: (eventId: string, tableCount: number, guestsPerTable: number) => void;
+    addPortionMonitorTable: (eventId: string, guestCapacity: number) => void;
     markTableServed: (eventId: string, tableId: string, itemIds: string[]) => void;
+    markSeatServed: (eventId: string, tableId: string, seatId: string, itemId?: string) => void;
+    removeSeatServing: (eventId: string, tableId: string, seatId: string, itemId: string) => void;
+    updateTableCapacity: (eventId: string, tableId: string, newCount: number) => void;
     assignWaiterToTable: (eventId: string, tableId: string, waiterId: string) => void;
     logLeftover: (eventId: string, itemId: string, quantity: number, reason: string) => void;
     addHandoverEvidence: (eventId: string, url: string, note: string) => void;
+    completeEvent: (eventId: string) => void;
 
     reset: () => void;
 }
@@ -1210,13 +1216,24 @@ export const useDataStore = create<DataState>()(
 
                 const tables: any[] = [];
                 for (let i = 1; i <= tableCount; i++) {
+                    const seats: any[] = [];
+                    for (let s = 1; s <= guestsPerTable; s++) {
+                        seats.push({
+                            id: `seat-${eventId}-${i}-${s}`,
+                            number: s,
+                            servingCount: 0,
+                            status: 'Empty',
+                            servedItems: []
+                        });
+                    }
                     tables.push({
                         id: `tbl-${eventId}-${i}`,
                         name: `Table ${i}`,
                         assignedGuests: guestsPerTable,
                         status: 'Waiting',
                         servedItems: [],
-                        isLocked: false
+                        isLocked: false,
+                        seats
                     });
                 }
 
@@ -1234,6 +1251,53 @@ export const useDataStore = create<DataState>()(
                 return { cateringEvents: updatedEvents };
             }),
 
+            addPortionMonitorTable: (eventId: string, guestCapacity: number) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const currentTableCount = event.portionMonitor.tables.length;
+                const newTableId = `tbl-${eventId}-${Date.now()}`;
+
+                // Create seats
+                const seats: any[] = [];
+                for (let s = 1; s <= guestCapacity; s++) {
+                    seats.push({
+                        id: `seat-${newTableId}-${s}`,
+                        number: s,
+                        servingCount: 0,
+                        status: 'Empty',
+                        servedItems: []
+                    });
+                }
+
+                const newTable = {
+                    id: newTableId,
+                    name: `Table ${currentTableCount + 1}`,
+                    assignedGuests: guestCapacity,
+                    status: 'Waiting',
+                    servedItems: [],
+                    isLocked: false,
+                    seats
+                };
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: {
+                        ...event.portionMonitor,
+                        tables: [...event.portionMonitor.tables, newTable]
+                    }
+                };
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
             markTableServed: (eventId, tableId, itemIds) => set((state) => {
                 const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                 if (eventIndex === -1) return state;
@@ -1242,21 +1306,25 @@ export const useDataStore = create<DataState>()(
                 if (!event.portionMonitor) return state;
 
                 const updatedTables = event.portionMonitor.tables.map((t: any) => {
-                    if (t.id === tableId && !t.isLocked) {
-                        // In a real app, we'd look up item names from inventory/recipes.
-                        // For this simplified logic, we assume served all items in the event deal
-                        const served = itemIds.map(id => ({
-                            itemId: id,
-                            name: event.items.find(i => i.inventoryItemId === id)?.name || 'Unknown Item',
-                            quantity: 1, // Assumption: 1 portion per guest per item
-                            servedAt: new Date().toISOString()
-                        }));
+                    if (t.id === tableId) {
+                        // Batch serve (Legacy/Quick Mode) - serves "Unknown" or first item if passed
+                        const updatedSeats = t.seats?.map((s: any) => ({
+                            ...s,
+                            servingCount: s.servingCount + 1,
+                            status: 'Occupied'
+                        })) || [];
 
                         return {
                             ...t,
                             status: 'Served',
-                            isLocked: true,
-                            servedItems: served
+                            isLocked: false,
+                            seats: updatedSeats,
+                            servedItems: itemIds.map(id => ({
+                                itemId: id,
+                                name: event.items.find(i => i.inventoryItemId === id)?.name || 'Unknown Item',
+                                quantity: updatedSeats.reduce((sum: number, seat: any) => sum + seat.servingCount, 0),
+                                servedAt: new Date().toISOString()
+                            }))
                         };
                     }
                     return t;
@@ -1270,6 +1338,227 @@ export const useDataStore = create<DataState>()(
                 const updatedEvents = [...state.cateringEvents];
                 updatedEvents[eventIndex] = updatedEvent;
 
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            markSeatServed: (eventId: string, tableId: string, seatId: string, itemId?: string) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const itemToServe = itemId ? event.items.find(i => i.inventoryItemId === itemId) : null;
+                const itemName = itemToServe?.name || 'Unknown Item';
+                const resolvedItemId = itemId || 'unknown';
+
+                const updatedTables = event.portionMonitor.tables.map((t: any) => {
+                    if (t.id === tableId) {
+                        const updatedSeats = t.seats.map((s: any) => {
+                            if (s.id === seatId) {
+                                // Update servedItems list
+                                const existingItemIndex = s.servedItems?.findIndex((i: any) => i.itemId === resolvedItemId);
+                                let newServedItems = [...(s.servedItems || [])];
+
+                                if (existingItemIndex > -1) {
+                                    newServedItems[existingItemIndex] = {
+                                        ...newServedItems[existingItemIndex],
+                                        quantity: newServedItems[existingItemIndex].quantity + 1
+                                    };
+                                } else {
+                                    newServedItems.push({
+                                        itemId: resolvedItemId,
+                                        name: itemName,
+                                        quantity: 1
+                                    });
+                                }
+
+                                return {
+                                    ...s,
+                                    servingCount: s.servingCount + 1,
+                                    status: 'Occupied',
+                                    servedItems: newServedItems
+                                };
+                            }
+                            return s;
+                        });
+
+                        // Calculate total served for the table (for legacy view/progress)
+                        const totalServed = updatedSeats.reduce((sum: number, seat: any) => sum + seat.servingCount, 0);
+
+                        // Determine new status
+                        let newStatus: 'Waiting' | 'Partially Served' | 'Served' = 'Waiting';
+                        if (totalServed >= t.assignedGuests) {
+                            newStatus = 'Served';
+                        } else if (totalServed > 0) {
+                            newStatus = 'Partially Served';
+                        }
+
+                        return {
+                            ...t,
+                            status: newStatus,
+                            seats: updatedSeats,
+                            // Update legacy servedItems count for progress tracking
+                            servedItems: event.items.map(i => ({
+                                itemId: i.inventoryItemId,
+                                name: i.name,
+                                quantity: totalServed, // Rough approximation for top-level progress
+                                servedAt: new Date().toISOString()
+                            }))
+                        };
+                    }
+                    return t;
+                });
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: { ...event.portionMonitor, tables: updatedTables }
+                };
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            removeSeatServing: (eventId: string, tableId: string, seatId: string, itemId: string) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const updatedTables = event.portionMonitor.tables.map((t: any) => {
+                    if (t.id === tableId) {
+                        const updatedSeats = t.seats.map((s: any) => {
+                            if (s.id === seatId && s.servedItems) {
+                                // Find item to remove
+                                const existingItemIndex = s.servedItems.findIndex((i: any) => i.itemId === itemId);
+                                if (existingItemIndex === -1) return s;
+
+                                let newServedItems = [...s.servedItems];
+                                const currentQty = newServedItems[existingItemIndex].quantity;
+
+                                if (currentQty > 1) {
+                                    // Decrement quantity
+                                    newServedItems[existingItemIndex] = {
+                                        ...newServedItems[existingItemIndex],
+                                        quantity: currentQty - 1
+                                    };
+                                } else {
+                                    // Remove item entirely
+                                    newServedItems.splice(existingItemIndex, 1);
+                                }
+
+                                const newServingCount = Math.max(0, s.servingCount - 1);
+
+                                return {
+                                    ...s,
+                                    servingCount: newServingCount,
+                                    status: newServingCount > 0 ? 'Occupied' : 'Empty',
+                                    servedItems: newServedItems
+                                };
+                            }
+                            return s;
+                        });
+
+                        // Calculate total served for the table
+                        const totalServed = updatedSeats.reduce((sum: number, seat: any) => sum + seat.servingCount, 0);
+
+                        // Determine new status
+                        let newStatus: 'Waiting' | 'Partially Served' | 'Served' = 'Waiting';
+                        if (totalServed >= t.assignedGuests) {
+                            newStatus = 'Served';
+                        } else if (totalServed > 0) {
+                            newStatus = 'Partially Served';
+                        }
+
+                        return {
+                            ...t,
+                            status: newStatus,
+                            seats: updatedSeats,
+                            // Update legacy servedItems count for progress tracking
+                            servedItems: event.items.map(i => ({
+                                itemId: i.inventoryItemId,
+                                name: i.name,
+                                quantity: totalServed,
+                                servedAt: new Date().toISOString()
+                            }))
+                        };
+                    }
+                    return t;
+                });
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: { ...event.portionMonitor, tables: updatedTables }
+                };
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            completeEvent: (eventId: string) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = {
+                    ...updatedEvents[eventIndex],
+                    status: 'Completed',
+                    portionMonitor: updatedEvents[eventIndex].portionMonitor ? {
+                        ...updatedEvents[eventIndex].portionMonitor!,
+                        handoverDate: new Date().toISOString()
+                    } : undefined
+                };
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
+            updateTableCapacity: (eventId: string, tableId: string, newCount: number) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+                const event = state.cateringEvents[eventIndex];
+                if (!event.portionMonitor) return state;
+
+                const updatedTables = event.portionMonitor.tables.map((t: any) => {
+                    if (t.id === tableId) {
+                        let updatedSeats = [...(t.seats || [])];
+                        if (newCount > updatedSeats.length) {
+                            // Add seats
+                            for (let i = updatedSeats.length + 1; i <= newCount; i++) {
+                                updatedSeats.push({
+                                    id: `seat-${eventId}-${t.id.split('-')[2]}-${i}`,
+                                    number: i,
+                                    servingCount: 0,
+                                    status: 'Empty',
+                                    servedItems: []
+                                });
+                            }
+                        } else if (newCount < updatedSeats.length) {
+                            // Remove seats from end
+                            updatedSeats = updatedSeats.slice(0, newCount);
+                        }
+
+                        return {
+                            ...t,
+                            assignedGuests: newCount,
+                            seats: updatedSeats
+                        };
+                    }
+                    return t;
+                });
+
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: { ...event.portionMonitor, tables: updatedTables }
+                };
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
                 get().syncWithCloud();
                 return { cateringEvents: updatedEvents };
             }),
@@ -1617,14 +1906,39 @@ export const useDataStore = create<DataState>()(
                 return invoice;
             },
 
-            deductStockFromCooking: (eventId) => {
-                // Simplified stock deduction logic
-                set((state) => {
-                    const event = state.cateringEvents.find(e => e.id === eventId);
-                    if (!event) return state;
-                    // Logic would iterate through ingredients in recipes... omitting for conciseness or implementing generic decrement
-                    return { ...state };
-                });
+            deductStockFromCooking: async (eventId) => {
+                // 1. Optimistic Update (Stock Only)
+                // TODO: Update local inventory state?
+
+                if (supabase) {
+                    try {
+                        // Mark as In Production if tracking detailed status
+                        // For now we just keep it in 'Execution'
+                        console.log("Stock deduction triggered for event", eventId);
+                    } catch (e) {
+                        console.error("Failed to deduct stock", e);
+                    }
+                }
+            },
+
+            completeCateringEvent: async (eventId) => {
+                // 1. Optimistic Update
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map(e => e.id === eventId ? { ...e, currentPhase: 'PostEvent', status: 'Completed' } : e)
+                }));
+
+                // 2. Persist to Supabase
+                if (supabase) {
+                    try {
+                        await supabase.from('catering_events').update({
+                            current_phase: 'PostEvent',
+                            status: 'Completed'
+                        }).eq('id', eventId);
+                    } catch (e) {
+                        console.error("Failed to complete event", e);
+                    }
+                }
+                get().syncWithCloud();
             },
 
             addRecipe: (recipe) => set((state) => ({

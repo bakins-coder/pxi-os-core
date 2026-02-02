@@ -245,7 +245,10 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
     // --- METRICS ---
     doc.setTextColor(0, 0, 0);
     const totalGuests = monitor.tables.reduce((sum, t) => sum + t.assignedGuests, 0);
-    const servedGuests = monitor.tables.reduce((sum, t) => t.status === 'Served' ? sum + t.assignedGuests : sum, 0);
+    const servedGuests = monitor.tables.reduce((sum, t) => {
+        const tableServedCount = t.seats?.filter((s: any) => s.servingCount > 0).length || 0;
+        return sum + tableServedCount;
+    }, 0);
     const serviceRate = totalGuests > 0 ? Math.round((servedGuests / totalGuests) * 100) : 0;
 
     autoTable(doc, {
@@ -262,11 +265,69 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
         bodyStyles: { fontSize: 14, fontStyle: 'bold' }
     });
 
-    // --- LEFTOVER LOG ---
+    // --- RECONCILIATION & VARIANCE ---
     const finalY = (doc as any).lastAutoTable.finalY + 15;
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Leftover / Handover Log', 14, finalY);
+    doc.text('Reconciliation Summary', 14, finalY);
+
+    // Calculate Variance
+    const varianceData = event.items.map(initialItem => {
+        const servedCount = monitor.tables.reduce((acc, t) => {
+            return acc + (t.servedItems?.find(i => i.itemId === initialItem.inventoryItemId)?.quantity || 0);
+        }, 0);
+        // Correctly sum seat-level servings for accuracy
+        const seatServedCount = monitor.tables.reduce((acc, t) => {
+            return acc + (t.seats?.reduce((sAcc: number, s: any) => {
+                const seatItemQty = s.servedItems?.filter((si: any) => si.itemId === initialItem.inventoryItemId).reduce((q: number, i: any) => q + i.quantity, 0) || 0;
+                return sAcc + seatItemQty;
+            }, 0) || 0);
+        }, 0);
+
+        const leftoverCount = monitor.leftovers.filter(l => l.itemId === initialItem.inventoryItemId).reduce((sum, l) => sum + l.quantity, 0);
+        const variance = initialItem.quantity - seatServedCount - leftoverCount;
+
+        return {
+            name: initialItem.name,
+            stocked: initialItem.quantity,
+            served: seatServedCount,
+            leftover: leftoverCount,
+            variance: variance,
+            status: variance === 0 ? 'Balanced' : variance > 0 ? 'Missing / Unaccounted' : 'Surplus / Data Error'
+        };
+    });
+
+    autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Item Name', 'Stock Loaded', 'Served (Consumed)', 'Logged Leftover', 'Variance', 'Status']],
+        body: varianceData.map(v => [
+            v.name,
+            v.stocked,
+            v.served,
+            v.leftover,
+            v.variance > 0 ? `-${v.variance}` : `+${Math.abs(v.variance)}`,
+            v.status
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [63, 81, 181], textColor: 255 },
+        columnStyles: {
+            4: { fontStyle: 'bold', textColor: [220, 38, 38] }, // Red for variance column usually
+            5: { fontStyle: 'italic' }
+        },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 4) {
+                const varianceVal = parseInt(data.cell.raw as string);
+                if (varianceVal === 0) data.cell.styles.textColor = [22, 163, 74]; // Green
+                else data.cell.styles.textColor = [220, 38, 38]; // Red
+            }
+        }
+    });
+
+    // --- LEFTOVER LOG ---
+    const leftoverY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Leftover / Handover Log', 14, leftoverY);
 
     const leftoverData = monitor.leftovers.length > 0 ? monitor.leftovers.map(l => [
         l.name,
@@ -276,7 +337,7 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
     ]) : [['No leftovers recorded', '-', '-', '-']];
 
     autoTable(doc, {
-        startY: finalY + 5,
+        startY: leftoverY + 5,
         head: [['Item Name', 'Quantity', 'Reason / Note', 'Time Logged']],
         body: leftoverData,
         theme: 'striped',
@@ -295,17 +356,20 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
         return w ? `${w.firstName} ${w.lastName}` : 'Unknown';
     };
 
-    const tableData = monitor.tables.map(t => [
-        t.name,
-        t.status,
-        t.assignedGuests.toString(),
-        getWaiterName(t.assignedWaiterId),
-        t.servedItems.length > 0 ? `${t.servedItems.length} items served` : '-'
-    ]);
+    const tableData = monitor.tables.map(t => {
+        const totalServings = t.seats?.reduce((sum: number, s: any) => sum + s.servingCount, 0) || 0;
+        return [
+            t.name,
+            t.assignedGuests.toString(),
+            totalServings.toString(),
+            getWaiterName(t.assignedWaiterId),
+            t.servedItems.length > 0 ? `${t.servedItems.length} unique items logged` : '-'
+        ];
+    });
 
     autoTable(doc, {
         startY: currentY + 5,
-        head: [['Table Name', 'Status', 'Guests', 'Served By (Waiter)', 'Details']],
+        head: [['Table Name', 'Guests', 'Total Servings', 'Served By (Waiter)', 'Details']],
         body: tableData,
     });
 
@@ -362,5 +426,14 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
     doc.text('Event Supervisor Signature', 120, currentY + 40);
     doc.text('Date: ________________', 120, currentY + 50);
 
-    doc.save(`Handover_Report_${event.customerName.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Load logo if available
+    // (Skipped for now to keep it simple, can add later)
+
+    // Output as Blob URL and Open in New Window (Preview)
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+
+    // cleanup
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 };
