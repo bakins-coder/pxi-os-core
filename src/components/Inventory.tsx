@@ -44,12 +44,12 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
       if (!costing) return {};
       const groups: Record<string, any[]> = {};
       costing.ingredientBreakdown.forEach(ing => {
-         const groupName = ing.subRecipeGroup || 'Main Recipe';
+         const groupName = ing.subRecipeGroup || item.name;
          if (!groups[groupName]) groups[groupName] = [];
          groups[groupName].push(ing);
       });
       return groups;
-   }, [costing]);
+   }, [costing, item.name]);
 
    const aggregates = useMemo(() => {
       if (!costing) return [];
@@ -70,7 +70,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
          name: newIng.name,
          qtyPerPortion: newIng.qty,
          unit: newIng.unit,
-         subRecipeGroup: group === 'Main Recipe' ? '' : group,
+         subRecipeGroup: group === item.name ? '' : group,
          priceSourceQuery: ''
       });
       setNewIng({ name: '', qty: 0, unit: 'kg', group: '' });

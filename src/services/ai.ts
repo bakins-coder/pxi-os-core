@@ -4,8 +4,6 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { Ingredient, CateringEvent, Recipe, AIAgentMode } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
 
-// Map 'Type' from old SDK to 'SchemaType'
-const Type = SchemaType;
 
 const getAIInstance = () => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -23,6 +21,278 @@ const getAIInstance = () => {
     if (!key) throw new Error("MISSING_API_KEY");
     return new GoogleGenerativeAI(key);
 };
+
+/**
+ * AI Tools Implementation
+ * These functions bridge the AI model to our local data store.
+ */
+const SYSTEM_TOOLS = {
+    get_outstanding_invoices: (args: { limit?: number }) => {
+        const { limit = 25 } = args || {};
+        const dataStore = useDataStore.getState();
+        const data = dataStore.invoices
+            .filter(i => i.status !== 'Paid' && i.status !== 'Draft')
+            .map(i => ({
+                invoice_number: i.number,
+                customer: i.customerName,
+                total_naira: i.totalCents / 100,
+                balance_naira: (i.totalCents - i.paidAmountCents) / 100,
+                status: i.status,
+                due_date: i.dueDate
+            }))
+            .sort((a, b) => b.balance_naira - a.balance_naira)
+            .slice(0, limit);
+        return { invoices: data, count: data.length };
+    },
+    search_contacts: (args: { query: string; category?: string; limit?: number }) => {
+        const { query, category, limit = 10 } = args;
+        const dataStore = useDataStore.getState();
+        let results = dataStore.contacts.filter(c =>
+            c.name.toLowerCase().includes(query.toLowerCase()) ||
+            c.email?.toLowerCase().includes(query.toLowerCase()) ||
+            c.phone?.includes(query)
+        );
+        if (category) {
+            results = results.filter(c => c.category === category);
+        }
+        const data = results.slice(0, limit).map(c => ({
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            category: c.category,
+            company: c.companyId
+        }));
+        return { contacts: data };
+    },
+    get_inventory_status: (args: { query: string }) => {
+        const { query } = args;
+        const dataStore = useDataStore.getState();
+        const data = dataStore.inventory
+            .filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
+            .slice(0, 10)
+            .map(i => ({
+                name: i.name,
+                stock: i.stockQuantity,
+                type: i.type,
+                price_naira: i.priceCents / 100,
+                category: i.category
+            }));
+        return { items: data };
+    },
+    get_staff_directory: () => {
+        const dataStore = useDataStore.getState();
+        const data = dataStore.employees.map(e => ({
+            name: `${e.firstName} ${e.lastName}`,
+            role: e.role,
+            status: e.status,
+            phone: e.phoneNumber
+        }));
+        return { staff: data };
+    },
+    search_knowledge_base: async (args: { query: string }) => {
+        const { query } = args;
+        const apiKey = (import.meta as any).env.VITE_PINECONE_API_KEY;
+        const host = (import.meta as any).env.VITE_PINECONE_HOST;
+
+        if (!apiKey || !host) {
+            console.warn("[AI Tools] Pinecone Knowledge Base not configured (Missing VITE_PINECONE_API_KEY or VITE_PINECONE_HOST).");
+            return { error: "Knowledge base keys missing. Please configure VITE_PINECONE_API_KEY and VITE_PINECONE_HOST." };
+        }
+
+        try {
+            // Pinecone Integrated Inference Search (POST /query)
+            const response = await fetch(`${host}/query`, {
+                method: 'POST',
+                headers: {
+                    'Api-Key': apiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    namespace: "documentation",
+                    topK: 3,
+                    inputs: [{ text: query }]
+                })
+            });
+
+            if (!response.ok) throw new Error(`Pinecone error: ${response.statusText}`);
+
+            const data = await response.json();
+            const hits = data.result?.hits || [];
+
+            return {
+                results: hits.map((h: any) => ({
+                    source: h.fields?.path || h._id,
+                    content: h.fields?.content?.substring(0, 500) + "..." // Snip for brevity
+                }))
+            };
+        } catch (e) {
+            console.error("[AI Tools] Pinecone search failed:", e);
+            return { error: "Failed to search knowledge base." };
+        }
+    }
+};
+
+const SYSTEM_TOOL_DECLARATIONS = [
+    {
+        name: "get_outstanding_invoices",
+        description: "Fetch a list of unpaid invoices ordered by balance. Use this to identify debtors and money owed.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                limit: { type: SchemaType.NUMBER, description: "Maximum number of records to return (default 25)" }
+            }
+        }
+    },
+    {
+        name: "search_contacts",
+        description: "Search for contacts in the CRM (Customers or Suppliers). Use this to find email addresses, phone numbers, or company details.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                query: { type: SchemaType.STRING, description: "Name, email, or phone number to search" },
+                category: { type: SchemaType.STRING, description: "Filter by 'Customer' or 'Supplier'" },
+                limit: { type: SchemaType.NUMBER, description: "Maximum number of records to return (default 10)" }
+            },
+            required: ["query"]
+        }
+    },
+    {
+        name: "get_inventory_status",
+        description: "Check stock levels and prices for items in the warehouse or products on the menu.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                query: { type: SchemaType.STRING, description: "Name of the item to check" }
+            },
+            required: ["query"]
+        }
+    },
+    {
+        name: "get_staff_directory",
+        description: "Get a list of all current employees, their roles, and contact status.",
+    },
+    {
+        name: "search_knowledge_base",
+        description: "Search the system documentation and guides. Use this to answer 'how-to' questions, technical queries about system architecture, or operational procedures.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                query: { type: SchemaType.STRING, description: "The specific question or topic to search for" }
+            },
+            required: ["query"]
+        }
+    }
+];
+
+/**
+ * Handles the Loop for Tool Calling
+ */
+async function executeToolCalls(ai: any, modelId: string, initialMessages: any[], generationConfig?: any, systemInstruction?: string) {
+    const targetModel = modelId;
+
+    const genModel = ai.getGenerativeModel({
+        model: targetModel,
+        tools: [{ functionDeclarations: SYSTEM_TOOL_DECLARATIONS }],
+        systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined
+    });
+
+    let currentMessages = [...initialMessages];
+    const calledTools = new Set<string>();
+
+    console.log(`[AI Tools] Starting execution loop for model: ${targetModel}`, { initialMessagesCount: initialMessages.length });
+
+    for (let i = 0; i < 10; i++) {
+        console.log(`[AI Tools] Turn ${i + 1}...`);
+
+        // ALWAYS disable JSON mode during the tool-calling turns.
+        // Forcing JSON mode can prevent the model from calling tools effectively.
+        const turnConfig = { ...generationConfig, responseMimeType: undefined, responseSchema: undefined };
+
+        const result = await genModel.generateContent({
+            contents: currentMessages,
+            generationConfig: turnConfig
+        });
+
+        const response = await result.response;
+        const candidate = response.candidates[0];
+
+        if (!candidate || !candidate.content) {
+            console.error("[AI Tools] No candidate/content returned.");
+            return response;
+        }
+
+        const content = candidate.content;
+        console.log(`[AI Tools] Model Output (Turn ${i + 1}):`, JSON.stringify(content.parts));
+
+        currentMessages.push({
+            role: content.role || 'model',
+            parts: content.parts
+        });
+
+        const toolCalls = content.parts.filter((p: any) => p.functionCall);
+        if (toolCalls.length === 0) {
+            console.log("[AI Tools] No further tools requested.");
+
+            // If the user requested a specific JSON schema but we skipped it during the loop turns,
+            // we might need one last call to "JSON-ify" the final answer.
+            if (generationConfig?.responseMimeType === "application/json" && (!turnConfig?.responseMimeType)) {
+                console.log("[AI Tools] Formatting final answer into JSON...");
+                const finalResult = await genModel.generateContent({
+                    contents: currentMessages,
+                    generationConfig
+                });
+                return await finalResult.response;
+            }
+
+            return response;
+        }
+
+        // Loop detection
+        const toolCallKeys = toolCalls.map((tc: any) => `${tc.functionCall.name}:${JSON.stringify(tc.functionCall.args)}`);
+        const redundant = toolCallKeys.find(key => calledTools.has(key));
+        if (redundant) {
+            console.error(`[AI Tools] Loop detected: Redundant call to ${redundant}`);
+            throw new Error(`AI entered an infinite loop calling: ${redundant.split(':')[0]}`);
+        }
+        toolCallKeys.forEach(key => calledTools.add(key));
+
+        console.log(`[AI Tools] Tool Calls requested:`, toolCalls.map((tc: any) => tc.functionCall.name));
+
+        // Execute tool calls
+        const functionResponses = await Promise.all(toolCalls.map(async (call: any) => {
+            const { name, args } = call.functionCall;
+            const handler = (SYSTEM_TOOLS as any)[name];
+            let resultData;
+
+            console.log(`[AI Tools] Executing tool: ${name}`, { args });
+
+            if (handler) {
+                try {
+                    resultData = await handler(args);
+                    console.log(`[AI Tools] Tool: ${name} returned ${Array.isArray(resultData) ? resultData.length : 'object'} result(s).`);
+                } catch (e) {
+                    console.error(`[AI Tools] Tool Error: ${name}`, e);
+                    resultData = { error: (e as Error).message };
+                }
+            } else {
+                console.warn(`[AI Tools] Tool: ${name} not found.`);
+                resultData = { error: `Tool ${name} not found.` };
+            }
+
+            return {
+                functionResponse: {
+                    name,
+                    response: resultData
+                }
+            };
+        }));
+
+        currentMessages.push({ role: 'function', parts: functionResponses });
+    }
+
+    console.error("[AI Tools] Max iterations reached.");
+    throw new Error("I tried to fetch the data multiple times but couldn't get a definitive answer. Please try rephrasing.");
+}
 
 export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Promise<void> {
     if (useSettingsStore.getState().strictMode) return;
@@ -264,74 +534,11 @@ export async function processAgentRequest(input: string, context: string, mode: 
     const currentUser = useAuthStore.getState().user;
     const userRole = currentUser?.role || 'Guest';
 
-    // Financial Context (CFO Capabilities)
-    const outstandingInvoices = dataStore.invoices.filter(i => i.status !== 'Paid');
-    const totalReceivables = outstandingInvoices.reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
+    const totalReceivables = dataStore.invoices
+        .filter(i => i.status !== 'Paid')
+        .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
 
-    const recentTransactions = dataStore.bankTransactions
-        .slice(0, 5) // Last 5 transactions
-        .map(t => `${t.date}: ${t.description} (${t.type}) - ₦${(t.amountCents / 100).toLocaleString()}`);
-
-    const keyAccounts = dataStore.chartOfAccounts
-        .filter(a => a.balanceCents > 0)
-        .map(a => `${a.name}: ₦${(a.balanceCents / 100).toLocaleString()}`);
-
-    // CRM Context
-    const customers = dataStore.contacts.filter(c => c.category === 'Customer').slice(0, 10)
-        .map(c => `${c.name} (${c.email || 'No email'}) - ${c.companyId}`);
-    const suppliers = dataStore.contacts.filter(c => c.category === 'Supplier').slice(0, 20)
-        .map(s => `${s.name} (${s.email || 'No email'})`);
-
-    // Projects Context
-    const projects = dataStore.projects.slice(0, 20)
-        .map(p => `${p.name} [${p.status}] - ${p.progress}%`);
-
-    const operationalContext = JSON.stringify({
-        financials: {
-            totalOutstandingReceivables: `₦${(totalReceivables / 100).toLocaleString()}`,
-            outstandingInvoiceCount: outstandingInvoices.length,
-            recentTransactions: recentTransactions,
-            accountBalances: keyAccounts.length > 0 ? keyAccounts : "No active account balances found."
-        },
-        events: dataStore.cateringEvents.map(e => ({
-            customer: e.customerName,
-            date: e.eventDate,
-            status: e.status,
-            revenue: `₦${(e.financials.revenueCents / 100).toLocaleString()}`,
-            grossMargin: e.costingSheet?.aggregateGrossMarginPercentage
-        })).slice(0, 10), // Expanded to top 10
-        crm: {
-            totalCustomers: dataStore.contacts.filter(c => c.category === 'Customer').length,
-            customerList: customers,
-            supplierList: suppliers
-        },
-        recipes: dataStore.recipes.slice(0, 10).map(r => ({
-            name: r.name,
-            ingredients: r.ingredients.map(i => `${i.qtyPerPortion} ${i.unit} ${i.name}`).join(', ')
-        })),
-        tasks: dataStore.tasks.filter(t => t.status !== 'Done').slice(0, 10).map(t => `${t.title} [${t.priority}] - Due: ${t.dueDate}`),
-        support: {
-            openTickets: dataStore.tickets.filter(t => t.status !== 'Resolved').length,
-            recentTickets: dataStore.tickets.slice(0, 5).map(t => `${t.subject} (${t.status})`)
-        },
-        projects: {
-            activeCount: dataStore.projects.filter(p => p.status === 'Active').length,
-            list: projects
-        },
-        personnel: {
-            totalStaff: dataStore.employees.length,
-            departmentRoles: workforceSummary,
-            staffDirectory: dataStore.employees.slice(0, 10).map(e => ({ // LIMIT CONTEXT: Top 10 staff
-                name: `${e.firstName} ${e.lastName} `,
-                role: e.role,
-                status: e.status,
-                salary: `₦${(e.salaryCents / 100).toLocaleString()}`,
-                dob: e.dob,
-                startDate: e.dateOfEmployment
-            }))
-        },
-        menuSample: menuContext ? "Refer to System Prompt for full menu." : "No menu data available."
-    });
+    const operationalContextSummary = `Finance: Receivables ₦${(totalReceivables / 100).toLocaleString()}. CRM: ${dataStore.contacts.length} contacts. Inventory: ${dataStore.inventory.length} items.`;
 
     try {
         const response = await callWithRetry(async () => {
@@ -339,107 +546,96 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
                 User Role: ${userRole}.
                 
-                Data Access:
-                1. Menu/Products:
-                ${menuContext || "No specific menu items loaded."}
+                Data Access: You MUST use the provided tools (get_outstanding_invoices, search_contacts, get_inventory_status, get_staff_directory, search_knowledge_base) to fetch specific information. 
+                DO NOT guess data. If the information isn't in your tools, say you don't have access.
                 
-                2. Operational Data:
-                ${operationalContext}
+                For 'how-to' questions or system architecture, ALWAYS call 'search_knowledge_base'.
                 
-                Additional Context: ${context}.
-                
-                instructions:
-                1. **ANALYZE CONTEXT**: Verify if "Recent History" shows a pending question from you (e.g., "What is the email?"). If the User's current input is an answer, MERGE it with the previous intent/data.
-                2. Identify Intent: 'GENERAL_QUERY' (default), 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'.
-                3. If Action, extract payload.
-                4. If Query, answer it using the provided "Data Access".
-                5. **DATA COMPLETENESS & CLARIFICATION**: 
-                   - **ADD_EMPLOYEE**: Mandatory: Name, Role. Recommended: DOB, Start Date.
-                   - **ADD_CUSTOMER/SUPPLIER**: Mandatory: Name. Recommended: Email, Phone.
-                   - **ADD_PROJECT**: Mandatory: Name. Recommended: Client, Budget.
-                   - **CREATE_EVENT**: Mandatory: Customer Name, Event Type, Date, Guest Count.
-                   - **Behavior**: If the user provides the Mandatory fields but misses Recommended ones, return 'GENERAL_QUERY' and ask: "I have the name and role. To complete the profile, could you also provide their DOB, Address, and Phone number?" 
-                   - **Exception**: If the user says "That's all" or "Skip details", ONLY THEN return the 'ADD_EMPLOYEE' intent with the data you have.
-                7. **DATA FORMATTING RULES**:
-                   - **DATES**: ALL dates in 'payload' MUST be ISO 8601 (YYYY-MM-DD). Example: Convert "13th March 1974" -> "1974-03-13".
-                   - **CURRENCY**: Convert all money references to integers (Cents/Kobo). e.g., "500k" -> 500000.
-                8. **ANTI-HALLUCINATION RULE**: You CANNOT update the database yourself. You can ONLY trigger an update by returning the correct 'intent' and 'payload'. NEVER say "I have recorded this" or "Profile created" in your text response unless you are returning an Action Intent. If you return 'GENERAL_QUERY', do NOT say you performed an action.
-                9. BREVITY RULE: Keep response to 2-3 sentences.
+                Operational Summary: ${operationalContextSummary}
+
+                Instructions:
+                1. Call Tools: You MUST use tools for any data-related queries (debtors, inventory, staff).
+                2. Real Data Only: NEVER use placeholders like "Customer A" or "1000". Use ONLY the records returned by the tools.
+                3. **DEBTOR TABLE FORMAT**: When listing debtors, use this EXACT Markdown structure:
+                   | Customer | Balance (₦) | Status |
+                   | :--- | :--- | :--- |
+                   | [Name from tool] | [Balance from tool] | [Status from tool] |
+                4. Filtering: If the user asks for "top 3", show exactly 3 rows.
+                5. Intent: Map the user's ultimate goal to the 'intent' field.
                 
                 Return JSON:
                 {
-                    "response": "...",
-                    "intent": "...",
+                    "response": "Answer to the user...",
+                    "intent": "GENERAL_QUERY | ADD_EMPLOYEE | ADD_INVENTORY | ADD_CUSTOMER | ADD_SUPPLIER | ADD_PROJECT | CREATE_EVENT",
                     "payload": { ... }
                 }
             `;
 
             let contentParts: any[] = [];
-
             if (mode === 'audio') {
                 contentParts = [
-                    { inlineData: { data: input, mimeType: 'audio/webm' } },
-                    { text: systemInstructions }
+                    { inlineData: { data: input, mimeType: 'audio/webm' } }
                 ];
             } else {
                 contentParts = [
-                    { text: `User Input: "${input}". \n${systemInstructions}` }
+                    { text: input }
                 ];
             }
 
-            const model = ai.getGenerativeModel({
-                model: 'gemini-2.0-flash-lite-001', // Standardize to stable 1.5 Flash
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: SchemaType.OBJECT,
-                        properties: {
-                            response: { type: SchemaType.STRING },
-                            intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'] } as any,
-                            payload: {
-                                type: SchemaType.OBJECT,
-                                properties: {
-                                    // Employee Fields
-                                    firstName: { type: SchemaType.STRING },
-                                    lastName: { type: SchemaType.STRING },
-                                    role: { type: SchemaType.STRING },
-                                    email: { type: SchemaType.STRING },
-                                    phone: { type: SchemaType.STRING },
-                                    dob: { type: SchemaType.STRING },
-                                    gender: { type: SchemaType.STRING },
-                                    address: { type: SchemaType.STRING },
-                                    dateOfEmployment: { type: SchemaType.STRING },
-                                    healthNotes: { type: SchemaType.STRING },
-                                    stats: { type: SchemaType.STRING },
+            const generationConfig = {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        response: { type: SchemaType.STRING },
+                        intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'] } as any,
+                        payload: {
+                            type: SchemaType.OBJECT,
+                            properties: {
+                                // Employee Fields
+                                firstName: { type: SchemaType.STRING },
+                                lastName: { type: SchemaType.STRING },
+                                role: { type: SchemaType.STRING },
+                                email: { type: SchemaType.STRING },
+                                phone: { type: SchemaType.STRING },
+                                dob: { type: SchemaType.STRING },
+                                gender: { type: SchemaType.STRING },
+                                address: { type: SchemaType.STRING },
+                                dateOfEmployment: { type: SchemaType.STRING },
+                                healthNotes: { type: SchemaType.STRING },
+                                stats: { type: SchemaType.STRING },
 
-                                    // Inventory Fields
-                                    itemName: { type: SchemaType.STRING },
-                                    quantity: { type: SchemaType.NUMBER },
-                                    category: { type: SchemaType.STRING },
+                                // Inventory Fields
+                                itemName: { type: SchemaType.STRING },
+                                quantity: { type: SchemaType.NUMBER },
+                                category: { type: SchemaType.STRING },
 
-                                    // CRM / Event Fields
-                                    name: { type: SchemaType.STRING },
-                                    customerName: { type: SchemaType.STRING },
-                                    date: { type: SchemaType.STRING },
-                                    guestCount: { type: SchemaType.NUMBER },
-                                    location: { type: SchemaType.STRING },
-                                    eventType: { type: SchemaType.STRING },
-                                    budget: { type: SchemaType.STRING },
-                                    clientContactId: { type: SchemaType.STRING },
+                                // CRM / Event Fields
+                                name: { type: SchemaType.STRING },
+                                customerName: { type: SchemaType.STRING },
+                                date: { type: SchemaType.STRING },
+                                guestCount: { type: SchemaType.NUMBER },
+                                location: { type: SchemaType.STRING },
+                                eventType: { type: SchemaType.STRING },
+                                budget: { type: SchemaType.STRING },
+                                clientContactId: { type: SchemaType.STRING },
 
-                                    // Common/Other
-                                    unit: { type: SchemaType.STRING }
-                                }
+                                // Common/Other
+                                unit: { type: SchemaType.STRING }
                             }
-                        },
-                        required: ["response", "intent"]
-                    }
+                        }
+                    },
+                    required: ["response", "intent"]
                 }
-            });
+            };
 
-            const result = await model.generateContent(contentParts);
-            const response = await result.response;
-            return JSON.parse(response.text() || "{}");
+            // USE ENHANCED TOOL CALLING LOOP
+            const currentMessages = [
+                { role: 'user', parts: contentParts }
+            ];
+
+            const result = await executeToolCalls(ai, 'gemini-2.0-flash-lite-001', currentMessages, generationConfig, systemInstructions);
+            return JSON.parse(result.text() || "{}");
         });
 
         return response;
@@ -461,121 +657,46 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     const dataStore = useDataStore.getState();
     const { settings } = useSettingsStore.getState();
 
-    const workforceSummary = dataStore.employees.reduce((acc, emp) => {
-        acc[emp.role] = (acc[emp.role] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
+    const totalReceivables = dataStore.invoices
+        .filter(i => i.status !== 'Paid')
+        .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
 
-    const menuContext = dataStore.inventory
-        .filter(i => i.type === 'product')
-        .map(i => `- ${i.name} (${i.category}): ₦${(i.priceCents / 100).toLocaleString()}`)
-        .join('\n');
+    const operationalContextSummary = `Finance: Receivables ₦${(totalReceivables / 100).toLocaleString()}. CRM: ${dataStore.contacts.length} contacts. Inventory: ${dataStore.inventory.length} items.`;
 
     const currentUser = useAuthStore.getState().user;
     const userRole = currentUser?.role || 'Guest';
 
-    // --- Comprehensive Data Aggregation ---
-    const { InvoiceStatus } = await import('../types');
+    const systemInstruction = `
+        Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
+        User Role: ${userRole}.
+        Operational Summary: ${operationalContextSummary}
+        
+        Data Access: You MUST use the provided tools to fetch specific information. 
+        DO NOT guess data. If the information isn't in your tools, say you don't have access.
+        
+        Instructions:
+        1. Call Tools: Use tools for all specific data queries.
+        2. Real Data Only: NEVER use placeholders or fake names. If no data exists, say so.
+        3. **DEBTOR TABLE FORMAT**: Use this EXACT Markdown structure:
+           | Customer | Balance (₦) | Status |
+           | :--- | :--- | :--- |
+           | [Name from tool] | [Balance from tool] | [Status from tool] |
+        4. Filtering: If the user asks for "top 3", strictly limit the table to 3 rows.
+        5. Be direct, professional, and concise.
+    `;
 
-    const companyData = {
-        // 1. Financial Heartbeat
-        finance: {
-            bankBalance: dataStore.bankTransactions.reduce((sum, t) => sum + t.amountCents, 0) / 100, // Simple aggregate
-            chartOfAccounts: dataStore.chartOfAccounts.map(c => `${c.code} - ${c.name} (${c.type})`).join(', '),
-            unpaidInvoices: dataStore.invoices.filter(i => i.status !== InvoiceStatus.PAID).length,
-            outstandingRevenue: dataStore.invoices.filter(i => i.status !== InvoiceStatus.PAID).reduce((s, i) => s + i.totalCents, 0) / 100,
-            recentTransactions: dataStore.bankTransactions.slice(0, 5).map(t => `${t.date}: ${t.description} (${t.amountCents / 100})`)
-        },
-        // 2. Operational Inventory & Assets
-        assets: {
-            totalItems: dataStore.inventory.length,
-            lowStock: dataStore.inventory.filter(i => i.stockQuantity < 5).map(i => i.name),
-            equipment: dataStore.inventory.filter(i => i.isAsset).map(i => `${i.name} (Qty: ${i.stockQuantity})`),
-            // SMART CONTEXT: Group by Category (Filtered to exclude ingredients to save tokens)
-            inventorySummary: dataStore.inventory
-                .filter(i => i.type !== 'ingredient') // Remove ingredients to reduce payload size
-                .reduce((acc, item) => {
-                    const cat = item.category || 'General';
-                    if (!acc[cat]) acc[cat] = [];
-                    if (acc[cat].length < 50) { // Limit to 50 items per category
-                        acc[cat].push(`${item.name} (${item.stockQuantity})`);
-                    }
-                    return acc;
-                }, {} as Record<string, string[]>)
-        },
-        // 3. CRM (Customers & Suppliers)
-        crm: {
-            totalContacts: dataStore.contacts.length,
-            suppliers: dataStore.contacts.filter(c => c.category === 'Supplier').map(c => c.name),
-            recentClients: dataStore.cateringEvents.slice(0, 5).map(e => e.customerName)
-        },
-        // 4. Personnel (Enhanced)
-        personnel: {
-            headcount: dataStore.employees.length,
-            roles: workforceSummary,
-            directory: dataStore.employees.map(e => ({
-                name: `${e.firstName} ${e.lastName}`,
-                role: e.role,
-                status: e.status,
-                joined: e.dateOfEmployment,
-                phone: e.phoneNumber
-            }))
-        },
-        // 5. Taxation & Compliance (Computed)
-        taxation: {
-            taxPayableEstimate: (dataStore.invoices.reduce((s, i) => s + i.totalCents, 0) * 0.075) / 100, // 7.5% VAT estimate
-            filingStatus: "Pending (Advisory)"
-        },
-        // 6. Active Events
-        operations: dataStore.cateringEvents.map(e => ({
-            id: e.id,
-            client: e.customerName,
-            date: e.eventDate,
-            revenue: e.financials.revenueCents / 100,
-            status: e.status
-        })).slice(0, 5)
-    };
-
-    const operationalContext = JSON.stringify(companyData, null, 2);
-
-    const systemPrompt = `
-    Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
-    User Context: The user is a ${userRole}. Ensure your answers are appropriate for this authority level.
-    
-    Data Access:
-    1. Menu/Products:
-    ${menuContext || "No specific menu items loaded."}
-    
-    2. Operational Data:
-    ${operationalContext}
-    
-    Instructions:
-    - Answer the User Question based strictly on the provided Data Access.
-    - **BREVITY RULE**: Limit your response to a few sentences. Do NOT provide an entire explanation of what exists unless asked.
-    - Directness: Address the user's request immediately.
-    - If asked about "Amala" or other food items, check the 'Menu/Products' section above.
-    - Use bold headers and bullet points only for lists.
-    - **CRITICAL**: Do NOT include a signature, footer, or self-introduction.
-
-    User Question: ${prompt}`;
-
-    let contents: any = systemPrompt;
-
-    // If there is an attachment, we need to switch to the "parts" format
+    const userParts: any[] = [{ text: prompt }];
     if (attachment) {
-        contents = {
-            parts: [
-                { text: systemPrompt },
-                { inlineData: { data: attachment.base64, mimeType: attachment.mimeType } }
-            ]
-        };
+        userParts.push({ inlineData: { data: attachment.base64, mimeType: attachment.mimeType } });
     }
 
     const response = await callWithRetry(async () => {
-        const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' });
-        const result = await model.generateContent(contents);
-        const response = await result.response;
-        return response.text();
+        const currentMessages = [
+            { role: 'user', parts: userParts }
+        ];
+
+        const result = await executeToolCalls(ai, 'gemini-2.0-flash-lite-001', currentMessages, {}, systemInstruction);
+        return result.text() || "I couldn't retrieve that information right now.";
     });
     return response || "";
 }
@@ -700,10 +821,10 @@ export async function getFormGuidance(formName: string, fieldName: string, value
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: Type.OBJECT,
+                type: SchemaType.OBJECT,
                 properties: {
-                    tip: { type: Type.STRING },
-                    status: { type: Type.STRING }
+                    tip: { type: SchemaType.STRING },
+                    status: { type: SchemaType.STRING }
                 }
             }
         }

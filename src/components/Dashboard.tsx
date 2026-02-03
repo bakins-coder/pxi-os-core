@@ -10,7 +10,14 @@ import {
   Clock, AlertCircle, ShoppingBag, Receipt, ArrowDownRight, ArrowUpLeft, ChevronRight, UserCheck, LayoutGrid, Plane
 } from 'lucide-react';
 
-const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 'payable' | 'event' | 'complaint' | 'customer' | 'employee' }> = ({ title, items, type }) => {
+import { EventDetailCard } from './EventDetailCard';
+
+const SummaryList: React.FC<{
+  title: string;
+  items: any[];
+  type: 'receivable' | 'payable' | 'event' | 'complaint' | 'customer' | 'employee';
+  onEventClick?: (item: any) => void;
+}> = ({ title, items, type, onEventClick }) => {
   const navigate = useNavigate();
   return (
     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden h-full">
@@ -30,7 +37,9 @@ const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 
               <div
                 key={idx}
                 onClick={() => {
-                  if (type === 'customer') navigate('/crm');
+                  if (type === 'event' && onEventClick) {
+                    onEventClick(item);
+                  } else if (type === 'customer') navigate('/crm');
                   else if (type === 'employee') navigate('/hr');
                   else if (type === 'event') navigate('/catering');
                   else if (type === 'complaint') navigate('/contact-center');
@@ -73,6 +82,7 @@ export const Dashboard = () => {
   const { invoices, requisitions, cateringEvents, tickets, contacts, employees } = useDataStore();
   const { user } = useAuthStore();
   const { strictMode, settings } = useSettingsStore();
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
   const calculateNetProfitMargin = () => {
     // 1. Total Revenue (Paid Invoices)
@@ -197,10 +207,10 @@ export const Dashboard = () => {
       <div className="col-span-12 lg:col-span-4 space-y-8 h-full">
         <div className="h-1/2">
           {(settings.type === 'Catering') ? (
-            <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" />
+            <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" onEventClick={(ev) => setSelectedEvent(ev)} />
           ) : (
             (settings.type === 'General') ? (
-              <SummaryList title="Upcoming Events" items={dataState.upcomingEvents} type="event" />
+              <SummaryList title="Upcoming Events" items={dataState.upcomingEvents} type="event" onEventClick={(ev) => setSelectedEvent(ev)} />
             ) : (
               <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full p-6 text-center">
                 <Plane size={32} className="text-slate-300 mb-2" />
@@ -216,6 +226,13 @@ export const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {selectedEvent && (
+        <EventDetailCard
+          item={{ type: 'event', data: selectedEvent }}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
     </div>
   );
 };
