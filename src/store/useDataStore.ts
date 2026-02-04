@@ -88,6 +88,8 @@ interface DataState {
     addIngredient: (ing: Partial<Ingredient>) => void;
     updateIngredient: (id: string, updates: Partial<Ingredient>) => void;
     updateIngredientPrice: (id: string, marketPriceCents: number, insight: any) => void;
+    addTask: (task: Partial<Task>) => void;
+    updateTask: (id: string, updates: Partial<Task>) => void;
     addMarketingPost: (post: Partial<MarketingPost>) => MarketingPost;
     addAIAgent: (agent: Partial<AIAgent>) => void;
     addWorkflow: (wf: Partial<Workflow>) => void;
@@ -899,6 +901,12 @@ export const useDataStore = create<DataState>()(
                 }));
                 get().syncWithCloud();
             },
+            updateCateringEvent: (id, updates) => {
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map(e => e.id === id ? { ...e, ...updates } : e)
+                }));
+                get().syncWithCloud();
+            },
             applyForLeave: async (req) => {
                 const user = useAuthStore.getState().user;
                 if (!supabase || !user?.companyId) {
@@ -1082,6 +1090,19 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
+            addTask: (t) => {
+                const newTask = { ...t, id: t.id || `task-${Date.now()}`, companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
+                set((state) => ({ tasks: [newTask, ...state.tasks] }));
+                get().syncWithCloud();
+            },
+
+            updateTask: (id, updates) => {
+                set((state) => ({
+                    tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
+                }));
+                get().syncWithCloud();
+            },
+
             addProject: (proj) => {
                 const newProject = {
                     ...proj,
@@ -1201,7 +1222,6 @@ export const useDataStore = create<DataState>()(
             },
             addWorkflow: (wf) => {
                 const workflow = { ...wf, id: `wf-${Date.now()}`, logs: [], status: 'Active' } as Workflow;
-                set((state) => ({ workflows: [workflow, ...state.workflows] }));
                 set((state) => ({ workflows: [workflow, ...state.workflows] }));
                 get().syncWithCloud();
             },
@@ -1992,25 +2012,40 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
-            addRecipe: (recipe) => set((state) => ({
-                recipes: [{ id: `rec-${Date.now()}`, name: '', category: '', portions: [], ingredients: [], ...recipe } as Recipe, ...state.recipes]
-            })),
+            addRecipe: (recipe) => {
+                set((state) => ({
+                    recipes: [{ id: `rec-${Date.now()}`, name: '', category: '', portions: [], ingredients: [], ...recipe } as Recipe, ...state.recipes]
+                }));
+                get().syncWithCloud();
+            },
 
-            updateRecipe: (id, updates) => set((state) => ({
-                recipes: state.recipes.map((r) => r.id === id ? { ...r, ...updates } : r)
-            })),
+            updateRecipe: (id, updates) => {
+                set((state) => ({
+                    recipes: state.recipes.map((r) => r.id === id ? { ...r, ...updates } : r)
+                }));
+                get().syncWithCloud();
+            },
 
-            deleteRecipe: (id) => set((state) => ({
-                recipes: state.recipes.filter((r) => r.id !== id)
-            })),
+            deleteRecipe: (id) => {
+                set((state) => ({
+                    recipes: state.recipes.filter((r) => r.id !== id)
+                }));
+                get().syncWithCloud();
+            },
 
-            addRecipeIngredient: (recipeId, ingredient) => set((state) => ({
-                recipes: state.recipes.map((r) => r.id === recipeId ? { ...r, ingredients: [...r.ingredients, ingredient] } : r)
-            })),
+            addRecipeIngredient: (recipeId, ingredient) => {
+                set((state) => ({
+                    recipes: state.recipes.map((r) => r.id === recipeId ? { ...r, ingredients: [...r.ingredients, ingredient] } : r)
+                }));
+                get().syncWithCloud();
+            },
 
-            deleteRecipeIngredient: (recipeId, ingredientName) => set((state) => ({
-                recipes: state.recipes.map((r) => r.id === recipeId ? { ...r, ingredients: r.ingredients.filter(i => i.name !== ingredientName) } : r)
-            })),
+            deleteRecipeIngredient: (recipeId, ingredientName) => {
+                set((state) => ({
+                    recipes: state.recipes.map((r) => r.id === recipeId ? { ...r, ingredients: r.ingredients.filter(i => i.name !== ingredientName) } : r)
+                }));
+                get().syncWithCloud();
+            },
 
             calculateItemCosting: (id: string, qty: number) => {
                 const state = get();

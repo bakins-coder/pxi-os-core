@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Minimize2, Sparkles, Mic, Square, Loader2, ShieldOff, Paperclip, Image as ImageIcon, FileText, Plus, History, Trash2, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import mammoth from 'mammoth';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useDataStore } from '../store/useDataStore';
@@ -693,8 +694,8 @@ export const ChatWidget = () => {
                   : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none'
                   }`}>
                   {msg.sender === 'bot' ? (
-                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tighter prose-p:mb-2 prose-li:mb-1">
-                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tighter prose-p:mb-2 prose-li:mb-1 prose-table:border-collapse prose-table:w-full prose-th:bg-slate-50 prose-th:p-2 prose-td:p-2 prose-td:border prose-td:border-slate-100">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                     </div>
                   ) : msg.text}
                   {msg.hasAudio && (

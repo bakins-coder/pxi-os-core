@@ -182,6 +182,29 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 
    useEffect(() => { refreshCosting(); }, [item, portions]);
 
+   const groupedBreakdown = useMemo(() => {
+      if (!costing) return {};
+      const groups: Record<string, any[]> = {};
+      costing.ingredientBreakdown.forEach(ing => {
+         const groupName = ing.subRecipeGroup || item.name;
+         if (!groups[groupName]) groups[groupName] = [];
+         groups[groupName].push(ing);
+      });
+      return groups;
+   }, [costing, item.name]);
+
+   const aggregates = useMemo(() => {
+      if (!costing) return [];
+      const aggs: Record<string, { name: string, qty: number, unit: string, cost: number }> = {};
+      costing.ingredientBreakdown.forEach(ing => {
+         const key = `${ing.name}-${ing.unit}`;
+         if (!aggs[key]) aggs[key] = { name: ing.name, qty: 0, unit: ing.unit, cost: 0 };
+         aggs[key].qty += ing.qtyRequired;
+         aggs[key].cost += ing.totalCostCents;
+      });
+      return Object.values(aggs).sort((a, b) => b.cost - a.cost);
+   }, [costing]);
+
    const handleGroundPrices = async () => {
       const recipe = recipes.find(r => r.id === item.recipeId);
       if (!recipe) return;
@@ -252,32 +275,66 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   </div>
                </div>
 
-               <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-                  <table className="w-full text-left text-[11px]">
-                     <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
-                        <tr>
-                           <th className="px-8 py-5">Ingredient Component</th>
-                           <th className="px-8 py-5">Net Requirement</th>
-                           <th className="px-8 py-5 text-right">Unit Rate</th>
-                           <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-indigo-50">
-                        {(costing?.ingredientBreakdown || []).map((ing: any, idx: number) => (
-                           <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
-                              <td className="px-8 py-5">
-                                 <div className="flex items-center gap-2">
-                                    <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
-                                    {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
-                                 </div>
-                              </td>
-                              <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
-                              <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                              <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+               <div className="space-y-8">
+                  {Object.entries(groupedBreakdown).map(([groupName, items], gIdx) => (
+                     <div key={gIdx} className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
+                        <div className="px-8 py-4 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
+                           <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">{groupName}</span>
+                           <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{items.length} Ingredients</span>
+                        </div>
+                        <table className="w-full text-left text-[11px]">
+                           <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[8px] tracking-widest">
+                              <tr>
+                                 <th className="px-8 py-4">Ingredient Component</th>
+                                 <th className="px-8 py-4">Net Requirement</th>
+                                 <th className="px-8 py-4 text-right">Unit Rate</th>
+                                 <th className="px-8 py-4 text-right">Ext. Value (₦)</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-50">
+                              {items.map((ing, idx) => (
+                                 <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
+                                    <td className="px-8 py-5">
+                                       <div className="flex items-center gap-2">
+                                          <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
+                                          {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                                       </div>
+                                       {ing.scalingTierUsed && <p className="text-[8px] text-indigo-400 font-bold uppercase mt-0.5">{ing.scalingTierUsed}</p>}
+                                    </td>
+                                    <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
+                                    <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                    <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
+                     </div>
+                  ))}
+
+                  <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden mt-12">
+                     <div className="px-8 py-4 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Ingredient Aggregate Summary</span>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Consolidated Procurement View</span>
+                     </div>
+                     <table className="w-full text-left text-[11px]">
+                        <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest">
+                           <tr>
+                              <th className="px-8 py-4">Total Component</th>
+                              <th className="px-8 py-4 text-center">Combined Guest Need</th>
+                              <th className="px-8 py-4 text-right">Aggregate Cost (₦)</th>
                            </tr>
-                        ))}
-                     </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                           {aggregates.map((agg, idx) => (
+                              <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
+                                 <td className="px-8 py-4 font-black text-slate-200 uppercase">{agg.name}</td>
+                                 <td className="px-8 py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
+                                 <td className="px-8 py-4 text-right font-black text-emerald-400">₦{(agg.cost / 100).toLocaleString()}</td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1090,9 +1147,12 @@ const CostingMatrix = () => {
    );
 };
 
+import { EventDetailCard } from './EventDetailCard';
+
 export const Catering = () => {
    const [events, setEvents] = useState<CateringEvent[]>([]);
    const [selectedEvent, setSelectedEvent] = useState<CateringEvent | null>(null);
+   const [richDetailEvent, setRichDetailEvent] = useState<CateringEvent | null>(null);
    const [amendEvent, setAmendEvent] = useState<CateringEvent | null>(null);
    const [showBrochure, setShowBrochure] = useState(false);
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
@@ -1199,7 +1259,13 @@ export const Catering = () => {
                   )}
 
                   {filteredEvents.map(ev => (
-                     <div key={ev.id} onClick={() => setSelectedEvent(ev)} className={`rounded-2xl border transition-all cursor-pointer ${selectedEvent ? 'p-4' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+                     <div key={ev.id} onClick={() => setSelectedEvent(ev)} className={`rounded-2xl border transition-all cursor-pointer relative group ${selectedEvent ? 'p-4' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+                        <button
+                           onClick={(e) => { e.stopPropagation(); setRichDetailEvent(ev); }}
+                           className="absolute top-2 right-2 w-6 h-6 bg-slate-100 text-slate-400 hover:text-white hover:bg-slate-900 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                        >
+                           <Activity size={10} />
+                        </button>
                         <div className="flex justify-between items-center mb-3">
                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight leading-none truncate pr-2">{ev.customerName}</h3>
                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${ev.status === 'Confirmed' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{ev.status}</span>
@@ -1264,15 +1330,28 @@ export const Catering = () => {
             )
          }
 
-         {
-            showProcurement && selectedEvent && (
-               <ProcurementWizard
-                  event={selectedEvent}
-                  onClose={() => setShowProcurement(false)}
-                  onFinalize={handleFinalizePush}
-               />
-            )
-         }
-      </div >
+         {generatedInvoice && (
+            <WaveInvoiceModal
+               invoice={generatedInvoice}
+               onSave={handleCommitInvoice}
+               onClose={() => setGeneratedInvoice(null)}
+            />
+         )}
+
+         {showProcurement && selectedEvent && (
+            <ProcurementWizard
+               event={selectedEvent}
+               onClose={() => setShowProcurement(false)}
+               onFinalize={handleFinalizePush}
+            />
+         )}
+
+         {richDetailEvent && (
+            <EventDetailCard
+               item={{ type: 'event', data: richDetailEvent }}
+               onClose={() => setRichDetailEvent(null)}
+            />
+         )}
+      </div>
    );
 };

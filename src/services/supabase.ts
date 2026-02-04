@@ -108,6 +108,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('isAsset' in newItem) { newItem.is_asset = newItem.isAsset; delete newItem.isAsset; }
     if ('isRental' in newItem) { newItem.is_rental = newItem.isRental; delete newItem.isRental; }
     if ('rentalVendor' in newItem) { newItem.rental_vendor = newItem.rentalVendor; delete newItem.rentalVendor; }
+    if ('subRecipeGroup' in newItem) { newItem.sub_recipe_group = newItem.subRecipeGroup; delete newItem.subRecipeGroup; }
 
     // Contact Reverse Mappings
     if ('customerType' in newItem) { newItem.customer_type = newItem.customerType; delete newItem.customerType; }
