@@ -346,13 +346,13 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
       // Smart Fallback: If user already exists, try logging them in
       if (err.message?.includes('registered') || err.message?.includes('already exists')) {
         try {
-          const { login } = useAuthStore.getState();
-          await (useAuthStore.getState().login as any)(email.trim(), String(password || ''));
+          // Use the computed authIdentifier (e.g. xq-123@xquisite.local) to bypass lookup
+          await (useAuthStore.getState().login as any)(authIdentifier, String(password || ''));
           onSuccess();
           return;
         } catch (loginErr: any) {
-          // If login also fails, show the original or login error
-          setError('Account exists but password invalid. Please check your credentials.');
+          // If login also fails, it means the Auth user exists (Activated) but password doesn't match
+          setError('This ID is already activated. Please sign in with your original password.');
           return;
         }
       }

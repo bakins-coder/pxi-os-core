@@ -172,6 +172,34 @@ export interface BanquetDetails {
   notes: string;
 }
 
+export interface DispatchedAsset {
+  itemId: string;
+  name: string;
+  quantity: number;
+  dispatchedAt: string;
+}
+
+export interface LogisticsReturn {
+  itemId: string;
+  name: string;
+  dispatchedQty: number;
+  returnedQty: number;
+  missingQty: number;
+  brokenQty: number;
+  notes?: string;
+}
+
+export interface PortionMonitor {
+  eventId: string;
+  tables: ServingTable[];
+  leftovers: { itemId: string; name: string; quantity: number; reason: string; loggedAt: string }[];
+  handoverEvidence: { url: string; note: string; timestamp: string }[];
+  handoverNotes?: string;
+  handoverSignedBySupervisor?: string;
+  handoverSignedByHost?: string;
+  handoverDate?: string;
+}
+
 export interface CateringEvent {
   id: string;
   companyId: string;
@@ -180,12 +208,14 @@ export interface CateringEvent {
   endDate?: string;
   location?: string;
   guestCount: number;
-  status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed';
+  status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed' | 'Archived';
   currentPhase: CateringPhase;
   readinessScore: number;
   items: DealItem[];
   tasks: EventTask[];
   hardwareChecklist: HardwareCheckoutRecord[];
+  dispatchedAssets?: DispatchedAsset[];
+  logisticsReturns?: LogisticsReturn[];
   reconciliationStatus?: 'Pending' | 'Balanced' | 'Discrepancy' | 'Shortage';
   costingSheet?: {
     itemCostings: ItemCosting[];
@@ -301,15 +331,7 @@ export interface MovementParams {
 export type CustomerType = 'Individual' | 'Corporate';
 export type ContactCategory = 'Customer' | 'Supplier' | 'Bank_Partner' | 'Vendor' | 'Employee';
 
-export interface InteractionLog {
-  id: string;
-  contactId: string;
-  type: 'Call' | 'Email' | 'Meeting' | 'Note' | 'Other';
-  summary: string;
-  content?: string;
-  createdAt: string;
-  createdBy: string;
-}
+
 
 export interface DocumentLink {
   name: string;

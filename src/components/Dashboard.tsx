@@ -72,7 +72,16 @@ const SummaryList: React.FC<{ title: string; items: any[]; type: 'receivable' | 
 export const Dashboard = () => {
   const { invoices, requisitions, cateringEvents, tickets, contacts, employees } = useDataStore();
   const { user } = useAuthStore();
-  const { strictMode, settings } = useSettingsStore();
+  const { strictMode, settings, fetchSettings } = useSettingsStore();
+
+  // [SYNC ENFORCEMENT] Ensure Settings are always fresh on Dashboard load
+  useEffect(() => {
+    const orgId = user?.organization_id || user?.user_metadata?.organization_id || '10959119-72e4-4e57-ba54-923e36bba6a6';
+    if (orgId && (settings.name === 'My New Workspace' || !settings.id)) {
+      console.log('[Dashboard] Forcing settings sync for:', orgId);
+      fetchSettings(orgId);
+    }
+  }, [user, settings.name, fetchSettings]);
 
   const calculateNetProfitMargin = () => {
     // 1. Total Revenue (Paid Invoices)

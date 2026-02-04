@@ -124,6 +124,9 @@ interface DataState {
     addHandoverEvidence: (eventId: string, url: string, note: string) => void;
     completeEvent: (eventId: string) => void;
 
+    dispatchAssets: (eventId: string, assets: DispatchedAsset[]) => void;
+    finalizeEventLogistics: (eventId: string, returns: LogisticsReturn[]) => void;
+
     reset: () => void;
 }
 
@@ -871,7 +874,8 @@ export const useDataStore = create<DataState>()(
                     address: newEmp.address,
                     kpis: newEmp.kpis,
                     avatar: newEmp.avatar,
-                    health_notes: newEmp.healthNotes
+                    health_notes: newEmp.healthNotes,
+                    staff_id: (newEmp as any).staffId
                 };
 
                 const { error } = await supabase.from('employees').insert([dbPayload]);
@@ -1501,27 +1505,10 @@ export const useDataStore = create<DataState>()(
                 return { cateringEvents: updatedEvents };
             }),
 
-            completeEvent: (eventId: string) => set((state) => {
-                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
-                if (eventIndex === -1) return state;
-
-                const updatedEvents = [...state.cateringEvents];
-                updatedEvents[eventIndex] = {
-                    ...updatedEvents[eventIndex],
-                    status: 'Completed',
-                    portionMonitor: updatedEvents[eventIndex].portionMonitor ? {
-                        ...updatedEvents[eventIndex].portionMonitor!,
-                        handoverDate: new Date().toISOString()
-                    } : undefined
-                };
-
-                get().syncWithCloud();
-                return { cateringEvents: updatedEvents };
-            }),
-
             updateTableCapacity: (eventId: string, tableId: string, newCount: number) => set((state) => {
                 const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                 if (eventIndex === -1) return state;
+
                 const event = state.cateringEvents[eventIndex];
                 if (!event.portionMonitor) return state;
 
@@ -1639,6 +1626,70 @@ export const useDataStore = create<DataState>()(
 
                 get().syncWithCloud();
                 return { cateringEvents: updatedEvents };
+            }),
+
+            dispatchAssets: (eventId, assets) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const updatedInventory = [...state.inventory];
+
+                // Deduct stock
+                assets.forEach(asset => {
+                    const itemIndex = updatedInventory.findIndex(i => i.id === asset.itemId);
+                    if (itemIndex > -1) {
+                        const currentQty = updatedInventory[itemIndex].stockQuantity;
+                        updatedInventory[itemIndex] = {
+                            ...updatedInventory[itemIndex],
+                            stockQuantity: Math.max(0, currentQty - asset.quantity)
+                        };
+                    }
+                });
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = {
+                    ...updatedEvents[eventIndex],
+                    dispatchedAssets: assets
+                };
+
+                get().syncWithCloud();
+                return {
+                    cateringEvents: updatedEvents,
+                    inventory: updatedInventory
+                };
+            }),
+
+            finalizeEventLogistics: (eventId, returns) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+
+                const updatedInventory = [...state.inventory];
+
+                // Return stock
+                returns.forEach(ret => {
+                    const itemIndex = updatedInventory.findIndex(i => i.id === ret.itemId);
+                    if (itemIndex > -1) {
+                        const currentQty = updatedInventory[itemIndex].stockQuantity;
+                        updatedInventory[itemIndex] = {
+                            ...updatedInventory[itemIndex],
+                            stockQuantity: currentQty + ret.returnedQty
+                        };
+                    }
+                });
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = {
+                    ...updatedEvents[eventIndex],
+                    logisticsReturns: returns,
+                    status: 'Archived',
+                    currentPhase: 'PostEvent'
+                };
+
+                get().syncWithCloud();
+                return {
+                    cateringEvents: updatedEvents,
+                    inventory: updatedInventory
+                };
             }),
 
             createCateringOrder: async (d) => {

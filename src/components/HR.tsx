@@ -117,8 +117,22 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
 
    // 4. Helper Functions
    const generateCredentials = () => {
-      const randomTab = Math.floor(1000 + Math.random() * 9000);
-      const newId = `XQ-${randomTab}`;
+      // Sequential Generation proposed: Search for the first available XQ-XXXX slot
+      let counter = 1;
+      let candidateId = '';
+      while (true) {
+         candidateId = `XQ-${counter.toString().padStart(4, '0')}`;
+         // Check if this ID exists in the loaded employees list (checking both camelCase and snake_case properties)
+         const exists = employees.some(e =>
+            (e as any).staffId === candidateId ||
+            (e as any).staff_id === candidateId ||
+            (e.email && e.email.toUpperCase().startsWith(candidateId)) // Extra safety: collision with email prefix
+         );
+         if (!exists) break;
+         counter++;
+      }
+
+      const newId = candidateId;
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       let pass = "";
       for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -188,7 +202,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
 
    const handleHire = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!firstName || !lastName || !email || !selectedRoleTitle) return;
+      if (!firstName || !lastName || !selectedRoleTitle) return;
       setIsSubmitting(true);
 
       // Gender-aware avatar generation
@@ -200,8 +214,14 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${firstName}-${lastName}${genderParams}`;
       }
 
+      // If no email provided, generate a system email from Staff ID so they can still log in
+      let finalEmail = email;
+      if (!finalEmail && staffId) {
+         finalEmail = `${staffId.toLowerCase()}@xquisite.local`;
+      }
+
       const employeeData = {
-         firstName, lastName, title, email, phoneNumber, address, dob, gender, dateOfEmployment,
+         firstName, lastName, title, email: finalEmail, phoneNumber, address, dob, gender, dateOfEmployment,
          role: selectedRoleTitle as any, salaryCents: salaryNGN * 100, avatar: avatarUrl, healthNotes,
          staffId: staffId // Save the ID
       };
@@ -212,13 +232,19 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          onClose();
       }
       else {
-         const addedEmployee = await addEmployee(employeeData);
-         const created = { ...addedEmployee, _tempPassword: defaultPassword }; // Hack to pass password to ID card
-         setIsSubmitting(false);
-         setIdGenerated(created);
-         // Clear form inputs immediately so they don't persist on next open
-         localStorage.removeItem(DRAFT_KEY);
-         clearInputs();
+         try {
+            const addedEmployee = await addEmployee(employeeData);
+            const created = { ...addedEmployee, _tempPassword: defaultPassword }; // Hack to pass password to ID card
+            setIsSubmitting(false);
+            setIdGenerated(created);
+            // Clear form inputs immediately so they don't persist on next open
+            localStorage.removeItem(DRAFT_KEY);
+            clearInputs();
+         } catch (err: any) {
+            console.error("Hiring Failed:", err);
+            alert(`Failed to hire staff: ${err.message || err}`);
+            setIsSubmitting(false);
+         }
       }
    };
 
@@ -314,7 +340,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                   <div className="space-y-3"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-1 block">Address</label><textarea required rows={2} className="w-full p-5 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Primary residence..." value={address} onChange={e => setAddress(e.target.value)} /></div>
                   <div className="space-y-3"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-1 block">Email & Phone</label>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input required type="email" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-900 font-black outline-none focus:border-indigo-500 transition-all" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+                        <input type="email" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-900 font-black outline-none focus:border-indigo-500 transition-all" placeholder="Email (Optional)" value={email} onChange={e => setEmail(e.target.value)} />
                         <input required type="tel" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" placeholder="Phone" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
                      </div>
                   </div>

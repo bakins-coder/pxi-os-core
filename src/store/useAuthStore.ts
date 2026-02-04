@@ -45,7 +45,6 @@ export const useAuthStore = create<AuthState>()(
                 // [LOOKUP] Resolve Staff ID
                 if (!email.includes('@')) {
                     try {
-                        // Explicitly cast the result to any or the specific Supabase response type to avoid 'unknown' inference issues helper
                         const response = await withTimeout(
                             supabase.rpc('get_email_by_staff_id', { lookup_id: emailOrId.trim() }),
                             3000, 'Staff ID lookup timed out'
@@ -53,11 +52,26 @@ export const useAuthStore = create<AuthState>()(
 
                         const resolvedEmail = response.data;
 
-                        if (resolvedEmail) email = resolvedEmail;
-                        else throw new Error(`Staff ID '${emailOrId}' not recognized.`);
+                        if (resolvedEmail) {
+                            email = resolvedEmail;
+                        } else {
+                            // [FAILSAFE] If RPC fails but it looks like a Staff ID, try constructing the email
+                            if (/^XQ-\d+$/i.test(emailOrId.trim())) {
+                                console.warn('[Auth] RPC lookup failed, attempting fallback construction for:', emailOrId);
+                                email = `${emailOrId.trim().toLowerCase()}@xquisite.local`;
+                            } else {
+                                throw new Error(`Staff ID '${emailOrId}' not recognized.`);
+                            }
+                        }
                     } catch (e) {
-                        console.warn('[Auth] Staff ID lookup failed:', e);
-                        throw e;
+                        // If it matches the format, try the fallback even if RPC errored
+                        if (/^XQ-\d+$/i.test(emailOrId.trim())) {
+                            console.warn('[Auth] RPC Error, using fallback for:', emailOrId);
+                            email = `${emailOrId.trim().toLowerCase()}@xquisite.local`;
+                        } else {
+                            console.warn('[Auth] Staff ID lookup failed:', e);
+                            throw e;
+                        }
                     }
                 }
 
@@ -198,27 +212,109 @@ export const useAuthStore = create<AuthState>()(
                 const { data: { user }, error: userError } = await supabase.auth.getUser();
                 if (userError || !user) return { success: false, error: 'No valid session' };
 
-                // Reuse Login logic for profile fetching (simplified)
+                // [FIX] Verify we have a COMPLETE user object. If companyId is missing, force refresh.
                 const current = get().user;
-                if (current) return { success: true }; // If we have a user in store, trust it to avoid double-fetch flicker
+                if (current && current.companyId && current.id === user.id) return { success: true };
 
-                // If no user in store, hydrate basic info from Auth User
+                // 1. Fetch Profile from DB to ensure we get the Organization ID
+                let profile = null;
+                try {
+                    const { data: fetchedProfile, error: profileErr } = await withTimeout(
+                        supabase.from('profiles')
+                            .select('organization_id, role, first_name, last_name, is_super_admin')
+                            .eq('id', user.id)
+                            .maybeSingle(),
+                        5000, 'Profile check timed out'
+                    );
+                    if (!profileErr) profile = fetchedProfile;
+                } catch (e) { console.error("[Auth] Profile fetch error:", e); }
+
                 const metadata = user.user_metadata || {};
 
                 // SECURITY FIX: Safe Defaults
                 const isKnownAdmin = user.email === 'oreoluwatomiwab@gmail.com' || user.email === 'toxsyyb@yahoo.co.uk';
-                const safeRole = (metadata.role as Role) || (isKnownAdmin ? Role.ADMIN : Role.EMPLOYEE);
+                const safeRole = (profile?.role as Role) || (metadata.role as Role) || (isKnownAdmin ? Role.ADMIN : Role.EMPLOYEE);
+
+                // [CRITICAL FIX] Ensure Company ID is never empty for staff
+                let targetOrgId = profile?.organization_id || metadata.company_id || metadata.organization_id;
+
+                // [PREFIX PROTOCOL] "XQ" implies "Xquisite"
+                // As per user requirement: The prefix is the source of truth.
+                const isXquisiteStaff = user.email?.toLowerCase().startsWith('xq-') || user.email?.includes('@xquisite');
+
+                if (!targetOrgId && isXquisiteStaff) {
+                    console.log('[Auth] Recognized XQ prefix. Auto-mapping to Xquisite Workspace.');
+                    targetOrgId = '10959119-72e4-4e57-ba54-923e36bba6a6';
+                }
+
+                // [SELF-HEALING] Link Database Record
+                // If we haven't confirmed the DB link yet (no profile org_id), ensure the employee record is connected.
+                if ((!profile?.organization_id) && !isKnownAdmin) {
+                    try {
+                        const emailLookup = user.email || '';
+                        let matchQuery = supabase.from('employees').select('organization_id, role, id, staff_id').is('user_id', null);
+
+                        if (isXquisiteStaff) {
+                            // Extract ID: xq-3828@... -> XQ-3828
+                            const staffId = emailLookup.split('@')[0].toUpperCase().replace('XQ-', 'XQ-');
+                            matchQuery = matchQuery.ilike('staff_id', staffId);
+                        } else {
+                            matchQuery = matchQuery.eq('email', emailLookup);
+                        }
+
+                        const { data: lostEmployee } = await matchQuery.maybeSingle();
+
+                        if (lostEmployee) {
+                            console.log('[Auth] Linking Staff ID:', lostEmployee.staff_id);
+                            await supabase.from('employees').update({ user_id: user.id }).eq('id', lostEmployee.id);
+
+                            // If we auto-mapped above, this confirms it. If not, this sets it.
+                            if (!targetOrgId) targetOrgId = lostEmployee.organization_id;
+
+                            // Refresh settings immediately
+                            setTimeout(() => {
+                                useSettingsStore.getState().fetchSettings(targetOrgId);
+                            }, 500);
+                        } else if (targetOrgId) {
+                            // We have an Org ID (likely from Prefix Protocol), but maybe record is already linked? 
+                            // Just ensure settings are loaded.
+                            setTimeout(() => {
+                                useSettingsStore.getState().fetchSettings(targetOrgId);
+                            }, 500);
+                        }
+                    } catch (healErr) {
+                        console.warn('[Auth] Self-healing failed:', healErr);
+                    }
+                }
+
+                // Final Fallback
+                if (!targetOrgId) targetOrgId = '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                // Fetch Permissions for this Org/Role
+
+                // Fetch Permissions for this Org/Role
+                let permissionTags: string[] = isKnownAdmin ? ['*'] : [];
+                if (targetOrgId && !isKnownAdmin) {
+                    try {
+                        const { data: roleData } = await supabase.from('job_roles')
+                            .select('permissions')
+                            .eq('organization_id', targetOrgId)
+                            .eq('title', safeRole)
+                            .maybeSingle();
+                        if (roleData?.permissions) permissionTags = roleData.permissions;
+                    } catch (e) { console.warn("[Auth] Permission fetch failed:", e); }
+                }
 
                 set({
                     user: {
                         id: user.id,
                         email: user.email || '',
                         role: safeRole,
-                        companyId: metadata.company_id || '10959119-72e4-4e57-ba54-923e36bba6a6',
-                        name: metadata.name || 'User',
+                        companyId: targetOrgId,
+                        name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || metadata.name || 'User',
                         avatar: metadata.avatar || '',
-                        permissionTags: isKnownAdmin ? ['*'] : [], // Only admins get wildcard if profile fails
-                        isSuperAdmin: false
+                        permissionTags,
+                        isSuperAdmin: profile?.is_super_admin || false
                     }
                 });
                 return { success: true };

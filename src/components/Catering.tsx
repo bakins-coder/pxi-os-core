@@ -6,11 +6,13 @@ import { CateringEvent, InventoryItem, ItemCosting, Invoice, Requisition, Contac
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
-   ArrowDownLeft, ArrowUpRight, ShoppingBag, User, Flame, UtensilsCrossed, Clock, Users, Palette, AlertCircle, Activity,
-   ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag
+   Clock, Users, Palette, AlertCircle, Activity, Box,
+   ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag,
+   ShoppingBag, User, Flame, UtensilsCrossed
 } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
+import { generateHandoverReport } from '../utils/exportUtils';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
@@ -528,7 +530,263 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
    );
 };
 
-const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (ev: CateringEvent) => void }) => {
+const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose: () => void }) => {
+   const inventory = useDataStore(state => state.inventory);
+   const dispatchAssets = useDataStore(state => state.dispatchAssets);
+   const [search, setSearch] = useState('');
+   const [cart, setCart] = useState<{ itemId: string, name: string, quantity: number }[]>([]);
+
+   const filteredDetails = inventory.filter(i =>
+      (i.type === 'asset' || i.type === 'reusable' || i.category === 'Hardware') &&
+      i.name.toLowerCase().includes(search.toLowerCase())
+   );
+
+   const addToCart = (item: InventoryItem) => {
+      if (cart.find(c => c.itemId === item.id)) return;
+      setCart([...cart, { itemId: item.id, name: item.name, quantity: 1 }]);
+   };
+
+   const updateQty = (idx: number, qty: number) => {
+      const newCart = [...cart];
+      newCart[idx].quantity = qty;
+      setCart(newCart);
+   };
+
+   const handleDispatch = () => {
+      if (cart.length === 0) return;
+      const dispatchedAt = new Date().toISOString();
+      const assets = cart.map(c => ({ ...c, dispatchedAt }));
+
+      if (confirm(`Dispatcher Confirmation:\n\nYou are about to move ${cart.reduce((a, b) => a + b.quantity, 0)} items from Main Inventory to Event Location.\n\nProceed?`)) {
+         dispatchAssets(event.id, assets);
+         alert("Assets Dispatched Successfully.");
+         onClose();
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md animate-in zoom-in duration-200">
+         <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[85vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+               <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white shadow-lg"><Truck size={20} /></div>
+                  <div>
+                     <h2 className="text-xl font-black text-orange-600 uppercase">Asset Dispatch</h2>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase">Select items leaving the warehouse</p>
+                  </div>
+               </div>
+               <button onClick={onClose}><X size={24} className="text-slate-400 hover:text-rose-500" /></button>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+               {/* Item Selector */}
+               <div className="w-1/2 border-r border-slate-100 flex flex-col p-4 bg-slate-50/50">
+                  <input
+                     type="text"
+                     placeholder="Search assets (Plates, Glassware...)"
+                     className="w-full p-3 bg-white border border-slate-200 rounded-xl mb-4 font-bold text-sm outline-none focus:border-indigo-500"
+                     value={search}
+                     onChange={e => setSearch(e.target.value)}
+                  />
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                     {filteredDetails.map(item => (
+                        <div key={item.id} onClick={() => addToCart(item)} className="p-3 bg-white border border-slate-100 rounded-xl hover:border-indigo-300 cursor-pointer flex justify-between items-center group transition-all">
+                           <div>
+                              <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">Stock: {item.stockQuantity}</p>
+                           </div>
+                           <Plus size={16} className="text-slate-300 group-hover:text-indigo-600" />
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Dispatch Cart */}
+               <div className="w-1/2 flex flex-col p-6 bg-white">
+                  <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mb-4">Dispatch Manifest</h3>
+                  <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+                     {cart.length === 0 && <p className="text-slate-400 text-center text-sm italic mt-10">No items selected.</p>}
+                     {cart.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                           <span className="font-bold text-slate-700 text-sm truncate flex-1">{item.name}</span>
+                           <div className="flex items-center gap-2">
+                              <input
+                                 type="number"
+                                 className="w-16 p-1 bg-white border border-slate-200 rounded text-center text-sm font-bold outline-none focus:border-indigo-500"
+                                 value={item.quantity}
+                                 onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
+                              />
+                              <button onClick={() => setCart(cart.filter((_, i) => i !== idx))}><Trash2 size={14} className="text-rose-400 hover:text-rose-600" /></button>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+                  <button onClick={handleDispatch} disabled={cart.length === 0} className="w-full py-4 bg-orange-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 transition-all">
+                     Confirm Dispatch
+                  </button>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringEvent, onClose: () => void, onComplete?: () => void }) => {
+   const finalizeEventLogistics = useDataStore(state => state.finalizeEventLogistics);
+   const requisitions = useDataStore(state => state.requisitions);
+
+   // State for Assets
+   const [assetReturns, setAssetReturns] = useState<{ itemId: string, returnedQty: number }[]>([]);
+
+   // State for Rentals
+   const rentals = requisitions.filter(r => r.referenceId === event.id && r.type === 'Rental');
+   const [rentalsReturned, setRentalsReturned] = useState<Record<string, boolean>>({});
+
+   const handleAssetReturnChange = (itemId: string, val: number) => {
+      const existing = assetReturns.filter(a => a.itemId !== itemId);
+      existing.push({ itemId, returnedQty: val });
+      setAssetReturns(existing);
+   };
+
+   const getReturnQty = (itemId: string) => assetReturns.find(a => a.itemId === itemId)?.returnedQty || 0;
+
+   const handleFinalize = () => {
+      // 1. Verify Rentals
+      const allRentalsReturned = rentals.every(r => rentalsReturned[r.id]);
+      if (rentals.length > 0 && !allRentalsReturned) {
+         if (!confirm("Warning: Not all external rentals are marked as Returned to Vendor.\n\nProceed anyway?")) return;
+      }
+
+      // 2. Prepare Data
+      const logisticsData = (event.dispatchedAssets || []).map(dispatched => {
+         const returned = getReturnQty(dispatched.itemId);
+         return {
+            itemId: dispatched.itemId,
+            name: dispatched.name,
+            dispatchedQty: dispatched.quantity,
+            returnedQty: returned,
+            missingQty: Math.max(0, dispatched.quantity - returned),
+            brokenQty: 0 // Simplification: Assuming missing = broken/lost for now
+         };
+      });
+
+      if (confirm("Finalize Logistics & Archive Event?\n\nThis will return good items to inventory and close the event record.")) {
+         finalizeEventLogistics(event.id, logisticsData);
+         if (onComplete) onComplete();
+         onClose();
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md animate-in zoom-in duration-200">
+         <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh]">
+            <div className="p-8 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+               <div>
+                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Logistics Reconciliation</h2>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Post-Event Asset Recovery & Returns</p>
+               </div>
+               <button onClick={onClose}><X size={24} className="text-slate-400 hover:text-slate-900" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-12 space-y-12">
+               {/* Section 1: Rentals */}
+               {rentals.length > 0 && (
+                  <section>
+                     <div className="flex items-center gap-4 mb-6">
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center"><Truck size={16} /></div>
+                        <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest">External Rentals</h3>
+                     </div>
+                     <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-6">
+                        <p className="text-[10px] font-black uppercase text-orange-400 mb-4 tracking-widest">Confirm Return to Vendor</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {rentals.map(req => (
+                              <label key={req.id} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-orange-100 cursor-pointer hover:border-orange-300 transition-all select-none">
+                                 <input
+                                    type="checkbox"
+                                    className="w-5 h-5 accent-orange-600 rounded"
+                                    checked={rentalsReturned[req.id] || false}
+                                    onChange={e => setRentalsReturned({ ...rentalsReturned, [req.id]: e.target.checked })}
+                                 />
+                                 <div>
+                                    <p className="font-bold text-slate-800 text-sm">{req.itemName}</p>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase">Qty: {req.quantity}</p>
+                                 </div>
+                              </label>
+                           ))}
+                        </div>
+                     </div>
+                  </section>
+               )}
+
+               {/* Section 2: Internal Assets */}
+               <section>
+                  <div className="flex items-center gap-4 mb-6">
+                     <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center"><Box size={16} /></div>
+                     <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest">Internal Asset Recovery</h3>
+                  </div>
+
+                  {(!event.dispatchedAssets || event.dispatchedAssets.length === 0) ? (
+                     <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                        <p className="text-slate-400 font-bold text-sm">No internal assets were formally dispatched for this event.</p>
+                     </div>
+                  ) : (
+                     <div className="overflow-hidden rounded-2xl border border-slate-200">
+                        <table className="w-full text-left text-sm">
+                           <thead className="bg-slate-50 border-b border-slate-200">
+                              <tr>
+                                 <th className="p-4 font-black text-slate-500 uppercase text-[10px] tracking-widest">Item Name</th>
+                                 <th className="p-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-center">Dispatched</th>
+                                 <th className="p-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-center w-32">Returned (Good)</th>
+                                 <th className="p-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-center">Variance (Lost/Broken)</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                              {event.dispatchedAssets.map((item, idx) => {
+                                 const returned = getReturnQty(item.itemId);
+                                 const variance = item.quantity - returned;
+                                 return (
+                                    <tr key={idx} className="bg-white">
+                                       <td className="p-4 font-bold text-slate-800">{item.name}</td>
+                                       <td className="p-4 font-bold text-slate-600 text-center">{item.quantity}</td>
+                                       <td className="p-4 text-center">
+                                          <input
+                                             type="number"
+                                             className="w-20 p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                                             value={getReturnQty(item.itemId) || ''}
+                                             placeholder="0"
+                                             onChange={e => handleAssetReturnChange(item.itemId, parseInt(e.target.value) || 0)}
+                                             max={item.quantity}
+                                          />
+                                       </td>
+                                       <td className="p-4 text-center">
+                                          {variance > 0 ? (
+                                             <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-black">{variance} Missing</span>
+                                          ) : (
+                                             <span className="text-emerald-500 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1"><Check size={12} /> All Good</span>
+                                          )}
+                                       </td>
+                                    </tr>
+                                 );
+                              })}
+                           </tbody>
+                        </table>
+                     </div>
+                  )}
+               </section>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-white flex justify-end gap-4">
+               <button onClick={onClose} className="px-8 py-4 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-slate-800">Cancel</button>
+               <button onClick={handleFinalize} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-slate-800 flex items-center gap-3 active:scale-95 transition-all">
+                  <CheckCircle2 size={18} /> Finalize & Close Event
+               </button>
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, onAmend: (ev: CateringEvent) => void, onClose?: () => void }) => {
    const estimatedCost = event.financials.revenueCents * 0.4;
    const estimatedNet = event.financials.revenueCents - estimatedCost;
 
@@ -546,6 +804,9 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
    const handleComplete = () => {
       if (confirm("Are you sure you want to close this event? This will archive it as 'Completed'.")) {
          completeEvent(event.id);
+         // Do not navigate away yet, let them do logistics if needed. Or maybe do? 
+         // User asked for "Finalize and Close" button in Logistics modal to navigate away.
+         // This button is "Finalize Event" which just marks it Completed.
       }
    };
 
@@ -567,6 +828,8 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
    const salesInvoice = useMemo(() => invoices.find(inv => inv.id === event.financials.invoiceId), [invoices, event.financials.invoiceId]);
    const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
    const [showMonitor, setShowMonitor] = useState(false);
+   const [showDispatch, setShowDispatch] = useState(false);
+   const [showLogistics, setShowLogistics] = useState(false);
 
    if (showMonitor) {
       return (
@@ -578,7 +841,20 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
 
    return (
       <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-12 relative">
+         {onClose && (
+            <button
+               onClick={onClose}
+               className="absolute top-6 right-6 p-3 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all z-10"
+               title="Close Details"
+            >
+               <X size={20} />
+            </button>
+         )}
          {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => { }} onClose={() => setViewingInvoice(null)} />}
+
+         {/* LOGISTICS MODALS */}
+         {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
+         {showLogistics && <LogisticsReturnModal event={event} onClose={() => setShowLogistics(false)} onComplete={onClose} />}
 
          <div className="flex justify-between items-start">
             <div className="space-y-4">
@@ -586,20 +862,18 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
                   <button onClick={() => onAmend(event)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 items-center">
                      <FileText size={14} /> Amend Record
                   </button>
+                  {/* ... other top buttons ... */}
                   {salesInvoice && (
                      <button onClick={() => setViewingInvoice(salesInvoice)} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 items-center">
                         <Printer size={14} /> View Invoice
                      </button>
                   )}
-                  <button onClick={handleCook} className="px-6 py-2 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-rose-700 transition-all flex items-center gap-2 items-center">
-                     <Flame size={14} /> Production Run
-                  </button>
-                  <button onClick={() => setShowMonitor(true)} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2 items-center">
-                     <Activity size={14} /> Live Monitor
-                  </button>
-                  <button onClick={handleComplete} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 items-center">
-                     <Flag size={14} /> Finalize Event
-                  </button>
+                  {event.currentPhase === 'Execution' && (
+                     <button onClick={() => setShowDispatch(true)} className="px-6 py-2 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2 items-center">
+                        <Truck size={14} /> Dispatch Assets
+                     </button>
+                  )}
+                  {/* ... */}
                </div>
                <div>
                   <h3 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none">{event.customerName}</h3>
@@ -661,6 +935,7 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
                   <div className="h-px flex-1 bg-slate-100"></div>
                </div>
                <div className="space-y-4">
+                  {/* ... (Banquet Details) ... */}
                   {event.banquetDetails?.eventPlanner && (
                      <div className="p-6 bg-slate-900 border border-[#00ff9d]/20 rounded-3xl shadow-xl">
                         <div className="flex items-center gap-3 mb-2">
@@ -707,7 +982,7 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
                      <CheckCircle2 size={18} /> Generate Purchase Order
                   </button>
                )}
-               {event.currentPhase === 'Execution' && (
+               {event.currentPhase === 'Execution' && event.status !== 'Completed' && (
                   <>
                      <button onClick={() => setShowMonitor(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
                         <Activity size={18} /> Launch Live Monitor
@@ -715,6 +990,29 @@ const EventNodeSummary = ({ event, onAmend }: { event: CateringEvent, onAmend: (
                      <button onClick={handleCook} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
                         <Flame size={18} /> Confirm Kitchen Production
                      </button>
+                  </>
+               )}
+               {(event.currentPhase === 'PostEvent' || event.status === 'Completed' || event.status === 'Archived') && (
+                  <>
+                     <button
+                        onClick={() => event.portionMonitor && generateHandoverReport(event, event.portionMonitor)}
+                        className="bg-slate-900 text-[#00ff9d] px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all"
+                     >
+                        <FileText size={18} /> View Handover Report
+                     </button>
+                     {event.status !== 'Archived' && (
+                        <button
+                           onClick={() => setShowLogistics(true)}
+                           className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all"
+                        >
+                           <Truck size={18} /> Logistics Return
+                        </button>
+                     )}
+                     {event.status === 'Archived' && (
+                        <div className="bg-slate-50 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-100 flex items-center gap-3">
+                           <CheckCircle2 size={18} /> Event Closed
+                        </div>
+                     )}
                   </>
                )}
             </div>
@@ -800,9 +1098,17 @@ export const Catering = () => {
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
    const [activeTab, setActiveTab] = useState<'orders' | 'matrix'>('orders');
    const [showProcurement, setShowProcurement] = useState(false);
+   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
 
    const cateringEvents = useDataStore(state => state.cateringEvents);
    const approveInvoice = useDataStore(state => state.approveInvoice);
+
+   const filteredEvents = useMemo(() => {
+      if (viewMode === 'active') {
+         return events.filter(e => e.status !== 'Archived');
+      }
+      return events.filter(e => e.status === 'Archived');
+   }, [events, viewMode]);
 
    useEffect(() => {
       setEvents(cateringEvents);
@@ -863,67 +1169,110 @@ export const Catering = () => {
          </div>
 
          {activeTab === 'orders' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-               <div className="lg:col-span-1 space-y-6">
-                  <div className="flex justify-between items-center px-4"><h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">Active Banquets</h2><button onClick={() => setShowBrochure(true)} className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button></div>
-                  {events.map(ev => (
-                     <div key={ev.id} onClick={() => setSelectedEvent(ev)} className={`p-8 rounded-[3rem] border-2 transition-all cursor-pointer ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-2xl' : 'border-slate-50 bg-white hover:border-indigo-100'}`}>
-                        <div className="flex justify-between items-start mb-4"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${ev.status === 'Confirmed' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-700'}`}>{ev.status}</span><span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">{ev.currentPhase}</span></div>
-                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight leading-none mb-2">{ev.customerName}</h3>
-                        <div className="flex justify-between items-center"><p className="text-xs text-slate-500 font-bold uppercase">{ev.guestCount} Guests</p><span className="text-sm font-black text-indigo-600">₦{(ev.financials.revenueCents / 100).toLocaleString()}</span></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+               <div className={`transition-all duration-300 ${selectedEvent ? 'lg:col-span-1 space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'}`}>
+                  <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
+                     <div className="flex justify-between items-center">
+                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} Banquets</h2>
+                        <button onClick={() => setShowBrochure(true)} className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                     </div>
+                     <div className="flex bg-slate-100 p-1 rounded-xl">
+                        {['active', 'archived'].map((mode) => (
+                           <button
+                              key={mode}
+                              onClick={() => {
+                                 setViewMode(mode as any);
+                                 setSelectedEvent(null);
+                              }}
+                              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === mode ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                           >
+                              {mode}
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {filteredEvents.length === 0 && (
+                     <div className={`p-8 text-center border-2 border-dashed border-slate-100 rounded-[3rem] ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
+                        <p className="text-xs font-black uppercase text-slate-300 tracking-widest">No {viewMode} records found</p>
+                     </div>
+                  )}
+
+                  {filteredEvents.map(ev => (
+                     <div key={ev.id} onClick={() => setSelectedEvent(ev)} className={`rounded-2xl border transition-all cursor-pointer ${selectedEvent ? 'p-4' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+                        <div className="flex justify-between items-center mb-3">
+                           <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight leading-none truncate pr-2">{ev.customerName}</h3>
+                           <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${ev.status === 'Confirmed' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{ev.status}</span>
+                        </div>
+                        <div className="flex justify-between items-end">
+                           <div className="space-y-0.5">
+                              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Guests</p>
+                              <p className="text-sm font-black text-slate-700 leading-none">{ev.guestCount}</p>
+                           </div>
+                           <div className="space-y-0.5 text-right">
+                              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Revenue</p>
+                              <p className="text-sm font-black text-[#ff6b6b] leading-none">₦{(ev.financials.revenueCents / 100).toLocaleString()}</p>
+                           </div>
+                        </div>
                      </div>
                   ))}
                </div>
-               <div className="lg:col-span-2">
-                  {selectedEvent ? (
+
+               {selectedEvent && (
+                  <div className="lg:col-span-2">
                      <EventNodeSummary
                         event={selectedEvent}
                         onAmend={(ev) => {
                            setAmendEvent(ev);
                            setShowBrochure(true);
                         }}
+                        onClose={() => setSelectedEvent(null)}
                      />
-                  ) : (
-                     <div className="flex-1 flex flex-col items-center justify-center h-[500px] text-slate-200"><ChefHat size={64} className="opacity-10 animate-float" /><p className="text-lg font-black uppercase tracking-widest opacity-20 mt-4">Select a banquet record</p></div>
-                  )}
-               </div>
+                  </div>
+               )}
             </div>
          )}
          {activeTab === 'matrix' && <CostingMatrix />}
 
          {/* UI Overlays */}
-         {showBrochure && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
-               <OrderBrochure
-                  initialEvent={amendEvent || undefined}
-                  onComplete={() => {
-                     setShowBrochure(false);
-                     setAmendEvent(null);
-                  }}
-                  onFinalize={(inv) => {
-                     setShowBrochure(false);
-                     setAmendEvent(null);
-                     handleFinalizePush(inv);
-                  }}
+         {
+            showBrochure && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+                  <OrderBrochure
+                     initialEvent={amendEvent || undefined}
+                     onComplete={() => {
+                        setShowBrochure(false);
+                        setAmendEvent(null);
+                     }}
+                     onFinalize={(inv) => {
+                        setShowBrochure(false);
+                        setAmendEvent(null);
+                        handleFinalizePush(inv);
+                     }}
+                  />
+               </div>
+            )
+         }
+
+         {
+            generatedInvoice && (
+               <WaveInvoiceModal
+                  invoice={generatedInvoice}
+                  onSave={handleCommitInvoice}
+                  onClose={() => setGeneratedInvoice(null)}
                />
-            </div>
-         )}
+            )
+         }
 
-         {generatedInvoice && (
-            <WaveInvoiceModal
-               invoice={generatedInvoice}
-               onSave={handleCommitInvoice}
-               onClose={() => setGeneratedInvoice(null)}
-            />
-         )}
-
-         {showProcurement && selectedEvent && (
-            <ProcurementWizard
-               event={selectedEvent}
-               onClose={() => setShowProcurement(false)}
-               onFinalize={handleFinalizePush}
-            />
-         )}
-      </div>
+         {
+            showProcurement && selectedEvent && (
+               <ProcurementWizard
+                  event={selectedEvent}
+                  onClose={() => setShowProcurement(false)}
+                  onFinalize={handleFinalizePush}
+               />
+            )
+         }
+      </div >
    );
 };
