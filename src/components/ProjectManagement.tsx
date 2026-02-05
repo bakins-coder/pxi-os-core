@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 const KanbanBoard = ({ project }: { project: Project }) => {
-   const { tasks } = useDataStore(); // Get all tasks if needed, or filter project.tasks
+   const { advanceProjectTask } = useDataStore();
    const projectTasks = project.tasks || [];
 
    // Group by status
@@ -18,6 +18,15 @@ const KanbanBoard = ({ project }: { project: Project }) => {
       'Done': projectTasks.filter(t => t.status === 'Done' || t.status === 'Completed')
    };
 
+   const getNextStatusLabel = (status: string) => {
+      switch (status) {
+         case 'Todo': return 'Start Progress';
+         case 'In Progress': return 'Move to Review';
+         case 'Review': return 'Complete Task';
+         default: return null;
+      }
+   };
+
    return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 overflow-x-auto pb-4">
          {Object.entries(columns).map(([status, items]) => (
@@ -26,18 +35,32 @@ const KanbanBoard = ({ project }: { project: Project }) => {
                   {status} <span className="bg-slate-200 text-slate-600 px-2 rounded-full">{items.length}</span>
                </h4>
                <div className="space-y-3">
-                  {items.map(task => (
-                     <div key={task.id} className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 ${task.priority === 'Critical' ? 'border-l-4 border-l-rose-500' : ''}`}>
-                        <div className="flex justify-between items-start mb-2">
-                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${task.priority === 'Critical' ? 'bg-rose-100 text-rose-600' :
-                              task.priority === 'High' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'
-                              }`}>{task.priority}</span>
-                           <span className="text-[10px] text-slate-400 font-bold">{task.dueDate.slice(5)}</span>
+                  {items.map(task => {
+                     const nextLabel = getNextStatusLabel(task.status);
+                     return (
+                        <div
+                           key={task.id}
+                           onClick={() => nextLabel && advanceProjectTask(project.id, task.id)}
+                           className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 transition-all hover:shadow-md ${nextLabel ? 'cursor-pointer hover:border-indigo-200 group' : ''} ${task.priority === 'Critical' ? 'border-l-4 border-l-rose-500' : ''}`}
+                        >
+                           <div className="flex justify-between items-start mb-2">
+                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${task.priority === 'Critical' ? 'bg-rose-100 text-rose-600' :
+                                 task.priority === 'High' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'
+                                 }`}>{task.priority}</span>
+                              <span className="text-[10px] text-slate-400 font-bold">{task.dueDate.slice(5)}</span>
+                           </div>
+                           <h5 className="font-bold text-slate-800 text-sm mb-1">{task.title}</h5>
+                           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">{task.description}</p>
+
+                           {nextLabel && (
+                              <div className="pt-3 border-t border-slate-50 flex items-center justify-between group-hover:text-indigo-600 transition-colors">
+                                 <span className="text-[9px] font-black uppercase tracking-widest">{nextLabel}</span>
+                                 <ChevronRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+                              </div>
+                           )}
                         </div>
-                        <h5 className="font-bold text-slate-800 text-sm mb-1">{task.title}</h5>
-                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{task.description}</p>
-                     </div>
-                  ))}
+                     );
+                  })}
                   {items.length === 0 && (
                      <div className="text-center py-8 opacity-30 border-2 border-dashed border-slate-200 rounded-2xl">
                         <p className="text-[10px] font-black uppercase">No tasks</p>

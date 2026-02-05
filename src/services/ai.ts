@@ -30,19 +30,41 @@ const SYSTEM_TOOLS = {
     get_outstanding_invoices: (args: { limit?: number }) => {
         const { limit = 25 } = args || {};
         const dataStore = useDataStore.getState();
-        const data = dataStore.invoices
+
+        // Group and aggregate by customer/contactId
+        const debtorMap: Record<string, { customer_name: string, amount_naira: number, status: string }> = {};
+
+        dataStore.invoices
             .filter(i => i.status !== 'Paid' && i.status !== 'Draft')
-            .map(i => ({
-                invoice_number: i.number,
-                customer: i.customerName,
-                total_naira: i.totalCents / 100,
-                balance_naira: (i.totalCents - i.paidAmountCents) / 100,
-                status: i.status,
-                due_date: i.dueDate
-            }))
-            .sort((a, b) => b.balance_naira - a.balance_naira)
-            .slice(0, limit);
-        return { invoices: data, count: data.length };
+            .forEach(i => {
+                const contactId = i.contactId || 'unknown';
+                const balance = (i.totalCents - i.paidAmountCents) / 100;
+
+                if (debtorMap[contactId]) {
+                    debtorMap[contactId].amount_naira += balance;
+                } else {
+                    const customerObj = dataStore.contacts.find(c => c.id === i.contactId);
+                    debtorMap[contactId] = {
+                        customer_name: customerObj ? customerObj.name : (i.contactId ? 'Unknown' : 'Walk-in'),
+                        amount_naira: balance,
+                        status: i.status === 'Overdue' ? 'Overdue' : 'Unpaid'
+                    };
+                }
+            });
+
+        const data = Object.values(debtorMap)
+            .sort((a, b) => b.amount_naira - a.amount_naira)
+            .slice(0, limit)
+            .map((d: { customer_name: string, amount_naira: number, status: string }) => ({
+                ...d,
+                amount_formatted: new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(d.amount_naira)
+            }));
+
+        return {
+            top_debtors: data,
+            unique_debtor_count: data.length,
+            total_unpaid_invoices: dataStore.invoices.filter(i => i.status !== 'Paid' && i.status !== 'Draft').length
+        };
     },
     search_contacts: (args: { query: string; category?: string; limit?: number }) => {
         const { query, category, limit = 10 } = args;
@@ -129,6 +151,79 @@ const SYSTEM_TOOLS = {
             console.error("[AI Tools] Pinecone search failed:", e);
             return { error: "Failed to search knowledge base." };
         }
+    },
+    get_ingredient_list: (args: { query?: string; category?: string; limit?: number }) => {
+        const { query, category, limit = 50 } = args || {};
+        const dataStore = useDataStore.getState();
+        let results = dataStore.ingredients;
+
+        if (query) {
+            results = results.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+        }
+        if (category) {
+            results = results.filter(i => i.category === category);
+        }
+
+        return {
+            ingredients: results.slice(0, limit).map(i => ({
+                name: i.name,
+                stock: i.stockLevel,
+                unit: i.unit,
+                category: i.category,
+                price_naira: (i.currentCostCents || 0) / 100
+            })),
+            total_unique_count: results.length
+        };
+    },
+    get_project_summary: () => {
+        const dataStore = useDataStore.getState();
+        const data = dataStore.projects.map(p => {
+            const projectTasks = dataStore.tasks.filter(t => t.projectId === p.id);
+            const completedTasks = projectTasks.filter(t => t.status === 'Completed').length;
+            return {
+                name: p.name,
+                status: p.status,
+                progress: projectTasks.length > 0 ? Math.round((completedTasks / projectTasks.length) * 100) : 0,
+                task_count: projectTasks.length,
+                due_date: p.endDate
+            };
+        });
+        return { projects: data };
+    },
+    get_system_overview: () => {
+        const dataStore = useDataStore.getState();
+        return {
+            counts: {
+                ingredients: dataStore.ingredients.length,
+                inventory_products: dataStore.inventory.length,
+                employees: dataStore.employees.length,
+                active_projects: dataStore.projects.filter(p => p.status === 'In Progress' || p.status === 'Active').length,
+                unpaid_invoices: dataStore.invoices.filter(i => i.status !== 'Paid' && i.status !== 'Draft').length,
+                contacts_crm: dataStore.contacts.length,
+                recipes: dataStore.recipes.length
+            },
+            status: "Systems operational. Data synced."
+        };
+    },
+    get_recipe_analysis: (args: { recipe_name: string }) => {
+        const { recipe_name } = args;
+        const dataStore = useDataStore.getState();
+        const recipe = dataStore.recipes.find(r => r.name.toLowerCase().includes(recipe_name.toLowerCase()));
+
+        if (!recipe) return { error: "Recipe not found." };
+
+        return {
+            recipe_name: recipe.name,
+            ingredients: recipe.ingredients.map(ri => {
+                const globalIng = dataStore.ingredients.find(i => i.name === ri.name);
+                return {
+                    name: ri.name,
+                    qty_per_portion: ri.qtyPerPortion,
+                    unit: ri.unit,
+                    current_market_price: globalIng ? globalIng.currentCostCents / 100 : "N/A"
+                };
+            })
+        };
     }
 };
 
@@ -170,6 +265,40 @@ const SYSTEM_TOOL_DECLARATIONS = [
     {
         name: "get_staff_directory",
         description: "Get a list of all current employees, their roles, and contact status.",
+        parameters: { type: SchemaType.OBJECT, properties: {} }
+    },
+    {
+        name: "get_ingredient_list",
+        description: "Fetch a list of raw ingredients/materials. Use this for 'how many unique ingredients' or stock level queries for raw goods.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                query: { type: SchemaType.STRING, description: "Optional name filter" },
+                category: { type: SchemaType.STRING, description: "Optional category filter" },
+                limit: { type: SchemaType.NUMBER, description: "Max records (default 50)" }
+            }
+        }
+    },
+    {
+        name: "get_project_summary",
+        description: "Get a high-level overview of all projects and their task completion progress.",
+        parameters: { type: SchemaType.OBJECT, properties: {} }
+    },
+    {
+        name: "get_system_overview",
+        description: "Core KPI tool for organizational statistics. Use this for 'How many...' type questions about the entire organization (total staff, total ingredients, total projects, total debt).",
+        parameters: { type: SchemaType.OBJECT, properties: {} }
+    },
+    {
+        name: "get_recipe_analysis",
+        description: "Get the ingredient list and costs for a specific menu item recipe.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                recipe_name: { type: SchemaType.STRING, description: "Name of the recipe/menu item" }
+            },
+            required: ["recipe_name"]
+        }
     },
     {
         name: "search_knowledge_base",
@@ -214,7 +343,14 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
         });
 
         const response = await result.response;
-        const candidate = response.candidates[0];
+
+        // Safety Check
+        if (response.promptFeedback?.blockReason) {
+            console.error("[AI Tools] Prompt blocked:", response.promptFeedback.blockReason);
+            throw new Error(`The request was blocked for safety reasons: ${response.promptFeedback.blockReason}`);
+        }
+
+        const candidate = response.candidates?.[0];
 
         if (!candidate || !candidate.content) {
             console.error("[AI Tools] No candidate/content returned.");
@@ -232,6 +368,11 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
         const toolCalls = content.parts.filter((p: any) => p.functionCall);
         if (toolCalls.length === 0) {
             console.log("[AI Tools] No further tools requested.");
+
+            // Final Response Validation
+            if (candidate.finishReason === 'SAFETY') {
+                throw new Error("Response was flagged by safety filters.");
+            }
 
             // If the user requested a specific JSON schema but we skipped it during the loop turns,
             // we might need one last call to "JSON-ify" the final answer.
@@ -287,7 +428,8 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
             };
         }));
 
-        currentMessages.push({ role: 'function', parts: functionResponses });
+        // Gemini SDK prefers tool results in a 'user' role message
+        currentMessages.push({ role: 'user', parts: functionResponses });
     }
 
     console.error("[AI Tools] Max iterations reached.");
@@ -303,7 +445,7 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
         if (!ing.priceSourceQuery) continue;
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-2.0-flash-lite-001',
+                model: 'gemini-2.0-flash',
                 tools: [{ googleSearch: {} } as any]
             });
 
@@ -329,7 +471,7 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
 
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.0-flash-lite-001',
+            model: 'gemini-2.0-flash',
             tools: [{ googleSearch: {} } as any],
             generationConfig: {
                 responseMimeType: "application/json",
@@ -375,7 +517,7 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     if (useSettingsStore.getState().strictMode) return { marketPriceCents: 0, groundedSummary: "Strict Mode Enabled", sources: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.0-flash',
         tools: [{ googleSearch: {} } as any]
     });
 
@@ -398,7 +540,7 @@ export async function runInventoryReconciliation(event: CateringEvent): Promise<
     const payload = JSON.stringify(event.hardwareChecklist);
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.0-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -432,7 +574,7 @@ export async function extractInfoFromCV(base64Data: string, mimeType: string): P
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.0-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -462,7 +604,7 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.0-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -495,7 +637,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
     } catch (error: any) {
         if (retries > 0 && (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED'))) {
             // Exponential Backoff: 1s -> 2s -> 4s -> 8s (cap at 10s)
-            console.warn(`[AI Service] Rate limit hit (429). Model: gemini-2.0-flash-lite-001. Retrying in ${delay}ms... (${retries} attempts left)`);
+            console.warn(`[AI Service] Rate limit hit (429). Model: gemini-2.0-flash. Retrying in ${delay}ms... (${retries} attempts left)`);
             await new Promise(resolve => setTimeout(resolve, delay));
             const nextDelay = Math.min(delay * 2, 10000);
             return callWithRetry(fn, retries - 1, nextDelay);
@@ -538,30 +680,38 @@ export async function processAgentRequest(input: string, context: string, mode: 
         .filter(i => i.status !== 'Paid')
         .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
 
-    const operationalContextSummary = `Finance: Receivables ₦${(totalReceivables / 100).toLocaleString()}. CRM: ${dataStore.contacts.length} contacts. Inventory: ${dataStore.inventory.length} items.`;
+    const operationalContextSummary = `Database Snapshot: ${dataStore.invoices.length} total invoices, ${dataStore.contacts.length} contacts, ${dataStore.inventory.length} items.`;
 
     try {
         const response = await callWithRetry(async () => {
             const systemInstructions = `
                 Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
                 User Role: ${userRole}.
-                
-                Data Access: You MUST use the provided tools (get_outstanding_invoices, search_contacts, get_inventory_status, get_staff_directory, search_knowledge_base) to fetch specific information. 
-                DO NOT guess data. If the information isn't in your tools, say you don't have access.
-                
-                For 'how-to' questions or system architecture, ALWAYS call 'search_knowledge_base'.
-                
                 Operational Summary: ${operationalContextSummary}
-
+                
+                MISSION: Be the ultimate organizational logic node. If users ask about stats, ingredients, projects, or staff, be precise.
+                
+                Data Access Tools: 
+                - get_system_overview: Core KPI node. Use this IMMEDIATELY for 'How many...' or 'Overview' questions. NEVER ask for permission; JUST CALL IT.
+                - get_ingredient_list: Raw material details and counts.
+                - get_project_summary: Project tracking and progress.
+                - get_outstanding_invoices: Financial debtors.
+                - search_contacts: CRM lookups.
+                - get_inventory_status: Stock for products/assets.
+                - get_staff_directory: Personnel node.
+                - get_recipe_analysis: Detailed menu item logic.
+                - search_knowledge_base: Troubleshooting / Methodology.
+                
                 Instructions:
-                1. Call Tools: You MUST use tools for any data-related queries (debtors, inventory, staff).
-                2. Real Data Only: NEVER use placeholders like "Customer A" or "1000". Use ONLY the records returned by the tools.
-                3. **DEBTOR TABLE FORMAT**: When listing debtors, use this EXACT Markdown structure:
-                   | Customer | Balance (₦) | Status |
-                   | :--- | :--- | :--- |
-                   | [Name from tool] | [Balance from tool] | [Status from tool] |
-                4. Filtering: If the user asks for "top 3", show exactly 3 rows.
-                5. Intent: Map the user's ultimate goal to the 'intent' field.
+                1. CALL TOOLS FIRST: You MUST call the appropriate tool BEFORE generating your final response. If the user asks a question that requires data (counts, lists, details), your first turn MUST be a tool call.
+                2. NO PLAN-ONLY RESPONSES: Do not say 'I will retrieve the information' or ask 'Would you like me to...'. Just call the tool.
+                3. **STRICT TABLE REQUIREMENT**:
+                   If the user asks for lists (Debtors, Ingredients, Projects, Staff, Inventory), respond ONLY with a Markdown table.
+                   - Debtor Table: | Customer Name | Balance | Status | (Use 'amount_formatted')
+                   - Project Table: | Project Name | Status | Progress | Tasks |
+                4. MULTI-TURN PERSISTENCE: Use previously fetched data instead of re-calling tools for the same information.
+                5. NAMES: Use human-readable names.
+                6. JSON WRAPPER: Always return final answer in the JSON structure.
                 
                 Return JSON:
                 {
@@ -634,8 +784,22 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 { role: 'user', parts: contentParts }
             ];
 
-            const result = await executeToolCalls(ai, 'gemini-2.0-flash-lite-001', currentMessages, generationConfig, systemInstructions);
-            return JSON.parse(result.text() || "{}");
+            const result = await executeToolCalls(ai, 'gemini-2.0-flash', currentMessages, generationConfig, systemInstructions);
+
+            try {
+                const textOutput = result.text();
+                if (!textOutput) return { response: "I couldn't generate a clear response. Please try again.", intent: 'GENERAL_QUERY' };
+
+                // Cleanup common model artifacts like markdown code blocks
+                const cleanedJson = textOutput.replace(/```json\n?|\n?```/g, '').trim();
+                return JSON.parse(cleanedJson);
+            } catch (pE) {
+                console.error("[AI Service] JSON Parse Failed. Raw Output:", result.text());
+                return {
+                    response: result.text() || "I apologize, but I had trouble formatting that data. Please try again.",
+                    intent: 'GENERAL_QUERY'
+                };
+            }
         });
 
         return response;
@@ -661,7 +825,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         .filter(i => i.status !== 'Paid')
         .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
 
-    const operationalContextSummary = `Finance: Receivables ₦${(totalReceivables / 100).toLocaleString()}. CRM: ${dataStore.contacts.length} contacts. Inventory: ${dataStore.inventory.length} items.`;
+    const operationalContextSummary = `Database Snapshot: ${dataStore.invoices.length} total invoices, ${dataStore.contacts.length} contacts, ${dataStore.inventory.length} items.`;
 
     const currentUser = useAuthStore.getState().user;
     const userRole = currentUser?.role || 'Guest';
@@ -675,14 +839,21 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         DO NOT guess data. If the information isn't in your tools, say you don't have access.
         
         Instructions:
-        1. Call Tools: Use tools for all specific data queries.
-        2. Real Data Only: NEVER use placeholders or fake names. If no data exists, say so.
-        3. **DEBTOR TABLE FORMAT**: Use this EXACT Markdown structure:
-           | Customer | Balance (₦) | Status |
-           | :--- | :--- | :--- |
-           | [Name from tool] | [Balance from tool] | [Status from tool] |
-        4. Filtering: If the user asks for "top 3", strictly limit the table to 3 rows.
-        5. Be direct, professional, and concise.
+        1. CALL TOOLS FIRST: You MUST call the appropriate tool (e.g., 'get_outstanding_invoices') BEFORE generating your final response. 
+        2. WAIT FOR TOOL DATA: Do not guess or hallucinate data. If a tool returns no records, state "No records found."
+        3. NO PLAN-ONLY RESPONSES: Do not say "I will retrieve the information." Just call the tool and then provide the data.
+        4. **STRICT DEBTOR TABLE REQUIREMENT**:
+           When asked for "top debtors" or lists of outstanding balances, you MUST ALWAYS respond with a Markdown table.
+           
+           Table Rules:
+           - Columns: | Customer Name | Balance | Status |
+           - Formatting: Use the 'amount_formatted' field from the tool for the Balance column.
+           
+        5. MULTI-TURN DATA PERSISTENCE: Refer back to previously fetched data if the user asks for view changes.
+        6. LIMITING: If "top 2" or "top 3" is asked, show exactly that number of rows.
+        7. MISSION-ALIGNED SUGGESTIONS: You are a productivity OS. Suggest reminders or follow-ups.
+        8. MARKDOWN TABLES: Use standard Markdown for the response.
+        9. NAMES: Always show the human-readable Customer Name.
     `;
 
     const userParts: any[] = [{ text: prompt }];
@@ -695,17 +866,22 @@ export async function generateAIResponse(prompt: string, context: string = "", a
             { role: 'user', parts: userParts }
         ];
 
-        const result = await executeToolCalls(ai, 'gemini-2.0-flash-lite-001', currentMessages, {}, systemInstruction);
-        return result.text() || "I couldn't retrieve that information right now.";
+        try {
+            const result = await executeToolCalls(ai, 'gemini-2.0-flash', currentMessages, {}, systemInstruction);
+            return result.text() || "I couldn't retrieve that information right now.";
+        } catch (e: any) {
+            console.error("[generateAIResponse] execution failed:", e);
+            return `Error: ${e.message || "The AI encountered an issue processing your request."}`;
+        }
     });
-    return response || "";
+    return response || "I'm sorry, I couldn't complete that request.";
 }
 
 export async function getCFOAdvice(): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { summary: "Services Offline (Strict Mode)", sentiment: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.0-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -741,7 +917,7 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
     try {
         const response = await callWithRetry(async () => {
             const model = ai.getGenerativeModel({
-                model: 'gemini-2.0-flash-lite-001',
+                model: 'gemini-2.0-flash',
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -784,7 +960,7 @@ export async function textToSpeech(text: string): Promise<string> {
     const ai = getAIInstance();
     try {
         const model = ai.getGenerativeModel({
-            model: "gemini-2.0-flash-lite-001",
+            model: "gemini-2.0-flash",
         });
 
         // Note: New SDK specific TTS handling calls generateContent with parts

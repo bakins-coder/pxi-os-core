@@ -127,6 +127,8 @@ interface DataState {
     assignWaiterToTable: (eventId: string, tableId: string, waiterId: string) => void;
     logLeftover: (eventId: string, itemId: string, quantity: number, reason: string) => void;
     addHandoverEvidence: (eventId: string, url: string, note: string) => void;
+    updateProjectTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
+    advanceProjectTask: (projectId: string, taskId: string) => void;
     completeEvent: (eventId: string) => void;
 
     dispatchAssets: (eventId: string, assets: DispatchedAsset[]) => void;
@@ -1111,6 +1113,47 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
+            updateProjectTask: (projectId, taskId, updates) => {
+                const state = get();
+                const project = state.projects.find(p => p.id === projectId);
+                if (!project) return;
+
+                const updatedTasks = project.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t);
+
+                // Recalculate progress
+                const doneCount = updatedTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length;
+                const progress = updatedTasks.length > 0 ? Math.round((doneCount / updatedTasks.length) * 100) : 0;
+
+                const newStatus = progress === 100 ? 'Completed' : project.status;
+
+                set((state) => ({
+                    projects: state.projects.map(p => p.id === projectId ? {
+                        ...p,
+                        tasks: updatedTasks,
+                        progress,
+                        status: newStatus as any
+                    } : p)
+                }));
+                get().syncWithCloud();
+            },
+
+            advanceProjectTask: (projectId, taskId) => {
+                const state = get();
+                const project = state.projects.find(p => p.id === projectId);
+                if (!project) return;
+
+                const task = project.tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                const statusOrder: Task['status'][] = ['Todo', 'In Progress', 'Review', 'Done'];
+                const currentIndex = statusOrder.indexOf(task.status as any);
+
+                if (currentIndex !== -1 && currentIndex < statusOrder.length - 1) {
+                    const nextStatus = statusOrder[currentIndex + 1];
+                    state.updateProjectTask(projectId, taskId, { status: nextStatus as any });
+                }
+            },
+
             addProject: (proj) => {
                 const newProject = {
                     ...proj,
@@ -1126,15 +1169,36 @@ export const useDataStore = create<DataState>()(
             },
 
             addIngredient: (ing) => {
+                const user = useAuthStore.getState().user;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                const newIngId = ing.id || `ing-${Date.now()}`;
                 const newIng = {
                     ...ing,
-                    id: ing.id || `ing-${Date.now()}`,
-                    companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    id: newIngId,
+                    companyId,
                     lastUpdated: new Date().toISOString(),
                     stockLevel: ing.stockLevel || 0,
                     currentCostCents: ing.currentCostCents || 0
                 } as Ingredient;
-                set((state) => ({ ingredients: [newIng, ...state.ingredients] }));
+
+                // Also create an InventoryItem representation
+                const newInvItem: InventoryItem = {
+                    id: newIngId,
+                    companyId,
+                    name: ing.name || 'Unnamed Ingredient',
+                    category: ing.category || 'Dry Goods',
+                    type: 'ingredient',
+                    priceCents: ing.currentCostCents || 0,
+                    stockQuantity: ing.stockLevel || 0,
+                    image: ing.image,
+                    isActive: true
+                };
+
+                set((state) => ({
+                    ingredients: [newIng, ...state.ingredients],
+                    inventory: [newInvItem, ...state.inventory]
+                }));
                 get().syncWithCloud();
             },
 

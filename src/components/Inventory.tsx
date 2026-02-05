@@ -412,6 +412,9 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
 
 const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
    const [selectedIngId, setSelectedIngId] = useState('');
+   const [isManualInput, setIsManualInput] = useState(false);
+   const [newItemName, setNewItemName] = useState('');
+   const [newItemUnit, setNewItemUnit] = useState('kg');
    const [qty, setQty] = useState(0);
    const [estimatedCost, setEstimatedCost] = useState(0);
    const [notes, setNotes] = useState('');
@@ -517,6 +520,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
    const [qty, setQty] = useState(0);
    const [cost, setCost] = useState(0);
    const [isMaximized, setIsMaximized] = useState(false);
+<<<<<<< HEAD
 
    const receiveFoodStock = useDataStore(state => state.receiveFoodStock);
    const { requisitions, updateRequisition } = useDataStore();
@@ -546,6 +550,28 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
          updateRequisition(selectedReqId, { status: 'Paid' }); // Mark as completed/paid upon receipt (simplification)
       }
 
+=======
+   const { receiveFoodStock, addIngredient } = useDataStore();
+
+   if (!isOpen) return null;
+   const handleReceive = () => {
+      if (isManualInput) {
+         if (!newItemName || qty <= 0) return;
+         const newIngId = `ing-manual-${Date.now()}`;
+         addIngredient({
+            id: newIngId,
+            name: newItemName,
+            unit: newItemUnit,
+            stockLevel: 0,
+            currentCostCents: cost > 0 && qty > 0 ? (cost * 100) / qty : 0,
+            category: 'Dry Goods' // Default category
+         });
+         receiveFoodStock(newIngId, qty, cost * 100);
+      } else {
+         if (!selectedIngId || qty <= 0) return;
+         receiveFoodStock(selectedIngId, qty, cost * 100);
+      }
+>>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
       onClose();
    };
 
@@ -556,7 +582,10 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
             className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <h2 className="text-xl font-black text-slate-900 uppercase">Inward Procurement Entry</h2>
+               <div>
+                  <h2 className="text-xl font-black text-slate-900 uppercase">Inward Procurement Entry</h2>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Inventory Stock Receipt</p>
+               </div>
                <div className="flex gap-2">
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -564,6 +593,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                   <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
                </div>
             </div>
+<<<<<<< HEAD
 
             <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex gap-2">
                <button onClick={() => setMode('FromRequest')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'FromRequest' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-200'}`}>From Approved Request</button>
@@ -582,11 +612,54 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                      ) : (
                         <div className="p-4 bg-slate-100 rounded-2xl text-center text-xs text-slate-500 font-bold">No approved requests found.</div>
                      )}
+=======
+            <div className="p-10 space-y-6">
+               <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-black uppercase text-slate-500">Manual Entry Mode</span>
+                  <button
+                     onClick={() => setIsManualInput(!isManualInput)}
+                     className={`w-12 h-6 rounded-full transition-all relative ${isManualInput ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                  >
+                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isManualInput ? 'left-7' : 'left-1'}`} />
+                  </button>
+               </div>
+
+               {isManualInput ? (
+                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                     <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">New Item Name</label>
+                        <input
+                           type="text"
+                           className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                           value={newItemName}
+                           onChange={e => setNewItemName(e.target.value)}
+                           placeholder="e.g. Fresh Saffron"
+                        />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit of Measure</label>
+                        <select
+                           className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900"
+                           value={newItemUnit}
+                           onChange={e => setNewItemUnit(e.target.value)}
+                        >
+                           <option>kg</option><option>g</option><option>L</option><option>ml</option><option>pcs</option><option>pack</option>
+                        </select>
+                     </div>
+>>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
                   </div>
                ) : (
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label>
+<<<<<<< HEAD
                      <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}>
+=======
+                     <select
+                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                        value={selectedIngId}
+                        onChange={e => setSelectedIngId(e.target.value)}
+                     >
+>>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
                         <option value="">Choose item...</option>
                         {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
                      </select>
@@ -595,19 +668,33 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
 
                <div className="grid grid-cols-2 gap-4">
                   <div>
+<<<<<<< HEAD
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label>
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Total Value (₦)</label>
+=======
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity {isManualInput ? `(${newItemUnit})` : ''}</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label>
+>>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
                   </div>
                </div>
             </div>
+<<<<<<< HEAD
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
                <button onClick={handleReceive} disabled={mode === 'FromRequest' && !selectedReqId} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl disabled:opacity-50">Commit to Stock</button>
+=======
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
+               <button onClick={handleReceive} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all">Commit to Stock</button>
+>>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
             </div>
          </div>
       </div>
