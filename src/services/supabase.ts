@@ -216,7 +216,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
     'employees', 'catering_events', 'job_roles', 'departments',
     'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches',
-    'performance_reviews', 'recipes'
+    'performance_reviews', 'recipes', 'messages'
   ].includes(tableName);
 
   let query = supabase.from(tableName).select('*');
@@ -284,6 +284,14 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
     if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
     if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
+    if ('user_id' in newItem) { newItem.userId = newItem.user_id; delete newItem.user_id; }
+
+    // Message Mappings
+    if ('sender_id' in newItem) { newItem.senderId = newItem.sender_id; delete newItem.sender_id; }
+    if ('recipient_id' in newItem) { newItem.recipientId = newItem.recipient_id; delete newItem.recipient_id; }
+    if ('created_at' in newItem) { newItem.createdAt = newItem.created_at; delete newItem.created_at; }
+    if ('read_at' in newItem) { newItem.readAt = newItem.read_at; delete newItem.read_at; }
+    if ('organization_id' in newItem) { newItem.organizationId = newItem.organization_id; delete newItem.organization_id; }
 
     // Invoice / General Detail Mappings
     if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }

@@ -183,7 +183,7 @@ const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose
    );
 };
 
-const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
    const { contacts, addContact, addInvoice, inventory } = useDataStore();
    const user = useAuthStore(state => state.user);
 
@@ -277,7 +277,10 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
          return alert("Please select a customer or create a new one");
       }
 
-      const totalCents = lines.reduce((sum, l) => sum + ((l.quantity || 0) * (l.price || 0) * 100), 0);
+      const subtotalCents = lines.reduce((sum, l) => sum + ((l.quantity || 0) * (l.price || 0) * 100), 0);
+      const serviceChargeCents = Math.round(subtotalCents * 0.15);
+      const vatCents = Math.round((subtotalCents + serviceChargeCents) * 0.075);
+      const totalCents = subtotalCents + serviceChargeCents + vatCents;
 
       if (!user?.companyId) {
          return alert("User company ID is missing. Please reload or contact support.");
@@ -299,6 +302,9 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
             unitPriceCents: (l.price || 0) * 100
          })),
          totalCents: totalCents || 0,
+         subtotalCents,
+         serviceChargeCents,
+         vatCents,
          paidAmountCents: 0
       };
 
@@ -309,7 +315,10 @@ const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () 
 
    if (!isOpen) return null;
 
-   const totalAmount = lines.reduce((sum, l) => sum + (l.quantity * l.price), 0);
+   const subtotalPreview = lines.reduce((sum, l) => sum + (l.quantity * l.price), 0);
+   const scPreview = subtotalPreview * 0.15;
+   const vatPreview = (subtotalPreview + scPreview) * 0.075;
+   const totalAmount = subtotalPreview + scPreview + vatPreview;
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={onClose}>

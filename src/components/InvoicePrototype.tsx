@@ -57,7 +57,25 @@ export const InvoicePrototype = () => {
     }
 
     // Calculations
-    const totalAmount = invoice.totalCents / 100;
+    // Calculations
+    let totalAmount = invoice.totalCents / 100;
+    let subtotal = invoice.subtotalCents ? invoice.subtotalCents / 100 : 0;
+    let serviceCharge = invoice.serviceChargeCents ? invoice.serviceChargeCents / 100 : 0;
+    let vat = invoice.vatCents ? invoice.vatCents / 100 : 0;
+
+    // Fallback for legacy invoices (calculate breakdown if missing)
+    if (!subtotal && !serviceCharge && !vat) {
+        // Calculate based on the stored total or calculate from lines
+        // Option A: Treat total as subtotal and calculate taxes on top (User intent: "Show me taxes")
+
+        // Recalculate subtotal from lines to be safe
+        const calculatedSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0) / 100;
+
+        subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : totalAmount;
+        serviceCharge = subtotal * 0.15;
+        vat = (subtotal + serviceCharge) * 0.075;
+        totalAmount = subtotal + serviceCharge + vat;
+    }
     const paidAmount = invoice.paidAmountCents / 100;
     const balanceDue = totalAmount - paidAmount;
 
@@ -194,11 +212,25 @@ export const InvoicePrototype = () => {
                 </div>
 
                 {/* Summary Section - Outside table to avoid column width constraints */}
+                {/* Summary Section - Outside table to avoid column width constraints */}
                 <div className="px-12 pb-8 flex flex-col items-end">
                     <div className="w-1/2 max-w-sm space-y-3">
                         <div className="flex justify-between items-center text-sm">
+                            <span className="font-bold text-slate-600 uppercase">Subtotal:</span>
+                            <span className="font-medium text-slate-900">₦{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="font-bold text-slate-600 uppercase">Service Charge (15%):</span>
+                            <span className="font-medium text-slate-900">₦{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="font-bold text-slate-600 uppercase">VAT (7.5%):</span>
+                            <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="w-full h-px bg-slate-200 my-2"></div>
+                        <div className="flex justify-between items-center text-sm">
                             <span className="font-bold text-slate-600 uppercase">Total Amount:</span>
-                            <span className="font-bold text-slate-900 text-lg">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            <span className="font-bold text-slate-900 text-lg">₦{(subtotal + serviceCharge + vat).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
                             <span className="font-medium text-slate-500">Amount Paid:</span>

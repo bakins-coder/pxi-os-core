@@ -304,6 +304,18 @@ export interface InteractionLog {
   createdBy: string;
 }
 
+export interface Message {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  createdAt: string;
+  readAt?: string;
+  organizationId: string;
+  type?: 'text' | 'image' | 'system';
+  status?: 'sent' | 'delivered' | 'read';
+}
+
 export interface InventoryViewItem {
   organization_id: string;
   item_id: string;
@@ -451,6 +463,9 @@ export interface Invoice {
   type: 'Sales' | 'Purchase';
   lines: InvoiceLine[];
   totalCents: number;
+  subtotalCents?: number;
+  serviceChargeCents?: number;
+  vatCents?: number;
   paidAmountCents: number;
 }
 
@@ -488,6 +503,7 @@ export interface Employee {
   staffId?: string; // Unique Login Identifier (e.g. XQ-8821)
   idCardIssuedDate?: string;
   healthNotes?: string;
+  userId?: string;
 }
 
 export interface JournalEntry {

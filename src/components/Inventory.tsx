@@ -345,7 +345,7 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-xl font-black text-slate-900 uppercase">Process Rental Return</h2>
@@ -356,7 +356,7 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
                   <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
                </div>
             </div>
-            <div className="p-10 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-6"><p className="text-[10px] font-black uppercase text-amber-600 mb-1">Active Liability</p><p className="text-sm font-bold text-amber-900">Est. replacement: ₦{(rental.estimatedReplacementValueCents / 100).toLocaleString()}</p></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Return Status</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={status} onChange={e => setStatus(e.target.value as any)}><option value="Returned">Safely Returned</option><option value="Damaged">Damaged / Broken</option><option value="Lost">Lost / Unaccounted</option></select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Discrepancy Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain damages or loss details..." /></div>
@@ -387,7 +387,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-xl font-black text-slate-900 uppercase">Kitchen Release Request</h2>
@@ -398,7 +398,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
                   <button onClick={onClose} className="p-2 hover:bg-rose-50 rounded-xl"><X size={20} /></button>
                </div>
             </div>
-            <div className="p-10 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Ingredient Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select Ingredient...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Tie to Event/Order</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}><option value="">General / Casual Order</option>{events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}</select></div>
                <div className="grid grid-cols-1 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Quantity</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div></div>
@@ -410,20 +410,150 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
    );
 };
 
-const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
+const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
    const [selectedIngId, setSelectedIngId] = useState('');
+   const [qty, setQty] = useState(0);
+   const [estimatedCost, setEstimatedCost] = useState(0);
+   const [notes, setNotes] = useState('');
+   const [isMaximized, setIsMaximized] = useState(false);
+   const addRequisition = useDataStore(state => state.addRequisition);
+   const { user } = useAuthStore();
+
+   // Auto-set estimated cost when ingredient selected
+   useEffect(() => {
+      const ing = ingredients.find(i => i.id === selectedIngId);
+      if (ing && ing.currentCostCents) {
+         setEstimatedCost((ing.currentCostCents / 100) * qty); // Use stored cost as baseline
+      }
+   }, [selectedIngId, qty, ingredients]);
+
+   if (!isOpen) return null;
+
+   const handleSubmit = () => {
+      if (!selectedIngId || qty <= 0) return;
+      const ing = ingredients.find(i => i.id === selectedIngId);
+
+      addRequisition({
+         type: 'Purchase',
+         category: 'Food',
+         itemName: ing?.name || 'Unknown Item',
+         ingredientId: selectedIngId,
+         quantity: qty,
+         pricePerUnitCents: (estimatedCost / qty) * 100, // Derived unit cost
+         totalAmountCents: estimatedCost * 100,
+         notes: notes || 'Stock replenishment request',
+         status: 'Pending',
+         requestorId: user?.id
+      });
+
+      onClose();
+      alert("Purchase Request Submitted for Approval");
+   };
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+         <div
+            onClick={e => e.stopPropagation()}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
+         >
+            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <h2 className="text-xl font-black text-slate-900 uppercase">New Purchase Request</h2>
+               <div className="flex gap-2">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  </button>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
+               <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl mb-2">
+                  <p className="text-[10px] font-black uppercase text-indigo-500 mb-1">Process Info</p>
+                  <p className="text-xs text-indigo-900 font-medium">Requests are sent to the MD/Admin for approval. Once approved, stock can be received against the request.</p>
+               </div>
+
+               <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Item</label>
+                  <select
+                     className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                     value={selectedIngId}
+                     onChange={e => setSelectedIngId(e.target.value)}
+                  >
+                     <option value="">Choose Raw Material...</option>
+                     {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Current: {i.stockLevel} {i.unit})</option>)}
+                  </select>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Needed</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Est. Total Cost (₦)</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={estimatedCost} onChange={e => setEstimatedCost(parseFloat(e.target.value) || 0)} />
+                  </div>
+               </div>
+
+               <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Justification / Notes</label>
+                  <textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Reason for purchase..." />
+               </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700">Submit Request</button>
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
+   const [mode, setMode] = useState<'Direct' | 'FromRequest'>('Direct');
+   const [selectedIngId, setSelectedIngId] = useState('');
+   const [selectedReqId, setSelectedReqId] = useState('');
    const [qty, setQty] = useState(0);
    const [cost, setCost] = useState(0);
    const [isMaximized, setIsMaximized] = useState(false);
+
    const receiveFoodStock = useDataStore(state => state.receiveFoodStock);
+   const { requisitions, updateRequisition } = useDataStore();
+
+   // Filter for approved purchase requests
+   const approvedRequests = useMemo(() => requisitions.filter(r => r.type === 'Purchase' && r.status === 'Approved'), [requisitions]);
+
+   useEffect(() => {
+      if (mode === 'FromRequest' && selectedReqId) {
+         const req = approvedRequests.find(r => r.id === selectedReqId);
+         if (req) {
+            setSelectedIngId(req.ingredientId || '');
+            setQty(req.quantity);
+            setCost(req.totalAmountCents / 100);
+         }
+      }
+   }, [selectedReqId, mode, approvedRequests]);
 
    if (!isOpen) return null;
-   const handleReceive = () => { if (!selectedIngId || qty <= 0) return; receiveFoodStock(selectedIngId, qty, cost * 100); onClose(); };
+
+   const handleReceive = () => {
+      if (!selectedIngId || qty <= 0) return;
+
+      receiveFoodStock(selectedIngId, qty, cost * 100);
+
+      if (mode === 'FromRequest' && selectedReqId) {
+         updateRequisition(selectedReqId, { status: 'Paid' }); // Mark as completed/paid upon receipt (simplification)
+      }
+
+      onClose();
+   };
+
    return (
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-xl font-black text-slate-900 uppercase">Inward Procurement Entry</h2>
@@ -434,11 +564,51 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                   <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
                </div>
             </div>
-            <div className="p-10 space-y-6">
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Choose item...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></div>
-               <div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} /></div></div>
+
+            <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex gap-2">
+               <button onClick={() => setMode('FromRequest')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'FromRequest' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-200'}`}>From Approved Request</button>
+               <button onClick={() => setMode('Direct')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'Direct' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-200'}`}>Direct Entry</button>
             </div>
-            <div className="p-8 bg-slate-50 flex gap-4"><button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button><button onClick={handleReceive} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl">Commit to Stock</button></div>
+
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
+               {mode === 'FromRequest' ? (
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Approved Request</label>
+                     {approvedRequests.length > 0 ? (
+                        <select className="w-full p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-black outline-none text-emerald-900" value={selectedReqId} onChange={e => setSelectedReqId(e.target.value)}>
+                           <option value="">Select an approved order...</option>
+                           {approvedRequests.map(r => <option key={r.id} value={r.id}>{r.itemName} - {r.quantity} units (₦{(r.totalAmountCents / 100).toLocaleString()})</option>)}
+                        </select>
+                     ) : (
+                        <div className="p-4 bg-slate-100 rounded-2xl text-center text-xs text-slate-500 font-bold">No approved requests found.</div>
+                     )}
+                  </div>
+               ) : (
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label>
+                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}>
+                        <option value="">Choose item...</option>
+                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+                     </select>
+                  </div>
+               )}
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Total Value (₦)</label>
+                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
+               <button onClick={handleReceive} disabled={mode === 'FromRequest' && !selectedReqId} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl disabled:opacity-50">Commit to Stock</button>
+            </div>
          </div>
       </div>
    );
@@ -465,7 +635,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
       <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none flex flex-col' : 'max-w-md rounded-[3rem] flex flex-col'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-xl font-black text-slate-900 uppercase">Dispatch Assets</h2>
@@ -477,7 +647,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
                </div>
             </div>
 
-            <div className="p-10 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Asset</label>
                   <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedAssetId} onChange={e => setSelectedAssetId(e.target.value)}>
@@ -941,9 +1111,10 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 };
 
 export const Inventory = () => {
-   const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'reusable' | 'rentals' | 'fixtures'>('products');
+   const [activeTab, setActiveTab] = useState<'products' | 'ingredients' | 'requisitions' | 'hardware' | 'reusable' | 'rentals' | 'fixtures' | 'recipes'>('products');
    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
    const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+   const [isPurchaseRequestModalOpen, setIsPurchaseRequestModalOpen] = useState(false);
    const [selectedRental, setSelectedRental] = useState<RentalRecord | null>(null);
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
    const [selectedEditItem, setSelectedEditItem] = useState<InventoryItem | null>(null);
@@ -970,7 +1141,14 @@ export const Inventory = () => {
       }
    }, [isAviation, isCatering]);
 
-   const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents, approveRequisition, addIngredient, checkOverdueAssets } = useDataStore();
+   const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents: events, recipes, approveRequisition, addIngredient, checkOverdueAssets, addRecipe, updateRecipe, deleteRecipe, deleteRecipeIngredient } = useDataStore();
+
+   const rawMaterials = storeIngredients;
+   const products = useMemo(() => inventory.filter(i => i.type === 'product'), [inventory]);
+   const assets = useMemo(() => inventory.filter(i => i.type === 'asset'), [inventory]);
+   const fixtures = useMemo(() => inventory.filter(i => i.type === 'fixture'), [inventory]);
+   const reusableItems = useMemo(() => inventory.filter(i => i.type === 'reusable'), [inventory]);
+   const rentals = rentalLedger;
 
    useEffect(() => {
       checkOverdueAssets();
@@ -1002,13 +1180,8 @@ export const Inventory = () => {
       }
    };
 
-   const products = inventory.filter(i => i.type === 'product');
-   const rawMaterials = inventory.filter(i => i.type === 'raw_material');
-   const assets = inventory.filter(i => i.type === 'asset');
-   const reusableItems = inventory.filter(i => i.type === 'reusable');
-   const fixtures = inventory.filter(i => i.type === 'fixture');
-   const rentals = rentalLedger; // Kept separate as it joins with Requisitions
-   const events = cateringEvents;
+
+
 
    useEffect(() => {
       // Initialize portion counts on load or inventory change
@@ -1149,8 +1322,18 @@ export const Inventory = () => {
 
          {activeTab === 'ingredients' && (
             <div className="space-y-6 animate-in slide-in-from-bottom-4">
-               <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl"><div><h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Food Ingredient Pipeline</h2><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Movement Inward (Procurement) & Current Inventory Levels</p></div><div className="flex gap-4"><button onClick={() => setIsReleaseModalOpen(true)} className="px-8 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-3 shadow-xl hover:scale-105 transition-all"><Flame size={18} /> Kitchen Release</button><button onClick={() => setIsReceiveModalOpen(true)} className="px-8 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-3 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={18} className="text-[#00ff9d]" /> Inward Stock</button></div></div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><span className={`text-lg font-black tracking-tighter ${ing.stockQuantity < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockQuantity.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 uppercase">Input</span></div></td><td className="p-8 font-black text-slate-900 text-xs">₦{(ing.priceCents / 100).toLocaleString()}</td><td className="p-8">{ing.costPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.costPriceCents / 100).toLocaleString()}</span>{ing.costPriceCents > ing.priceCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></td></tr>))}</tbody></table></div></div>
+               <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
+                  <div>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Food Ingredient Pipeline</h2>
+                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Movement Inward (Procurement) & Current Inventory Levels</p>
+                  </div>
+                  <div className="flex gap-4">
+                     <button onClick={() => setIsReleaseModalOpen(true)} className="px-6 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Flame size={16} /> Release</button>
+                     <button onClick={() => setIsPurchaseRequestModalOpen(true)} className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ClipboardList size={16} /> Request Purchase</button>
+                     <button onClick={() => setIsReceiveModalOpen(true)} className="px-6 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={16} className="text-[#00ff9d]" /> Inward Stock</button>
+                  </div>
+               </div>
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 uppercase">Input</span></div></td><td className="p-8 font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></td></tr>))}</tbody></table></div></div>
             </div>
          )}
 
@@ -1206,6 +1389,7 @@ export const Inventory = () => {
          )}
          {activeTab === 'fixtures' && <InventoryCatalog assets={fixtures} title="Fixtures & Fittings" subtitle="Built-in Infrastructure" />}
          <ReceiveStockModal isOpen={isReceiveModalOpen} onClose={() => setIsReceiveModalOpen(false)} ingredients={storeIngredients} />
+         <PurchaseRequestModal isOpen={isPurchaseRequestModalOpen} onClose={() => setIsPurchaseRequestModalOpen(false)} ingredients={storeIngredients} />
          <KitchenReleaseModal isOpen={isReleaseModalOpen} onClose={() => setIsReleaseModalOpen(false)} ingredients={storeIngredients} events={events} />
          <RentalReturnModal isOpen={!!selectedRental} onClose={() => setSelectedRental(null)} rental={selectedRental} />
 

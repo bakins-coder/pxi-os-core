@@ -42,6 +42,7 @@ const SummaryList: React.FC<{
                   } else if (type === 'customer') navigate('/crm');
                   else if (type === 'employee') navigate('/hr');
                   else if (type === 'event') navigate('/catering');
+                  else if (type === 'payable') navigate('/inventory');
                   else if (type === 'complaint') navigate('/contact-center');
                 }}
                 className="p-5 hover:bg-indigo-50/30 cursor-pointer transition-all flex items-center justify-between"
@@ -137,10 +138,10 @@ export const Dashboard = () => {
       {/* Platform Header */}
       <div className="col-span-12 flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">
+          <h1 className="text-xl md:text-2xl lg:text-4xl font-black text-slate-900 tracking-tight leading-none mb-1 md:mb-2">
             CONTROL <span className="text-slate-400">CENTER</span>
           </h1>
-          <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
+          <p className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
             Operational Intelligence / {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
@@ -160,7 +161,7 @@ export const Dashboard = () => {
       {/* KPI Ribbons */}
       {/* KPI Ribbons - Protected View */}
       {((user?.role as string) === 'SUPER_ADMIN' || (user?.role as string) === 'ADMIN' || (user?.role as string) === 'CEO' || (user?.role as string) === 'General Manager' || (user?.role as string) === 'Finance Manager' || user?.permissionTags?.includes('access:finance') || user?.permissionTags?.includes('access:reports')) && !['Logistics Officer', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
-        <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {[
             { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
             { label: 'Cash at Hand', value: `₦${(dataState.financial.cash / 100).toLocaleString()}`, icon: Activity, color: 'text-emerald-600', trend: 'Healthy' },
@@ -168,12 +169,12 @@ export const Dashboard = () => {
 
             { label: 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', trend: 'Real-time' },
           ].map((kpi, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
+            <div key={idx} className="bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
               <div className="relative z-10">
                 <kpi.icon size={20} className={`${kpi.color} mb-4`} />
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{kpi.label}</p>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tighter">{kpi.value}</h2>
-                <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-2 inline-block">
+                <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tighter">{kpi.value}</h2>
+                <span className="text-[7px] md:text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-2 inline-block">
                   {kpi.trend}
                 </span>
               </div>
@@ -186,8 +187,8 @@ export const Dashboard = () => {
       )}
 
       {/* Main Content Areas */}
-      <div className="col-span-12 lg:col-span-8 space-y-8">
-        <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm min-h-[450px]">
+      <div className="col-span-12 lg:col-span-8 space-y-6 md:space-y-8">
+        <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 border border-slate-100 shadow-sm min-h-[350px] md:min-h-[450px]">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
@@ -199,10 +200,10 @@ export const Dashboard = () => {
               <Calendar size={18} className="text-slate-600" />
             </button>
           </div>
-          <EventCalendar events={dataState.upcomingEvents} />
+          <EventCalendar events={dataState.upcomingEvents} className="shadow-none border-0 h-full min-h-[500px]" />
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
           {!['Logistics Officer', 'Logistics Manager', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
             <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" />
           )}

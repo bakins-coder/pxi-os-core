@@ -6,7 +6,7 @@ import {
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview,
-    RecipeIngredient, InteractionLog
+    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn
 } from '../types';
 
 import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
@@ -43,6 +43,7 @@ interface DataState {
     agenticLogs: AgenticLog[];
     performanceReviews: PerformanceReview[];
     interactionLogs: InteractionLog[];
+    messages: Message[];
     syncStatus: 'Synced' | 'Syncing' | 'Error' | 'Offline';
     lastSyncError: string | null;
     isSyncing: boolean;
@@ -114,6 +115,8 @@ interface DataState {
     subscribeToRealtimeUpdates: () => void;
     unsubscribeFromRealtimeUpdates: () => void;
     addAgenticLog: (log: Partial<AgenticLog>) => void;
+    addMessage: (message: Message) => Promise<void>;
+    markMessageRead: (messageId: string) => Promise<void>;
     // Portion Monitor Actions
     initializePortionMonitor: (eventId: string, tableCount: number, guestsPerTable: number) => void;
     addPortionMonitorTable: (eventId: string, guestCapacity: number) => void;
@@ -128,6 +131,7 @@ interface DataState {
 
     dispatchAssets: (eventId: string, assets: DispatchedAsset[]) => void;
     finalizeEventLogistics: (eventId: string, returns: LogisticsReturn[]) => void;
+
 
     reset: () => void;
 }
@@ -163,6 +167,7 @@ export const useDataStore = create<DataState>()(
             agenticLogs: [],
             performanceReviews: [],
             interactionLogs: [],
+            messages: [],
             syncStatus: 'Synced',
             lastSyncError: null,
             isSyncing: false,
@@ -177,7 +182,7 @@ export const useDataStore = create<DataState>()(
                     tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [], chartOfAccounts: [],
                     bankTransactions: [], bankStatementLines: [], leaveRequests: [], calendarEvents: [],
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
-                    interactionLogs: [],
+                    interactionLogs: [], messages: [],
                     syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected'
                 });
             },
@@ -785,6 +790,9 @@ export const useDataStore = create<DataState>()(
                         status: invoice.status,
                         type: invoice.type || 'Sales',
                         total_cents: invoice.totalCents || 0,
+                        subtotal_cents: invoice.subtotalCents || 0,
+                        service_charge_cents: invoice.serviceChargeCents || 0,
+                        vat_cents: invoice.vatCents || 0,
                         paid_amount_cents: invoice.paidAmountCents || 0,
                         lines: invoice.lines
                     };
@@ -1201,14 +1209,7 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
-            updateCateringEvent: (id, updates) => {
-                set((state) => ({
-                    cateringEvents: state.cateringEvents.map((ev) =>
-                        ev.id === id ? { ...ev, ...updates } : ev
-                    ),
-                }));
-                get().syncWithCloud();
-            },
+
             addMarketingPost: (p) => {
                 const post = { ...p, id: `mp-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', generatedByAI: p.generatedByAI || false } as MarketingPost;
                 set((state) => ({ marketingPosts: [post, ...state.marketingPosts] }));
@@ -1234,6 +1235,59 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({ agenticLogs: [newLog, ...state.agenticLogs] }));
             },
 
+            addMessage: async (message) => {
+                const user = useAuthStore.getState().user;
+
+                // CRITICAL: Database requires a valid UUID for organization_id
+                const orgId = message.organizationId || user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                // UUID Fix: Primary Key 'id' must be a valid UUID
+                // Use the provided ID if it looks like a UUID, otherwise generate a fresh one
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                const msgId = (message.id && uuidRegex.test(message.id)) ? message.id : crypto.randomUUID();
+
+                const newMessage = {
+                    ...message,
+                    id: msgId,
+                    createdAt: message.createdAt || new Date().toISOString(),
+                    organizationId: orgId
+                } as Message;
+
+                // Optimistic Update
+                set((state) => ({
+                    messages: [...state.messages, newMessage]
+                }));
+
+                // Persist
+                if (supabase) {
+                    try {
+                        const payload = {
+                            id: msgId,
+                            sender_id: newMessage.senderId,
+                            recipient_id: newMessage.recipientId,
+                            content: newMessage.content,
+                            created_at: newMessage.createdAt,
+                            organization_id: orgId
+                        };
+                        const { error } = await supabase.from('messages').insert(payload);
+                        if (error) {
+                            console.error("Failed to persist message:", error);
+                        }
+                    } catch (e) {
+                        console.error("Message Persistence Error:", e);
+                    }
+                }
+            },
+            markMessageRead: async (messageId) => {
+                set((state) => ({
+                    messages: state.messages.map(m => m.id === messageId ? { ...m, readAt: new Date().toISOString(), status: 'read' } : m)
+                }));
+
+                if (supabase) {
+                    await supabase.from('messages').update({ read_at: new Date().toISOString(), status: 'read' }).eq('id', messageId);
+                }
+            },
+
             initializePortionMonitor: (eventId, tableCount, guestsPerTable) => set((state) => {
                 const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                 if (eventIndex === -1) return state;
@@ -1254,7 +1308,7 @@ export const useDataStore = create<DataState>()(
                         id: `tbl-${eventId}-${i}`,
                         name: `Table ${i}`,
                         assignedGuests: guestsPerTable,
-                        status: 'Waiting',
+                        status: 'Waiting' as const,
                         servedItems: [],
                         isLocked: false,
                         seats
@@ -1301,7 +1355,7 @@ export const useDataStore = create<DataState>()(
                     id: newTableId,
                     name: `Table ${currentTableCount + 1}`,
                     assignedGuests: guestCapacity,
-                    status: 'Waiting',
+                    status: 'Waiting' as const,
                     servedItems: [],
                     isLocked: false,
                     seats
@@ -1340,7 +1394,7 @@ export const useDataStore = create<DataState>()(
 
                         return {
                             ...t,
-                            status: 'Served',
+                            status: 'Served' as const,
                             isLocked: false,
                             seats: updatedSeats,
                             servedItems: itemIds.map(id => ({
@@ -1401,7 +1455,7 @@ export const useDataStore = create<DataState>()(
                                 return {
                                     ...s,
                                     servingCount: s.servingCount + 1,
-                                    status: 'Occupied',
+                                    status: 'Served' as const,
                                     servedItems: newServedItems
                                 };
                             }
@@ -1648,6 +1702,15 @@ export const useDataStore = create<DataState>()(
                 return { cateringEvents: updatedEvents };
             }),
 
+            completeEvent: (eventId) => {
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map((e) =>
+                        e.id === eventId ? { ...e, status: 'Completed', portionMonitor: { ...e.portionMonitor!, completedAt: new Date().toISOString() } } : e
+                    ),
+                }));
+                get().syncWithCloud();
+            },
+
             dispatchAssets: (eventId, assets) => set((state) => {
                 const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                 if (eventIndex === -1) return state;
@@ -1774,7 +1837,10 @@ export const useDataStore = create<DataState>()(
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
                     status: InvoiceStatus.UNPAID,
                     type: 'Sales',
-                    totalCents: totalRev,
+                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
+                    subtotalCents: totalRev,
+                    serviceChargeCents: Math.round(totalRev * 0.15),
+                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
                     paidAmountCents: 0,
                     lines: d.items.map((it: any, idx: number) => ({
                         id: `line-${idx}`,
@@ -1921,7 +1987,10 @@ export const useDataStore = create<DataState>()(
                             if (inv.id === newEvent.financials.invoiceId) {
                                 return {
                                     ...inv,
-                                    totalCents: totalRev,
+                                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
+                                    subtotalCents: totalRev,
+                                    serviceChargeCents: Math.round(totalRev * 0.15),
+                                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
                                     lines: updates.items.map((it: any, idx: number) => ({
                                         id: `line-${idx}`,
                                         description: it.name,
@@ -2143,7 +2212,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs,
+                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages,
                         // Inventory Base Tables
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
@@ -2167,6 +2236,7 @@ export const useDataStore = create<DataState>()(
                         safePull('leave_requests', companyId),
                         safePull('performance_reviews', companyId),
                         safePull('interaction_logs', companyId),
+                        safePull('messages', companyId),
 
 
                         safePull('reusable_items', companyId),
@@ -2391,6 +2461,7 @@ export const useDataStore = create<DataState>()(
                         requisitions: requisitions || [],
                         chartOfAccounts: chartOfAccounts || [],
                         bankTransactions: bankTransactions || [],
+                        messages: messages || [],
                         leaveRequests: (leaveRequests || []).map((lr: any) => ({
                             ...lr,
                             startDate: lr.start_date,
@@ -2689,6 +2760,38 @@ export const useDataStore = create<DataState>()(
                                 return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapRow(newRow) : r) };
                             } else if (eventType === 'DELETE') {
                                 return { performanceReviews: state.performanceReviews.filter(r => r.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // Messages
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'messages',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            const mapMsg = (m: any) => ({
+                                id: m.id,
+                                senderId: m.sender_id,
+                                recipientId: m.recipient_id,
+                                content: m.content,
+                                createdAt: m.created_at,
+                                readAt: m.read_at,
+                                organizationId: m.organization_id,
+                                type: m.type || 'text',
+                                status: (m.read_at ? 'read' : 'sent') as 'sent' | 'delivered' | 'read'
+                            } as Message);
+
+                            if (eventType === 'INSERT') {
+                                if (state.messages.some(m => m.id === newRow.id)) return state;
+                                return { messages: [...state.messages, mapMsg(newRow)] };
+                            } else if (eventType === 'UPDATE') {
+                                return { messages: state.messages.map(m => m.id === newRow.id ? mapMsg(newRow) : m) };
+                            } else if (eventType === 'DELETE') {
+                                return { messages: state.messages.filter(m => m.id !== oldRow.id) };
                             }
                             return state;
                         });

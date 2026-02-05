@@ -353,25 +353,45 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
     const getWaiterName = (id?: string) => {
         if (!id) return 'Unassigned';
         const w = store.employees.find(e => e.id === id);
-        return w ? `${w.firstName} ${w.lastName}` : 'Unknown';
+        return w ? `${w.firstName} ${w.lastName}` : id;
     };
 
     const tableData = monitor.tables.map(t => {
         const totalServings = t.seats?.reduce((sum: number, s: any) => sum + s.servingCount, 0) || 0;
+
+        // Detailed Seat Summary embedded in row
+        // Format: "Seat 1: 2x Item A, 1x Item B"
+        const seatDetails = t.seats
+            ?.filter((s: any) => s.servingCount > 0)
+            .sort((a: any, b: any) => a.number - b.number)
+            .map((s: any) => {
+                // Get item details
+                const items = s.servedItems?.map((i: any) => `${i.quantity}x ${i.name}`).join(', ');
+                return `Seat ${s.number}: ${items || (s.servingCount + ' servings')}`;
+            })
+            .join('\n');
+
+        const detailsStr = [
+            t.servedItems.length > 0 ? `${t.servedItems.length} unique items` : '',
+            seatDetails ? `\n[Seat Breakdown]\n${seatDetails}` : ''
+        ].filter(Boolean).join('\n');
+
         return [
             t.name,
             t.assignedGuests.toString(),
             totalServings.toString(),
             getWaiterName(t.assignedWaiterId),
-            t.servedItems.length > 0 ? `${t.servedItems.length} unique items logged` : '-'
+            detailsStr || '-'
         ];
     });
 
     autoTable(doc, {
         startY: currentY + 5,
-        head: [['Table Name', 'Guests', 'Total Servings', 'Served By (Waiter)', 'Details']],
+        head: [['Table Name', 'Guests', 'Total Servings', 'Served By', 'Details (Seat Activity)']],
         body: tableData,
     });
+
+
 
     // --- EVIDENCE PHOTOS ---
     currentY = (doc as any).lastAutoTable.finalY + 15;

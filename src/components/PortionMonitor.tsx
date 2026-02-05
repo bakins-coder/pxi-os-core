@@ -172,12 +172,12 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Number of Tables</label>
-                        <input type="number" value={tableCount} onChange={e => setTableCount(Number(e.target.value))} className="w-full p-2 border rounded" />
+                        <label className="block text-sm font-medium mb-1 text-slate-700">Number of Tables</label>
+                        <input type="number" value={tableCount} onChange={e => setTableCount(Number(e.target.value))} className="w-full p-2 border rounded text-slate-900" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">Guests Per Table (Default)</label>
-                        <input type="number" value={guestsPerTable} onChange={e => setGuestsPerTable(Number(e.target.value))} className="w-full p-2 border rounded" />
+                        <label className="block text-sm font-medium mb-1 text-slate-700">Guests Per Table (Default)</label>
+                        <input type="number" value={guestsPerTable} onChange={e => setGuestsPerTable(Number(e.target.value))} className="w-full p-2 border rounded text-slate-900" />
                     </div>
                     <div className="flex justify-end gap-2 mt-6">
                         <button onClick={() => { setSelectedEventId(null); onClose?.(); }} className="px-4 py-2 text-gray-600">Cancel</button>

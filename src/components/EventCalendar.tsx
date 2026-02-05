@@ -10,9 +10,10 @@ import { EventDetailCard } from './EventDetailCard';
 interface EventCalendarProps {
   tasks?: Task[];
   events?: CateringEvent[];
+  className?: string;
 }
 
-export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks, events: propsEvents }) => {
+export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks, events: propsEvents, className }) => {
   const storeTasks = useDataStore(state => state.tasks);
   const storeEvents = useDataStore(state => state.cateringEvents);
 
@@ -56,26 +57,26 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
   for (let i = 1; i <= daysInMonth(currentDate); i++) days.push(i);
 
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden flex flex-col h-[calc(100vh-180px)] animate-in fade-in">
-      <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-white">
+    <div className={`bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden flex flex-col h-full min-h-[400px] md:min-h-[600px] animate-in fade-in ${className}`}>
+      <div className="p-4 md:p-8 border-b border-slate-50 flex items-center justify-between bg-white">
         <div>
-          <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">
+          <h2 className="text-xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter">
             {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
           </h2>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Operational Heatmap</p>
+          <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1">Operational Heatmap</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={prevMonth} className="p-3 hover:bg-slate-100 rounded-2xl transition-all border border-slate-100 shadow-sm"><ChevronLeft size={20} /></button>
-          <button onClick={nextMonth} className="p-3 hover:bg-slate-100 rounded-2xl transition-all border border-slate-100 shadow-sm"><ChevronRight size={20} /></button>
+        <div className="flex gap-1 md:gap-2">
+          <button onClick={prevMonth} className="p-2 md:p-3 hover:bg-slate-100 rounded-xl md:rounded-2xl transition-all border border-slate-100 shadow-sm"><ChevronLeft size={16} className="md:w-5 md:h-5" /></button>
+          <button onClick={nextMonth} className="p-2 md:p-3 hover:bg-slate-100 rounded-xl md:rounded-2xl transition-all border border-slate-100 shadow-sm"><ChevronRight size={16} className="md:w-5 md:h-5" /></button>
         </div>
       </div>
 
       <div className="flex-1 grid grid-cols-7 overflow-y-auto">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-r bg-slate-50/50">{d}</div>
+          <div key={d} className="p-2 md:p-4 text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-r bg-slate-50/50 text-center">{d}</div>
         ))}
         {days.map((day, i) => (
-          <div key={i} className="border-b border-r p-4 hover:bg-indigo-50/30 transition-all group overflow-y-auto min-h-[100px]">
+          <div key={i} className="border-b border-r p-1 md:p-4 hover:bg-indigo-50/30 transition-all group overflow-y-auto min-h-[60px] md:min-h-[100px]">
             {day && (
               <>
                 <div className="font-black text-slate-300 text-xs mb-2">{day}</div>

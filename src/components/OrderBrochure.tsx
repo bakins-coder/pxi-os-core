@@ -274,24 +274,24 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     </button>
                     <button
                         onClick={() => setActiveTab('menu')}
-                        className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                        className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                     >
                         2. Menu Selection
                     </button>
                 </div>
 
                 {/* Category Pills - Only show on Menu Tab or Desktop */}
-                <div className={`flex-1 flex justify-center overflow-x-auto max-w-full no-scrollbar ${activeTab === 'menu' ? 'block' : 'hidden md:block'}`}>
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl border-2 border-slate-200 gap-1 shadow-sm">
+                <div className={`flex-1 flex justify-center overflow-x-auto max-w-full no-scrollbar px-2 ${activeTab === 'menu' ? 'block' : 'hidden md:block'}`}>
+                    <div className="flex bg-slate-100 p-1.5 md:p-1.5 rounded-2xl border-2 border-slate-200 gap-2 md:gap-1 shadow-sm w-max">
                         {["All", ...categoryOrder].map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                className={`px-5 py-3 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
                             >
                                 {cat}
                                 {(Number(categoryTotals[cat]) || 0) > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 md:w-4 md:h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[9px] md:text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
                                 )}
                             </button>
                         ))}
@@ -314,25 +314,25 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                             <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Client Identity</h3>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Host Entity *</label>
-                            <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder="Host Name" value={customerName} onChange={e => handleHostChange(e.target.value)} />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Host Entity *</label>
+                            <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder="Host Name" value={customerName} onChange={e => handleHostChange(e.target.value)} />
                             <datalist id="contacts-list-b">
                                 {contacts.map(c => <option key={c.id} value={c.name} />)}
                             </datalist>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Contact Person</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Contact Person</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Phone *</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Phone *</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
                             </div>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Email *</label>
-                            <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Email *</label>
+                            <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
                         </div>
                     </section>
 
@@ -341,44 +341,44 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                             <Palette size={16} className="text-indigo-600" />
                             <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Atmosphere & Coordination</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Type</label>
-                                <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Type</label>
+                                <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
                                     <option>Wedding</option><option>Corporate</option><option>Funeral</option><option>Birthday</option><option>Anniversary</option><option>Cocktail</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Theme Colour</label>
                                 <div className="flex items-center gap-3 p-3 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
-                                    <input type="color" className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
+                                    <input type="color" className="w-12 h-12 md:w-8 md:h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
                                     <span className="font-mono text-xs font-black uppercase text-slate-950">{themeColor}</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Date *</label>
-                                <input type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Date *</label>
+                                <input type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Guest Count *</label>
-                                <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Guest Count *</label>
+                                <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Planner</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder="Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Planner</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Planner Phone</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder="Phone (Optional)" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Planner Phone</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone (Optional)" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} />
                             </div>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Venue Address *</label>
-                            <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder="Location Detail" value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Venue Address *</label>
+                            <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder="Location Detail" value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
                         </div>
                     </section>
 
@@ -487,32 +487,35 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             </div>
 
             {/* FOOTER */}
-            {/* FOOTER - COMPACT */}
-            <div className="p-2 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-2 md:gap-0">
-                <div className="flex items-center gap-4 md:gap-8 w-full md:w-auto justify-between md:justify-start">
-                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg md:rounded-xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform">
-                            <ShoppingCart size={14} className="md:w-4 md:h-4" />
+            {/* FOOTER */}
+            <div className="p-4 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-3 md:gap-0 pb-6 md:pb-4 safe-area-pb">
+                <div className="flex items-center justify-between w-full md:w-auto gap-4 md:gap-8">
+                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-3 group bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto">
+                        <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform shrink-0">
+                            <ShoppingCart size={18} className="md:w-4 md:h-4" />
                         </div>
                         <div className="text-left">
-                            <p className="text-[7px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Basket</p>
-                            <p className="text-[9px] md:text-xs font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Basket</p>
+                            <p className="text-xs md:text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
                         </div>
                     </button>
-                    <div className="h-8 w-px bg-slate-100 mx-2 hidden md:block"></div>
-                    <div className="text-right md:text-left">
-                        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
+
+                    <div className="h-10 w-px bg-slate-100 mx-2 hidden md:block"></div>
+
+                    <div className="text-right bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto min-w-[100px]">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
                         <span className="text-xl md:text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <button onClick={onComplete} className="flex-1 md:flex-none px-4 md:px-6 py-3 md:py-3 font-black uppercase text-[9px] text-slate-400 bg-slate-50 rounded-xl md:bg-transparent hover:text-rose-500">Abort</button>
+
+                <div className="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
+                    <button onClick={onComplete} className="px-6 py-4 md:py-3 font-black uppercase text-[10px] text-slate-500 bg-slate-100 rounded-2xl md:bg-transparent hover:text-rose-500 shrink-0">Abort</button>
                     <button
                         onClick={handlePlaceOrder}
                         disabled={!hasSelection || isSubmitting || !customerName}
-                        className={`flex-1 md:flex-none px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                        className={`flex-1 px-8 py-4 md:py-4 rounded-2xl font-black uppercase text-xs md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
-                        {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <ArrowRight size={16} />} {isPortionLocked ? 'Finalize' : 'Incomplete'}
+                        {isSubmitting ? <RefreshCw className="animate-spin" size={18} /> : <ArrowRight size={18} />} {isPortionLocked ? 'Finalize Order' : 'Order Incomplete'}
                     </button>
                 </div>
             </div>

@@ -6,7 +6,7 @@ import {
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, Activity,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
-  Plane, Fuel
+  Plane, Fuel, Smartphone, Laptop
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -34,7 +34,7 @@ const SyncIndicator = () => {
   return (
     <div className="flex items-center gap-2 group relative">
       <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColors[syncStatus]}`}></div>
-      <span className="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest truncate">
+      <span className="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest truncate hidden sm:inline">
         {syncStatus} • RT: {realtimeStatus}
       </span>
       {syncStatus === 'Error' && (
@@ -99,7 +99,12 @@ const NAV_ITEMS = [
 
 const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string }) => {
   const { strictMode, settings } = useSettingsStore();
-  const { departmentMatrix } = useDataStore();
+  const { departmentMatrix, messages } = useDataStore();
+  const { user: currentUser } = useAuthStore();
+
+  const unreadMessagesCount = messages.filter(m =>
+    m.recipientId === currentUser?.id && !m.readAt && m.status !== 'read'
+  ).length;
 
   // Find the exact matrix role that matches the user's assigned role string
   const userMatrixRole = departmentMatrix
@@ -165,14 +170,25 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all group ${isActive
+              className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isActive
                 ? 'bg-white/5 border-l-2'
                 : 'text-slate-500 hover:bg-white/5 hover:text-white'
                 }`}
               style={isActive ? { borderColor: brandColor, color: brandColor } : {}}
             >
-              <item.icon size={18} className={isActive ? '' : 'text-slate-600 group-hover:text-white shrink-0'} />
-              <span className={`text-[10px] uppercase tracking-widest truncate ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
+              <div className="flex items-center space-x-3 min-w-0">
+                <item.icon size={18} className={isActive ? '' : 'text-slate-600 group-hover:text-white shrink-0'} />
+                <span className={`text-[10px] uppercase tracking-widest truncate ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
+              </div>
+
+              {item.label === 'Team Messages' && unreadMessagesCount > 0 && (
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute inset-0 animate-ping rounded-full opacity-40 bg-emerald-400" style={{ backgroundColor: brandColor }}></div>
+                  <div className="relative min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-[#020617] shadow-lg" style={{ backgroundColor: brandColor }}>
+                    {unreadMessagesCount}
+                  </div>
+                </div>
+              )}
             </Link>
           );
         })}
@@ -234,6 +250,11 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   // Profile Dropdown State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // Mobile Simulator State
+  const [showMobileSimulator, setShowMobileSimulator] = useState(false);
+  const [simulatorScale, setSimulatorScale] = useState(1);
+  const isIframe = window.self !== window.top;
 
   // Click Outside Handler
   useEffect(() => {
@@ -301,16 +322,69 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
         />
       )}
 
+      {/* MOBILE SIMULATOR OVERLAY */}
+      {showMobileSimulator && !isIframe && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex flex-col animate-in fade-in duration-300">
+          {/* Fixed Header Controls */}
+          <div className="flex-none flex items-center justify-between p-6 border-b border-white/10 bg-slate-950/50 backdrop-blur-sm z-50">
+            <div className="flex items-center gap-4 text-white">
+              <div className="p-2 bg-white/10 rounded-full"><Smartphone size={20} className="text-[#00ff9d]" /></div>
+              <div>
+                <h2 className="text-lg font-black uppercase tracking-tight">Mobile Simulator</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Previewing: {location.pathname}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSimulatorScale(s => s === 1 ? 0.85 : 1)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
+              >
+                {simulatorScale === 1 ? 'Fit Screen' : '100%'}
+              </button>
+              <button
+                onClick={() => setShowMobileSimulator(false)}
+                className="px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg hover:shadow-rose-500/25 flex items-center gap-2"
+              >
+                <X size={14} /> Close Preview
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Phone Area */}
+          <div className="flex-1 overflow-y-auto flex flex-col items-center py-10 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+            <div
+              className="transition-transform duration-300 origin-top shrink-0"
+              style={{ transform: `scale(${simulatorScale})`, marginBottom: simulatorScale === 1 ? 0 : '-100px' }}
+            >
+              <div className="relative w-[375px] h-[812px] bg-slate-900 rounded-[3rem] border-8 border-slate-800 shadow-2xl overflow-hidden ring-4 ring-slate-950">
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-7 bg-slate-950 rounded-b-2xl z-20"></div>
+
+                <iframe
+                  src={window.location.href}
+                  className="w-full h-full bg-white text-slate-900"
+                  title="Mobile Preview"
+                />
+
+                {/* Home Indicator */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-950/20 rounded-full z-20 pointer-events-none"></div>
+              </div>
+            </div>
+            <p className="mt-8 text-slate-500 text-[10px] font-black uppercase tracking-widest shrink-0 pb-10">Interactive Preview • iPhone Dimensions</p>
+          </div>
+        </div>
+      )}
+
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#020617] transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} />
       </aside>
 
       <div className="flex-1 md:ml-72 flex flex-col min-h-screen w-full overflow-x-hidden">
-        <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl h-20 flex items-center px-4 md:px-10 justify-between border-b border-white/5 w-full">
+        <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl h-16 md:h-20 flex items-center px-4 md:px-10 justify-between border-b border-white/5 w-full">
           <div className="flex items-center gap-4 md:gap-6 min-w-0">
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 text-slate-500 hover:bg-slate-800 rounded-lg shrink-0"><Menu size={24} /></button>
             <div className="flex flex-col min-w-0">
-              <span className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 truncate">Date: {formattedDate}</span>
+              <span className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 truncate hidden md:block">Date: {formattedDate}</span>
               <SyncIndicator />
             </div>
           </div>
@@ -333,6 +407,17 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
                 </button>
               )}
             </div>
+
+            {!isIframe && (
+              <button
+                onClick={() => setShowMobileSimulator(true)}
+                className="hidden md:flex p-2.5 text-slate-500 hover:bg-white/5 hover:text-[#00ff9d] rounded-xl transition-all active:scale-90 items-center gap-2 group"
+                title="Mobile Simulator"
+              >
+                <Smartphone size={20} />
+                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Mobile View</span>
+              </button>
+            )}
 
             <button onClick={() => navigate('/docs')} className="hidden sm:flex p-2.5 text-slate-500 hover:bg-white/5 rounded-xl transition-all active:scale-90" title="Knowledge Base"><HelpCircle size={20} /></button>
             <button className="p-2.5 text-slate-500 hover:bg-white/5 rounded-xl relative transition-all active:scale-90"><Bell size={20} /><span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full border-2 border-[#020617]" style={{ backgroundColor: brandColor }}></span></button>

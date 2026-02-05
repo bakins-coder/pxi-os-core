@@ -13,6 +13,7 @@ import {
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport } from '../utils/exportUtils';
+import { ManualInvoiceModal } from './Finance';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
@@ -146,16 +147,16 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                      ))}
                   </div>
                </div>
-               <div className="bg-slate-950 p-10 rounded-[3rem] text-white flex justify-between items-center shadow-2xl">
+               <div className="bg-slate-950 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-2xl gap-6 md:gap-0">
                   <div>
-                     <p className="text-xs font-black uppercase text-slate-500 tracking-widest mb-1">Total Fulfillment Estimate</p>
-                     <h4 className="text-4xl font-black text-white tracking-tighter">₦{(totalEstimate / 100).toLocaleString()}</h4>
+                     <p className="text-[10px] md:text-xs font-black uppercase text-slate-500 tracking-widest mb-1">Total Fulfillment Estimate</p>
+                     <h4 className="text-3xl md:text-4xl font-black text-white tracking-tighter">₦{(totalEstimate / 100).toLocaleString()}</h4>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left md:text-right w-full md:w-auto">
                      <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: ₦{(event.financials.revenueCents / 100).toLocaleString()}</p>
-                     <div className="flex gap-4">
-                        <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400">Abort</button>
-                        <button onClick={handleFinalizePlan} className="px-12 py-5 bg-[#00ff9d] text-slate-950 rounded-[2rem] font-black uppercase text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3">Submit for Finance Approval <ArrowRight size={18} /></button>
+                     <div className="flex flex-col md:flex-row gap-4">
+                        <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Abort</button>
+                        <button onClick={handleFinalizePlan} className="px-8 py-4 md:px-12 md:py-5 bg-[#00ff9d] text-slate-950 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 w-full md:w-auto">Submit for Finance <ArrowRight size={16} /></button>
                      </div>
                   </div>
                </div>
@@ -278,62 +279,66 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                <div className="space-y-8">
                   {Object.entries(groupedBreakdown).map(([groupName, items], gIdx) => (
                      <div key={gIdx} className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-                        <div className="px-8 py-4 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
+                        <div className="px-6 py-4 md:px-8 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
                            <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">{groupName}</span>
                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{items.length} Ingredients</span>
                         </div>
-                        <table className="w-full text-left text-[11px]">
-                           <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[8px] tracking-widest">
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-left text-[11px] min-w-[500px]">
+                              <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[8px] tracking-widest">
+                                 <tr>
+                                    <th className="px-6 py-4 md:px-8">Ingredient Component</th>
+                                    <th className="px-6 py-4 md:px-8">Net Requirement</th>
+                                    <th className="px-6 py-4 md:px-8 text-right">Unit Rate</th>
+                                    <th className="px-6 py-4 md:px-8 text-right">Ext. Value (₦)</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                 {items.map((ing, idx) => (
+                                    <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
+                                       <td className="px-6 py-5 md:px-8">
+                                          <div className="flex items-center gap-2">
+                                             <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
+                                             {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                                          </div>
+                                          {ing.scalingTierUsed && <p className="text-[8px] text-indigo-400 font-bold uppercase mt-0.5">{ing.scalingTierUsed}</p>}
+                                       </td>
+                                       <td className="px-6 py-5 md:px-8 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
+                                       <td className="px-6 py-5 md:px-8 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-6 py-5 md:px-8 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                  ))}
+
+                  <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden mt-12">
+                     <div className="px-6 py-4 md:px-8 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Ingredient Aggregate Summary</span>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Consolidated</span>
+                     </div>
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[11px] min-w-[500px]">
+                           <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest">
                               <tr>
-                                 <th className="px-8 py-4">Ingredient Component</th>
-                                 <th className="px-8 py-4">Net Requirement</th>
-                                 <th className="px-8 py-4 text-right">Unit Rate</th>
-                                 <th className="px-8 py-4 text-right">Ext. Value (₦)</th>
+                                 <th className="px-6 py-4 md:px-8">Total Component</th>
+                                 <th className="px-6 py-4 md:px-8 text-center">Combined Guest Need</th>
+                                 <th className="px-6 py-4 md:px-8 text-right">Aggregate Cost (₦)</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-slate-50">
-                              {items.map((ing, idx) => (
-                                 <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
-                                    <td className="px-8 py-5">
-                                       <div className="flex items-center gap-2">
-                                          <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
-                                          {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
-                                       </div>
-                                       {ing.scalingTierUsed && <p className="text-[8px] text-indigo-400 font-bold uppercase mt-0.5">{ing.scalingTierUsed}</p>}
-                                    </td>
-                                    <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
-                                    <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                                    <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                           <tbody className="divide-y divide-slate-800">
+                              {aggregates.map((agg, idx) => (
+                                 <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
+                                    <td className="px-6 py-4 md:px-8 font-black text-slate-200 uppercase">{agg.name}</td>
+                                    <td className="px-6 py-4 md:px-8 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
+                                    <td className="px-6 py-4 md:px-8 text-right font-black text-emerald-400">₦{(agg.cost / 100).toLocaleString()}</td>
                                  </tr>
                               ))}
                            </tbody>
                         </table>
                      </div>
-                  ))}
-
-                  <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden mt-12">
-                     <div className="px-8 py-4 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
-                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Ingredient Aggregate Summary</span>
-                        <span className="text-[9px] text-slate-500 font-bold uppercase">Consolidated Procurement View</span>
-                     </div>
-                     <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest">
-                           <tr>
-                              <th className="px-8 py-4">Total Component</th>
-                              <th className="px-8 py-4 text-center">Combined Guest Need</th>
-                              <th className="px-8 py-4 text-right">Aggregate Cost (₦)</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800">
-                           {aggregates.map((agg, idx) => (
-                              <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
-                                 <td className="px-8 py-4 font-black text-slate-200 uppercase">{agg.name}</td>
-                                 <td className="px-8 py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
-                                 <td className="px-8 py-4 text-right font-black text-emerald-400">₦{(agg.cost / 100).toLocaleString()}</td>
-                              </tr>
-                           ))}
-                        </tbody>
-                     </table>
                   </div>
                </div>
 
@@ -520,13 +525,51 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                      </div>
 
                      {/* Right Side: Totals */}
-                     <div className="w-full md:w-1/3">
-                        <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100">
-                           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</p>
-                           <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-slate-900'}`}>
-                              {formatCurrency(invoice.totalCents)}
-                           </p>
-                        </div>
+                     <div className="w-full md:w-1/3 space-y-2">
+                        {/* Dynamic Calculation Logic inside render for immediate feedback */}
+                        {(() => {
+                           // 1. Calculate values from lines (Source of Truth)
+                           const calculatedSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+
+                           // 2. Determine which values to use
+                           // If we have stored subtotal (new invoice), use it. otherwise use calculated.
+                           const displaySubtotal = invoice.subtotalCents || calculatedSubtotal;
+
+                           // If we have stored tax (new invoice), use it.
+                           // If NOT, we assume the user WANTS to see taxes on this view (as per request),
+                           // so we force calculate them based on the subtotal.
+                           const displaySC = invoice.serviceChargeCents ?? Math.round(displaySubtotal * 0.15);
+                           const displayVAT = invoice.vatCents ?? Math.round((displaySubtotal + displaySC) * 0.075);
+                           const displayTotal = displaySubtotal + displaySC + displayVAT;
+
+                           // Check if the stored total matches the calculated total (roughly)
+                           // If stored total is significantly different (e.g. it was just subtotal), we might want to warn or just show the new total.
+                           // For this user request, we will show the TAX BREAKDOWN definitively.
+
+                           return (
+                              <>
+                                 <div className="flex justify-between items-center text-sm font-medium text-slate-500">
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
+                                    <span>{formatCurrency(displaySubtotal)}</span>
+                                 </div>
+                                 <div className="flex justify-between items-center text-sm font-medium text-slate-500">
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge (15%)</span>
+                                    <span>{formatCurrency(displaySC)}</span>
+                                 </div>
+                                 <div className="flex justify-between items-center text-sm font-medium text-slate-500">
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT (7.5%)</span>
+                                    <span>{formatCurrency(displayVAT)}</span>
+                                 </div>
+                                 <div className="h-px bg-slate-200 my-2"></div>
+                                 <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</p>
+                                    <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-slate-900'}`}>
+                                       {formatCurrency(displayTotal)}
+                                    </p>
+                                 </div>
+                              </>
+                           );
+                        })()}
                      </div>
                   </div>
                </div>
@@ -641,7 +684,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                   <input
                      type="text"
                      placeholder="Search assets (Plates, Glassware...)"
-                     className="w-full p-3 bg-white border border-slate-200 rounded-xl mb-4 font-bold text-sm outline-none focus:border-indigo-500"
+                     className="w-full p-3 bg-white border border-slate-200 rounded-xl mb-4 font-bold text-sm outline-none focus:border-indigo-500 text-slate-900"
                      value={search}
                      onChange={e => setSearch(e.target.value)}
                   />
@@ -669,7 +712,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                            <div className="flex items-center gap-2">
                               <input
                                  type="number"
-                                 className="w-16 p-1 bg-white border border-slate-200 rounded text-center text-sm font-bold outline-none focus:border-indigo-500"
+                                 className="w-16 p-1 bg-white border border-slate-200 rounded text-center text-sm font-bold outline-none focus:border-indigo-500 text-slate-900"
                                  value={item.quantity}
                                  onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
                               />
@@ -1158,6 +1201,7 @@ export const Catering = () => {
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
    const [activeTab, setActiveTab] = useState<'orders' | 'matrix'>('orders');
    const [showProcurement, setShowProcurement] = useState(false);
+   const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
 
    const cateringEvents = useDataStore(state => state.cateringEvents);
@@ -1234,7 +1278,10 @@ export const Catering = () => {
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
                      <div className="flex justify-between items-center">
                         <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} Banquets</h2>
-                        <button onClick={() => setShowBrochure(true)} className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                        <div className="flex gap-2">
+                           <button onClick={() => setIsManualInvoiceModalOpen(true)} className="px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create Invoice</button>
+                           <button onClick={() => setShowBrochure(true)} className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                        </div>
                      </div>
                      <div className="flex bg-slate-100 p-1 rounded-xl">
                         {['active', 'archived'].map((mode) => (
@@ -1343,6 +1390,13 @@ export const Catering = () => {
                event={selectedEvent}
                onClose={() => setShowProcurement(false)}
                onFinalize={handleFinalizePush}
+            />
+         )}
+
+         {isManualInvoiceModalOpen && (
+            <ManualInvoiceModal
+               isOpen={isManualInvoiceModalOpen}
+               onClose={() => setIsManualInvoiceModalOpen(false)}
             />
          )}
 
