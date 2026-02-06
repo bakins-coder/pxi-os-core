@@ -520,10 +520,11 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
    const [qty, setQty] = useState(0);
    const [cost, setCost] = useState(0);
    const [isMaximized, setIsMaximized] = useState(false);
-<<<<<<< HEAD
+   const [isManualInput, setIsManualInput] = useState(false);
+   const [newItemName, setNewItemName] = useState('');
+   const [newItemUnit, setNewItemUnit] = useState('kg');
 
-   const receiveFoodStock = useDataStore(state => state.receiveFoodStock);
-   const { requisitions, updateRequisition } = useDataStore();
+   const { receiveFoodStock, addIngredient, requisitions, updateRequisition } = useDataStore();
 
    // Filter for approved purchase requests
    const approvedRequests = useMemo(() => requisitions.filter(r => r.type === 'Purchase' && r.status === 'Approved'), [requisitions]);
@@ -542,26 +543,13 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
    if (!isOpen) return null;
 
    const handleReceive = () => {
-      if (!selectedIngId || qty <= 0) return;
-
-      receiveFoodStock(selectedIngId, qty, cost * 100);
-
-      if (mode === 'FromRequest' && selectedReqId) {
-         updateRequisition(selectedReqId, { status: 'Paid' }); // Mark as completed/paid upon receipt (simplification)
-      }
-
-=======
-   const { receiveFoodStock, addIngredient } = useDataStore();
-
-   if (!isOpen) return null;
-   const handleReceive = () => {
-      if (isManualInput) {
+      if (isManualInput && mode === 'Direct') {
          if (!newItemName || qty <= 0) return;
          const newIngId = `ing-manual-${Date.now()}`;
          addIngredient({
             id: newIngId,
             name: newItemName,
-            unit: newItemUnit,
+            unit: newItemUnit as any,
             stockLevel: 0,
             currentCostCents: cost > 0 && qty > 0 ? (cost * 100) / qty : 0,
             category: 'Dry Goods' // Default category
@@ -570,8 +558,11 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
       } else {
          if (!selectedIngId || qty <= 0) return;
          receiveFoodStock(selectedIngId, qty, cost * 100);
+
+         if (mode === 'FromRequest' && selectedReqId) {
+            updateRequisition(selectedReqId, { status: 'Paid' });
+         }
       }
->>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
       onClose();
    };
 
@@ -593,7 +584,6 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                   <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
                </div>
             </div>
-<<<<<<< HEAD
 
             <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex gap-2">
                <button onClick={() => setMode('FromRequest')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'FromRequest' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-200'}`}>From Approved Request</button>
@@ -612,89 +602,79 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                      ) : (
                         <div className="p-4 bg-slate-100 rounded-2xl text-center text-xs text-slate-500 font-bold">No approved requests found.</div>
                      )}
-=======
-            <div className="p-10 space-y-6">
-               <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                  <span className="text-[10px] font-black uppercase text-slate-500">Manual Entry Mode</span>
-                  <button
-                     onClick={() => setIsManualInput(!isManualInput)}
-                     className={`w-12 h-6 rounded-full transition-all relative ${isManualInput ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                  >
-                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isManualInput ? 'left-7' : 'left-1'}`} />
-                  </button>
-               </div>
-
-               {isManualInput ? (
-                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                     <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">New Item Name</label>
-                        <input
-                           type="text"
-                           className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
-                           value={newItemName}
-                           onChange={e => setNewItemName(e.target.value)}
-                           placeholder="e.g. Fresh Saffron"
-                        />
-                     </div>
-                     <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit of Measure</label>
-                        <select
-                           className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900"
-                           value={newItemUnit}
-                           onChange={e => setNewItemUnit(e.target.value)}
-                        >
-                           <option>kg</option><option>g</option><option>L</option><option>ml</option><option>pcs</option><option>pack</option>
-                        </select>
-                     </div>
->>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
                   </div>
                ) : (
-                  <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label>
-<<<<<<< HEAD
-                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}>
-=======
-                     <select
-                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
-                        value={selectedIngId}
-                        onChange={e => setSelectedIngId(e.target.value)}
-                     >
->>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
-                        <option value="">Choose item...</option>
-                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
-                     </select>
-                  </div>
+                  <>
+                     <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <span className="text-[10px] font-black uppercase text-slate-500">Manual Entry Mode</span>
+                        <button
+                           onClick={() => setIsManualInput(!isManualInput)}
+                           className={`w-12 h-6 rounded-full transition-all relative ${isManualInput ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                        >
+                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isManualInput ? 'left-7' : 'left-1'}`} />
+                        </button>
+                     </div>
+
+                     {isManualInput ? (
+                        <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                           <div>
+                              <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">New Item Name</label>
+                              <input
+                                 type="text"
+                                 className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                                 value={newItemName}
+                                 onChange={e => setNewItemName(e.target.value)}
+                                 placeholder="e.g. Fresh Saffron"
+                              />
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit of Measure</label>
+                              <select
+                                 className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900"
+                                 value={newItemUnit}
+                                 onChange={e => setNewItemUnit(e.target.value)}
+                              >
+                                 <option>kg</option><option>g</option><option>L</option><option>ml</option><option>pcs</option><option>pack</option>
+                              </select>
+                           </div>
+                        </div>
+                     ) : (
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label>
+                           <select
+                              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                              value={selectedIngId}
+                              onChange={e => setSelectedIngId(e.target.value)}
+                           >
+                              <option value="">Choose item...</option>
+                              {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+                           </select>
+                        </div>
+                     )}
+                  </>
                )}
 
                <div className="grid grid-cols-2 gap-4">
                   <div>
-<<<<<<< HEAD
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity Recieved</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Total Value (₦)</label>
-=======
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity {isManualInput ? `(${newItemUnit})` : ''}</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity {isManualInput && mode === 'Direct' ? `(${newItemUnit})` : ''}</label>
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label>
->>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
                   </div>
                </div>
             </div>
-<<<<<<< HEAD
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
-               <button onClick={handleReceive} disabled={mode === 'FromRequest' && !selectedReqId} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl disabled:opacity-50">Commit to Stock</button>
-=======
-            <div className="p-8 bg-slate-50 flex gap-4">
-               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
-               <button onClick={handleReceive} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all">Commit to Stock</button>
->>>>>>> 0ce9125 (feat: expand AI capabilities, fix responsiveness, and hardening)
+               <button
+                  onClick={handleReceive}
+                  disabled={(mode === 'FromRequest' && !selectedReqId) || (mode === 'Direct' && !isManualInput && !selectedIngId)}
+                  className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all disabled:opacity-50"
+               >
+                  Commit to Stock
+               </button>
             </div>
          </div>
       </div>
@@ -1275,9 +1255,10 @@ export const Inventory = () => {
       setPortionCounts(prev => {
          const next = { ...prev };
          products.forEach(p => { if (next[p.id] === undefined) next[p.id] = 100; });
+         recipes.forEach(r => { if (next[r.id] === undefined) next[r.id] = 100; });
          return next;
       });
-   }, [products.length]); // Simple dependency on length to avoid loops
+   }, [products.length, recipes.length]); // Updated to include recipes
 
    const handleApproveRelease = (id: string) => approveRequisition(id);
    const totalLiability = rentalLedger.filter(r => r.status === 'Issued').reduce((sum, r) => sum + r.estimatedReplacementValueCents, 0);
@@ -1446,20 +1427,41 @@ export const Inventory = () => {
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {recipes.map(recipe => (
                      <div key={recipe.id} className="bg-white rounded-[2.5rem] border-2 border-slate-50 shadow-xl overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
-                        <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                        <div className="p-8 border-b border-slate-50 bg-slate-50/30 space-y-4">
                            <input
                               className="bg-transparent text-lg font-black text-slate-800 uppercase outline-none focus:text-indigo-600 w-full"
                               value={recipe.name}
                               onChange={e => updateRecipe(recipe.id, { name: e.target.value })}
                            />
-                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{recipe.ingredients.length} Major Components</p>
+
+                           <div className="flex justify-between items-center p-4 bg-white/50 rounded-2xl border border-slate-100">
+                              <div>
+                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Scaling Mode</p>
+                                 <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tight">{recipe.ingredients.length} Components</p>
+                              </div>
+                              <div className="flex flex-col items-end shrink-0">
+                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions</p>
+                                 <div className="flex items-center gap-2">
+                                    <button onClick={() => updatePortions(recipe.id, Math.max(1, (portionCounts[recipe.id] || 100) - 50))} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:text-rose-500 transition-colors"><Minus size={12} /></button>
+                                    <input
+                                       type="number"
+                                       className="w-16 bg-white border-2 border-slate-200 rounded-lg py-1 text-center text-xs font-black text-slate-950 outline-none focus:border-indigo-500 shadow-inner"
+                                       value={portionCounts[recipe.id] || 100}
+                                       onChange={(e) => updatePortions(recipe.id, Math.max(1, parseInt(e.target.value) || 0))}
+                                    />
+                                    <button onClick={() => updatePortions(recipe.id, (portionCounts[recipe.id] || 100) + 50)} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:text-emerald-500 transition-colors"><Plus size={12} /></button>
+                                 </div>
+                              </div>
+                           </div>
                         </div>
                         <div className="p-8 flex-1 space-y-4 max-h-64 overflow-y-auto scrollbar-thin">
                            {recipe.ingredients.map((ing, idx) => (
                               <div key={idx} className="flex justify-between items-center group">
                                  <div>
                                     <p className="text-xs font-black text-slate-700 uppercase">{ing.name}</p>
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.qtyPerPortion} {ing.unit} {ing.subRecipeGroup ? `• ${ing.subRecipeGroup}` : ''}</p>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                                       {((ing.qtyPerPortion || 0) * (portionCounts[recipe.id] || 100)).toLocaleString()} {ing.unit} {ing.subRecipeGroup ? `• ${ing.subRecipeGroup}` : ''}
+                                    </p>
                                  </div>
                                  <button onClick={() => deleteRecipeIngredient(recipe.id, ing.name)} className="opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all"><X size={12} /></button>
                               </div>
