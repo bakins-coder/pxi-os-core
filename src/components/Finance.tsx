@@ -321,14 +321,14 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
    const totalAmount = subtotalPreview + scPreview + vatPreview;
 
    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={onClose}>
-         <div onClick={e => e.stopPropagation()} className="bg-white shadow-2xl w-full max-w-4xl rounded-[3rem] overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
-               <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900">New Invoice</h2>
-               <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+      <div className="fixed inset-0 z-50 flex md:items-center items-start md:justify-center justify-center bg-slate-900/70 backdrop-blur-md animate-in fade-in overflow-y-auto" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white shadow-2xl w-full max-w-4xl md:rounded-[3rem] rounded-t-[2rem] overflow-hidden flex flex-col md:my-8 min-h-[50vh] md:max-h-[90vh]">
+            <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
+               <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">New Invoice</h2>
+               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
-            <div className="p-8 overflow-y-auto space-y-8">
+            <div className="p-5 md:p-8 overflow-y-auto flex-1 space-y-6 md:space-y-8 pb-32 md:pb-8">
                {/* Customer Section */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
@@ -404,61 +404,73 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
                      <h3 className="text-sm font-black uppercase text-slate-600 tracking-widest">Line Items</h3>
                      <button onClick={addLine} className="text-xs bg-slate-900 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-widest hover:bg-slate-700 transition-all">+ Add Item</button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-4 md:space-y-3">
                      {lines.map((line, idx) => (
-                        <div key={line.id} className="flex gap-4 items-start">
-                           <span className="pt-4 text-xs font-bold text-slate-400 w-6">{idx + 1}.</span>
-                           <div className="flex-1 relative group">
-                              <input
-                                 list={`inventory-list-${line.id}`}
-                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-slate-900"
-                                 placeholder="Description or Select Item"
-                                 value={line.description}
-                                 onChange={e => handleItemSelect(line.id, e.target.value)}
-                              />
-                              <datalist id={`inventory-list-${line.id}`}>
-                                 {productInventory.map(item => (
-                                    <option key={item.id} value={item.name}>{item.category} - ₦{(item.priceCents / 100).toLocaleString()}</option>
-                                 ))}
-                              </datalist>
+                        <div key={line.id} className="p-4 md:p-0 space-y-3 md:space-y-0 md:flex md:gap-4 md:items-start bg-slate-50/30 md:bg-transparent rounded-2xl border border-slate-100 md:border-0 relative">
+                           <div className="flex items-center justify-between md:pt-4 md:w-6">
+                              <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">{idx + 1}.</span>
+                              <button onClick={() => removeLine(line.id)} className="md:hidden p-1.5 text-rose-400 hover:bg-rose-50 rounded-lg transition-all"><X size={16} /></button>
                            </div>
-                           <input
-                              type="number"
-                              className="w-20 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-center text-slate-900"
-                              placeholder="Qty"
-                              value={line.quantity}
-                              onChange={e => updateLine(line.id, 'quantity', parseFloat(e.target.value))}
-                           />
-                           <div className="relative w-32">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₦</span>
-                              <input
-                                 type="number"
-                                 className="w-full pl-6 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-right text-slate-900"
-                                 placeholder="Price"
-                                 value={line.price}
-                                 onChange={e => updateLine(line.id, 'price', parseFloat(e.target.value))}
-                              />
+
+                           <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="md:col-span-2 relative group">
+                                 <input
+                                    list={`inventory-list-${line.id}`}
+                                    className="w-full md:p-3 p-4 bg-white md:bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-slate-900 appearance-none"
+                                    placeholder="Description or Select Item"
+                                    value={line.description}
+                                    onChange={e => handleItemSelect(line.id, e.target.value)}
+                                 />
+                                 <datalist id={`inventory-list-${line.id}`}>
+                                    {productInventory.map(item => (
+                                       <option key={item.id} value={item.name}>{item.category} - ₦{(item.priceCents / 100).toLocaleString()}</option>
+                                    ))}
+                                 </datalist>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                 <div className="relative">
+                                    <input
+                                       type="number"
+                                       className="w-full md:p-3 p-4 bg-white md:bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-center text-slate-900"
+                                       placeholder="Qty"
+                                       value={line.quantity}
+                                       onChange={e => updateLine(line.id, 'quantity', parseFloat(e.target.value))}
+                                    />
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase text-slate-300 pointer-events-none md:hidden transition-opacity opacity-0 group-focus-within:opacity-100">Qty</span>
+                                 </div>
+                                 <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
+                                    <input
+                                       type="number"
+                                       className="w-full pl-7 md:p-3 p-4 bg-white md:bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-right text-slate-900"
+                                       placeholder="Price"
+                                       value={line.price}
+                                       onChange={e => updateLine(line.id, 'price', parseFloat(e.target.value))}
+                                    />
+                                 </div>
+                              </div>
                            </div>
-                           <button onClick={() => removeLine(line.id)} className="p-3 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><X size={16} /></button>
+                           <button onClick={() => removeLine(line.id)} className="hidden md:block p-3 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><X size={16} /></button>
                         </div>
                      ))}
                   </div>
                </div>
 
                {/* Totals */}
-               <div className="flex justify-end">
-                  <div className="bg-slate-900 text-white p-6 rounded-[2rem] min-w-[300px]">
+               <div className="flex justify-end sticky bottom-0 z-10 md:static">
+                  <div className="bg-slate-900 text-white p-5 md:p-6 md:rounded-[2rem] rounded-2xl w-full md:min-w-[300px] shadow-2xl">
                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-400">Total Amount</span>
-                        <span className="text-2xl font-black">₦{totalAmount.toLocaleString()}</span>
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400">Total Amount</span>
+                        <span className="text-xl md:text-2xl font-black">₦{totalAmount.toLocaleString()}</span>
                      </div>
                   </div>
                </div>
             </div >
 
-            <div className="p-8 border-t border-slate-100 bg-white flex gap-4">
+            <div className="p-5 md:p-8 border-t border-slate-100 bg-white flex gap-3 md:gap-4 sticky bottom-0 z-20">
                <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-200">Cancel</button>
-               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Generate Invoice</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Generate Invoice</button>
             </div>
          </div >
       </div >

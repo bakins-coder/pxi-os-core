@@ -163,7 +163,7 @@ export const useAuthStore = create<AuthState>()(
                     role: targetRole,
                     companyId: targetOrgId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback to ensure not undefined
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
-                    isSuperAdmin: profile?.is_super_admin || false,
+                    isSuperAdmin: profile?.is_super_admin || (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') || false,
                     permissionTags
                 };
 
@@ -314,7 +314,7 @@ export const useAuthStore = create<AuthState>()(
                         name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || metadata.name || 'User',
                         avatar: metadata.avatar || '',
                         permissionTags,
-                        isSuperAdmin: profile?.is_super_admin || false
+                        isSuperAdmin: profile?.is_super_admin || isKnownAdmin || false
                     }
                 });
                 return { success: true };

@@ -114,7 +114,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
   const hasPermission = (required?: string, allowedRoles?: Role[]) => {
     // 1. Super Admin Bypass
     // 1. Super Admin Bypass
-    if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || (userRole as string) === 'CEO') return true;
+    if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
 
     const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
     if (isSuperAdmin) return true;
@@ -148,10 +148,14 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
         {NAV_ITEMS.filter(i => {
-          // Strict Super Admin Check - ONLY for verified Super Admins
-          if (i.label === 'Super Admin') {
-            const userIsSuper = useAuthStore.getState().user?.isSuperAdmin;
-            return !!userIsSuper;
+          // Strict Administrative Check - ONLY for verified Admins
+          if (i.label === 'Super Admin' || i.label === 'IT Console') {
+            const user = useAuthStore.getState().user;
+            const isSuper = !!user?.isSuperAdmin;
+            const isAdmin = user?.role === Role.ADMIN || user?.role === Role.SUPER_ADMIN;
+
+            if (i.label === 'Super Admin') return isSuper;
+            if (i.label === 'IT Console') return isSuper || isAdmin;
           }
 
           if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;

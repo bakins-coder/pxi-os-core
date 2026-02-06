@@ -148,8 +148,6 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.dateOfEmployment; }
 
     // Name Mapping Logic
-    // Name Mapping Logic
-    // Name Mapping Logic
     if ('firstName' in newItem || 'lastName' in newItem) {
       if (tableName === 'contacts') {
         // Contacts table only has 'name'
@@ -241,7 +239,12 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
     // Explicit mappings for known fields
     if ('company_id' in newItem) { newItem.companyId = newItem.company_id; delete newItem.company_id; }
-    if ('organization_id' in newItem) { newItem.companyId = newItem.organization_id; delete newItem.organization_id; }
+    if ('organization_id' in newItem) {
+      const orgId = newItem.organization_id;
+      newItem.companyId = orgId;
+      newItem.organizationId = orgId;
+      delete newItem.organization_id;
+    }
 
     // Inventory Mappings
     if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }
@@ -291,6 +294,10 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('recipient_id' in newItem) { newItem.recipientId = newItem.recipient_id; delete newItem.recipient_id; }
     if ('created_at' in newItem) { newItem.createdAt = newItem.created_at; delete newItem.created_at; }
     if ('read_at' in newItem) { newItem.readAt = newItem.read_at; delete newItem.read_at; }
+
+    if (tableName === 'messages') {
+      newItem.status = newItem.readAt ? 'read' : 'sent';
+    }
     if ('organization_id' in newItem) { newItem.organizationId = newItem.organization_id; delete newItem.organization_id; }
 
     // Invoice / General Detail Mappings

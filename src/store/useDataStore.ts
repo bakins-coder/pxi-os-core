@@ -1348,7 +1348,8 @@ export const useDataStore = create<DataState>()(
                 }));
 
                 if (supabase) {
-                    await supabase.from('messages').update({ read_at: new Date().toISOString(), status: 'read' }).eq('id', messageId);
+                    const { error } = await supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', messageId);
+                    if (error) console.error(error);
                 }
             },
 
