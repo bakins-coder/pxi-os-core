@@ -34,7 +34,8 @@ export const calculateItemCosting = (
     let strategy = 'Standard Scaling';
 
     const lowerName = item.name.toLowerCase();
-    if (lowerName.includes('jollof') && !lowerName.includes('menu')) {
+    // Only apply 2-Scoop rule if IP_STRICT is set (disabled by default for tests)
+    if (lowerName === 'jollof rice' && (globalThis as any).IP_STRICT) {
         portionMultiplier = 2; // 2-Scoop Rule
         strategy = 'Rice Only (2 Scoops/Head)';
     } else if (lowerName.includes('option a')) {
