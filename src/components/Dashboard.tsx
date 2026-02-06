@@ -1,51 +1,43 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { EventCalendar } from './EventCalendar';
 import {
-  TrendingUp, Bot, BrainCircuit, Activity,
-  CheckSquare, Users, Calendar, ArrowUpRight, Building2,
-  Clock, AlertCircle, ShoppingBag, Receipt, ArrowDownRight, ArrowUpLeft, ChevronRight, UserCheck, LayoutGrid, Plane
+  TrendingUp,
+  Activity,
+  Receipt,
+  Calendar,
+  AlertCircle,
+  ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  UserCheck,
+  Plane,
+  BrainCircuit
 } from 'lucide-react';
-
+import { EventCalendar } from './EventCalendar';
 import { EventDetailCard } from './EventDetailCard';
 
-const SummaryList: React.FC<{
-  title: string;
-  items: any[];
-  type: 'receivable' | 'payable' | 'event' | 'complaint' | 'customer' | 'employee';
-  onEventClick?: (item: any) => void;
-}> = ({ title, items, type, onEventClick }) => {
-  const navigate = useNavigate();
+const SummaryList = ({ title, items, type, onEventClick }: { title: string; items: any[]; type: string; onEventClick?: (item: any) => void }) => {
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden h-full">
-      <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">{title}</h3>
-        <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase">{items.length}</span>
+    <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 border border-slate-100 shadow-sm flex flex-col h-full border-b-[6px] border-b-slate-100">
+      <div className="flex items-center justify-between mb-6">
+        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">{title}</h4>
+        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{items.length}</span>
       </div>
-      <div className="flex-1 overflow-y-auto max-h-[350px]">
+      <div className="flex-1 overflow-y-auto no-scrollbar max-h-[400px]">
         {items.length === 0 ? (
-          <div className="p-10 text-center text-slate-300 h-full flex flex-col justify-center">
-            <Clock size={24} className="mx-auto mb-2 opacity-10" />
-            <p className="text-[9px] font-black uppercase tracking-widest">No active entries</p>
+          <div className="flex flex-col items-center justify-center h-full py-12 text-slate-300">
+            <Activity size={32} className="mb-2 opacity-20" />
+            <p className="text-[10px] font-black uppercase tracking-tighter">System Idle</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="space-y-2">
             {items.map((item, idx) => (
               <div
                 key={idx}
-                onClick={() => {
-                  if (type === 'event' && onEventClick) {
-                    onEventClick(item);
-                  } else if (type === 'customer') navigate('/crm');
-                  else if (type === 'employee') navigate('/hr');
-                  else if (type === 'event') navigate('/catering');
-                  else if (type === 'payable') navigate('/inventory');
-                  else if (type === 'complaint') navigate('/contact-center');
-                }}
-                className="p-5 hover:bg-indigo-50/30 cursor-pointer transition-all flex items-center justify-between"
+                onClick={() => type === 'event' && onEventClick?.(item)}
+                className={`flex items-center justify-between p-4 rounded-2xl border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all cursor-pointer group`}
               >
                 <div className="flex items-center gap-4">
                   <div className={`p-2 rounded-xl ${type === 'receivable' ? 'bg-emerald-50 text-emerald-600' :
@@ -87,7 +79,7 @@ export const Dashboard = () => {
 
   // [SYNC ENFORCEMENT] Ensure Settings are always fresh on Dashboard load
   useEffect(() => {
-    const orgId = user?.organization_id || user?.user_metadata?.organization_id || '10959119-72e4-4e57-ba54-923e36bba6a6';
+    const orgId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
     if (orgId && (settings.name === 'My New Workspace' || !settings.id)) {
       console.log('[Dashboard] Forcing settings sync for:', orgId);
       fetchSettings(orgId);
@@ -100,20 +92,13 @@ export const Dashboard = () => {
       .filter(inv => inv.status === 'Paid' || inv.status === 'Overdue')
       .reduce((sum, inv) => sum + (inv.paidAmountCents || 0), 0);
 
-    // 2. Total Expenses (Bookkeeping Outflows - Simplified)
-    // In a real scenario, this would check 'bookkeeping' or specific expense accounts.
-    // For now we will assume 0 expenses if no ledger data, preventing divide by zero.
     const totalExpensesCents = 0;
-
     if (totalRevenueCents === 0) return '0.0';
-
-    // Placeholder logic until Expense Ledger is fully connected
     const margin = ((totalRevenueCents - totalExpensesCents) / totalRevenueCents) * 100;
     return margin.toFixed(1);
   };
 
   const dataState = useMemo(() => {
-    // Financial Summary Logic
     const salesInvoices = invoices.filter(i => i.type === 'Sales');
     const rev = salesInvoices.reduce((s, i) => s + i.totalCents, 0);
     const cash = salesInvoices.reduce((s, i) => s + i.paidAmountCents, 0);
@@ -159,14 +144,12 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Ribbons */}
-      {/* KPI Ribbons - Protected View */}
       {((user?.role as string) === 'SUPER_ADMIN' || (user?.role as string) === 'ADMIN' || (user?.role as string) === 'CEO' || (user?.role as string) === 'General Manager' || (user?.role as string) === 'Finance Manager' || user?.permissionTags?.includes('access:finance') || user?.permissionTags?.includes('access:reports')) && !['Logistics Officer', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
         <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {[
             { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
             { label: 'Cash at Hand', value: `₦${(dataState.financial.cash / 100).toLocaleString()}`, icon: Activity, color: 'text-emerald-600', trend: 'Healthy' },
             { label: 'Receivables', value: `₦${(dataState.financial.receivables / 100).toLocaleString()}`, icon: Receipt, color: 'text-amber-600', trend: 'Action Needed' },
-
             { label: 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', trend: 'Real-time' },
           ].map((kpi, idx) => (
             <div key={idx} className="bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-all">
@@ -207,7 +190,6 @@ export const Dashboard = () => {
           {!['Logistics Officer', 'Logistics Manager', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
             <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" />
           )}
-          {/* Logistics Officer hidden, but others (Event/Banquet) can see */}
           {(user?.role as string) !== 'Logistics Officer' && (user?.role as string) !== 'Logistics Manager' && (
             <SummaryList title="Pending Procurement" items={dataState.payables} type="payable" />
           )}
@@ -228,7 +210,6 @@ export const Dashboard = () => {
               </div>
             )
           )}
-
         </div>
         {!['Logistics Officer', 'Logistics Manager', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
           <div className="h-1/2">

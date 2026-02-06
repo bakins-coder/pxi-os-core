@@ -35,7 +35,7 @@ const SYSTEM_TOOLS = {
         const debtorMap: Record<string, { customer_name: string, amount_naira: number, status: string }> = {};
 
         dataStore.invoices
-            .filter(i => i.status !== 'Paid' && i.status !== 'Draft')
+            .filter(i => (i.status as any) !== 'Paid' && (i.status as any) !== 'Draft')
             .forEach(i => {
                 const contactId = i.contactId || 'unknown';
                 const balance = (i.totalCents - i.paidAmountCents) / 100;
@@ -47,7 +47,7 @@ const SYSTEM_TOOLS = {
                     debtorMap[contactId] = {
                         customer_name: customerObj ? customerObj.name : (i.contactId ? 'Unknown' : 'Walk-in'),
                         amount_naira: balance,
-                        status: i.status === 'Overdue' ? 'Overdue' : 'Unpaid'
+                        status: (i.status as any) === 'Overdue' ? 'Overdue' : 'Unpaid'
                     };
                 }
             });
@@ -63,7 +63,7 @@ const SYSTEM_TOOLS = {
         return {
             top_debtors: data,
             unique_debtor_count: data.length,
-            total_unpaid_invoices: dataStore.invoices.filter(i => i.status !== 'Paid' && i.status !== 'Draft').length
+            total_unpaid_invoices: dataStore.invoices.filter(i => (i.status as any) !== 'Paid' && (i.status as any) !== 'Draft').length
         };
     },
     search_contacts: (args: { query: string; category?: string; limit?: number }) => {
@@ -179,7 +179,7 @@ const SYSTEM_TOOLS = {
         const dataStore = useDataStore.getState();
         const data = dataStore.projects.map(p => {
             const projectTasks = dataStore.tasks.filter(t => t.projectId === p.id);
-            const completedTasks = projectTasks.filter(t => t.status === 'Completed').length;
+            const completedTasks = projectTasks.filter(t => (t.status as any) === 'Completed' || (t.status as any) === 'Done').length;
             return {
                 name: p.name,
                 status: p.status,
@@ -197,8 +197,8 @@ const SYSTEM_TOOLS = {
                 ingredients: dataStore.ingredients.length,
                 inventory_products: dataStore.inventory.length,
                 employees: dataStore.employees.length,
-                active_projects: dataStore.projects.filter(p => p.status === 'In Progress' || p.status === 'Active').length,
-                unpaid_invoices: dataStore.invoices.filter(i => i.status !== 'Paid' && i.status !== 'Draft').length,
+                active_projects: dataStore.projects.filter(p => (p.status as any) === 'In Progress' || (p.status as any) === 'Active').length,
+                unpaid_invoices: dataStore.invoices.filter(i => (i.status as any) !== 'Paid' && (i.status as any) !== 'Draft').length,
                 contacts_crm: dataStore.contacts.length,
                 recipes: dataStore.recipes.length
             },
@@ -390,12 +390,12 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
 
         // Loop detection
         const toolCallKeys = toolCalls.map((tc: any) => `${tc.functionCall.name}:${JSON.stringify(tc.functionCall.args)}`);
-        const redundant = toolCallKeys.find(key => calledTools.has(key));
+        const redundant = toolCallKeys.find((key: string) => calledTools.has(key));
         if (redundant) {
             console.error(`[AI Tools] Loop detected: Redundant call to ${redundant}`);
             throw new Error(`AI entered an infinite loop calling: ${redundant.split(':')[0]}`);
         }
-        toolCallKeys.forEach(key => calledTools.add(key));
+        toolCallKeys.forEach((key: string) => calledTools.add(key));
 
         console.log(`[AI Tools] Tool Calls requested:`, toolCalls.map((tc: any) => tc.functionCall.name));
 

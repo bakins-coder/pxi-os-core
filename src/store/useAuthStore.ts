@@ -179,7 +179,7 @@ export const useAuthStore = create<AuthState>()(
             signup: async (name: string, email: string, password?: string, role: Role = Role.ADMIN) => {
                 if (!supabase) throw new Error('Client missing');
                 const { data, error } = await supabase.auth.signUp({
-                    email, password,
+                    email, password: password || '',
                     options: { data: { name, role, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}` } }
                 });
                 if (error) throw error;

@@ -204,6 +204,7 @@ export interface CateringEvent {
   id: string;
   companyId: string;
   customerName: string;
+  contactId?: string;
   eventDate: string;
   endDate?: string;
   location?: string;
@@ -416,6 +417,7 @@ export interface Task {
   dueDate: string;
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   status: 'Todo' | 'In Progress' | 'Review' | 'Done' | 'Pending' | 'Completed';
+  projectId?: string;
   createdDate?: string;
 }
 

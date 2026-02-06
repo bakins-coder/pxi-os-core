@@ -324,20 +324,12 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
     setError('');
 
     try {
-      let authIdentifier = email.trim();
-
-      // Standardize Staff ID or Phone to internal email format if needed
-      if (!authIdentifier.includes('@')) {
-        authIdentifier = `${authIdentifier.toLowerCase()}@xquisite.local`;
-      }
+      const authIdentifier = email.includes('@') ? email.trim() : `${email.trim().toLowerCase()}@xquisite.local`;
 
       // Handle Name (Hidden in Employee Mode)
       const formName = `${title} ${firstName} ${lastName}`.trim();
       const name = isEmployeeMode ? 'Staff Member' : formName;
 
-      // If Employee Mode, we assume they are joining an existing org (Role is filtered by backend/invite)
-      // But initially we can set them as Employee or Admin depending on logic.
-      // For now, let's keep it safe.
       await signup(name, authIdentifier, password, Role.ADMIN);
       onSuccess();
     } catch (err: any) {
@@ -346,8 +338,9 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
       // Smart Fallback: If user already exists, try logging them in
       if (err.message?.includes('registered') || err.message?.includes('already exists')) {
         try {
-          // Use the computed authIdentifier (e.g. xq-123@xquisite.local) to bypass lookup
-          await (useAuthStore.getState().login as any)(authIdentifier, String(password || ''));
+          // Re-calculate authIdentifier for fallback if needed, or use a more stable scope
+          const fallbackIdentifier = email.includes('@') ? email.trim() : `${email.trim().toLowerCase()}@xquisite.local`;
+          await (useAuthStore.getState().login as any)(fallbackIdentifier, String(password || ''));
           onSuccess();
           return;
         } catch (loginErr: any) {
