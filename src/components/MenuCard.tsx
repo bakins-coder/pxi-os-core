@@ -94,7 +94,7 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
                             type="number"
                             className="w-16 md:w-16 bg-white border border-slate-200 rounded-lg md:rounded-lg py-1 md:py-0.5 text-center text-xs md:text-[10px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
                             value={qty}
-                            max={guestCount}
+                            max={999}
                             onChange={(e) => updateQty(item.id, parseInt(e.target.value) || 0)}
                         />
                     </div>
@@ -106,13 +106,13 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
                         <input
                             type="range"
                             min="0"
-                            max={guestCount}
+                            max={Math.max(guestCount * 2, 200)}
                             step="5"
                             className="flex-1 accent-indigo-600 h-2 md:h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                             value={qty}
                             onChange={(e) => updateQty(item.id, parseInt(e.target.value))}
                         />
-                        <div className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm active:scale-95 transition-transform" onClick={() => updateQty(item.id, Math.min(guestCount, qty + 5))}>
+                        <div className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm active:scale-95 transition-transform" onClick={() => updateQty(item.id, qty + 5)}>
                             <Plus size={16} className="text-slate-400 md:w-2.5 md:h-2.5 md:text-slate-300" />
                         </div>
                     </div>

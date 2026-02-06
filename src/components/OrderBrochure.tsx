@@ -22,6 +22,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
         return {};
     });
 
+    // Custom Items State
+    const [customItems, setCustomItems] = useState<Record<string, { name: string, priceCents: number, quantity: number }>>({});
+    const [showCustomModal, setShowCustomModal] = useState(false);
+    const [newCustomName, setNewCustomName] = useState('');
+    const [newCustomPriceCents, setNewCustomPriceCents] = useState(0);
+    const [newCustomQty, setNewCustomQty] = useState(0);
+
     const { user } = useAuthStore();
 
     // Form State
@@ -70,7 +77,38 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
         setMenuItems(products);
     }, [inventory]);
 
-    const updateQty = (id: string, qty: number) => { setSelected(prev => ({ ...prev, [id]: Math.max(0, qty) })); };
+
+    const updateQty = (id: string, qty: number) => {
+        if (id.startsWith('custom-')) {
+            setCustomItems(prev => ({
+                ...prev,
+                [id]: { ...prev[id], quantity: Math.max(0, qty) }
+            }));
+            return;
+        }
+        setSelected(prev => ({ ...prev, [id]: Math.max(0, qty) }));
+    };
+
+    const addCustomItem = () => {
+        if (!newCustomName || newCustomQty <= 0) return;
+        const id = `custom-${Date.now()}`;
+        setCustomItems(prev => ({
+            ...prev,
+            [id]: { name: newCustomName, priceCents: newCustomPriceCents, quantity: newCustomQty }
+        }));
+        setNewCustomName('');
+        setNewCustomPriceCents(0);
+        setNewCustomQty(0);
+        setShowCustomModal(false);
+    };
+
+    const removeCustomItem = (id: string) => {
+        setCustomItems(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+    };
 
     const categoryTotals = useMemo(() => {
         const totals: Record<string, number> = {};
@@ -83,12 +121,19 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             const cat = standardCategories.includes(item.category) ? item.category : "General Selections";
             totals[cat] = (totals[cat] || 0) + Number(qty);
         });
+
+        // Add custom items to General Selections or a specific category? 
+        // Let's put them in General Selections for now
+        Object.values(customItems).forEach(item => {
+            totals["General Selections"] = (totals["General Selections"] || 0) + Number(item.quantity);
+        });
+
         return totals;
-    }, [selected, menuItems]);
+    }, [selected, menuItems, customItems]);
 
     const hasSelection = useMemo(() => {
-        return Object.values(selected).some(qty => Number(qty) > 0);
-    }, [selected]);
+        return Object.values(selected).some(qty => Number(qty) > 0) || Object.values(customItems).some(it => it.quantity > 0);
+    }, [selected, customItems]);
 
     const isPortionLocked = useMemo(() => {
         // Relaxed Logic: Check if TOTAL portions from ANY category meet the guest count
@@ -103,9 +148,12 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             .filter(([_, qty]) => (Number(qty) || 0) > 0)
             .map(([id, qty]) => calculateItemCosting(id, qty))
             .filter(Boolean) as any[];
-        const revenue = costings.reduce((sum, c) => sum + (c.revenueCents || 0), 0);
+
+        const customRevenue = Object.values(customItems).reduce((sum, it) => sum + (it.priceCents * it.quantity), 0);
+        const revenue = costings.reduce((sum, c) => sum + (c.revenueCents || 0), 0) + customRevenue;
+
         return { totalRevenue: revenue, margin: 60 };
-    }, [selected, calculateItemCosting]);
+    }, [selected, calculateItemCosting, customItems]);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, InventoryItem[]> = {};
@@ -176,12 +224,21 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
         }
 
         setIsSubmitting(true);
-        const dealItems: DealItem[] = (Object.entries(selected) as [string, number][])
-            .filter(([_, qty]) => (Number(qty) || 0) > 0)
-            .map(([id, qty]) => {
-                const item = menuItems.find(i => i.id === id)!;
-                return { inventoryItemId: id, name: item.name, quantity: qty, priceCents: item.priceCents, costCents: 0 };
-            });
+        const dealItems: DealItem[] = [
+            ...(Object.entries(selected) as [string, number][])
+                .filter(([_, qty]) => (Number(qty) || 0) > 0)
+                .map(([id, qty]) => {
+                    const item = menuItems.find(i => i.id === id)!;
+                    return { inventoryItemId: id, name: item.name, quantity: qty, priceCents: item.priceCents, costCents: 0 };
+                }),
+            ...Object.entries(customItems).map(([id, it]) => ({
+                inventoryItemId: id,
+                name: it.name,
+                quantity: it.quantity,
+                priceCents: it.priceCents,
+                costCents: 0
+            }))
+        ];
 
         const banquetDetails: BanquetDetails = {
             location: eventLocation,
@@ -296,6 +353,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                             </button>
                         ))}
                     </div>
+                    {/* Add Custom Item Button */}
+                    <button
+                        onClick={() => setShowCustomModal(true)}
+                        className="ml-4 px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-2"
+                    >
+                        <Plus size={14} /> Custom Item
+                    </button>
                 </div>
             </div>
 
@@ -449,7 +513,16 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         const item = menuItems.find(i => i.id === id);
                                         return (Number(qty) || 0) > 0 && (item?.category === cat || (!standardCategories.includes(item?.category || '') && cat === "General Selections"));
                                     });
-                                    if (catItems.length === 0) return null;
+
+                                    // Add custom items to General Selections view
+                                    const combinedItems = [...catItems];
+                                    if (cat === "General Selections") {
+                                        Object.entries(customItems).forEach(([id, it]) => {
+                                            combinedItems.push([id, it.quantity]);
+                                        });
+                                    }
+
+                                    if (combinedItems.length === 0) return null;
                                     const catTotal = categoryTotals[cat];
                                     const isMandatory = mandatoryLockCategories.includes(cat);
                                     const isLocked = catTotal === guestCount;
@@ -458,21 +531,25 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                         <div key={cat} className="space-y-4">
                                             <div className="flex justify-between items-center border-b border-white/10 pb-2">
                                                 <span className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">{cat}</span>
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${isLocked ? 'text-emerald-400' : isMandatory ? 'text-rose-500' : 'text-slate-500'}`}>
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${isLocked ? 'text-emerald-400' : (isMandatory && catTotal !== guestCount) ? 'text-rose-500' : 'text-slate-500'}`}>
                                                     {isMandatory && !isLocked && 'LOCK REQ: '}{catTotal} / {guestCount}
                                                 </span>
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {catItems.map(([id, qty]) => {
+                                                {combinedItems.map(([id, qty]) => {
                                                     const item = menuItems.find(i => i.id === id);
-                                                    if (!item) return null;
+                                                    const custom = customItems[id];
+                                                    if (!item && !custom) return null;
+                                                    const name = item ? item.name : custom.name;
+                                                    const isCustom = !!custom;
+
                                                     return (
-                                                        <div key={id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                                                        <div key={id} className={`flex justify-between items-center p-4 bg-white/5 rounded-2xl border ${isCustom ? 'border-emerald-500/30' : 'border-white/5'}`}>
                                                             <div className="min-w-0">
-                                                                <p className="text-xs font-black uppercase truncate">{item.name}</p>
+                                                                <p className="text-xs font-black uppercase truncate">{name} {isCustom && <span className="text-[8px] bg-emerald-500 text-white px-1 rounded ml-1">Custom</span>}</p>
                                                                 <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{qty} Portions</p>
                                                             </div>
-                                                            <button onClick={() => updateQty(id, 0)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
+                                                            <button onClick={() => isCustom ? removeCustomItem(id) : updateQty(id, 0)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
                                                         </div>
                                                     );
                                                 })}
@@ -515,10 +592,63 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                         disabled={!hasSelection || isSubmitting || !customerName}
                         className={`flex-1 px-8 py-4 md:py-4 rounded-2xl font-black uppercase text-xs md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
-                        {isSubmitting ? <RefreshCw className="animate-spin" size={18} /> : <ArrowRight size={18} />} {isPortionLocked ? 'Finalize Order' : 'Order Incomplete'}
+                        {isSubmitting ? <RefreshCw className="animate-spin" size={18} /> : <ArrowRight size={18} />}
+                        {isPortionLocked ? 'Finalize Order' : 'Force Finalize (Unequal Qty)'}
                     </button>
                 </div>
             </div>
+
+            {/* Custom Item Modal */}
+            {showCustomModal && (
+                <div className="fixed inset-0 z-[100] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in duration-300">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black uppercase tracking-tight">Add Custom Product</h3>
+                            <button onClick={() => setShowCustomModal(false)} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Product Name</label>
+                                <input
+                                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-950 outline-none focus:border-indigo-500"
+                                    placeholder="e.g. Special Wedding Cake"
+                                    value={newCustomName}
+                                    onChange={e => setNewCustomName(e.target.value)}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Unit Price (₦)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-950 outline-none focus:border-indigo-500"
+                                        placeholder="0"
+                                        value={newCustomPriceCents / 100}
+                                        onChange={e => setNewCustomPriceCents((parseFloat(e.target.value) || 0) * 100)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Quantity</label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-950 outline-none focus:border-indigo-500"
+                                        placeholder="0"
+                                        value={newCustomQty}
+                                        onChange={e => setNewCustomQty(parseInt(e.target.value) || 0)}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={addCustomItem}
+                                disabled={!newCustomName || newCustomQty <= 0}
+                                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 shadow-xl"
+                            >
+                                Add to Order Node
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

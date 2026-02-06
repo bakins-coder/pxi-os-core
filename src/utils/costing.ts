@@ -9,7 +9,21 @@ export const calculateItemCosting = (
     qtyOverrides?: Record<string, number>
 ): ItemCosting | null => {
     const item = inventory.find(i => i.id === id);
-    if (!item) return null;
+    if (!item) {
+        if (id.startsWith('custom-')) {
+            // Handle as custom item with 0 cost
+            return {
+                inventoryItemId: id,
+                name: 'Custom Product', // This will be overwritten by OrderBrochure logic if needed, but here we return a placeholder
+                totalIngredientCostCents: 0,
+                revenueCents: 0, // Revenue should be handled by the caller or passed in if available
+                grossMarginCents: 0,
+                grossMarginPercentage: 0,
+                ingredientBreakdown: []
+            };
+        }
+        return null;
+    }
     let totalCost = 0;
     const recipe = recipes.find(r => r.id === item.recipeId);
 
