@@ -338,8 +338,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 </div>
 
                 {/* Category Pills - Only show on Menu Tab or Desktop */}
-                <div className={`flex-1 flex justify-center overflow-x-auto max-w-full no-scrollbar px-2 ${activeTab === 'menu' ? 'block' : 'hidden md:block'}`}>
-                    <div className="flex bg-slate-100 p-1.5 md:p-1.5 rounded-2xl border-2 border-slate-200 gap-2 md:gap-1 shadow-sm w-max">
+                <div className={`flex-1 flex flex-wrap justify-center items-center gap-4 py-2 overflow-x-auto max-w-full no-scrollbar px-2 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
+                    <div className="flex bg-slate-100 p-1.5 md:p-1.5 rounded-2xl border-2 border-slate-200 gap-2 md:gap-1 shadow-sm w-max shrink-0">
                         {["All", ...categoryOrder].map(cat => (
                             <button
                                 key={cat}
@@ -356,7 +356,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     {/* Add Custom Item Button */}
                     <button
                         onClick={() => setShowCustomModal(true)}
-                        className="ml-4 px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-2"
+                        className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-2 shrink-0"
                     >
                         <Plus size={14} /> Custom Item
                     </button>
