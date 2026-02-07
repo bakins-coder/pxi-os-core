@@ -25,16 +25,16 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
         <div
             onClick={handleCardClick}
             className={`
-                min-w-[75vw] md:min-w-0 snap-center shrink-0
+                w-[82vw] md:w-full snap-center shrink-0
                 group bg-white rounded-[1.5rem] md:rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer relative
                 ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-100 shadow-sm'}
             `}
         >
             {/* Image Area */}
-            <div className="h-24 md:h-32 w-full flex items-center justify-center p-1 md:p-0 overflow-hidden bg-slate-50 shrink-0">
+            <div className="h-48 md:h-32 w-full relative overflow-hidden bg-slate-50 shrink-0">
                 <img
                     src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'}
-                    className="h-full w-auto object-contain md:w-full md:h-full md:object-cover group-hover:scale-110 transition-transform duration-1000"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
                     alt={item.name}
                 />
 
@@ -82,7 +82,7 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
                 {/* Description helper - Clicking this also opens info */}
                 <p
                     onClick={(e) => { e.stopPropagation(); setShowInfo(true); }}
-                    className="text-[10px] md:text-[9px] text-slate-500 font-black uppercase mb-3 leading-relaxed hover:text-indigo-600 transition-colors whitespace-pre-wrap break-words"
+                    className="text-[10px] md:text-[10px] text-slate-500 font-black uppercase mb-3 leading-tight hover:text-indigo-600 transition-colors whitespace-pre-wrap break-words"
                 >
                     {item.description}
                 </p>

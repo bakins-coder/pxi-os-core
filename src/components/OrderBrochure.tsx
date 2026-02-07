@@ -312,7 +312,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     return (
         <div onClick={(e) => e.stopPropagation()} className="bg-white md:rounded-[3rem] shadow-2xl w-full max-w-7xl h-[100vh] md:h-[95vh] overflow-hidden flex flex-col animate-in zoom-in duration-300 md:border border-slate-200">
             {/* HEADER */}
-            <div className="p-2 md:p-8 border-b-2 border-slate-100 flex flex-col gap-2 md:gap-4 bg-slate-50/50">
+            <div className="p-2 md:p-8 border-b border-slate-50 flex flex-col gap-2 md:gap-4 bg-slate-50/50">
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-2 md:gap-4 shrink-0">
                         <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} className="md:w-5 md:h-5" /></div>
@@ -458,7 +458,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 ${activeTab === 'menu' ? 'block' : 'hidden md:flex'}
             `}>
                     <div className="flex-1 overflow-y-auto p-4 md:p-14 scrollbar-thin">
-                        <div className="space-y-4 md:space-y-24 pb-40">
+                        <div className="space-y-4 md:space-y-24 pb-64">
                             {categoryOrder.filter(c => activeCategory === "All" || c === activeCategory).map(category => {
                                 const items = groupedItems[category];
                                 if (!items || items.length === 0) return null;
@@ -469,7 +469,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                     <div key={category} className="animate-in fade-in slide-in-from-bottom-2">
                                         <div className="flex items-center gap-2 md:gap-6 mb-2 md:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-1 md:py-2">
                                             <h3 className="text-[9px] md:text-sm font-black text-slate-900 uppercase tracking-[0.15em] md:tracking-[0.5em]">{category}</h3>
-                                            <div className="h-px flex-1 bg-slate-100"></div>
+                                            <div className="flex-1"></div>
                                             <div className={`px-2 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : isMandatory ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
                                                 {isMandatory && catTotal !== guestCount && <AlertCircle size={8} className="md:w-3 md:h-3" />}
                                                 Q: {catTotal} / {guestCount}
