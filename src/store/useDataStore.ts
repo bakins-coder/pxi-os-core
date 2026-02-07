@@ -191,9 +191,8 @@ export const useDataStore = create<DataState>()(
 
             addInventoryItem: async (item) => {
                 const user = useAuthStore.getState().user;
-                if (!user || !user.companyId) return;
-                const companyId = user.companyId;
-                const userId = user.id;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const userId = user?.id || 'sys';
 
                 const newItemId = item.id || `item-${Date.now()}`;
 
@@ -202,6 +201,8 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({
                     inventory: [newItem as InventoryItem, ...state.inventory]
                 }));
+
+                if (!user || !user.companyId) return;
 
                 // Determine entity type for media
                 const entityTypeMap: Record<string, 'product' | 'asset' | 'ingredient'> = {
@@ -301,14 +302,15 @@ export const useDataStore = create<DataState>()(
             },
             updateInventoryItem: async (id, updates) => {
                 const user = useAuthStore.getState().user;
-                if (!user || !user.companyId) return;
-                const companyId = user.companyId;
-                const userId = user.id;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const userId = user?.id || 'sys';
 
                 // Optimistic Local Update
                 set((state) => ({
                     inventory: state.inventory.map(item => item.id === id ? { ...item, ...updates } : item)
                 }));
+
+                if (!user || !user.companyId) return;
 
                 // Handle Image Upload if Base64
                 let uploadedMedia: { bucket: string, path: string } | null = null;
@@ -684,8 +686,7 @@ export const useDataStore = create<DataState>()(
             }),
             addContact: async (contact) => {
                 const user = useAuthStore.getState().user;
-                if (!user || !user.companyId) return;
-                const companyId = user.companyId;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
                 const contactId = contact.id || `con-${Date.now()}`;
 
@@ -701,6 +702,8 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({
                     contacts: [newContact, ...state.contacts]
                 }));
+
+                if (!user || !user.companyId) return;
 
                 // Persistence
                 if (supabase) {
@@ -729,12 +732,13 @@ export const useDataStore = create<DataState>()(
             },
             updateContact: async (id, updates) => {
                 const user = useAuthStore.getState().user;
-                if (!user || !user.companyId) return;
-                const companyId = user.companyId;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
                 set((state) => ({
                     contacts: state.contacts.map(c => c.id === id ? { ...c, ...updates } : c)
                 }));
+
+                if (!user || !user.companyId) return;
 
                 if (supabase) {
                     try {
@@ -761,9 +765,8 @@ export const useDataStore = create<DataState>()(
             },
             addInteractionLog: async (log) => {
                 const user = useAuthStore.getState().user;
-                if (!user || !user.companyId) return;
-                const companyId = user.companyId;
-                const userId = user.id;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const userId = user?.id || 'sys';
 
                 const logId = log.id || `log-${Date.now()}`;
                 const newLog = {
@@ -776,6 +779,8 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({
                     interactionLogs: [newLog, ...state.interactionLogs]
                 }));
+
+                if (!user || !user.companyId) return;
 
                 if (supabase) {
                     try {
@@ -803,10 +808,11 @@ export const useDataStore = create<DataState>()(
             })),
             addInvoice: async (invoice) => {
                 const user = useAuthStore.getState().user;
-                if (!supabase || !user || !user.companyId) return;
-                const companyId = user.companyId;
+                const companyId = user?.companyId || invoice.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
                 set((state) => ({ invoices: [invoice, ...state.invoices] }));
+
+                if (!supabase || !user || !user.companyId) return;
 
                 // Sync to DB
                 try {
@@ -950,25 +956,21 @@ export const useDataStore = create<DataState>()(
             },
             applyForLeave: async (req) => {
                 const user = useAuthStore.getState().user;
-                if (!user || !user.companyId) {
-                    // Fallback to local if offline (legacy behavior kept for safety)
-                    const newReq = { ...req, id: `lv-${Date.now()}`, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
-                    set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
-                    return newReq;
-                }
-                const companyId = user.companyId;
+                const companyId = user?.companyId || (req as any).companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
-                if (!supabase) {
-                    // Same fallback for non-supabase case
-                    const newReq = { ...req, id: `lv-${Date.now()}`, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
-                    set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
+                // Optimistic Update
+                const tempId = req.id || `lv-${Date.now()}`;
+                const newReq = { ...req, id: tempId, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
+                set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
+
+                if (!user || !user.companyId || !supabase) {
                     return newReq;
                 }
 
                 // Prepare Payload
                 const payload = {
                     organization_id: companyId,
-                    employee_id: req.employeeId, // Assuming passed from UI
+                    employee_id: req.employeeId,
                     employee_name: req.employeeName,
                     type: req.type,
                     start_date: req.startDate,
@@ -977,11 +979,6 @@ export const useDataStore = create<DataState>()(
                     status: 'Pending',
                     applied_date: new Date().toISOString().split('T')[0]
                 };
-
-                // Optimistic Update
-                const tempId = `lv-${Date.now()}`;
-                const newReq = { ...req, id: tempId, status: 'Pending', appliedDate: payload.applied_date } as LeaveRequest;
-                set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
 
                 // DB Insert
                 try {
@@ -1024,13 +1021,14 @@ export const useDataStore = create<DataState>()(
 
             addPerformanceReview: async (review) => {
                 const user = useAuthStore.getState().user;
-                if (!supabase || !user || !user.companyId) return;
-                const companyId = user.companyId;
+                const companyId = user?.companyId || (review as any).companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
                 const newReview = { ...review, id: review.id || `rev-${Date.now()}`, status: 'Draft', totalScore: 0, metrics: review.metrics || [] } as PerformanceReview;
 
                 // Optimistic
                 set((state) => ({ performanceReviews: [newReview, ...state.performanceReviews] }));
+
+                if (!supabase || !user || !user.companyId) return;
 
                 // DB Insert
                 const payload = {
@@ -1047,7 +1045,7 @@ export const useDataStore = create<DataState>()(
                 if (data && data[0]) {
                     set((state) => ({ performanceReviews: state.performanceReviews.map(r => r.id === newReview.id ? { ...r, id: data[0].id } : r) }));
                 } else if (error) {
-                    console.error("Failed to crate review:", error);
+                    console.error("Failed to create review:", error);
                 }
             },
 
