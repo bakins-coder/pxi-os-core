@@ -315,10 +315,10 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
             <div className="p-2 md:p-8 border-b-2 border-slate-100 flex flex-col gap-2 md:gap-4 bg-slate-50/50">
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                        <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} md:size={20} /></div>
+                        <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} className="md:w-5 md:h-5" /></div>
                         <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Banquet Creation</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">New Event Node Hub</p></div>
                     </div>
-                    <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} md:size={20} /></button>
+                    <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} className="md:w-5 md:h-5" /></button>
                 </div>
 
                 {/* Mobile Tab Switcher */}
@@ -471,7 +471,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                             <h3 className="text-[9px] md:text-sm font-black text-slate-900 uppercase tracking-[0.15em] md:tracking-[0.5em]">{category}</h3>
                                             <div className="h-px flex-1 bg-slate-100"></div>
                                             <div className={`px-2 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : isMandatory ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                                                {isMandatory && catTotal !== guestCount && <AlertCircle size={8} md:size={12} />}
+                                                {isMandatory && catTotal !== guestCount && <AlertCircle size={8} className="md:w-3 md:h-3" />}
                                                 Q: {catTotal} / {guestCount}
                                             </div>
                                         </div>
