@@ -238,40 +238,40 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    return (
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300">
          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 max-h-[90vh]">
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={24} /></div>
+            <div className="p-4 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <div className="flex items-center gap-2 md:gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
-                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">{item.name} • Intelligence Node</p>
+                     <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
-               <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
+               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-thin">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Portion Multiplier</label>
-                     <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200">
-                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={18} /></button>
+            <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scrollbar-thin">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                  <div className="space-y-3 md:space-y-4">
+                     <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 block">Portion Multiplier</label>
+                     <div className="flex items-center gap-2 md:gap-4 bg-slate-100 p-1.5 md:p-2 rounded-xl md:rounded-[2rem] border border-slate-200">
+                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={16} /></button>
                         <input
                            type="number"
-                           className="flex-1 bg-transparent text-center text-3xl font-black text-slate-900 outline-none"
+                           className="flex-1 bg-transparent text-center text-xl md:text-3xl font-black text-slate-900 outline-none"
                            value={portions}
                            onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
                         />
-                        <button onClick={() => onPortionChange(portions + 50)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={18} /></button>
+                        <button onClick={() => onPortionChange(portions + 50)} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={16} /></button>
                      </div>
                   </div>
                   <div className="flex items-end">
                      <button
                         onClick={handleGroundPrices}
                         disabled={isGrounding}
-                        className={`w-full py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
+                        className={`w-full py-3.5 md:py-5 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all flex items-center justify-center gap-2 md:gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
                      >
-                        {isGrounding ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
-                        {isGrounding ? 'Grounding Neural Data...' : 'Ground Market Prices via AI'}
+                        {isGrounding ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
+                        {isGrounding ? 'Grounding...' : 'Ground Market Prices via AI'}
                      </button>
                   </div>
                </div>
@@ -283,29 +283,33 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                            <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">{groupName}</span>
                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{items.length} Ingredients</span>
                         </div>
-                        <div className="overflow-x-auto">
-                           <table className="w-full text-left text-[11px] min-w-[500px]">
+                        <div className="overflow-x-auto no-scrollbar">
+                           <table className="w-full text-left text-[11px] min-w-full">
                               <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[8px] tracking-widest">
                                  <tr>
-                                    <th className="px-6 py-4 md:px-8">Ingredient Component</th>
-                                    <th className="px-6 py-4 md:px-8">Net Requirement</th>
-                                    <th className="px-6 py-4 md:px-8 text-right">Unit Rate</th>
-                                    <th className="px-6 py-4 md:px-8 text-right">Ext. Value (₦)</th>
+                                    <th className="px-4 py-3 md:px-8 md:py-4">Ingredient</th>
+                                    <th className="px-4 py-3 md:px-8 md:py-4 text-center">Net Req.</th>
+                                    <th className="px-4 py-3 md:px-8 md:py-4 text-right hidden md:table-cell">Unit Rate</th>
+                                    <th className="px-4 py-3 md:px-8 md:py-4 text-right">Value (₦)</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
                                  {items.map((ing, idx) => (
-                                    <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
-                                       <td className="px-6 py-5 md:px-8">
-                                          <div className="flex items-center gap-2">
-                                             <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
+                                    <tr key={idx} className="hover:bg-indigo-50/30 transition-all border-b border-slate-50 last:border-0">
+                                       <td className="px-4 py-3 md:px-8 md:py-5">
+                                          <div className="flex items-center gap-1.5 md:gap-2">
+                                             <span className="font-black text-slate-800 uppercase text-[10px] md:text-xs leading-tight">{ing.name}</span>
                                              {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
                                           </div>
-                                          {ing.scalingTierUsed && <p className="text-[8px] text-indigo-400 font-bold uppercase mt-0.5">{ing.scalingTierUsed}</p>}
+                                          {ing.scalingTierUsed && <p className="text-[7px] md:text-[8px] text-indigo-400 font-bold uppercase mt-0.5">{ing.scalingTierUsed}</p>}
                                        </td>
-                                       <td className="px-6 py-5 md:px-8 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
-                                       <td className="px-6 py-5 md:px-8 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                                       <td className="px-6 py-5 md:px-8 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 font-bold text-slate-500 text-[10px] md:text-xs text-center whitespace-nowrap">
+                                          <span className="bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
+                                             {ing.qtyRequired.toFixed(2)} <span className="text-[8px] md:text-[10px] opacity-50">{ing.unit}</span>
+                                          </span>
+                                       </td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-slate-900 text-xs md:text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
                                     </tr>
                                  ))}
                               </tbody>
@@ -319,21 +323,21 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Ingredient Aggregate Summary</span>
                         <span className="text-[9px] text-slate-500 font-bold uppercase">Consolidated</span>
                      </div>
-                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-[11px] min-w-[500px]">
+                     <div className="overflow-x-auto no-scrollbar">
+                        <table className="w-full text-left text-[11px] min-w-full">
                            <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest">
                               <tr>
-                                 <th className="px-6 py-4 md:px-8">Total Component</th>
-                                 <th className="px-6 py-4 md:px-8 text-center">Combined Guest Need</th>
-                                 <th className="px-6 py-4 md:px-8 text-right">Aggregate Cost (₦)</th>
+                                 <th className="px-4 py-3 md:px-8 md:py-4">Component</th>
+                                 <th className="px-4 py-3 md:px-8 md:py-4 text-center">Net Requirement</th>
+                                 <th className="px-4 py-3 md:px-8 md:py-4 text-right">Cost (₦)</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-800">
                               {aggregates.map((agg, idx) => (
                                  <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
-                                    <td className="px-6 py-4 md:px-8 font-black text-slate-200 uppercase">{agg.name}</td>
-                                    <td className="px-6 py-4 md:px-8 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
-                                    <td className="px-6 py-4 md:px-8 text-right font-black text-emerald-400">₦{(agg.cost / 100).toLocaleString()}</td>
+                                    <td className="px-4 py-3 md:px-8 md:py-4 font-black text-slate-200 uppercase">{agg.name}</td>
+                                    <td className="px-4 py-3 md:px-8 md:py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} <span className="text-[9px] opacity-50 uppercase">{agg.unit}</span></td>
+                                    <td className="px-4 py-3 md:px-8 md:py-4 text-right font-black text-emerald-400 text-xs md:text-sm">₦{(agg.cost / 100).toLocaleString()}</td>
                                  </tr>
                               ))}
                            </tbody>
@@ -360,8 +364,8 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                </div>
             </div>
 
-            <div className="p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
-               <button onClick={onClose} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
+            <div className="p-4 md:p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
+               <button onClick={onClose} className="w-full md:w-auto px-10 py-3.5 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
             </div>
          </div>
       </div>

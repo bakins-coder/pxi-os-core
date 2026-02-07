@@ -110,170 +110,176 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
             onClick={e => e.stopPropagation()}
             className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-4xl rounded-[3rem] max-h-[90vh]'}`}
          >
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={24} /></div>
+            <div className="p-4 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <div className="flex items-center gap-2 md:gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
-                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">{item.name} • Intelligence Node</p>
+                     <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
 
                <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
-                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
+                     {isMaximized ? <Minimize2 size={18} className="md:w-5 md:h-5" /> : <Maximize2 size={18} className="md:w-5 md:h-5" />}
                   </button>
-                  <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
+                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
                </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-thin">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Portion Multiplier</label>
-                     <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[2rem] border border-slate-200">
-                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={18} /></button>
+            <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scrollbar-thin">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                  <div className="space-y-3 md:space-y-4">
+                     <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 block">Portion Multiplier</label>
+                     <div className="flex items-center gap-2 md:gap-4 bg-slate-100 p-1.5 md:p-2 rounded-xl md:rounded-[2rem] border border-slate-200">
+                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={16} /></button>
                         <input
                            type="number"
-                           className="flex-1 bg-transparent text-center text-3xl font-black text-slate-900 outline-none"
+                           className="flex-1 bg-transparent text-center text-xl md:text-3xl font-black text-slate-900 outline-none"
                            value={portions}
                            onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
                         />
-                        <button onClick={() => onPortionChange(portions + 50)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={18} /></button>
+                        <button onClick={() => onPortionChange(portions + 50)} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={16} /></button>
                      </div>
                   </div>
                   <div className="flex items-end">
                      <button
                         onClick={handleGroundPrices}
                         disabled={isGrounding}
-                        className={`w-full py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
+                        className={`w-full py-3.5 md:py-5 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all flex items-center justify-center gap-2 md:gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
                      >
-                        {isGrounding ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
-                        {isGrounding ? 'Grounding Neural Data...' : 'Ground Market Prices via AI'}
+                        {isGrounding ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
+                        {isGrounding ? 'Grounding...' : 'Ground Market Prices via AI'}
                      </button>
                   </div>
                </div>
 
-               <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-                  <table className="w-full text-left text-[11px]">
-                     <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
-                        <tr>
-                           <th className="px-8 py-5">Ingredient Component</th>
-                           <th className="px-8 py-5 text-center">MD Scaling Standard</th>
-                           <th className="px-8 py-5 text-center">Net Requirement (MD Tier)</th>
-                           <th className="px-8 py-5 text-right">Unit Rate</th>
-                           <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-indigo-50">
-                        {Object.entries(groupedBreakdown).map(([groupName, ings]) => (
-                           <React.Fragment key={groupName}>
-                              <tr className="bg-slate-50/50">
-                                 <td colSpan={5} className="px-8 py-3">
-                                    <div className="flex justify-between items-center">
-                                       <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{groupName}</span>
-                                       <button
-                                          onClick={() => setShowAddIngredient(groupName)}
-                                          className="text-[9px] font-black text-indigo-600 uppercase hover:text-indigo-800 flex items-center gap-1"
-                                       >
-                                          <Plus size={10} /> Add to Group
-                                       </button>
-                                    </div>
-                                 </td>
-                              </tr>
-                              {ings.map((ing: any, idx: number) => (
-                                 <tr key={`${groupName}-${idx}`} className={`hover:bg-indigo-50/30 transition-all ${ing.hasError ? 'bg-rose-50/50' : ''}`}>
-                                    <td className="px-8 py-5">
-                                       <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2">
-                                             <span className={`font-black uppercase text-xs ${ing.hasError ? 'text-rose-600' : 'text-slate-800'}`}>{ing.name}</span>
-                                             {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
-                                             {ing.hasError && (
-                                                <div className="flex items-center gap-1 text-[8px] font-black text-rose-500 uppercase tracking-tighter bg-rose-100 px-2 py-0.5 rounded-full">
-                                                   <AlertTriangle size={8} /> {ing.errorDetail}
-                                                </div>
-                                             )}
-                                          </div>
+               <div className="bg-white rounded-2xl md:rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
+                  <div className="overflow-x-auto no-scrollbar">
+                     <table className="w-full text-left text-[11px] min-w-full">
+                        <thead className="bg-indigo-600 text-white font-black uppercase text-[8px] md:text-[9px] tracking-widest">
+                           <tr>
+                              <th className="px-4 py-3 md:px-8 md:py-5">Ingredient</th>
+                              <th className="px-4 py-3 md:px-8 md:py-5 text-center hidden md:table-cell">MD Scaling</th>
+                              <th className="px-4 py-3 md:px-8 md:py-5 text-center">Net Req.</th>
+                              <th className="px-4 py-3 md:px-8 md:py-5 text-right hidden md:table-cell">Unit Rate</th>
+                              <th className="px-4 py-3 md:px-8 md:py-5 text-right">Value (₦)</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-indigo-50">
+                           {Object.entries(groupedBreakdown).map(([groupName, ings]) => (
+                              <React.Fragment key={groupName}>
+                                 <tr className="bg-slate-50/50">
+                                    <td colSpan={5} className="px-8 py-3">
+                                       <div className="flex justify-between items-center">
+                                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{groupName}</span>
                                           <button
-                                             onClick={() => matchedRecipe && deleteRecipeIngredient(matchedRecipe.id, ing.name)}
-                                             className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-rose-500 transition-all"
+                                             onClick={() => setShowAddIngredient(groupName)}
+                                             className="text-[9px] font-black text-indigo-600 uppercase hover:text-indigo-800 flex items-center gap-1"
                                           >
-                                             <Trash2 size={12} />
+                                             <Plus size={10} /> Add to Group
                                           </button>
                                        </div>
                                     </td>
-                                    <td className="px-8 py-5 text-center font-mono">
-                                       <div className="flex items-center justify-center gap-2">
-                                          <input
-                                             type="number"
-                                             step="0.0001"
-                                             className="w-24 bg-indigo-50/50 border-2 border-indigo-100 rounded-xl text-center font-black text-indigo-600 outline-none focus:border-indigo-400 focus:bg-white transition-all text-[11px] py-1.5 shadow-inner"
-                                             value={ing.qtyPerPortion}
-                                             onChange={(e) => handleQtyOverride(ing.name, e.target.value)}
-                                          />
-                                          <span className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{ing.unit}</span>
-                                       </div>
-                                    </td>
-                                    <td className="px-8 py-5 font-bold text-slate-500 text-xs text-center">{ing.qtyRequired.toFixed(3)} {ing.unit}</td>
-                                    <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                                    <td className="px-8 py-5 text-right font-black text-slate-1000 text-sm">
-                                       <span className={ing.hasError ? 'text-rose-600' : 'text-slate-900'}>
-                                          ₦{(ing.totalCostCents / 100).toLocaleString()}
-                                       </span>
-                                    </td>
                                  </tr>
-                              ))}
-                              {showAddIngredient === groupName && (
-                                 <tr className="bg-indigo-50/20">
-                                    <td className="px-8 py-4">
-                                       <input
-                                          placeholder="Ingredient Name..."
-                                          className="w-full bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
-                                          value={newIng.name}
-                                          onChange={e => setNewIng({ ...newIng, name: e.target.value })}
-                                       />
-                                    </td>
-                                    <td className="px-8 py-4">
-                                       <div className="flex gap-2">
+                                 {ings.map((ing: any, idx: number) => (
+                                    <tr key={`${groupName}-${idx}`} className={`hover:bg-indigo-50/30 transition-all border-b border-indigo-50 last:border-0 ${ing.hasError ? 'bg-rose-50/50' : ''}`}>
+                                       <td className="px-4 py-3 md:px-8 md:py-5">
+                                          <div className="flex items-center justify-between">
+                                             <div className="flex items-center gap-1.5 md:gap-2">
+                                                <span className={`font-black uppercase text-[10px] md:text-xs leading-tight ${ing.hasError ? 'text-rose-600' : 'text-slate-800'}`}>{ing.name}</span>
+                                                {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                                                {ing.hasError && (
+                                                   <div className="flex items-center gap-1 text-[7px] md:text-[8px] font-black text-rose-500 uppercase tracking-tighter bg-rose-100 px-1.5 py-0.5 rounded-full">
+                                                      <AlertTriangle size={8} /> ERROR
+                                                   </div>
+                                                )}
+                                             </div>
+                                             <button
+                                                onClick={() => matchedRecipe && deleteRecipeIngredient(matchedRecipe.id, ing.name)}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-rose-500 transition-all"
+                                             >
+                                                <Trash2 size={12} />
+                                             </button>
+                                          </div>
+                                       </td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-center font-mono hidden md:table-cell">
+                                          <div className="flex items-center justify-center gap-2">
+                                             <input
+                                                type="number"
+                                                step="0.0001"
+                                                className="w-20 md:w-24 bg-indigo-50/50 border-2 border-indigo-100 rounded-lg md:rounded-xl text-center font-black text-indigo-600 outline-none focus:border-indigo-400 focus:bg-white transition-all text-[10px] md:text-[11px] py-1 shadow-inner"
+                                                value={ing.qtyPerPortion}
+                                                onChange={(e) => handleQtyOverride(ing.name, e.target.value)}
+                                             />
+                                             <span className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase tracking-tighter">{ing.unit}</span>
+                                          </div>
+                                       </td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 font-bold text-slate-500 text-[10px] md:text-xs text-center whitespace-nowrap">
+                                          <span className="bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
+                                             {ing.qtyRequired.toFixed(2)} <span className="text-[8px] md:text-[10px] opacity-50">{ing.unit}</span>
+                                          </span>
+                                       </td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-xs md:text-sm">
+                                          <span className={ing.hasError ? 'text-rose-600' : 'text-slate-900'}>
+                                             ₦{(ing.totalCostCents / 100).toLocaleString()}
+                                          </span>
+                                       </td>
+                                    </tr>
+                                 ))}
+                                 {showAddIngredient === groupName && (
+                                    <tr className="bg-indigo-50/20">
+                                       <td className="px-8 py-4">
                                           <input
-                                             type="number"
-                                             placeholder="Qty..."
-                                             className="w-20 bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
-                                             value={newIng.qty}
-                                             onChange={e => setNewIng({ ...newIng, qty: parseFloat(e.target.value) || 0 })}
+                                             placeholder="Ingredient Name..."
+                                             className="w-full bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
+                                             value={newIng.name}
+                                             onChange={e => setNewIng({ ...newIng, name: e.target.value })}
                                           />
-                                          <select
-                                             className="bg-white border border-indigo-100 rounded-lg p-2 text-[10px] font-bold"
-                                             value={newIng.unit}
-                                             onChange={e => setNewIng({ ...newIng, unit: e.target.value })}
-                                          >
-                                             <option>kg</option><option>g</option><option>litre</option><option>ml</option><option>pcs</option>
-                                          </select>
-                                       </div>
-                                    </td>
-                                    <td colSpan={3} className="px-8 py-4 text-right">
-                                       <div className="flex justify-end gap-2">
-                                          <button onClick={() => setShowAddIngredient(null)} className="px-3 py-1.5 text-[9px] font-black uppercase text-slate-400">Cancel</button>
-                                          <button onClick={() => addIngredientToRecipe(groupName)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg">Confirm Add</button>
-                                       </div>
-                                    </td>
-                                 </tr>
-                              )}
-                           </React.Fragment>
-                        ))}
-                        {costing?.ingredientBreakdown.some((ing: any) => ing.hasError) && (
-                           <tr className="bg-rose-500 text-white">
-                              <td colSpan={5} className="px-8 py-3 text-[9px] font-black uppercase tracking-widest text-center">
-                                 ⚠️ Warning: Some costs are estimated or involve data quality issues.
-                              </td>
+                                       </td>
+                                       <td className="px-8 py-4">
+                                          <div className="flex gap-2">
+                                             <input
+                                                type="number"
+                                                placeholder="Qty..."
+                                                className="w-20 bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
+                                                value={newIng.qty}
+                                                onChange={e => setNewIng({ ...newIng, qty: parseFloat(e.target.value) || 0 })}
+                                             />
+                                             <select
+                                                className="bg-white border border-indigo-100 rounded-lg p-2 text-[10px] font-bold"
+                                                value={newIng.unit}
+                                                onChange={e => setNewIng({ ...newIng, unit: e.target.value })}
+                                             >
+                                                <option>kg</option><option>g</option><option>litre</option><option>ml</option><option>pcs</option>
+                                             </select>
+                                          </div>
+                                       </td>
+                                       <td colSpan={3} className="px-8 py-4 text-right">
+                                          <div className="flex justify-end gap-2">
+                                             <button onClick={() => setShowAddIngredient(null)} className="px-3 py-1.5 text-[9px] font-black uppercase text-slate-400">Cancel</button>
+                                             <button onClick={() => addIngredientToRecipe(groupName)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg">Confirm Add</button>
+                                          </div>
+                                       </td>
+                                    </tr>
+                                 )}
+                              </React.Fragment>
+                           ))}
+                           {costing?.ingredientBreakdown.some((ing: any) => ing.hasError) && (
+                              <tr className="bg-rose-500 text-white">
+                                 <td colSpan={5} className="px-8 py-3 text-[9px] font-black uppercase tracking-widest text-center">
+                                    ⚠️ Warning: Some costs are estimated or involve data quality issues.
+                                 </td>
+                              </tr>
+                           )}
+                           <tr className="bg-slate-50 border-t-2 border-slate-100">
+                              <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
+                              <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
                            </tr>
-                        )}
-                        <tr className="bg-slate-50 border-t-2 border-slate-100">
-                           <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
-                           <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
-                        </tr>
-                     </tbody>
-                  </table>
+                        </tbody>
+                     </table>
+                  </div>
                </div>
 
                <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden">
@@ -324,12 +330,11 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                </div>
             </div>
 
-            <div className="p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
-               <button onClick={onClose} className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
+            <div className="p-4 md:p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
+               <button onClick={onClose} className="w-full md:w-auto px-10 py-3.5 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
             </div>
          </div>
-      </div >
-
+      </div>
    );
 };
 
