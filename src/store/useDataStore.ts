@@ -192,11 +192,13 @@ export const useDataStore = create<DataState>()(
             addInventoryItem: async (item) => {
                 const user = useAuthStore.getState().user;
                 if (!user || !user.companyId) return;
+                const companyId = user.companyId;
+                const userId = user.id;
 
                 const newItemId = item.id || `item-${Date.now()}`;
 
                 // Optimistic Local Update
-                const newItem = { ...item, id: newItemId, companyId: user.companyId };
+                const newItem = { ...item, id: newItemId, companyId: companyId };
                 set((state) => ({
                     inventory: [newItem as InventoryItem, ...state.inventory]
                 }));
@@ -217,7 +219,7 @@ export const useDataStore = create<DataState>()(
                 if (item.image && item.image.startsWith('data:image')) {
                     try {
                         // Upload
-                        const uploadRes = await uploadEntityImage(user.companyId, entityType, newItemId, item.image);
+                        const uploadRes = await uploadEntityImage(companyId, entityType, newItemId, item.image);
                         uploadedMedia = uploadRes;
 
                         // Construct Public URL (Optimistic for DB text column if needed, though View handles it)
@@ -231,7 +233,6 @@ export const useDataStore = create<DataState>()(
 
                 // Determine DB Table
                 let tableName = '';
-                const companyId = user.companyId; // Now safe due to check at top
                 let dbPayload: any = {
                     organization_id: companyId,
                     name: item.name,
@@ -241,7 +242,8 @@ export const useDataStore = create<DataState>()(
                 // Add Image URL if available (and valid URL)
                 if (uploadedMedia) {
                     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-                    dbPayload.image_url = `${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
+                    const { bucket, path } = uploadedMedia;
+                    dbPayload.image_url = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
                 } else if (item.image && item.image.startsWith('http')) {
                     dbPayload.image_url = item.image;
                 }
@@ -286,7 +288,7 @@ export const useDataStore = create<DataState>()(
                             await saveEntityMedia({
                                 entity_type: entityType,
                                 entity_id: insertedId,
-                                organization_id: user.companyId,
+                                organization_id: companyId,
                                 bucket: uploadedMedia.bucket,
                                 object_path: uploadedMedia.path,
                                 is_primary: true
@@ -299,7 +301,9 @@ export const useDataStore = create<DataState>()(
             },
             updateInventoryItem: async (id, updates) => {
                 const user = useAuthStore.getState().user;
-                if (!user?.companyId) return;
+                if (!user || !user.companyId) return;
+                const companyId = user.companyId;
+                const userId = user.id;
 
                 // Optimistic Local Update
                 set((state) => ({
@@ -320,7 +324,7 @@ export const useDataStore = create<DataState>()(
                         };
                         const entityType = (updates.type && entityTypeMap[updates.type]) || 'product';
 
-                        const uploadRes = await uploadEntityImage(user.companyId, entityType, id, updates.image);
+                        const uploadRes = await uploadEntityImage(companyId, entityType, id, updates.image);
                         uploadedMedia = uploadRes;
 
                         // Construct public URL and update the image field
@@ -344,7 +348,7 @@ export const useDataStore = create<DataState>()(
                     // Determine DB Table
                     let tableName = '';
                     let dbPayload: any = {
-                        organization_id: user.companyId,
+                        organization_id: companyId,
                         name: updatedItem.name,
                         image_url: updatedItem.image, // Use image_url column to match DB schema
                     };
@@ -395,7 +399,7 @@ export const useDataStore = create<DataState>()(
                         await saveEntityMedia({
                             entity_type: tableName === 'products' ? 'product' : tableName === 'reusable_items' ? 'asset' : 'ingredient',
                             entity_id: id,
-                            organization_id: user.companyId,
+                            organization_id: companyId,
                             bucket: uploadedMedia.bucket,
                             object_path: uploadedMedia.path,
                             is_primary: true
@@ -431,6 +435,7 @@ export const useDataStore = create<DataState>()(
                     if (!(globalThis as any).VITEST) return;
                 }
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const userId = user?.id || 'sys';
 
                 // Optimistic Update
                 set((state) => {
@@ -516,8 +521,11 @@ export const useDataStore = create<DataState>()(
             },
             issueRental: async (eventId, itemId, qty, vendor) => {
                 const user = useAuthStore.getState().user;
+                if (!user || !user.companyId) {
+                    if (!(globalThis as any).VITEST) return;
+                }
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-                if (!companyId && !user) return;
+                const userId = user?.id || 'sys';
 
                 // Optimistic
                 set((state) => {
@@ -585,8 +593,11 @@ export const useDataStore = create<DataState>()(
             },
             returnRental: async (id, status, notes) => {
                 const user = useAuthStore.getState().user;
+                if (!user || !user.companyId) {
+                    if (!(globalThis as any).VITEST) return;
+                }
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-                if (!companyId && !user) return;
+                const userId = user?.id || 'sys';
 
                 const state = get();
                 const rental = state.rentalLedger.find(r => r.id === id);
@@ -613,11 +624,10 @@ export const useDataStore = create<DataState>()(
                     if (status === 'Returned' && rental.rentalVendor === 'In-House') {
                         const item = state.inventory.find(i => i.name === rental.itemName);
                         if (item) {
-                            const { data: locations } = await supabase!.from('locations').select('id').eq('organization_id', user.companyId).eq('name', 'Main Warehouse').limit(1);
+                            const { data: locations } = await supabase!.from('locations').select('id').eq('organization_id', companyId).eq('name', 'Main Warehouse').limit(1);
                             const locationId = locations?.[0]?.id;
 
                             if (locationId) {
-                                const companyId = useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
                                 const params = {
                                     orgId: companyId,
                                     itemId: item.id,
@@ -674,13 +684,16 @@ export const useDataStore = create<DataState>()(
             }),
             addContact: async (contact) => {
                 const user = useAuthStore.getState().user;
+                if (!user || !user.companyId) return;
+                const companyId = user.companyId;
+
                 const contactId = contact.id || `con-${Date.now()}`;
 
                 // Optimistic Local Update
                 const newContact = {
                     ...contact,
                     id: contactId,
-                    companyId: user?.companyId || contact.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    companyId: companyId,
                     preferences: {},
                     documentLinks: []
                 } as Contact;
@@ -690,11 +703,11 @@ export const useDataStore = create<DataState>()(
                 }));
 
                 // Persistence
-                if (supabase && user?.companyId) {
+                if (supabase) {
                     try {
                         const payload = {
                             id: contactId,
-                            organization_id: user.companyId,
+                            organization_id: companyId,
                             name: contact.name,
                             email: contact.email,
                             phone: contact.phone,
@@ -716,7 +729,8 @@ export const useDataStore = create<DataState>()(
             },
             updateContact: async (id, updates) => {
                 const user = useAuthStore.getState().user;
-                if (!user?.companyId) return;
+                if (!user || !user.companyId) return;
+                const companyId = user.companyId;
 
                 set((state) => ({
                     contacts: state.contacts.map(c => c.id === id ? { ...c, ...updates } : c)
@@ -728,7 +742,7 @@ export const useDataStore = create<DataState>()(
                         if (contact) {
                             const payload = {
                                 id: contact.id,
-                                organization_id: user.companyId,
+                                organization_id: companyId,
                                 name: contact.name,
                                 email: contact.email,
                                 phone: contact.phone,
@@ -747,14 +761,16 @@ export const useDataStore = create<DataState>()(
             },
             addInteractionLog: async (log) => {
                 const user = useAuthStore.getState().user;
-                if (!user?.companyId) return;
+                if (!user || !user.companyId) return;
+                const companyId = user.companyId;
+                const userId = user.id;
 
                 const logId = log.id || `log-${Date.now()}`;
                 const newLog = {
                     ...log,
                     id: logId,
                     createdAt: new Date().toISOString(),
-                    createdBy: user.id
+                    createdBy: userId
                 } as unknown as InteractionLog;
 
                 set((state) => ({
@@ -770,8 +786,8 @@ export const useDataStore = create<DataState>()(
                             summary: log.summary,
                             content: log.content,
                             created_at: newLog.createdAt,
-                            created_by: user.id,
-                            organization_id: user.companyId
+                            created_by: userId,
+                            organization_id: companyId
                         };
                         await supabase.from('interaction_logs').upsert(payload);
                     } catch (e) {
@@ -786,10 +802,11 @@ export const useDataStore = create<DataState>()(
                 contacts: state.contacts.filter(c => c.id !== id)
             })),
             addInvoice: async (invoice) => {
-                set((state) => ({ invoices: [invoice, ...state.invoices] }));
-
                 const user = useAuthStore.getState().user;
-                if (!supabase || !user?.companyId) return;
+                if (!supabase || !user || !user.companyId) return;
+                const companyId = user.companyId;
+
+                set((state) => ({ invoices: [invoice, ...state.invoices] }));
 
                 // Sync to DB
                 try {
@@ -798,7 +815,7 @@ export const useDataStore = create<DataState>()(
 
                     const payload = {
                         id: invoice.id,
-                        company_id: user.companyId,
+                        company_id: companyId,
                         contact_id: invoice.contactId,
                         number: invoice.number,
                         date: invoice.date,
@@ -933,8 +950,16 @@ export const useDataStore = create<DataState>()(
             },
             applyForLeave: async (req) => {
                 const user = useAuthStore.getState().user;
-                if (!supabase || !user?.companyId) {
+                if (!user || !user.companyId) {
                     // Fallback to local if offline (legacy behavior kept for safety)
+                    const newReq = { ...req, id: `lv-${Date.now()}`, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
+                    set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
+                    return newReq;
+                }
+                const companyId = user.companyId;
+
+                if (!supabase) {
+                    // Same fallback for non-supabase case
                     const newReq = { ...req, id: `lv-${Date.now()}`, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
                     set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
                     return newReq;
@@ -942,7 +967,7 @@ export const useDataStore = create<DataState>()(
 
                 // Prepare Payload
                 const payload = {
-                    organization_id: user.companyId,
+                    organization_id: companyId,
                     employee_id: req.employeeId, // Assuming passed from UI
                     employee_name: req.employeeName,
                     type: req.type,
@@ -999,7 +1024,8 @@ export const useDataStore = create<DataState>()(
 
             addPerformanceReview: async (review) => {
                 const user = useAuthStore.getState().user;
-                if (!supabase || !user?.companyId) return;
+                if (!supabase || !user || !user.companyId) return;
+                const companyId = user.companyId;
 
                 const newReview = { ...review, id: review.id || `rev-${Date.now()}`, status: 'Draft', totalScore: 0, metrics: review.metrics || [] } as PerformanceReview;
 
@@ -1008,7 +1034,7 @@ export const useDataStore = create<DataState>()(
 
                 // DB Insert
                 const payload = {
-                    organization_id: user.companyId,
+                    organization_id: companyId,
                     employee_id: newReview.employeeId,
                     year: newReview.year,
                     quarter: newReview.quarter,
@@ -1218,7 +1244,9 @@ export const useDataStore = create<DataState>()(
 
             updateIngredient: async (id, updates) => {
                 const user = useAuthStore.getState().user;
-                if (!user?.companyId) return;
+                if (!user || !user.companyId) return;
+                const companyId = user.companyId;
+                const userId = user.id;
 
                 set((state) => ({
                     ingredients: state.ingredients.map((ing) =>
@@ -1232,11 +1260,11 @@ export const useDataStore = create<DataState>()(
                 if (updates.image && updates.image.startsWith('data:image')) {
                     try {
                         // Assuming ingredients are 'ingredient' type
-                        const uploadRes = await uploadEntityImage(user.companyId, 'ingredient', id, updates.image);
+                        const uploadRes = await uploadEntityImage(companyId, 'ingredient', id, updates.image);
                         await saveEntityMedia({
                             entity_type: 'ingredient',
                             entity_id: id,
-                            organization_id: user.companyId,
+                            organization_id: companyId,
                             bucket: uploadRes.bucket,
                             object_path: uploadRes.path,
                             is_primary: true
