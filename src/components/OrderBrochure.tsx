@@ -312,13 +312,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     return (
         <div onClick={(e) => e.stopPropagation()} className="bg-white md:rounded-[3rem] shadow-2xl w-full max-w-7xl h-[100vh] md:h-[95vh] overflow-hidden flex flex-col animate-in zoom-in duration-300 md:border border-slate-200">
             {/* HEADER */}
-            <div className="p-4 md:p-8 border-b-2 border-slate-100 flex flex-col gap-4 bg-slate-50/50">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4 shrink-0">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={20} /></div>
-                        <div><h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Banquet Creation</h2><p className="text-[9px] text-slate-500 font-black uppercase mt-1">New Event Node Hub</p></div>
+            <div className="p-2 md:p-8 border-b-2 border-slate-100 flex flex-col gap-2 md:gap-4 bg-slate-50/50">
+                <div className="flex justify-between items-center px-1">
+                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                        <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} md:size={20} /></div>
+                        <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Banquet Creation</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">New Event Node Hub</p></div>
                     </div>
-                    <button onClick={onComplete} className="p-2 md:p-3 bg-white border-2 border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm shrink-0"><X size={20} /></button>
+                    <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} md:size={20} /></button>
                 </div>
 
                 {/* Mobile Tab Switcher */}
@@ -338,17 +338,17 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 </div>
 
                 {/* Category Pills - Only show on Menu Tab or Desktop */}
-                <div className={`flex-1 flex flex-wrap justify-center items-center gap-2 md:gap-4 py-1.5 md:py-2 overflow-x-auto max-w-full no-scrollbar px-2 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
-                    <div className="flex bg-slate-100 p-1 md:p-1.5 rounded-xl md:rounded-2xl border-2 border-slate-200 gap-1.5 md:gap-1 shadow-sm w-max shrink-0">
+                <div className={`flex-1 flex flex-wrap justify-center items-center gap-1.5 md:gap-4 py-0.5 md:py-2 overflow-x-auto max-w-full no-scrollbar px-1 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
+                    <div className="flex bg-slate-100 p-0.5 md:p-1.5 rounded-lg md:rounded-2xl border-2 border-slate-200 gap-1 md:gap-1 shadow-sm w-max shrink-0">
                         {["All", ...categoryOrder].map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-4 py-2.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[9px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                className={`px-3 py-2 md:px-4 md:py-2 rounded-md md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
                             >
                                 {cat}
                                 {(Number(categoryTotals[cat]) || 0) > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 md:w-4 md:h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[8px] md:text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
+                                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[7px] md:text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
                                 )}
                             </button>
                         ))}
@@ -356,9 +356,9 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     {/* Add Custom Item Button */}
                     <button
                         onClick={() => setShowCustomModal(true)}
-                        className="px-4 py-2.5 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-2 shrink-0"
+                        className="px-3 py-2 bg-emerald-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-1 shrink-0"
                     >
-                        <Plus size={12} /> Custom Item
+                        <Plus size={10} /> Custom
                     </button>
                 </div>
             </div>
@@ -458,7 +458,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 ${activeTab === 'menu' ? 'block' : 'hidden md:flex'}
             `}>
                     <div className="flex-1 overflow-y-auto p-4 md:p-14 scrollbar-thin">
-                        <div className="space-y-6 md:space-y-24 pb-60">
+                        <div className="space-y-4 md:space-y-24 pb-40">
                             {categoryOrder.filter(c => activeCategory === "All" || c === activeCategory).map(category => {
                                 const items = groupedItems[category];
                                 if (!items || items.length === 0) return null;
@@ -467,12 +467,12 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
                                 return (
                                     <div key={category} className="animate-in fade-in slide-in-from-bottom-2">
-                                        <div className="flex items-center gap-3 md:gap-6 mb-4 md:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-2">
-                                            <h3 className="text-[10px] md:text-sm font-black text-slate-900 uppercase tracking-[0.2em] md:tracking-[0.5em]">{category}</h3>
+                                        <div className="flex items-center gap-2 md:gap-6 mb-2 md:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-1 md:py-2">
+                                            <h3 className="text-[9px] md:text-sm font-black text-slate-900 uppercase tracking-[0.15em] md:tracking-[0.5em]">{category}</h3>
                                             <div className="h-px flex-1 bg-slate-100"></div>
-                                            <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : isMandatory ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                                                {isMandatory && catTotal !== guestCount && <AlertCircle size={12} />}
-                                                Portions: {catTotal} / {guestCount}
+                                            <div className={`px-2 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : isMandatory ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                                                {isMandatory && catTotal !== guestCount && <AlertCircle size={8} md:size={12} />}
+                                                Q: {catTotal} / {guestCount}
                                             </div>
                                         </div>
 
@@ -565,35 +565,35 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
             {/* FOOTER */}
             {/* FOOTER */}
-            <div className="p-3 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-2 md:gap-0 pb-6 md:pb-4 safe-area-pb">
-                <div className="flex items-center justify-between w-full md:w-auto gap-3 md:gap-8">
-                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-2 group bg-slate-50 md:bg-transparent p-1.5 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto">
-                        <div className="w-8 h-8 md:w-11 md:h-11 rounded-lg bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform shrink-0">
-                            <ShoppingCart size={14} className="md:w-4 md:h-4" />
+            <div className="p-1 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-1 md:gap-0 pb-2 md:pb-4 safe-area-pb">
+                <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-8">
+                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-1.5 group bg-slate-50 md:bg-transparent p-1 md:p-0 rounded-lg md:rounded-none flex-1 md:flex-auto">
+                        <div className="w-7 h-7 md:w-11 md:h-11 rounded-lg bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform shrink-0">
+                            <ShoppingCart size={12} className="md:w-4 md:h-4" />
                         </div>
                         <div className="text-left">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0">Basket</p>
-                            <p className="text-[10px] md:text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
+                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0">Basket</p>
+                            <p className="text-[9px] md:text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
                         </div>
                     </button>
 
-                    <div className="h-8 w-px bg-slate-100 mx-1 hidden md:block"></div>
+                    <div className="h-6 w-px bg-slate-100 mx-1 hidden md:block"></div>
 
-                    <div className="text-right bg-slate-50 md:bg-transparent p-1.5 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto min-w-[80px]">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0">Total</p>
-                        <span className="text-base md:text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
+                    <div className="text-right bg-slate-50 md:bg-transparent p-1 md:p-0 rounded-lg md:rounded-none flex-1 md:flex-auto min-w-[70px]">
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0">Total</p>
+                        <span className="text-sm md:text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div className="flex gap-2 w-full md:w-auto mt-1 md:mt-0">
-                    <button onClick={onComplete} className="px-5 py-3 md:py-3 font-black uppercase text-[9px] text-slate-500 bg-slate-50 rounded-xl md:bg-transparent hover:text-rose-500 shrink-0">Abort</button>
+                <div className="flex gap-1.5 w-full md:w-auto mt-0.5 md:mt-0">
+                    <button onClick={onComplete} className="px-3 py-2 md:py-3 font-black uppercase text-[8px] text-slate-500 bg-slate-50 rounded-lg md:bg-transparent hover:text-rose-500 shrink-0">Abort</button>
                     <button
                         onClick={handlePlaceOrder}
                         disabled={!hasSelection || isSubmitting || !customerName}
-                        className={`flex-1 px-6 py-3.5 md:py-4 rounded-xl font-black uppercase text-[10px] md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                        className={`flex-1 px-4 py-2.5 md:py-4 rounded-lg md:rounded-xl font-black uppercase text-[9px] md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-1.5 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
-                        {isSubmitting ? <RefreshCw className="animate-spin" size={14} /> : <ArrowRight size={14} />}
-                        {isPortionLocked ? 'Finalize Order' : 'Force Finalize (Unequal Qty)'}
+                        {isSubmitting ? <RefreshCw className="animate-spin" size={12} /> : <ArrowRight size={12} />}
+                        {isPortionLocked ? 'Finalize Order' : 'Force Finalize'}
                     </button>
                 </div>
             </div>
