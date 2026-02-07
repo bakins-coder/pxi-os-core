@@ -15,6 +15,7 @@ import {
   Plane,
   BrainCircuit
 } from 'lucide-react';
+import { Role } from '../types';
 import { EventCalendar } from './EventCalendar';
 import { EventDetailCard } from './EventDetailCard';
 
@@ -114,6 +115,38 @@ export const Dashboard = () => {
     };
   }, [invoices, requisitions, cateringEvents, tickets, contacts, employees]);
 
+  // [AUTH] Financial Data Guard (KPIs)
+  const isFinancialAuthorized = useMemo(() => {
+    if (!user) return false;
+    if (user.isSuperAdmin) return true;
+
+    const role = user.role as string;
+    const authorizedRoles = [
+      Role.SUPER_ADMIN as string,
+      Role.ADMIN as string,
+      Role.CEO as string,
+      Role.CHAIRMAN as string,
+      Role.FINANCE as string,
+      'CFO',
+      'Operations',
+      'Finance Manager',
+      'Operations Manager'
+    ];
+
+    if (authorizedRoles.includes(role)) return true;
+    if (user.permissionTags?.includes('access:finance')) return true;
+    if (user.permissionTags?.includes('access:reports')) return true;
+
+    return false;
+  }, [user]);
+
+  // [AUTH] Operational Financial Detail Guard (Awaiting Payments / Procurement)
+  const isOpsFinAuthorized = useMemo(() => {
+    if (isFinancialAuthorized) return true;
+    const role = user?.role as string;
+    return role === Role.BANQUET_MANAGER || role === Role.EVENT_COORDINATOR || role === Role.EVENT_MANAGER;
+  }, [user, isFinancialAuthorized]);
+
   const handleOpenAssistant = () => {
     window.dispatchEvent(new CustomEvent('open-assistant'));
   };
@@ -144,7 +177,7 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Ribbons */}
-      {((user?.role as string) === 'SUPER_ADMIN' || (user?.role as string) === 'ADMIN' || (user?.role as string) === 'CEO' || (user?.role as string) === 'General Manager' || (user?.role as string) === 'Finance Manager' || user?.permissionTags?.includes('access:finance') || user?.permissionTags?.includes('access:reports')) && !['Logistics Officer', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
+      {isFinancialAuthorized && (
         <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {[
             { label: 'Total Revenue', value: `₦${(dataState.financial.revenue / 100).toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', trend: '+12.4%' },
@@ -187,11 +220,11 @@ export const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-          {!['Logistics Officer', 'Logistics Manager', 'Event Coordinator', 'Banquet Manager'].includes(user?.role as string) && (
-            <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" />
-          )}
-          {(user?.role as string) !== 'Logistics Officer' && (user?.role as string) !== 'Logistics Manager' && (
-            <SummaryList title="Pending Procurement" items={dataState.payables} type="payable" />
+          {isOpsFinAuthorized && (
+            <>
+              <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" />
+              <SummaryList title="Pending Procurement" items={dataState.payables} type="payable" />
+            </>
           )}
         </div>
       </div>

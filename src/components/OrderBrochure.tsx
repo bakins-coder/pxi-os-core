@@ -338,17 +338,17 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 </div>
 
                 {/* Category Pills - Only show on Menu Tab or Desktop */}
-                <div className={`flex-1 flex flex-wrap justify-center items-center gap-4 py-2 overflow-x-auto max-w-full no-scrollbar px-2 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
-                    <div className="flex bg-slate-100 p-1.5 md:p-1.5 rounded-2xl border-2 border-slate-200 gap-2 md:gap-1 shadow-sm w-max shrink-0">
+                <div className={`flex-1 flex flex-wrap justify-center items-center gap-2 md:gap-4 py-1.5 md:py-2 overflow-x-auto max-w-full no-scrollbar px-2 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
+                    <div className="flex bg-slate-100 p-1 md:p-1.5 rounded-xl md:rounded-2xl border-2 border-slate-200 gap-1.5 md:gap-1 shadow-sm w-max shrink-0">
                         {["All", ...categoryOrder].map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-5 py-3 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                className={`px-4 py-2.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[9px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
                             >
                                 {cat}
                                 {(Number(categoryTotals[cat]) || 0) > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 md:w-4 md:h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[9px] md:text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 md:w-4 md:h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[8px] md:text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
                                 )}
                             </button>
                         ))}
@@ -356,9 +356,9 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     {/* Add Custom Item Button */}
                     <button
                         onClick={() => setShowCustomModal(true)}
-                        className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-2 shrink-0"
+                        className="px-4 py-2.5 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-2 shrink-0"
                     >
-                        <Plus size={14} /> Custom Item
+                        <Plus size={12} /> Custom Item
                     </button>
                 </div>
             </div>
@@ -458,7 +458,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 ${activeTab === 'menu' ? 'block' : 'hidden md:flex'}
             `}>
                     <div className="flex-1 overflow-y-auto p-4 md:p-14 scrollbar-thin">
-                        <div className="space-y-10 md:space-y-24 pb-60">
+                        <div className="space-y-6 md:space-y-24 pb-60">
                             {categoryOrder.filter(c => activeCategory === "All" || c === activeCategory).map(category => {
                                 const items = groupedItems[category];
                                 if (!items || items.length === 0) return null;
@@ -467,8 +467,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
                                 return (
                                     <div key={category} className="animate-in fade-in slide-in-from-bottom-2">
-                                        <div className="flex items-center gap-6 mb-4 md:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-2">
-                                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-[0.5em]">{category}</h3>
+                                        <div className="flex items-center gap-3 md:gap-6 mb-4 md:mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-2">
+                                            <h3 className="text-[10px] md:text-sm font-black text-slate-900 uppercase tracking-[0.2em] md:tracking-[0.5em]">{category}</h3>
                                             <div className="h-px flex-1 bg-slate-100"></div>
                                             <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : isMandatory ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
                                                 {isMandatory && catTotal !== guestCount && <AlertCircle size={12} />}
@@ -565,34 +565,34 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
 
             {/* FOOTER */}
             {/* FOOTER */}
-            <div className="p-4 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-3 md:gap-0 pb-6 md:pb-4 safe-area-pb">
-                <div className="flex items-center justify-between w-full md:w-auto gap-4 md:gap-8">
-                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-3 group bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto">
-                        <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform shrink-0">
-                            <ShoppingCart size={18} className="md:w-4 md:h-4" />
+            <div className="p-3 md:p-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] relative z-20 gap-2 md:gap-0 pb-6 md:pb-4 safe-area-pb">
+                <div className="flex items-center justify-between w-full md:w-auto gap-3 md:gap-8">
+                    <button onClick={() => setIsBasketOpen(!isBasketOpen)} className="flex items-center gap-2 group bg-slate-50 md:bg-transparent p-1.5 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto">
+                        <div className="w-8 h-8 md:w-11 md:h-11 rounded-lg bg-slate-900 flex items-center justify-center text-[#00ff9d] shadow-lg group-hover:scale-105 transition-transform shrink-0">
+                            <ShoppingCart size={14} className="md:w-4 md:h-4" />
                         </div>
                         <div className="text-left">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Basket</p>
-                            <p className="text-xs md:text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0">Basket</p>
+                            <p className="text-[10px] md:text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length} Items</p>
                         </div>
                     </button>
 
-                    <div className="h-10 w-px bg-slate-100 mx-2 hidden md:block"></div>
+                    <div className="h-8 w-px bg-slate-100 mx-1 hidden md:block"></div>
 
-                    <div className="text-right bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto min-w-[100px]">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
-                        <span className="text-xl md:text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
+                    <div className="text-right bg-slate-50 md:bg-transparent p-1.5 md:p-0 rounded-xl md:rounded-none flex-1 md:flex-auto min-w-[80px]">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0">Total</p>
+                        <span className="text-base md:text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div className="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
-                    <button onClick={onComplete} className="px-6 py-4 md:py-3 font-black uppercase text-[10px] text-slate-500 bg-slate-100 rounded-2xl md:bg-transparent hover:text-rose-500 shrink-0">Abort</button>
+                <div className="flex gap-2 w-full md:w-auto mt-1 md:mt-0">
+                    <button onClick={onComplete} className="px-5 py-3 md:py-3 font-black uppercase text-[9px] text-slate-500 bg-slate-50 rounded-xl md:bg-transparent hover:text-rose-500 shrink-0">Abort</button>
                     <button
                         onClick={handlePlaceOrder}
                         disabled={!hasSelection || isSubmitting || !customerName}
-                        className={`flex-1 px-8 py-4 md:py-4 rounded-2xl font-black uppercase text-xs md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                        className={`flex-1 px-6 py-3.5 md:py-4 rounded-xl font-black uppercase text-[10px] md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
-                        {isSubmitting ? <RefreshCw className="animate-spin" size={18} /> : <ArrowRight size={18} />}
+                        {isSubmitting ? <RefreshCw className="animate-spin" size={14} /> : <ArrowRight size={14} />}
                         {isPortionLocked ? 'Finalize Order' : 'Force Finalize (Unequal Qty)'}
                     </button>
                 </div>

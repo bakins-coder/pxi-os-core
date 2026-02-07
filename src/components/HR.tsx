@@ -596,20 +596,22 @@ export const HR = () => {
    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
-   const isAdmin = [Role.ADMIN, Role.HR_MANAGER, Role.SUPER_ADMIN, Role.CEO].includes(currentUser?.role as any);
-   // Allow minimal access for everyone to see their own data
-   const canViewSensitiveInfo = true;
-   const canViewPayroll = true;
+   const isHRManagerial = useMemo(() => {
+      const role = currentUser?.role as string;
+      const isFin = role === Role.FINANCE || role === 'CFO';
+      const isExec = role === Role.CEO || role === Role.CHAIRMAN || role === 'CEO';
+      const isAdminOrHR = role === Role.ADMIN || role === Role.SUPER_ADMIN || role === Role.HR_MANAGER || role === 'HR Manager';
+      return isExec || isFin || isAdminOrHR || !!currentUser?.isSuperAdmin;
+   }, [currentUser]);
+
+   const isAdmin = isHRManagerial; // Alias for backward compatibility in components
 
    useEffect(() => {
-      // Refund to dashboard if on forbidden tab for totally unauthorized roles (if any)
-      // Now most roles can see most tabs but with filtered data
-      /* 
-      if (!canViewSensitiveInfo && ['people', 'matrix', 'payroll', 'performance'].includes(activeTab)) {
+      // If NOT HR Managerial, restrict available tabs to personal views
+      if (!isHRManagerial && ['dashboard', 'people', 'matrix'].includes(activeTab)) {
          setActiveTab('leave');
-      } 
-      */
-   }, [canViewSensitiveInfo, canViewPayroll, activeTab]);
+      }
+   }, [isHRManagerial, activeTab]);
 
    useEffect(() => {
       if (activeTab === 'payroll') {
@@ -661,11 +663,11 @@ export const HR = () => {
                </div>
                <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0 self-start xl:self-auto">
                   {[
-                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: isAdmin },
-                     { id: 'people', label: 'People', icon: Users, visible: isAdmin }, // Hide People list for non-managers
+                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: isHRManagerial },
+                     { id: 'people', label: 'People', icon: Users, visible: isHRManagerial },
                      { id: 'leave', label: 'Absence Node', icon: Plane, visible: true },
-                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: true }, // Visible to all, filtered data
-                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: isAdmin },
+                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: true }, // Filtered for self if not managerial
+                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: isHRManagerial },
                      { id: 'performance', label: 'Performance', icon: Sparkles, visible: true }
                   ].filter(t => t.visible).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 md:px-8 py-3 rounded-[1.2rem] md:rounded-[1.5rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-2xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
