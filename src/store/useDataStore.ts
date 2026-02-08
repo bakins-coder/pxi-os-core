@@ -244,8 +244,11 @@ export const useDataStore = create<DataState>()(
                 if (uploadedMedia) {
                     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
                     const { bucket, path } = uploadedMedia;
-                    dbPayload.image_url = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+                    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+                    dbPayload.image = publicUrl;
+                    dbPayload.image_url = publicUrl;
                 } else if (item.image && item.image.startsWith('http')) {
+                    dbPayload.image = item.image;
                     dbPayload.image_url = item.image;
                 }
 
@@ -2425,8 +2428,9 @@ export const useDataStore = create<DataState>()(
 
                             // Fallback for missing image
                             // Check for validity of image string (basic check)
-                            let img = item.imageUrl || item.image || item.image_url;
-                            if (!img || (typeof img === 'string' && img.length < 5)) {
+                            let img = item.image || item.imageUrl || item.image_url;
+                            const isInvalid = !img || (typeof img === 'string' && (img.length < 5 || img === 'null' || img === 'undefined'));
+                            if (isInvalid) {
                                 img = 'https://placehold.co/100x100?text=No+Image';
                             }
 
@@ -2473,9 +2477,8 @@ export const useDataStore = create<DataState>()(
                                 name: item.name,
                                 type: 'product',
                                 category: cat ? cat.name : (item.category || 'Finished Goods'),
-                                stockQuantity: item.stockQuantity || 100000,
                                 priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
-                                image: item.imageUrl || item.image || item.image_url,
+                                image: item.image || item.imageUrl || item.image_url,
                                 recipeId: item.recipeId || item.recipe_id  // Map recipe_id for BOQ
                             };
                         }));

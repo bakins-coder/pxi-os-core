@@ -136,10 +136,10 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     }, [selected, customItems]);
 
     const isPortionLocked = useMemo(() => {
-        // Relaxed Logic: Check if TOTAL portions from ANY category meet the guest count
-        // This allows users to create Dessert-only or Starter-only events.
+        // [FLEXIBILITY UPDATE]: Relaxed Logic
+        // The user wants to submit even if incomplete. 
+        // We will keep the 'locked' state for UI cues but NOT block submission.
         const totalPortions = Object.values(categoryTotals).reduce((sum, count) => sum + count, 0);
-
         return totalPortions >= guestCount;
     }, [categoryTotals, guestCount]);
 
@@ -592,8 +592,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                         disabled={!hasSelection || isSubmitting || !customerName}
                         className={`flex-1 px-4 py-2.5 md:py-4 rounded-lg md:rounded-xl font-black uppercase text-[9px] md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-1.5 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                     >
-                        {isSubmitting ? <RefreshCw className="animate-spin" size={12} /> : <ArrowRight size={12} />}
-                        {isPortionLocked ? 'Finalize Order' : 'Force Finalize'}
+                        {isSubmitting ? <RefreshCw className="animate-spin" size={14} /> : <ArrowRight size={14} />}
+                        Finalize Order {!isPortionLocked && '(Unequal Qty)'}
                     </button>
                 </div>
             </div>

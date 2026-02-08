@@ -63,7 +63,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   const sanitizedData = data.filter(item => {
     // STRICT FILTER: reusable_items should ONLY contain assets
     if (tableName === 'reusable_items') {
-      return item.type === 'asset' || item.isAsset === true || item.is_asset === true;
+      return item.type === 'asset' || item.type === 'reusable' || item.isAsset === true || item.is_asset === true;
     }
     return true;
   }).map(item => {
@@ -138,6 +138,9 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('assigneeId' in newItem) { newItem.assignee_id = newItem.assigneeId; delete newItem.assigneeId; }
     if ('assigneeRole' in newItem) { newItem.assignee_role = newItem.assigneeRole; delete newItem.assigneeRole; }
     if ('createdDate' in newItem) { newItem.created_at = newItem.createdDate; delete newItem.createdDate; }
+    if ('createdAt' in newItem) { newItem.created_at = newItem.createdAt; delete newItem.createdAt; }
+    if ('readAt' in newItem) { newItem.read_at = newItem.readAt; delete newItem.readAt; }
+    if ('organizationId' in newItem) { newItem.organization_id = newItem.organizationId; delete newItem.organizationId; }
 
     // Contact/General Mappings
     if ('sentimentScore' in newItem) { newItem.sentiment_score = newItem.sentimentScore; delete newItem.sentimentScore; }
@@ -185,9 +188,15 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('image' in newItem) {
       // If it is NOT a URL (e.g. base64), remove it so we don't spam the DB text column.
       // If it IS a URL, leave it alone as 'image' because the DB expects 'image'.
-      if (!newItem.image || typeof newItem.image !== 'string' || !newItem.image.startsWith('http')) {
+      if (!newItem.image || typeof newItem.image !== 'string' || (!newItem.image.startsWith('http') && !newItem.image.startsWith('https'))) {
         delete newItem.image;
       }
+    }
+    // Also check image_url if present
+    if ('image_url' in newItem && typeof newItem.image_url === 'string' && (newItem.image_url.startsWith('http') || newItem.image_url.startsWith('https'))) {
+      // Keep it
+    } else if ('image_url' in newItem) {
+      delete newItem.image_url;
     }
 
     return newItem;
@@ -319,9 +328,21 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('costing_sheet' in newItem) { newItem.costingSheet = newItem.costing_sheet; delete newItem.costing_sheet; }
     if ('portion_monitor' in newItem) { newItem.portionMonitor = newItem.portion_monitor; delete newItem.portion_monitor; }
 
-    // Image Mapping (General)
-    if ('image_url' in newItem) { newItem.imageUrl = newItem.image_url; delete newItem.image_url; }
-    if ('primary_image_url' in newItem) { newItem.primaryImageUrl = newItem.primary_image_url; delete newItem.primary_image_url; }
+    // Image Mapping (General) - Additive, not destructive
+    if ('image_url' in newItem) {
+      if (newItem.image_url) {
+        newItem.imageUrl = newItem.image_url;
+        if (!newItem.image) newItem.image = newItem.image_url;
+      }
+      delete newItem.image_url;
+    }
+    if ('primary_image_url' in newItem) {
+      if (newItem.primary_image_url) {
+        newItem.primaryImageUrl = newItem.primary_image_url;
+        if (!newItem.image) newItem.image = newItem.primary_image_url;
+      }
+      delete newItem.primary_image_url;
+    }
     // Fallback for stock_level if stock_quantity is missing (common schema variance)
     if (!('stockQuantity' in newItem) && 'stock_level' in newItem) {
       newItem.stockQuantity = newItem.stock_level;
