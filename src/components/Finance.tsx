@@ -481,7 +481,7 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
    const [qty, setQty] = useState(requisition?.quantity || 0);
    const [price, setPrice] = useState(requisition?.pricePerUnitCents ? requisition.pricePerUnitCents / 100 : 0);
    const [isMaximized, setIsMaximized] = useState(false);
-   const { updateRequisition, approveRequisition } = useDataStore();
+   const { updateRequisition, approveRequisition, rejectRequisition } = useDataStore();
 
    useEffect(() => {
       if (requisition) {
@@ -490,7 +490,19 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
       }
    }, [requisition]);
 
+   const currentUser = useAuthStore(state => state.user);
    if (!isOpen || !requisition) return null;
+
+   const canApprove = [Role.SUPER_ADMIN, Role.ADMIN, Role.CEO, Role.FINANCE, Role.FINANCE_OFFICER].includes(currentUser?.role as any);
+
+   const handleReject = () => {
+      if (!canApprove) {
+         alert("Executive or Finance Authorization Required for Rejection");
+         return;
+      }
+      rejectRequisition(requisition.id);
+      onClose();
+   };
 
    const handleSave = () => {
       const totalAmountCents = Math.round(qty * price * 100);
@@ -503,6 +515,10 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
    };
 
    const handleApprove = () => {
+      if (!canApprove) {
+         alert("Executive or Finance Authorization Required for Approval");
+         return;
+      }
       const totalAmountCents = Math.round(qty * price * 100);
       updateRequisition(requisition.id, {
          quantity: qty,
@@ -554,8 +570,24 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
                </div>
             </div>
             <div className="p-8 bg-slate-50 flex gap-4">
+               {canApprove && (
+                  <button
+                     onClick={handleReject}
+                     className="flex-1 py-4 bg-rose-50 text-rose-600 border border-rose-100 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition-all"
+                  >
+                     Deny Request
+                  </button>
+               )}
                <button onClick={handleSave} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-500 hover:bg-slate-100 rounded-2xl transition-all">Save Changes</button>
-               <button onClick={handleApprove} className="flex-2 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-200 hover:scale-105 active:scale-95 transition-all">Approve & Log</button>
+               {canApprove && (
+                  <button
+                     data-testid="modal-approve-btn"
+                     onClick={handleApprove}
+                     className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-200 hover:scale-105 active:scale-95 transition-all"
+                  >
+                     Approve & Log
+                  </button>
+               )}
             </div>
          </div>
       </div>
@@ -595,17 +627,17 @@ export const Finance = () => {
    const brandColor = org.brandColor || '#ff6b6b';
 
    // RBAC Check
-   const isSuperAdmin = currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.ADMIN || currentUser?.role === Role.FINANCE; // 'Finance' might be the catch-all for CFO in some contexts, but sticking to specific RBAC
-   const isManager = currentUser?.role === Role.MANAGER || currentUser?.role === Role.FINANCE || currentUser?.role === Role.HR_MANAGER; // Assuming 'FINANCE' is high level. If Role.FINANCE is the 'CFO', then great.
+   const isSuperAdmin = [Role.SUPER_ADMIN, Role.ADMIN, Role.CEO, Role.CHAIRMAN, Role.FINANCE].includes(currentUser?.role as any);
+   const isFinanceAuthorized = [Role.FINANCE, Role.FINANCE_OFFICER, Role.SUPER_ADMIN, Role.ADMIN, Role.CEO].includes(currentUser?.role as any);
 
    // Let's be precise:
    // CFO/Super Admin: Can see everything.
    // Manager: Can see operational tabs.
    // Officer: Can see basic tabs.
 
-   const canViewStrategic = [Role.SUPER_ADMIN, Role.ADMIN, Role.FINANCE].includes(currentUser?.role as any); // Advisor, Watchdog
-   const canViewOperational = [Role.SUPER_ADMIN, Role.ADMIN, Role.FINANCE, Role.MANAGER].includes(currentUser?.role as any); // Reconcile, Ledger
-   const canViewSensitive = [Role.SUPER_ADMIN, Role.ADMIN, Role.FINANCE, Role.HR_MANAGER].includes(currentUser?.role as any);
+   const canViewStrategic = [Role.SUPER_ADMIN, Role.ADMIN, Role.FINANCE, Role.CEO, Role.CHAIRMAN].includes(currentUser?.role as any); // Advisor, Watchdog
+   const canViewOperational = [Role.SUPER_ADMIN, Role.ADMIN, Role.FINANCE, Role.FINANCE_OFFICER, Role.CEO].includes(currentUser?.role as any); // Reconcile, Ledger
+   const canViewSensitive = [Role.SUPER_ADMIN, Role.ADMIN, Role.FINANCE, Role.CEO, Role.HR_MANAGER].includes(currentUser?.role as any);
    const canViewBasic = true; // Collections, Bookkeeping, Requisitions (Visible to all finance staff)
 
    const handleSendReminders = () => {
@@ -680,7 +712,13 @@ export const Finance = () => {
    };
 
    const handleAddBookkeeping = (entry: Partial<BookkeepingEntry>) => addBookkeepingEntry(entry as BookkeepingEntry);
-   const handleApproveReq = (id: string) => approveRequisition(id);
+   const handleApproveReq = (id: string) => {
+      if (!isFinanceAuthorized) {
+         alert("Unauthorized Expenditure Approval Attempt");
+         return;
+      }
+      approveRequisition(id);
+   };
 
    const handleMatch = (lineId: string, accountId: string) => {
       reconcileMatch(lineId, accountId);
@@ -698,7 +736,7 @@ export const Finance = () => {
    const { departmentMatrix } = useDataStore();
 
    const hasPermission = (tag: string) => {
-      if (currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.ADMIN || currentUser?.role === 'Manager' || currentUser?.role === 'CEO' as any) return true;
+      if (currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.ADMIN || currentUser?.role === Role.CEO || currentUser?.role === Role.CHAIRMAN || currentUser?.role === Role.FINANCE) return true;
       const matrixRole = departmentMatrix.flatMap(d => d.roles).find(r => r.title === currentUser?.role);
       if (matrixRole?.permissions?.includes('*')) return true;
       if (matrixRole?.permissions?.includes(tag)) return true;
@@ -818,8 +856,9 @@ export const Finance = () => {
                                        {req.status}
                                     </span>
                                  </div>
-                                 {req.status === 'Pending' && (
+                                 {req.status === 'Pending' && isFinanceAuthorized && (
                                     <button
+                                       data-testid={`approve-btn-${req.id}`}
                                        onClick={(e) => { e.stopPropagation(); handleApproveReq(req.id); }}
                                        className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all"
                                     >

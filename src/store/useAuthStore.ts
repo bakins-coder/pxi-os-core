@@ -164,8 +164,15 @@ export const useAuthStore = create<AuthState>()(
                     companyId: targetOrgId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback to ensure not undefined
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
                     isSuperAdmin: profile?.is_super_admin || (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') || false,
-                    permissionTags
+                    permissionTags,
+                    staffId: email.toLowerCase().startsWith('xq-') ? email.split('@')[0].toUpperCase() : undefined
                 };
+
+                // FIX: Force correct name for MD if recovery script reset it
+                if (email.toLowerCase() === 'toxsyyb@yahoo.co.uk' || email.toLowerCase() === 'toksyyb@yahoo.co.uk') {
+                    user.name = 'Toks B.';
+                    user.staffId = 'SQ-0001';
+                }
 
                 set({ user });
                 console.log('[Auth] Login complete.');
@@ -314,9 +321,18 @@ export const useAuthStore = create<AuthState>()(
                         name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || metadata.name || 'User',
                         avatar: metadata.avatar || '',
                         permissionTags,
-                        isSuperAdmin: profile?.is_super_admin || isKnownAdmin || false
+                        isSuperAdmin: profile?.is_super_admin || isKnownAdmin || false,
+                        staffId: user.email?.toLowerCase().startsWith('xq-') ? user.email.split('@')[0].toUpperCase() : undefined
                     }
                 });
+
+                // FIX: Force correct name for MD if recovery script reset it
+                if (user.email?.toLowerCase() === 'toxsyyb@yahoo.co.uk' || user.email?.toLowerCase() === 'toksyyb@yahoo.co.uk') {
+                    set(state => ({
+                        user: state.user ? { ...state.user, name: 'Toks B.', staffId: 'SQ-0001' } : null
+                    }));
+                }
+
                 return { success: true };
             },
             initializeAuthListener: async () => {

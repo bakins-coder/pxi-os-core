@@ -6,7 +6,7 @@ import {
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, Activity,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
-  Plane, Fuel, Smartphone, Laptop
+  ClipboardList, Plane, Fuel, Smartphone, Laptop
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -89,6 +89,7 @@ const NAV_ITEMS = [
 
   { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
   { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
+  { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
   { label: 'Automation', icon: Bot, path: '/automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
   { label: 'Analytics', icon: Activity, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE] },
   { label: 'Reporting', icon: BarChart2, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES] },
@@ -148,17 +149,32 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
         {NAV_ITEMS.filter(i => {
+          // Simplify View for MD - PRIORITY CHECK
+          const isMD = ['toksyyb@yahoo.co.uk', 'toxsyyb@yahoo.co.uk'].includes(currentUser?.email?.toLowerCase() || '') ||
+            ['SQ-0001', 'XQ-0001'].includes(currentUser?.staffId?.toUpperCase() || '');
+
+          if (isMD) {
+            const hiddenForMD = ['Super Admin', 'IT Console', 'Automation', 'Service Hub'];
+            if (hiddenForMD.includes(i.label)) return false;
+          }
+
           // Strict Administrative Check - ONLY for verified Admins
           if (i.label === 'Super Admin' || i.label === 'IT Console') {
-            const user = useAuthStore.getState().user;
-            const isSuper = !!user?.isSuperAdmin;
-            const isAdmin = user?.role === Role.ADMIN || user?.role === Role.SUPER_ADMIN;
+            // Use currentUser from hook for reactivity
+            const isSuper = !!currentUser?.isSuperAdmin;
+            const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.SUPER_ADMIN;
 
             if (i.label === 'Super Admin') return isSuper;
             if (i.label === 'IT Console') return isSuper || isAdmin;
           }
 
           if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
+
+          if (i.label === 'Requisitions') {
+            const isSuper = !!currentUser?.isSuperAdmin || currentUser?.role === Role.SUPER_ADMIN;
+            // MD check reused from above
+            if (!isMD && !isSuper) return false;
+          }
 
           if (i.allowedIndustries) {
             const industryMatch = i.allowedIndustries.includes(settings.type as any);

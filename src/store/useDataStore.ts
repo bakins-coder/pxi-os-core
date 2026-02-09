@@ -56,6 +56,7 @@ interface DataState {
     addRequisition: (req: Partial<Requisition>) => void;
     updateRequisition: (id: string, updates: Partial<Requisition>) => void;
     approveRequisition: (id: string) => void;
+    rejectRequisition: (id: string) => void;
     receiveFoodStock: (ingId: string, qty: number, cost: number) => void;
     issueRental: (eventId: string, itemId: string, qty: number, vendor?: string) => void;
     returnRental: (id: string, status: any, notes?: string) => void;
@@ -111,6 +112,7 @@ interface DataState {
     calculateItemCosting: (id: string, qty: number) => any;
     finalizeProforma: (invoiceId: string) => Promise<void>;
     updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[]) => Promise<void>;
+    updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -196,7 +198,7 @@ export const useDataStore = create<DataState>()(
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
                 const userId = user?.id || 'sys';
 
-                const newItemId = item.id || `item-${Date.now()}`;
+                const newItemId = item.id || crypto.randomUUID();
 
                 // Optimistic Local Update
                 const newItem = { ...item, id: newItemId, companyId: companyId };
@@ -419,7 +421,7 @@ export const useDataStore = create<DataState>()(
             addRequisition: (req) => {
                 const user = useAuthStore.getState().user;
                 set((state) => ({
-                    requisitions: [{ ...req, id: req.id || `req-${Date.now()}`, companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
+                    requisitions: [{ ...req, id: req.id || crypto.randomUUID(), companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
                 }));
                 get().syncWithCloud();
             },
@@ -432,6 +434,12 @@ export const useDataStore = create<DataState>()(
             approveRequisition: (id) => {
                 set((state) => ({
                     requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
+                }));
+                get().syncWithCloud();
+            },
+            rejectRequisition: (id) => {
+                set((state) => ({
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Rejected' } : r)
                 }));
                 get().syncWithCloud();
             },
@@ -542,8 +550,8 @@ export const useDataStore = create<DataState>()(
                     if (!item || !event) return state;
 
                     const newRental: RentalRecord = {
-                        id: `rent-${Date.now()}`,
-                        requisitionId: `req-rent-${Date.now()}`,
+                        id: crypto.randomUUID(),
+                        requisitionId: crypto.randomUUID(),
                         eventId,
                         itemName: item.name,
                         quantity: qty,
@@ -673,7 +681,7 @@ export const useDataStore = create<DataState>()(
 
                 // Create agentic logs for overdue items
                 const newLogs = overdueRentals.map(r => ({
-                    id: `log-${Date.now()}-${r.id}`,
+                    id: crypto.randomUUID(),
                     timestamp: new Date().toISOString(),
                     agentName: 'Asset Guardian',
                     action: 'Overdue Alert',
@@ -693,7 +701,7 @@ export const useDataStore = create<DataState>()(
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
-                const contactId = contact.id || `con-${Date.now()}`;
+                const contactId = contact.id || crypto.randomUUID();
 
                 // Optimistic Local Update
                 const newContact = {
@@ -773,7 +781,7 @@ export const useDataStore = create<DataState>()(
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
                 const userId = user?.id || 'sys';
 
-                const logId = log.id || `log-${Date.now()}`;
+                const logId = log.id || crypto.randomUUID();
                 const newLog = {
                     ...log,
                     id: logId,
@@ -806,7 +814,7 @@ export const useDataStore = create<DataState>()(
                 }
             },
             addContactsBulk: (contacts) => set((state) => ({
-                contacts: [...contacts.map(c => ({ ...c, id: c.id || `c-${Math.random()}`, companyId: c.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' }) as Contact), ...state.contacts]
+                contacts: [...contacts.map(c => ({ ...c, id: c.id || crypto.randomUUID(), companyId: c.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' }) as Contact), ...state.contacts]
             })),
             deleteContact: (id) => set((state) => ({
                 contacts: state.contacts.filter(c => c.id !== id)
@@ -873,7 +881,7 @@ export const useDataStore = create<DataState>()(
                 );
 
                 const newEntry: BookkeepingEntry = {
-                    id: `bk-${Date.now()}`,
+                    id: crypto.randomUUID(),
                     date: new Date().toISOString().split('T')[0],
                     type: 'Inflow',
                     category: 'Sales',
@@ -964,7 +972,7 @@ export const useDataStore = create<DataState>()(
                 const companyId = user?.companyId || (req as any).companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
                 // Optimistic Update
-                const tempId = req.id || `lv-${Date.now()}`;
+                const tempId = req.id || crypto.randomUUID();
                 const newReq = { ...req, id: tempId, status: 'Pending', appliedDate: new Date().toISOString().split('T')[0] } as LeaveRequest;
                 set((state) => ({ leaveRequests: [newReq, ...state.leaveRequests] }));
 
@@ -1338,7 +1346,7 @@ export const useDataStore = create<DataState>()(
             addAgenticLog: (log) => {
                 const newLog = {
                     ...log,
-                    id: log.id || `log-${Date.now()}`,
+                    id: log.id || crypto.randomUUID(),
                     timestamp: log.timestamp || new Date().toISOString()
                 } as AgenticLog;
                 set((state) => ({ agenticLogs: [newLog, ...state.agenticLogs] }));
@@ -1945,10 +1953,10 @@ export const useDataStore = create<DataState>()(
                     id: invoiceId,
                     number: `SALES-${Date.now()}`,
                     companyId: companyId,
-                    contactId: d.contactId,
+                    contactId: validContactId,
                     date: new Date().toISOString().split('T')[0],
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
-                    status: InvoiceStatus.UNPAID,
+                    status: InvoiceStatus.PROFORMA,
                     type: 'Sales',
                     // Use totalRev for tests (no taxes). Check for VITEST flag or the specific verification customer.
                     totalCents: ((globalThis as any).VITEST || (globalThis as any).vitest || (globalThis as any).describe || import.meta.env.MODE === 'test' || d.customerName === 'Verification Host')
@@ -2050,7 +2058,7 @@ export const useDataStore = create<DataState>()(
                     id: crypto.randomUUID(),
                     companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                     name: `Event: ${d.customerName} (${d.eventDate})`,
-                    clientContactId: d.contactId || '',
+                    clientContactId: validContactId,
                     status: 'Planning',
                     startDate: d.eventDate,
                     endDate: oneDayAfter.toISOString().split('T')[0],
@@ -2108,7 +2116,7 @@ export const useDataStore = create<DataState>()(
                                     serviceChargeCents: Math.round(totalRev * 0.15),
                                     vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
                                     lines: updates.items.map((it: any, idx: number) => ({
-                                        id: `line-${idx}`,
+                                        id: crypto.randomUUID(),
                                         description: it.name,
                                         quantity: it.quantity,
                                         unitPriceCents: it.priceCents
@@ -2137,7 +2145,7 @@ export const useDataStore = create<DataState>()(
                 const user = useAuthStore.getState().user;
                 const totalSpend = reqs.reduce((sum: number, r: Partial<Requisition>) => sum + (r.totalAmountCents || 0), 0 as number);
                 const invoice: Invoice = {
-                    id: `pinv-${Date.now()}`,
+                    id: crypto.randomUUID(),
                     number: `PURCH-${Date.now()}`,
                     companyId: user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback only if no user (shouldn't happen)
                     date: new Date().toISOString().split('T')[0],
@@ -2147,7 +2155,7 @@ export const useDataStore = create<DataState>()(
                     totalCents: totalSpend,
                     paidAmountCents: 0,
                     lines: reqs.map((r, idx) => ({
-                        id: `pline-${idx}`,
+                        id: crypto.randomUUID(),
                         description: `${r.itemName} [${r.category}]`,
                         quantity: r.quantity || 1,
                         unitPriceCents: r.pricePerUnitCents || 0
@@ -2163,8 +2171,21 @@ export const useDataStore = create<DataState>()(
             },
 
             deductStockFromCooking: async (eventId) => {
-                // 1. Optimistic Update (Stock Only)
-                // TODO: Update local inventory state?
+                // 1. Mark production as confirmed
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map(e => {
+                        if (e.id === eventId) {
+                            return {
+                                ...e,
+                                banquetDetails: {
+                                    ...(e.banquetDetails || {}),
+                                    productionConfirmed: true
+                                }
+                            };
+                        }
+                        return e;
+                    })
+                }));
 
                 if (supabase) {
                     try {
@@ -2199,7 +2220,7 @@ export const useDataStore = create<DataState>()(
 
             addRecipe: (recipe) => {
                 set((state) => ({
-                    recipes: [{ id: `rec-${Date.now()}`, name: '', category: '', portions: [], ingredients: [], ...recipe } as Recipe, ...state.recipes]
+                    recipes: [{ id: crypto.randomUUID(), name: '', category: '', portions: [], ingredients: [], ...recipe } as Recipe, ...state.recipes]
                 }));
                 get().syncWithCloud();
             },
@@ -2239,22 +2260,50 @@ export const useDataStore = create<DataState>()(
 
             updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[]) => {
                 set((state) => {
-                    const subtotal = lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
-                    const sc = Math.round(subtotal * 0.15);
-                    const vat = Math.round((subtotal + sc) * 0.075);
-                    const total = subtotal + sc + vat;
+                    // 1. Calculate Standard Totals (If no discounts applied)
+                    const standardSubtotal = lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+                    const standardSC = Math.round(standardSubtotal * 0.15);
+                    const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
+                    const standardTotal = standardSubtotal + standardSC + standardVAT;
+
+                    // 2. Calculate Effective Totals (Using manual prices if set)
+                    const effectiveSubtotal = lines.reduce((acc, l) => {
+                        const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                            ? l.manualPriceCents
+                            : l.unitPriceCents;
+                        return acc + (l.quantity * price);
+                    }, 0);
+
+                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
+                    const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                    const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+
+                    // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost
+                    const discount = Math.max(0, standardTotal - effectiveTotal);
 
                     return {
                         invoices: state.invoices.map(inv => inv.id === invoiceId ? {
                             ...inv,
                             lines,
-                            subtotalCents: subtotal,
-                            serviceChargeCents: sc,
-                            vatCents: vat,
-                            totalCents: total
+                            subtotalCents: effectiveSubtotal,
+                            serviceChargeCents: effectiveSC,
+                            vatCents: effectiveVAT,
+                            standardTotalCents: standardTotal,
+                            discountCents: discount,
+                            totalCents: effectiveTotal,
+                            manualSetPriceCents: undefined // Clear global override if it existed
                         } : inv)
                     };
                 });
+                await get().syncWithCloud();
+            },
+
+            updateInvoicePricing: async (invoiceId: string, setPriceCents: number | undefined) => {
+                console.warn("updateInvoicePricing is deprecated. Use line-item discounts via updateInvoiceLines instead.");
+                // No-op or trigger re-save to clear it
+                set((state) => ({
+                    invoices: state.invoices.map(i => i.id === invoiceId ? { ...i, manualSetPriceCents: undefined } : i)
+                }));
                 await get().syncWithCloud();
             },
 
@@ -2268,9 +2317,12 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
 
-            approveInvoice: (id: string) => set((state) => ({
-                invoices: state.invoices.map(inv => inv.id === id ? { ...inv, status: InvoiceStatus.PAID } : inv)
-            })),
+            approveInvoice: async (id: string) => {
+                set((state) => ({
+                    invoices: state.invoices.map(inv => inv.id === id ? { ...inv, status: InvoiceStatus.PAID } : inv)
+                }));
+                await get().syncWithCloud();
+            },
 
             syncWithCloud: async () => {
                 if (!supabase) {
@@ -2293,9 +2345,12 @@ export const useDataStore = create<DataState>()(
                 };
 
                 try {
+                    // Critical: Sync Contacts FIRST to ensure FK relationships (Invoices -> Contacts)
+                    await safeSync('contacts', state.contacts);
+
                     await Promise.all([
                         // syncTableToCloud('inventory', state.inventory), // DISABLED
-                        safeSync('contacts', state.contacts),
+                        // safeSync('contacts', state.contacts), // Moved up
                         safeSync('invoices', state.invoices),
                         safeSync('catering_events', state.cateringEvents),
                         safeSync('projects', state.projects),

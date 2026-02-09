@@ -125,6 +125,12 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('paidAmountCents' in newItem) { newItem.paid_amount_cents = newItem.paidAmountCents; delete newItem.paidAmountCents; }
     if ('unitPriceCents' in newItem) { newItem.unit_price_cents = newItem.unitPriceCents; delete newItem.unitPriceCents; }
     if ('dueDate' in newItem) { newItem.due_date = newItem.dueDate; delete newItem.dueDate; }
+    if ('subtotalCents' in newItem) { newItem.subtotal_cents = newItem.subtotalCents; delete newItem.subtotalCents; }
+    if ('serviceChargeCents' in newItem) { newItem.service_charge_cents = newItem.serviceChargeCents; delete newItem.serviceChargeCents; }
+    if ('vatCents' in newItem) { newItem.vat_cents = newItem.vatCents; delete newItem.vatCents; }
+    if ('manualSetPriceCents' in newItem) { newItem.manual_set_price_cents = newItem.manualSetPriceCents; delete newItem.manualSetPriceCents; }
+    if ('discountCents' in newItem) { newItem.discount_cents = newItem.discountCents; delete newItem.discountCents; }
+    if ('standardTotalCents' in newItem) { newItem.standard_total_cents = newItem.standardTotalCents; delete newItem.standardTotalCents; }
 
     // Project Mappings
     if ('budgetCents' in newItem) { newItem.budget_cents = newItem.budgetCents; delete newItem.budgetCents; }
@@ -141,6 +147,15 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('createdAt' in newItem) { newItem.created_at = newItem.createdAt; delete newItem.createdAt; }
     if ('readAt' in newItem) { newItem.read_at = newItem.readAt; delete newItem.readAt; }
     if ('organizationId' in newItem) { newItem.organization_id = newItem.organizationId; delete newItem.organizationId; }
+    if ('readinessScore' in newItem) { newItem.readiness_score = newItem.readinessScore; delete newItem.readinessScore; }
+
+    // Requisition Mappings
+    if ('itemName' in newItem) { newItem.item_name = newItem.itemName; delete newItem.itemName; }
+    if ('ingredientId' in newItem) { newItem.ingredient_id = newItem.ingredientId; delete newItem.ingredientId; }
+    if ('pricePerUnitCents' in newItem) { newItem.price_per_unit_cents = newItem.pricePerUnitCents; delete newItem.pricePerUnitCents; }
+    if ('totalAmountCents' in newItem) { newItem.total_amount_cents = newItem.totalAmountCents; delete newItem.totalAmountCents; }
+    if ('requestorId' in newItem) { newItem.requestor_id = newItem.requestorId; delete newItem.requestorId; }
+    if ('referenceId' in newItem) { newItem.reference_id = newItem.referenceId; delete newItem.referenceId; }
 
     // Contact/General Mappings
     if ('sentimentScore' in newItem) { newItem.sentiment_score = newItem.sentimentScore; delete newItem.sentimentScore; }
@@ -176,6 +191,26 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
       // ALWAYS delete the camelCase versions to prevent DB errors
       delete (newItem as any).firstName;
       delete (newItem as any).lastName;
+    }
+
+    // Fix: DB does not have contact_person or contactPerson column
+    if (tableName === 'contacts') {
+      // Strip fields that are in types.ts but not in DB schema
+      const fieldsToRemove = [
+        'contactPerson',
+        'preferences',
+        'documentLinks',
+        'document_links',
+        'industry',
+        'jobTitle',
+        'registrationNumber',
+        'sentiment_score',
+        'sentimentScore'
+      ];
+
+      fieldsToRemove.forEach(field => {
+        if (field in newItem) delete (newItem as any)[field];
+      });
     }
 
     // Catering Event Mappings
@@ -322,6 +357,20 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
     if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }
     if ('unit_price_cents' in newItem) { newItem.unitPriceCents = newItem.unit_price_cents; delete newItem.unit_price_cents; }
+    if ('subtotal_cents' in newItem) { newItem.subtotalCents = newItem.subtotal_cents; delete newItem.subtotal_cents; }
+    if ('service_charge_cents' in newItem) { newItem.serviceChargeCents = newItem.service_charge_cents; delete newItem.service_charge_cents; }
+    if ('vat_cents' in newItem) { newItem.vatCents = newItem.vat_cents; delete newItem.vat_cents; }
+    if ('manual_set_price_cents' in newItem) { newItem.manualSetPriceCents = newItem.manual_set_price_cents; delete newItem.manual_set_price_cents; }
+    if ('discount_cents' in newItem) { newItem.discountCents = newItem.discount_cents; delete newItem.discount_cents; }
+    if ('standard_total_cents' in newItem) { newItem.standardTotalCents = newItem.standard_total_cents; delete newItem.standard_total_cents; }
+
+    // Requisition Mappings (Pull)
+    if ('item_name' in newItem) { newItem.itemName = newItem.item_name; delete newItem.item_name; }
+    if ('ingredient_id' in newItem) { newItem.ingredientId = newItem.ingredient_id; delete newItem.ingredient_id; }
+    if ('price_per_unit_cents' in newItem) { newItem.pricePerUnitCents = newItem.price_per_unit_cents; delete newItem.price_per_unit_cents; }
+    if ('total_amount_cents' in newItem) { newItem.totalAmountCents = newItem.total_amount_cents; delete newItem.total_amount_cents; }
+    if ('requestor_id' in newItem) { newItem.requestorId = newItem.requestor_id; delete newItem.requestor_id; }
+    if ('reference_id' in newItem) { newItem.referenceId = newItem.reference_id; delete newItem.reference_id; }
 
     // Catering Event Mappings
     if ('customer_name' in newItem) { newItem.customerName = newItem.customer_name; delete newItem.customer_name; }

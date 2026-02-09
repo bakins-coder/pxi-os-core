@@ -380,10 +380,12 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
    const contacts = useDataStore(state => state.contacts);
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
    const updateInvoiceLines = useDataStore(state => state.updateInvoiceLines);
+   const updateInvoicePricing = useDataStore(state => state.updateInvoicePricing);
    const contact = contacts.find(c => c.id === invoice.contactId);
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
+
    const [isFinalizing, setIsFinalizing] = useState(false);
 
    // Helper for currency formatting
@@ -410,6 +412,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
       setIsFinalizing(true);
       try {
          await updateInvoiceLines(invoice.id, editableLines);
+         // Deprecated: await updateInvoicePricing(invoice.id, localSetPrice);
          await finalizeProforma(invoice.id);
          onSave({ ...invoice, lines: editableLines, status: InvoiceStatus.UNPAID });
       } catch (err) {
@@ -422,9 +425,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
    const handleSaveEdits = async () => {
       try {
          await updateInvoiceLines(invoice.id, editableLines);
-         // Just update the lines locally for display without closing if we want, 
-         // but usually we update store and then maybe notify. 
-         // For now, let's just keep it in state.
+         // Update storage and notify parent if needed, but for now we just persist to cloud
       } catch (err) {
          console.error("Failed to save edits", err);
       }
@@ -491,10 +492,11 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className="grid grid-cols-[3fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
+                  <div className="grid grid-cols-[3fr_1fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
-                     <span className="text-[10px] font-black text-slate-400 uppercase text-right">PRICE</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-right text-orange-500">DISCOUNT PRICE</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">AMOUNT</span>
                   </div>
 
@@ -503,7 +505,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
                         editableLines.map((line, idx) => (
-                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr] items-start text-sm group relative">
+                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr_1fr] items-start text-sm group relative">
                               {isProformaMode ? (
                                  <>
                                     <div className="flex items-center gap-2 pr-4">
@@ -526,14 +528,29 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                        onFocus={e => e.target.select()}
                                        onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
                                     />
+                                    {/* Standard Unit Price */}
                                     <div className="flex items-center bg-slate-50 rounded px-2 py-1 ml-auto">
                                        <span className="text-[10px] text-slate-400 mr-1">₦</span>
                                        <input
                                           type="number"
-                                          className="w-20 bg-transparent border-none focus:ring-0 p-0 text-slate-600 text-right"
+                                          className={`w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
                                           value={line.unitPriceCents / 100}
                                           onFocus={e => e.target.select()}
                                           onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                       />
+                                    </div>
+                                    {/* Discounted Price (Manual) */}
+                                    <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
+                                       <span className="text-[10px] text-orange-300 mr-1">₦</span>
+                                       <input
+                                          type="number"
+                                          className="w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
+                                          placeholder="-"
+                                          value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
+                                          onChange={e => {
+                                             const val = parseFloat(e.target.value);
+                                             handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
+                                          }}
                                        />
                                     </div>
                                  </>
@@ -541,10 +558,19 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                  <>
                                     <span className="text-slate-800 font-medium pr-4">{line.description}</span>
                                     <span className="text-slate-600 text-center">{line.quantity}</span>
-                                    <span className="text-slate-600 text-right">{formatCurrency(line.unitPriceCents)}</span>
+                                    {/* Unit Price Display */}
+                                    <span className={`text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
+                                       {formatCurrency(line.unitPriceCents)}
+                                    </span>
+                                    {/* Discount Price Display */}
+                                    <span className="text-right font-bold text-orange-600">
+                                       {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
+                                    </span>
                                  </>
                               )}
-                              <span className="text-slate-900 font-bold text-right">{formatCurrency(line.quantity * line.unitPriceCents)}</span>
+                              <span className="text-slate-900 font-bold text-right">
+                                 {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                              </span>
                            </div>
                         ))
                      )}
@@ -626,31 +652,69 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                      {/* Right Side: Totals */}
                      <div className="w-full md:w-1/3 space-y-2">
                         {(() => {
-                           const calculatedSubtotal = editableLines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
-                           const displaySC = Math.round(calculatedSubtotal * 0.15);
-                           const displayVAT = Math.round((calculatedSubtotal + displaySC) * 0.075);
-                           const displayTotal = calculatedSubtotal + displaySC + displayVAT;
+                           // 1. Calculate Standard Totals
+                           const standardSubtotal = editableLines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+                           const standardSC = Math.round(standardSubtotal * 0.15);
+                           const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
+                           const standardTotal = standardSubtotal + standardSC + standardVAT;
+
+                           // 2. Calculate Effective Totals (Using Manual Prices)
+                           const effectiveSubtotal = editableLines.reduce((acc, l) => {
+                              const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                                 ? l.manualPriceCents
+                                 : l.unitPriceCents;
+                              return acc + (l.quantity * price);
+                           }, 0);
+
+                           const effectiveSC = Math.round(effectiveSubtotal * 0.15);
+                           const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                           const finalTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+
+                           const discount = Math.max(0, standardTotal - finalTotal);
+                           const discountPercent = standardTotal > 0 ? (discount / standardTotal) * 100 : 0;
+                           const hasDiscount = discount > 0;
 
                            return (
                               <>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
-                                    <span>{formatCurrency(calculatedSubtotal)}</span>
+                                    <span>{formatCurrency(effectiveSubtotal)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge (15%)</span>
-                                    <span>{formatCurrency(displaySC)}</span>
+                                    <span>{formatCurrency(effectiveSC)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">VAT (7.5%)</span>
-                                    <span>{formatCurrency(displayVAT)}</span>
+                                    <span>{formatCurrency(effectiveVAT)}</span>
                                  </div>
+
                                  <div className="h-px bg-slate-200 my-2"></div>
-                                 <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</p>
+
+                                 {/* Discount Display */}
+                                 {hasDiscount && (
+                                    <>
+                                       <div className="flex justify-between items-center text-sm font-medium text-slate-400">
+                                          <span className="uppercase tracking-widest text-[10px] font-bold">Standard Total</span>
+                                          <span className="line-through decoration-slate-300">{formatCurrency(standardTotal)}</span>
+                                       </div>
+                                       <div className="flex justify-between items-center text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded my-1">
+                                          <span className="uppercase tracking-widest text-[10px] font-bold">Total Discount ({discountPercent.toFixed(1)}%)</span>
+                                          <span>-{formatCurrency(discount)}</span>
+                                       </div>
+                                    </>
+                                 )}
+
+                                 <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100 mt-2">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount Due</p>
                                     <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-slate-900'}`}>
-                                       {formatCurrency(displayTotal)}
+                                       {formatCurrency(finalTotal)}
                                     </p>
+                                    {hasDiscount && (
+                                       <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">
+                                          You Save {formatCurrency(discount)}
+                                       </p>
+                                    )}
                                  </div>
                               </>
                            );
@@ -1182,9 +1246,15 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                      <button onClick={() => setShowMonitor(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
                         <Activity size={18} /> Launch Live Monitor
                      </button>
-                     <button onClick={handleCook} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
-                        <Flame size={18} /> Confirm Kitchen Production
-                     </button>
+                     {event.banquetDetails?.productionConfirmed ? (
+                        <div className="bg-orange-50 text-orange-600 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-orange-100 flex items-center gap-3">
+                           <Flame size={18} className="animate-pulse" /> Kitchen In Production
+                        </div>
+                     ) : (
+                        <button onClick={handleCook} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                           <Flame size={18} /> Confirm Kitchen Production
+                        </button>
+                     )}
                   </>
                )}
                {(event.currentPhase === 'PostEvent' || event.status === 'Completed' || event.status === 'Archived') && (
@@ -1300,7 +1370,7 @@ export const Catering = () => {
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
 
    const cateringEvents = useDataStore(state => state.cateringEvents);
-   const approveInvoice = useDataStore(state => state.approveInvoice);
+   const finalizeProforma = useDataStore(state => state.finalizeProforma);
 
    const filteredEvents = useMemo(() => {
       if (viewMode === 'active') {
@@ -1331,8 +1401,9 @@ export const Catering = () => {
    };
 
    const handleCommitInvoice = (inv: Invoice) => {
-      approveInvoice(inv.id);
+      finalizeProforma(inv.id);
       setGeneratedInvoice(null);
+      setViewingInvoice(inv);
       // Auto-select the newest event if none is currently viewed
       if (!selectedEvent && cateringEvents.length > 0) {
          setSelectedEvent(cateringEvents[0]);

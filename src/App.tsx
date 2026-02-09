@@ -27,6 +27,7 @@ import { ITPortal } from './components/ITPortal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PortionMonitor } from './components/PortionMonitor';
 import { PublicBrochure } from './components/PublicBrochure';
+import { RequisitionsHub } from './components/RequisitionsHub';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -231,6 +232,7 @@ function AppContent() {
         <Route path="/portion-monitor" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.SUPERVISOR]}><PortionMonitor /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute user={user} requiredPermission="access:finance" allowedRoles={[Role.ADMIN, Role.FINANCE, Role.MANAGER]}><Finance /></ProtectedRoute>} />
         <Route path="/hr" element={<ProtectedRoute user={user} requiredPermission="access:hr" allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><HR /></ProtectedRoute>} />
+        <Route path="/requisitions" element={<ProtectedRoute user={user} allowedRoles={[Role.SUPER_ADMIN, Role.CEO, Role.ADMIN]}><RequisitionsHub /></ProtectedRoute>} />
         <Route path="/automation" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER]}><Automation /></ProtectedRoute>} />
         <Route path="/contact-center" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.AGENT, Role.SUPERVISOR]}><Agent /></ProtectedRoute>} />
         <Route path="/team" element={<TeamCommunication />} />

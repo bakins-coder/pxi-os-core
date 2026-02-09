@@ -88,7 +88,9 @@ export const InvoicePrototype = () => {
     const orgAddress = settings.address || '';
     const orgPhone = settings.contactPhone;
     const orgTin = settings.firs_tin;
-    const logo = settings.logo; // In real app, might want a default logo fallback
+    const orgLogo = settings.logo || "/xquisite-logo.png";
+    const activeBrandColor = settings.brandColor || BRAND_COLOR;
+
     // Use bank settings if available, otherwise fallback (or hide)
     const bankName = settings.bankInfo?.bankName;
     const accName = settings.bankInfo?.accountName;
@@ -124,7 +126,7 @@ export const InvoicePrototype = () => {
                     <div className="flex justify-between items-start">
                         {/* Logo / Brand Area */}
                         <div>
-                            <img src="/xquisite-logo.png" alt="Xquisite Celebrations" className="h-24 object-contain mb-2" />
+                            <img src={orgLogo} alt={orgName} className="h-24 object-contain mb-2" />
                         </div>
 
                         {/* Company Address */}
@@ -154,8 +156,10 @@ export const InvoicePrototype = () => {
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <div className="border-2 px-8 py-2 rounded-lg mb-6 transform rotate-[-2deg]" style={{ borderColor: BRAND_COLOR }}>
-                            <h2 className="text-3xl font-serif uppercase tracking-widest" style={{ color: BRAND_COLOR }}>Invoice</h2>
+                        <div className="border-2 px-8 py-2 rounded-lg mb-6 transform rotate-[-2deg]" style={{ borderColor: activeBrandColor }}>
+                            <h2 className="text-3xl font-serif uppercase tracking-widest" style={{ color: activeBrandColor }}>
+                                {invoice.status === InvoiceStatus.PROFORMA ? 'Pro-forma Invoice' : 'Invoice'}
+                            </h2>
                         </div>
 
                         <div className="w-full max-w-xs space-y-2">
@@ -295,11 +299,11 @@ export const InvoicePrototype = () => {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="p-4 text-white text-center print:hidden" style={{ backgroundColor: BRAND_COLOR }}>
+                <div className="p-4 text-white text-center print:hidden" style={{ backgroundColor: activeBrandColor }}>
                     <p className="font-serif italic font-bold text-lg">Bon Apetit. We look forward to serving you again soon.</p>
                 </div>
                 {/* Print-only footer to ensure color bar appears if background graphics enabled */}
-                <div className="hidden print:block p-2 text-white text-center text-xs mt-4 -mx-12 -mb-12" style={{ backgroundColor: BRAND_COLOR }}>
+                <div className="hidden print:block p-2 text-white text-center text-xs mt-4 -mx-12 -mb-12" style={{ backgroundColor: activeBrandColor }}>
                     {orgName}
                 </div>
 

@@ -170,6 +170,7 @@ export interface BanquetDetails {
   themeColor: string;
   eventPlanner: string;
   notes: string;
+  productionConfirmed?: boolean;
 }
 
 export interface DispatchedAsset {
@@ -373,7 +374,7 @@ export interface Contact {
 }
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
 export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; }
-export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId?: string; isSuperAdmin?: boolean; permissionTags?: string[]; }
+export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId?: string; isSuperAdmin?: boolean; permissionTags?: string[]; staffId?: string; }
 export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; }
 
 export interface Requisition {
@@ -386,7 +387,7 @@ export interface Requisition {
   pricePerUnitCents: number;
   totalAmountCents: number;
   requestorId: string;
-  status: 'Pending' | 'Approved' | 'Paid';
+  status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
   referenceId?: string;
   notes?: string;
 }
@@ -452,6 +453,7 @@ export interface InvoiceLine {
   description: string;
   quantity: number;
   unitPriceCents: number;
+  manualPriceCents?: number; // Optional override for line-item discount
 }
 
 export interface Invoice {
@@ -469,6 +471,9 @@ export interface Invoice {
   serviceChargeCents?: number;
   vatCents?: number;
   paidAmountCents: number;
+  manualSetPriceCents?: number;
+  discountCents?: number;
+  standardTotalCents?: number;
 }
 
 export interface InventoryMovement {
