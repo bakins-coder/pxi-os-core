@@ -149,6 +149,10 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('salaryCents' in newItem) { newItem.salary_cents = newItem.salaryCents; delete newItem.salaryCents; }
     if ('healthNotes' in newItem) { newItem.health_notes = newItem.healthNotes; delete newItem.healthNotes; }
     if ('dateOfEmployment' in newItem) { newItem.date_of_employment = newItem.dateOfEmployment; delete newItem.dateOfEmployment; }
+    if ('staffId' in newItem) { newItem.staff_id = newItem.staffId; delete newItem.staffId; }
+    if ('userId' in newItem) { newItem.user_id = newItem.userId; delete (newItem as any).userId; }
+    if ('idCardIssuedDate' in newItem) { newItem.id_card_issued_date = newItem.idCardIssuedDate; delete newItem.idCardIssuedDate; }
+    if ('dob' in newItem) { newItem.dob = newItem.dob; } // Matches, but ensure it's here
 
     // Name Mapping Logic
     if ('firstName' in newItem || 'lastName' in newItem) {
@@ -163,11 +167,15 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
         // Employees use snake_case
         if (newItem.firstName) newItem.first_name = newItem.firstName;
         if (newItem.lastName) newItem.last_name = newItem.lastName;
+
+        // Safety: Ensure ALL possible camelCase are removed for employees
+        const blacklist = ['firstName', 'lastName', 'salaryCents', 'healthNotes', 'dateOfEmployment', 'userId', 'staffId', 'idCardIssuedDate', 'phoneNumber'];
+        blacklist.forEach(key => delete (newItem as any)[key]);
       }
 
       // ALWAYS delete the camelCase versions to prevent DB errors
-      delete newItem.firstName;
-      delete newItem.lastName;
+      delete (newItem as any).firstName;
+      delete (newItem as any).lastName;
     }
 
     // Catering Event Mappings

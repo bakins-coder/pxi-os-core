@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { CateringEvent, InventoryItem, ItemCosting, Invoice, Requisition, Contact, BanquetDetails, InvoiceStatus, DealItem } from '../types';
+import { CateringEvent, InventoryItem, ItemCosting, Invoice, InvoiceLine, Requisition, Contact, BanquetDetails, InvoiceStatus, DealItem } from '../types';
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
@@ -378,10 +378,57 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
    const contacts = useDataStore(state => state.contacts);
+   const finalizeProforma = useDataStore(state => state.finalizeProforma);
+   const updateInvoiceLines = useDataStore(state => state.updateInvoiceLines);
    const contact = contacts.find(c => c.id === invoice.contactId);
+
+   const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
+   const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
+   const [isFinalizing, setIsFinalizing] = useState(false);
 
    // Helper for currency formatting
    const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+
+   const handleLineChange = (idx: number, field: keyof InvoiceLine, value: any) => {
+      const newLines = [...editableLines];
+      newLines[idx] = { ...newLines[idx], [field]: value };
+      setEditableLines(newLines);
+   };
+
+   const addLineItem = () => {
+      setEditableLines([
+         ...editableLines,
+         { id: `line-${Date.now()}`, description: 'New Item', quantity: 1, unitPriceCents: 0 }
+      ]);
+   };
+
+   const removeLineItem = (idx: number) => {
+      setEditableLines(editableLines.filter((_, i) => i !== idx));
+   };
+
+   const handleFinalize = async () => {
+      setIsFinalizing(true);
+      try {
+         await updateInvoiceLines(invoice.id, editableLines);
+         await finalizeProforma(invoice.id);
+         onSave({ ...invoice, lines: editableLines, status: InvoiceStatus.UNPAID });
+      } catch (err) {
+         console.error("Failed to finalize proforma", err);
+      } finally {
+         setIsFinalizing(false);
+      }
+   };
+
+   const handleSaveEdits = async () => {
+      try {
+         await updateInvoiceLines(invoice.id, editableLines);
+         // Just update the lines locally for display without closing if we want, 
+         // but usually we update store and then maybe notify. 
+         // For now, let's just keep it in state.
+      } catch (err) {
+         console.error("Failed to save edits", err);
+      }
+   };
 
    return (
       <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in zoom-in duration-200">
@@ -423,7 +470,9 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                   <div className="flex-[0.8] flex flex-col items-end">
                      {/* Orange Invoice Box */}
                      <div className="border-2 border-orange-400 px-6 py-2 rounded-lg mb-6 transform -rotate-2">
-                        <span className="text-xl md:text-2xl font-black text-orange-500 uppercase tracking-widest text-opacity-80">INVOICE</span>
+                        <span className="text-xl md:text-2xl font-black text-orange-500 uppercase tracking-widest text-opacity-80">
+                           {isProformaMode ? 'PRO-FORMA' : 'INVOICE'}
+                        </span>
                      </div>
 
                      {/* Details Grid */}
@@ -450,17 +499,63 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                   </div>
 
                   <div className="space-y-4">
-                     {(!invoice.lines || invoice.lines.length === 0) ? (
+                     {editableLines.length === 0 ? (
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
-                        invoice.lines.map((line, idx) => (
-                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr] items-start text-sm">
-                              <span className="text-slate-800 font-medium pr-4">{line.description}</span>
-                              <span className="text-slate-600 text-center">{line.quantity}</span>
-                              <span className="text-slate-600 text-right">{formatCurrency(line.unitPriceCents)}</span>
+                        editableLines.map((line, idx) => (
+                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr] items-start text-sm group relative">
+                              {isProformaMode ? (
+                                 <>
+                                    <div className="flex items-center gap-2 pr-4">
+                                       <button
+                                          onClick={() => removeLineItem(idx)}
+                                          className="opacity-0 group-hover:opacity-100 p-1 text-rose-500 hover:bg-rose-50 rounded transition-all"
+                                       >
+                                          <Trash2 size={12} />
+                                       </button>
+                                       <input
+                                          className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium"
+                                          value={line.description}
+                                          onChange={e => handleLineChange(idx, 'description', e.target.value)}
+                                       />
+                                    </div>
+                                    <input
+                                       type="number"
+                                       className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
+                                       value={line.quantity}
+                                       onFocus={e => e.target.select()}
+                                       onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
+                                    />
+                                    <div className="flex items-center bg-slate-50 rounded px-2 py-1 ml-auto">
+                                       <span className="text-[10px] text-slate-400 mr-1">₦</span>
+                                       <input
+                                          type="number"
+                                          className="w-20 bg-transparent border-none focus:ring-0 p-0 text-slate-600 text-right"
+                                          value={line.unitPriceCents / 100}
+                                          onFocus={e => e.target.select()}
+                                          onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                       />
+                                    </div>
+                                 </>
+                              ) : (
+                                 <>
+                                    <span className="text-slate-800 font-medium pr-4">{line.description}</span>
+                                    <span className="text-slate-600 text-center">{line.quantity}</span>
+                                    <span className="text-slate-600 text-right">{formatCurrency(line.unitPriceCents)}</span>
+                                 </>
+                              )}
                               <span className="text-slate-900 font-bold text-right">{formatCurrency(line.quantity * line.unitPriceCents)}</span>
                            </div>
                         ))
+                     )}
+
+                     {isProformaMode && (
+                        <button
+                           onClick={addLineItem}
+                           className="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-orange-400 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider mt-4"
+                        >
+                           <Plus size={14} /> Add Line Item
+                        </button>
                      )}
                   </div>
                </div>
@@ -530,31 +625,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
                      {/* Right Side: Totals */}
                      <div className="w-full md:w-1/3 space-y-2">
-                        {/* Dynamic Calculation Logic inside render for immediate feedback */}
                         {(() => {
-                           // 1. Calculate values from lines (Source of Truth)
-                           const calculatedSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
-
-                           // 2. Determine which values to use
-                           // If we have stored subtotal (new invoice), use it. otherwise use calculated.
-                           const displaySubtotal = invoice.subtotalCents || calculatedSubtotal;
-
-                           // If we have stored tax (new invoice), use it.
-                           // If NOT, we assume the user WANTS to see taxes on this view (as per request),
-                           // so we force calculate them based on the subtotal.
-                           const displaySC = invoice.serviceChargeCents ?? Math.round(displaySubtotal * 0.15);
-                           const displayVAT = invoice.vatCents ?? Math.round((displaySubtotal + displaySC) * 0.075);
-                           const displayTotal = displaySubtotal + displaySC + displayVAT;
-
-                           // Check if the stored total matches the calculated total (roughly)
-                           // If stored total is significantly different (e.g. it was just subtotal), we might want to warn or just show the new total.
-                           // For this user request, we will show the TAX BREAKDOWN definitively.
+                           const calculatedSubtotal = editableLines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+                           const displaySC = Math.round(calculatedSubtotal * 0.15);
+                           const displayVAT = Math.round((calculatedSubtotal + displaySC) * 0.075);
+                           const displayTotal = calculatedSubtotal + displaySC + displayVAT;
 
                            return (
                               <>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
-                                    <span>{formatCurrency(displaySubtotal)}</span>
+                                    <span>{formatCurrency(calculatedSubtotal)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge (15%)</span>
@@ -594,7 +675,6 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                   <button
                      onClick={() => {
                         const win = window.open('', '_blank');
-                        // Inject simplified styles for print
                         win?.document.write(`
                            <html>
                               <head>
@@ -624,9 +704,20 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                </div>
                <div className="flex gap-2 flex-[1.5]">
                   <button onClick={onClose} className="px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
-                  <button onClick={() => onSave(invoice)} className="flex-1 py-3 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg">
-                     Verified & Correct <ArrowRight size={16} />
-                  </button>
+                  {isProformaMode ? (
+                     <button
+                        onClick={handleFinalize}
+                        disabled={isFinalizing}
+                        className="flex-1 py-3 bg-orange-500 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-orange-600 flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                     >
+                        {isFinalizing ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                        Finalize & Generate Invoice
+                     </button>
+                  ) : (
+                     <button onClick={() => onSave(invoice)} className="flex-1 py-3 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg">
+                        Verified & Correct <ArrowRight size={16} />
+                     </button>
+                  )}
                </div>
             </div>
          </div>

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
-    InventoryItem, Recipe, CateringEvent, Invoice, Contact, Task, Deal,
+    InventoryItem, Recipe, CateringEvent, Invoice, InvoiceLine, Contact, Task, Deal,
     BookkeepingEntry, Project, AIAgent, Ingredient, Supplier,
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
@@ -109,6 +109,8 @@ interface DataState {
     deductStockFromCooking: (eventId: string) => void;
     completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
+    finalizeProforma: (invoiceId: string) => Promise<void>;
+    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[]) => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -2233,6 +2235,37 @@ export const useDataStore = create<DataState>()(
             calculateItemCosting: (id: string, qty: number) => {
                 const state = get();
                 return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
+            },
+
+            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[]) => {
+                set((state) => {
+                    const subtotal = lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+                    const sc = Math.round(subtotal * 0.15);
+                    const vat = Math.round((subtotal + sc) * 0.075);
+                    const total = subtotal + sc + vat;
+
+                    return {
+                        invoices: state.invoices.map(inv => inv.id === invoiceId ? {
+                            ...inv,
+                            lines,
+                            subtotalCents: subtotal,
+                            serviceChargeCents: sc,
+                            vatCents: vat,
+                            totalCents: total
+                        } : inv)
+                    };
+                });
+                await get().syncWithCloud();
+            },
+
+            finalizeProforma: async (invoiceId: string) => {
+                set((state) => ({
+                    invoices: state.invoices.map(inv => inv.id === invoiceId ? {
+                        ...inv,
+                        status: InvoiceStatus.UNPAID
+                    } : inv)
+                }));
+                await get().syncWithCloud();
             },
 
             approveInvoice: (id: string) => set((state) => ({
