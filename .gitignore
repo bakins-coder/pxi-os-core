@@ -4,6 +4,29 @@ dist
 .env.local
 .DS_Store
 gemini-cli/
-# Data files
+
+# Data and Logs
 *.xlsx
-2018 costing sheet Celebrations.xlsx
+*.log
+*.txt
+!README.md
+!GITHUB_FIX.md
+!GITHUB_RECOVERY_STEPS.md
+!RECOVERY_GUIDE.md
+!RESET_INSTRUCTIONS.md
+
+# Utility Scripts in Root
+/*.js
+/*.ts
+/*.cjs
+/*.mjs
+/*.bat
+/*.sh
+!vite.config.ts
+!vitest.config.ts
+!tailwind.config.js
+!package.json
+!package-lock.json
+
+# Supabase
+supabase_schema.sql
