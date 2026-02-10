@@ -125,6 +125,7 @@ interface DataState {
     finalizeProforma: (invoiceId: string) => Promise<void>;
     updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[]) => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
+    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[]) => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -2208,7 +2209,8 @@ export const useDataStore = create<DataState>()(
                         id: `line-${idx}`,
                         description: it.name,
                         quantity: it.quantity,
-                        unitPriceCents: it.priceCents
+                        unitPriceCents: it.priceCents,
+                        category: it.category
                     }))
                 };
 
@@ -2357,7 +2359,8 @@ export const useDataStore = create<DataState>()(
                                         id: crypto.randomUUID(),
                                         description: it.name,
                                         quantity: it.quantity,
-                                        unitPriceCents: it.priceCents
+                                        unitPriceCents: it.priceCents,
+                                        category: it.category
                                     }))
                                 };
                             }
@@ -2499,13 +2502,19 @@ export const useDataStore = create<DataState>()(
             updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[]) => {
                 set((state) => {
                     // 1. Calculate Standard Totals (If no discounts applied)
-                    const standardSubtotal = lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+                    const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
+
+                    const standardSubtotal = lines.reduce((acc, l) => {
+                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
+                        return acc + (l.quantity * l.unitPriceCents);
+                    }, 0);
                     const standardSC = Math.round(standardSubtotal * 0.15);
                     const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     // 2. Calculate Effective Totals (Using manual prices if set)
                     const effectiveSubtotal = lines.reduce((acc, l) => {
+                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
                             : l.unitPriceCents;
@@ -2542,6 +2551,49 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({
                     invoices: state.invoices.map(i => i.id === invoiceId ? { ...i, manualSetPriceCents: undefined } : i)
                 }));
+                await get().syncWithCloud();
+            },
+
+            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[]) => {
+                set((state) => {
+                    const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
+
+                    const standardSubtotal = lines.reduce((acc, l) => {
+                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
+                        return acc + (l.quantity * l.unitPriceCents);
+                    }, 0);
+                    const standardSC = Math.round(standardSubtotal * 0.15);
+                    const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
+                    const standardTotal = standardSubtotal + standardSC + standardVAT;
+
+                    const effectiveSubtotal = lines.reduce((acc, l) => {
+                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
+                        const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                            ? l.manualPriceCents
+                            : l.unitPriceCents;
+                        return acc + (l.quantity * price);
+                    }, 0);
+
+                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
+                    const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                    const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+                    const discount = Math.max(0, standardTotal - effectiveTotal);
+
+                    return {
+                        invoices: state.invoices.map(inv => inv.id === invoiceId ? {
+                            ...inv,
+                            lines,
+                            status: InvoiceStatus.UNPAID,
+                            subtotalCents: effectiveSubtotal,
+                            serviceChargeCents: effectiveSC,
+                            vatCents: effectiveVAT,
+                            standardTotalCents: standardTotal,
+                            discountCents: discount,
+                            totalCents: effectiveTotal,
+                            manualSetPriceCents: undefined
+                        } : inv)
+                    };
+                });
                 await get().syncWithCloud();
             },
 

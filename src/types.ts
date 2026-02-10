@@ -469,6 +469,7 @@ export interface InvoiceLine {
   quantity: number;
   unitPriceCents: number;
   manualPriceCents?: number; // Optional override for line-item discount
+  category?: string; // Preserve category for auto-structuring
 }
 
 export interface Invoice {

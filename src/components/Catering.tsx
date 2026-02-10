@@ -380,9 +380,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
    const contacts = useDataStore(state => state.contacts);
-   const finalizeProforma = useDataStore(state => state.finalizeProforma);
+   const finalizeInvoice = useDataStore(state => state.finalizeInvoice);
    const updateInvoiceLines = useDataStore(state => state.updateInvoiceLines);
-   const updateInvoicePricing = useDataStore(state => state.updateInvoicePricing);
    const contact = contacts.find(c => c.id === invoice.contactId);
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
@@ -399,6 +398,38 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
    // Helper for currency formatting
    const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
+   const handlePrint = () => {
+      const win = window.open('', '_blank');
+      // Ensure the printed document shows "INVOICE" if it's being finalized
+      const content = document.querySelector('.WaveInvoiceContent')?.innerHTML || '';
+
+      win?.document.write(`
+         <html>
+            <head>
+               <title>Invoice ${invoice.number}</title>
+               <base href="${window.location.origin}/" />
+               <script src="https://cdn.tailwindcss.com"></script>
+               <style>
+                  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                  body { font-family: 'Inter', sans-serif; padding: 40px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                  .invoice-box { transform: rotate(-2deg); border: 2px solid #fb923c; color: #f97316; display: inline-block; padding: 5px 15px; font-weight: 900; letter-spacing: 0.1em; }
+                  @media print {
+                    .no-print { display: none; }
+                  }
+               </style>
+            </head>
+            <body>
+               ${content}
+            </body>
+         </html>
+      `);
+      setTimeout(() => {
+         win?.print();
+         // Small delay before closure to allow print spooling on some browsers
+         // win?.close(); 
+      }, 500);
+   };
+
    const handleLineChange = (idx: number, field: keyof InvoiceLine, value: any) => {
       const newLines = [...editableLines];
       // Preserve SECTION marker if editing description of a header
@@ -411,10 +442,24 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
    };
 
    const addLineItem = () => {
+      const isActuallyBanquet = isBanquetMode;
+      const desc = isActuallyBanquet ? '[SECTION] New Service/Item' : 'New Item';
+
       setEditableLines([
          ...editableLines,
-         { id: `line-${Date.now()}`, description: 'New Item', quantity: 1, unitPriceCents: 0 }
+         { id: `line-${Date.now()}`, description: desc, quantity: 1, unitPriceCents: 0 }
       ]);
+   };
+
+   const toggleSection = (idx: number) => {
+      const newLines = [...editableLines];
+      const current = newLines[idx].description;
+      if (current.startsWith('[SECTION] ')) {
+         newLines[idx].description = current.replace('[SECTION] ', '');
+      } else {
+         newLines[idx].description = `[SECTION] ${current}`;
+      }
+      setEditableLines(newLines);
    };
 
    const autoStructureBanquet = () => {
@@ -433,16 +478,20 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
          if (line.description.startsWith('[SECTION] ')) return; // Skip existing headers
 
          const desc = line.description.toLowerCase();
-         if (desc.includes('transport') || desc.includes('truck') || desc.includes('waiter') || desc.includes('service') || desc.includes('logistics') || desc.includes('rental')) {
-            buckets['Logistics & Service'].push(line);
-         } else if (desc.includes('spring roll') || desc.includes('samosa') || desc.includes('prawn') || desc.includes('dim sum')) {
-            buckets['Small Chops & Starters'].push(line);
-         } else if (desc.includes('rice') || desc.includes('yam') || desc.includes('swallow') || desc.includes('soup') || desc.includes('stew') || desc.includes('moimoi') || desc.includes('eba') || desc.includes('amala')) {
+         const cat = line.category; // Use the preserved category if available
+
+         if (cat === 'Nigerian Menu' || desc.includes('nigerian') || desc.includes('rice') || desc.includes('yam') || desc.includes('swallow') || desc.includes('soup') || desc.includes('stew') || desc.includes('moimoi') || desc.includes('eba') || desc.includes('amala') || desc.includes('ofada') || desc.includes('agoyin') || desc.includes('efo riro') || desc.includes('egusi') || desc.includes('gbegiri')) {
             buckets['Nigerian Menu'].push(line);
-         } else if (desc.includes('pasta') || desc.includes('burger') || desc.includes('steak') || desc.includes('salad')) {
+         } else if (cat === 'Oriental Menu' || desc.includes('thai') || desc.includes('oriental') || desc.includes('chinese') || desc.includes('asian') || desc.includes('noodles') || desc.includes('stir fry') || desc.includes('mongolian') || desc.includes('curry')) {
+            buckets['Oriental Menu'].push(line);
+         } else if (cat === 'Continental Menu' || desc.includes('pasta') || desc.includes('burger') || desc.includes('steak') || desc.includes('salad') || desc.includes('ceaser') || desc.includes('coleslaw')) {
             buckets['Continental Menu'].push(line);
-         } else if (desc.includes('water') || desc.includes('ice') || desc.includes('drink') || desc.includes('wine') || desc.includes('juice') || desc.includes('chapman')) {
+         } else if (cat === 'Small Chops & Starters' || desc.includes('spring roll') || desc.includes('samosa') || desc.includes('prawn') || desc.includes('dim sum') || desc.includes('mosa') || desc.includes('puff puff')) {
+            buckets['Small Chops & Starters'].push(line);
+         } else if (cat === 'Drinks & Beverages' || desc.includes('water') || desc.includes('ice') || desc.includes('drink') || desc.includes('wine') || desc.includes('juice') || desc.includes('chapman') || desc.includes('beverage') || desc.includes('soda')) {
             buckets['Drinks & Beverages'].push(line);
+         } else if (desc.includes('transport') || desc.includes('truck') || desc.includes('waiter') || desc.includes('service') || desc.includes('logistics') || desc.includes('rental')) {
+            buckets['Logistics & Service'].push(line);
          } else {
             buckets['General'].push(line);
          }
@@ -510,12 +559,19 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
    const handleFinalize = async () => {
       setIsFinalizing(true);
       try {
-         await updateInvoiceLines(invoice.id, editableLines);
-         // Deprecated: await updateInvoicePricing(invoice.id, localSetPrice);
-         await finalizeProforma(invoice.id);
+         // Atomic update: Lines + status + totals + sync in ONE go
+         await finalizeInvoice(invoice.id, editableLines);
+
+         // Help the UI reflect the change before the print snapshot
+         setIsProformaMode(false);
+
+         // Trigger print/PDF generation automatically
+         setTimeout(() => handlePrint(), 300);
+
          onSave({ ...invoice, lines: editableLines, status: InvoiceStatus.UNPAID });
       } catch (err) {
          console.error("Failed to finalize proforma", err);
+         alert("Could not finalize invoice. Please check your internet connection and try again.");
       } finally {
          setIsFinalizing(false);
       }
@@ -592,7 +648,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} border-b-2 border-slate-100 pb-2 mb-4`}>
+                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[2fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3fr_1fr_1.2fr_1.3fr]'} gap-10 border-b-2 border-slate-100 pb-2 mb-4`}>
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
@@ -617,7 +673,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                            const showPricing = !isBanquetMode || isHeader;
 
                            return (
-                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''}`}>
+                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-b border-slate-50 md:border-none pb-4 md:pb-0 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''}`}>
                                  {isProformaMode ? (
                                     <>
                                        {/* Description (Top on Mobile, First Col on Desktop) */}
@@ -628,9 +684,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                           >
                                              <Trash2 size={12} />
                                           </button>
-                                          {isHeader && <span className="p-1 bg-orange-100 text-orange-600 rounded text-[10px] uppercase font-black tracking-widest mr-1 hidden md:inline-block">Section</span>}
+                                          {isBanquetMode && (
+                                             <button
+                                                onClick={() => toggleSection(idx)}
+                                                className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-all ${isHeader ? 'bg-orange-100 text-orange-600 border border-orange-200' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'}`}
+                                                title={isHeader ? "Currently Billed" : "Currently Itemized (No Price)"}
+                                             >
+                                                {isHeader ? 'Billed' : 'Itemized'}
+                                             </button>
+                                          )}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''}`}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-2' : ''}`}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -712,7 +776,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                           <div className="flex flex-col md:block">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
                                              {showPricing && (
-                                                <span className={`block md:text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
+                                                <span className={`block md:text-right text-xs ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}>
                                                    {formatCurrency(line.unitPriceCents)}
                                                 </span>
                                              )}
@@ -721,7 +785,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                              <div className="flex flex-col md:block">
                                                 <label className="md:hidden text-[8px] font-black text-orange-400 uppercase">Discount</label>
                                                 {showPricing && (
-                                                   <span className="block md:text-right font-bold text-orange-600">
+                                                   <span className="block md:text-right font-bold text-orange-600 text-xs">
                                                       {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
                                                    </span>
                                                 )}
@@ -730,7 +794,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                           <div className="flex flex-col md:block items-end md:items-stretch">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Total</label>
                                              {showPricing && (
-                                                <span className="text-slate-900 font-bold text-right block">
+                                                <span className="text-slate-900 font-bold text-right block text-xs">
                                                    {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
                                                 </span>
                                              )}
@@ -822,7 +886,13 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                      <div className="w-full md:w-1/3 space-y-2">
                         {(() => {
                            // 1. Calculate Standard Totals
-                           const standardSubtotal = editableLines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0);
+                           const standardSubtotal = editableLines.reduce((acc, l) => {
+                              // Banquet Mode: ONLY lines marked as [SECTION] headers contribute to cost
+                              if (isBanquetMode) {
+                                 if (!l.description.startsWith('[SECTION] ')) return acc;
+                              }
+                              return acc + (l.quantity * l.unitPriceCents);
+                           }, 0);
                            const standardSC = Math.round(standardSubtotal * 0.15);
                            const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
@@ -928,27 +998,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                   <div className="h-6 w-px bg-slate-200 mx-1"></div>
 
                   <button
-                     onClick={() => {
-                        const win = window.open('', '_blank');
-                        win?.document.write(`
-                           <html>
-                              <head>
-                                 <title>Invoice ${invoice.number}</title>
-                                 <base href="${window.location.origin}/" />
-                                 <script src="https://cdn.tailwindcss.com"></script>
-                                 <style>
-                                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-                                    body { font-family: 'Inter', sans-serif; padding: 40px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                                    .invoice-box { transform: rotate(-2deg); border: 2px solid #fb923c; color: #f97316; display: inline-block; padding: 5px 15px; font-weight: 900; letter-spacing: 0.1em; }
-                                 </style>
-                              </head>
-                              <body>
-                                 ${document.querySelector('.WaveInvoiceContent')?.innerHTML || ''}
-                              </body>
-                           </html>
-                        `);
-                        setTimeout(() => win?.print(), 500);
-                     }}
+                     onClick={handlePrint}
                      className="flex-1 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2"
                   >
                      <Printer size={16} /> Print
@@ -1308,7 +1358,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                <X size={18} />
             </button>
          )}
-         {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => { }} onClose={() => setViewingInvoice(null)} />}
+         {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => setViewingInvoice(null)} onClose={() => setViewingInvoice(null)} />}
 
          {/* LOGISTICS MODALS */}
          {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
@@ -1922,7 +1972,7 @@ export const Catering = () => {
    };
 
    const handleCommitInvoice = (inv: Invoice) => {
-      finalizeProforma(inv.id);
+      // Data already finalized in WaveInvoiceModal via finalizeInvoice
       setGeneratedInvoice(null);
       // Auto-select the newest event if none is currently viewed
       if (!selectedEvent && cateringEvents.length > 0) {
