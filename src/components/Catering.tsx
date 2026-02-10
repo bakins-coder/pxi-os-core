@@ -386,6 +386,12 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
+   const [isBanquetMode, setIsBanquetMode] = useState(
+      (invoice.lines && invoice.lines.length > 0 && invoice.lines[0].description.toLowerCase().includes('supply')) || false
+   );
+   const [showDiscountCol, setShowDiscountCol] = useState(
+      (invoice.lines && invoice.lines.some(l => l.manualPriceCents !== undefined && l.manualPriceCents !== null)) || false
+   );
 
    const [isFinalizing, setIsFinalizing] = useState(false);
 
@@ -403,6 +409,25 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
          ...editableLines,
          { id: `line-${Date.now()}`, description: 'New Item', quantity: 1, unitPriceCents: 0 }
       ]);
+   };
+
+   const toggleBanquetMode = () => {
+      if (!isBanquetMode) {
+         // Enable Banquet Mode: Inject header if missing
+         let newLines = [...editableLines];
+         if (newLines.length === 0 || !newLines[0].description.toLowerCase().includes('supply')) {
+            newLines = [{
+               id: `line-${Date.now()}`,
+               description: 'Supply of various menu items listed below:',
+               quantity: 0,
+               unitPriceCents: 0
+            }, ...newLines];
+         }
+         setEditableLines(newLines);
+         setIsBanquetMode(true);
+      } else {
+         setIsBanquetMode(false);
+      }
    };
 
    const removeLineItem = (idx: number) => {
@@ -494,11 +519,11 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
+                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} border-b-2 border-slate-100 pb-2 mb-4`}>
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
-                     <span className="text-[10px] font-black text-slate-400 uppercase text-right text-orange-500">DISCOUNT PRICE</span>
+                     {showDiscountCol && <span className="text-[10px] font-black text-slate-400 uppercase text-right text-orange-500">DISCOUNT PRICE</span>}
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">AMOUNT</span>
                   </div>
                   {/* Mobile Header (Table Style) */}
@@ -511,112 +536,135 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                      {editableLines.length === 0 ? (
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
-                        editableLines.map((line, idx) => (
-                           <div key={idx} className="flex flex-col md:grid md:grid-cols-[3fr_1fr_1fr_1fr_1fr] items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0">
-                              {isProformaMode ? (
-                                 <>
-                                    {/* Description (Top on Mobile, First Col on Desktop) */}
-                                    <div className="flex items-center gap-2 pr-4 w-full">
-                                       <button
-                                          onClick={() => removeLineItem(idx)}
-                                          className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100"
-                                       >
-                                          <Trash2 size={12} />
-                                       </button>
-                                       <input
-                                          className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium"
-                                          placeholder="Item description"
-                                          value={line.description}
-                                          onChange={e => handleLineChange(idx, 'description', e.target.value)}
-                                       />
-                                    </div>
+                        editableLines.map((line, idx) => {
+                           // Banquet Logic: Only show prices/amounts for the first row (Header)
+                           const showPricing = !isBanquetMode || idx === 0;
 
-                                    {/* Mobile Details Row / Desktop Columns */}
-                                    <div className="grid grid-cols-2 md:contents w-full gap-2">
-                                       <div className="flex flex-col md:block">
-                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Quantity</label>
+                           return (
+                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0`}>
+                                 {isProformaMode ? (
+                                    <>
+                                       {/* Description (Top on Mobile, First Col on Desktop) */}
+                                       <div className="flex items-center gap-2 pr-4 w-full">
+                                          <button
+                                             onClick={() => removeLineItem(idx)}
+                                             className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100"
+                                          >
+                                             <Trash2 size={12} />
+                                          </button>
                                           <input
-                                             type="number"
-                                             className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
-                                             value={line.quantity}
-                                             onFocus={e => e.target.select()}
-                                             onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isBanquetMode && idx === 0 ? 'font-black uppercase tracking-wide' : ''}`}
+                                             placeholder="Item description"
+                                             value={line.description}
+                                             onChange={e => handleLineChange(idx, 'description', e.target.value)}
                                           />
                                        </div>
 
-                                       <div className="flex flex-col md:block">
-                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Unit Price</label>
-                                          <div className="flex items-center bg-slate-50 rounded px-2 py-1 md:ml-auto">
-                                             <span className="text-[10px] text-slate-400 mr-1">₦</span>
+                                       {/* Mobile Details Row / Desktop Columns */}
+                                       <div className="grid grid-cols-2 md:contents w-full gap-2">
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">{isBanquetMode && idx === 0 ? 'Guests' : 'Quantity'}</label>
                                              <input
                                                 type="number"
-                                                className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
-                                                value={line.unitPriceCents / 100}
+                                                className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
+                                                value={line.quantity}
                                                 onFocus={e => e.target.select()}
-                                                onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                                onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
                                              />
                                           </div>
-                                       </div>
 
-                                       <div className="flex flex-col md:block">
-                                          <label className="md:hidden text-[8px] font-black text-orange-400 uppercase mb-1">Discount Price</label>
-                                          <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 md:ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
-                                             <span className="text-[10px] text-orange-300 mr-1">₦</span>
-                                             <input
-                                                type="number"
-                                                className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
-                                                placeholder="-"
-                                                value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
-                                                onChange={e => {
-                                                   const val = parseFloat(e.target.value);
-                                                   handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
-                                                }}
-                                             />
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Unit Price</label>
+                                             {showPricing ? (
+                                                <div className="flex items-center bg-slate-50 rounded px-2 py-1 md:ml-auto">
+                                                   <span className="text-[10px] text-slate-400 mr-1">₦</span>
+                                                   <input
+                                                      type="number"
+                                                      className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
+                                                      value={line.unitPriceCents / 100}
+                                                      onFocus={e => e.target.select()}
+                                                      onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                                   />
+                                                </div>
+                                             ) : <div className="hidden md:block"></div>}
+                                          </div>
+
+                                          {showDiscountCol && (
+                                             <div className="flex flex-col md:block">
+                                                <label className="md:hidden text-[8px] font-black text-orange-400 uppercase mb-1">Discount Price</label>
+                                                {showPricing ? (
+                                                   <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 md:ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
+                                                      <span className="text-[10px] text-orange-300 mr-1">₦</span>
+                                                      <input
+                                                         type="number"
+                                                         className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
+                                                         placeholder="-"
+                                                         value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
+                                                         onChange={e => {
+                                                            const val = parseFloat(e.target.value);
+                                                            handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
+                                                         }}
+                                                      />
+                                                   </div>
+                                                ) : <div className="hidden md:block"></div>}
+                                             </div>
+                                          )}
+
+                                          <div className="flex flex-col md:block items-end md:items-stretch">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
+                                             {showPricing && (
+                                                <span className="text-slate-900 font-bold text-right py-1 block">
+                                                   {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                                                </span>
+                                             )}
                                           </div>
                                        </div>
-
-                                       <div className="flex flex-col md:block items-end md:items-stretch">
-                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
-                                          <span className="text-slate-900 font-bold text-right py-1 block">
-                                             {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
-                                          </span>
+                                    </>
+                                 ) : (
+                                    <>
+                                       {/* View Mode (Non-Editable) */}
+                                       <div className="w-full md:pr-4">
+                                          <span className={`text-slate-800 font-medium block ${isBanquetMode && idx === 0 ? 'font-black uppercase tracking-wide' : ''}`}>{line.description}</span>
                                        </div>
-                                    </div>
-                                 </>
-                              ) : (
-                                 <>
-                                    <div className="w-full md:pr-4">
-                                       <span className="text-slate-800 font-medium block">{line.description}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:contents w-full gap-2">
-                                       <div className="flex flex-col md:block">
-                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Qty</label>
-                                          <span className="text-slate-600 md:text-center block">{line.quantity}</span>
+                                       <div className="grid grid-cols-2 md:contents w-full gap-2">
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Qty</label>
+                                             <span className="text-slate-600 md:text-center block">{line.quantity}</span>
+                                          </div>
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
+                                             {showPricing && (
+                                                <span className={`block md:text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
+                                                   {formatCurrency(line.unitPriceCents)}
+                                                </span>
+                                             )}
+                                          </div>
+                                          {showDiscountCol && (
+                                             <div className="flex flex-col md:block">
+                                                <label className="md:hidden text-[8px] font-black text-orange-400 uppercase">Discount</label>
+                                                {showPricing && (
+                                                   <span className="block md:text-right font-bold text-orange-600">
+                                                      {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
+                                                   </span>
+                                                )}
+                                             </div>
+                                          )}
+                                          <div className="flex flex-col md:block items-end md:items-stretch">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Total</label>
+                                             {showPricing && (
+                                                <span className="text-slate-900 font-bold text-right block">
+                                                   {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                                                </span>
+                                             )}
+                                          </div>
                                        </div>
-                                       <div className="flex flex-col md:block">
-                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
-                                          <span className={`block md:text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
-                                             {formatCurrency(line.unitPriceCents)}
-                                          </span>
-                                       </div>
-                                       <div className="flex flex-col md:block">
-                                          <label className="md:hidden text-[8px] font-black text-orange-400 uppercase">Discount</label>
-                                          <span className="block md:text-right font-bold text-orange-600">
-                                             {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
-                                          </span>
-                                       </div>
-                                       <div className="flex flex-col md:block items-end md:items-stretch">
-                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Total</label>
-                                          <span className="text-slate-900 font-bold text-right block">
-                                             {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
-                                          </span>
-                                       </div>
-                                    </div>
-                                 </>
-                              )}
-                           </div>
-                        ))
+                                    </>
+                                 )}
+                              </div>
+                           );
+                        })
                      )}
+
 
                      {isProformaMode && (
                         <button
@@ -702,7 +750,10 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
-                           const effectiveSubtotal = editableLines.reduce((acc, l) => {
+                           const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
+                              // In Banquet Mode, ONLY the first line (Summary) contributes to cost
+                              if (isBanquetMode && idx > 0) return acc;
+
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
                                  : l.unitPriceCents;
@@ -778,7 +829,24 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
             {/* ACTION BAR (Not Printed) */}
             <div className="bg-slate-100 p-4 md:p-6 flex flex-col md:flex-row gap-4 border-t border-slate-200 shrink-0">
-               <div className="flex gap-2 flex-1">
+               <div className="flex gap-2 flex-1 items-center">
+                  <button
+                     onClick={() => toggleBanquetMode()}
+                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                  >
+                     {isBanquetMode ? 'Banquet Mode ON' : 'Banquet Mode OFF'}
+                  </button>
+                  {isBanquetMode && (
+                     <button
+                        onClick={() => setShowDiscountCol(!showDiscountCol)}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                     >
+                        {showDiscountCol ? 'Discount ON' : 'Discount OFF'}
+                     </button>
+                  )}
+
+                  <div className="h-6 w-px bg-slate-200 mx-1"></div>
+
                   <button
                      onClick={() => {
                         const win = window.open('', '_blank');
@@ -1145,14 +1213,14 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
    }
 
    return (
-      <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-12 relative">
+      <div className="bg-white p-6 md:p-12 rounded-[2rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-8 md:space-y-12 relative overflow-x-hidden">
          {onClose && (
             <button
                onClick={onClose}
-               className="absolute top-6 right-6 p-3 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all z-10"
+               className="absolute top-4 right-4 md:top-6 md:right-6 p-2 md:p-3 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all z-10"
                title="Close Details"
             >
-               <X size={20} />
+               <X size={18} />
             </button>
          )}
          {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => { }} onClose={() => setViewingInvoice(null)} />}
@@ -1161,36 +1229,34 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
          {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
          {showLogistics && <LogisticsReturnModal event={event} onClose={() => setShowLogistics(false)} onComplete={onClose} />}
 
-         <div className="flex justify-between items-start">
-            <div className="space-y-4">
-               <div className="flex gap-4">
-                  <button onClick={() => onAmend(event)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 items-center">
-                     <FileText size={14} /> Amend Record
+         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+            <div className="space-y-4 w-full">
+               <div className="flex flex-wrap gap-2 md:gap-4">
+                  <button onClick={() => onAmend(event)} className="px-4 md:px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
+                     <FileText size={14} /> <span className="hidden sm:inline">Amend Record</span><span className="sm:hidden">Amend</span>
                   </button>
-                  {/* ... other top buttons ... */}
                   {salesInvoice && (
-                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 items-center">
-                        <Printer size={14} /> View Invoice
+                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-4 md:px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2">
+                        <Printer size={14} /> <span className="hidden sm:inline">View Invoice</span><span className="sm:hidden">Invoice</span>
                      </button>
                   )}
                   {event.currentPhase === 'Execution' && (
-                     <button onClick={() => setShowDispatch(true)} className="px-6 py-2 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2 items-center">
-                        <Truck size={14} /> Dispatch Assets
+                     <button onClick={() => setShowDispatch(true)} className="px-4 md:px-6 py-2 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2">
+                        <Truck size={14} /> <span className="hidden sm:inline">Dispatch Assets</span><span className="sm:hidden">Dispatch</span>
                      </button>
                   )}
-                  {/* ... */}
                </div>
                <div>
-                  <h3 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none">{event.customerName}</h3>
-                  <div className="flex items-center gap-4 mt-4">
-                     <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase border-2 ${event.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{event.status}</span>
-                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{event.eventDate} • {event.location || 'Venue TBD'}</p>
+                  <h3 className="text-2xl md:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words">{event.customerName}</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
+                     <span className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase border-2 ${event.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{event.status}</span>
+                     <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest leading-tight">{event.eventDate} • {event.location || 'Venue TBD'}</p>
                   </div>
                </div>
             </div>
-            <div className="text-right">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
-               <p className="text-3xl font-black text-slate-900">{event.guestCount}</p>
+            <div className="text-left md:text-right shrink-0">
+               <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
+               <p className="text-2xl md:text-3xl font-black text-slate-900">{event.guestCount}</p>
             </div>
          </div>
 

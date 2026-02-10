@@ -22,8 +22,8 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
 
    return (
       <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
-         <div className="flex flex-col items-center gap-8 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-            <div id="printable-id-card" className="w-full max-w-[340px] h-[540px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0">
+         <div className="flex flex-col items-center gap-6 md:gap-8 max-w-sm w-full scale-[0.85] md:scale-100" onClick={(e) => e.stopPropagation()}>
+            <div id="printable-id-card" className="w-full max-w-[340px] h-[540px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0 shrink-0">
                <div className="absolute top-0 left-0 w-full h-40 bg-slate-900 overflow-hidden">
                   <div className="absolute top-[-50%] left-[-20%] w-[150%] h-[150%] bg-gradient-to-br from-indigo-500/20 to-transparent rotate-12"></div>
                </div>
@@ -68,7 +68,7 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
                   <p className="text-[8px] font-black uppercase tracking-[0.4em] text-[#00ff9d]">Verified Personnel</p>
                </div>
             </div>
-            <div className="flex gap-4 w-full px-4">
+            <div className="flex gap-4 w-full px-4 max-w-[340px]">
                <button onClick={onClose} className="flex-1 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">Dismiss</button>
                <button onClick={handlePrint} className="flex-1 py-4 bg-[#00ff9d] text-slate-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all">
                   <Printer size={18} /> Print
@@ -287,14 +287,14 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                   <h3 className="text-2xl font-black uppercase tracking-tighter">Extracting CV Data...</h3>
                </div>
             )}
-            <div className="p-6 md:p-10 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+            <div className="p-5 md:p-10 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
                <div className="flex items-center gap-3 md:gap-6 min-w-0">
                   <div className="hidden sm:block"><GripHorizontal className="text-slate-300" /></div>
                   <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg shrink-0">{editingEmployee ? <UserIcon size={24} /> : <UserPlus size={24} />}</div>
                   <div className="min-w-0">
-                     <h2 className="text-xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter truncate">{editingEmployee ? 'Update Profile' : 'Hire Staff'}</h2>
+                     <h2 className="text-lg md:text-3xl font-black text-slate-800 uppercase tracking-tighter truncate">{editingEmployee ? 'Refine Profile' : 'Onboard Talent'}</h2>
                      <div className="flex items-center gap-2">
-                        <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 truncate">Organizational Registry</p>
+                        <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 truncate">Personnel Node Registry</p>
                         {hasDraft && !editingEmployee && <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 flex items-center gap-1"><RefreshCw size={10} className="animate-spin" /> Draft Restored</span>}
                      </div>
                   </div>
@@ -307,12 +307,12 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                         <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={handleCVUpload} />
                      </>
                   )}
-                  <button onClick={onClose} className="p-3 md:p-4 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 md:p-4 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
-            <form id="hire-staff-form" onSubmit={handleHire} className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 overflow-y-auto flex-1 scrollbar-thin">
-               <div className="space-y-8 md:space-y-10">
-                  <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3"><h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Profile Identity</h3><div className="h-px flex-1 bg-indigo-50"></div></div>
+            <form id="hire-staff-form" onSubmit={handleHire} className="p-5 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 overflow-y-auto flex-1 scrollbar-thin pb-32 md:pb-10">
+               <div className="space-y-6 md:space-y-10">
+                  <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3"><h3 className="text-[10px] md:text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Profile Identity</h3><div className="h-px flex-1 bg-indigo-50"></div></div>
                   <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8 p-6 md:p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 border-dashed group hover:border-indigo-200 transition-all">
                      <div className="w-24 h-24 rounded-2xl bg-white border-2 border-slate-200 overflow-hidden shadow-sm shrink-0">{avatar ? <img src={avatar} className="w-full h-full object-cover" alt="preview" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><UserIcon size={40} /></div>}</div>
                      <div className="space-y-3 w-full">
@@ -423,31 +423,31 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
       <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3.5rem] max-h-[90vh]'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[2rem] md:rounded-[3.5rem] max-h-[90vh]'}`}
          >
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80">
+            <div className="p-6 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg"><Plane size={24} /></div>
-                  <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">Request Absence</h2><p className="text-[10px] text-slate-500 font-black uppercase mt-1">Personnel Node Registry</p></div>
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg shrink-0"><Plane size={20} className="md:w-6 md:h-6" /></div>
+                  <div><h2 className="text-lg md:text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">Request Absence</h2><p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-1">Personnel Node Registry</p></div>
                </div>
                <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
-                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
+                     {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                   </button>
-                  <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={18} /></button>
                </div>
             </div>
-            <form onSubmit={handleSubmit} className="p-10 space-y-8 flex-1 overflow-y-auto">
-               <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Leave Classification</label>                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value as any)}>{Object.values(LeaveType).map(t => <option key={t} value={t}>{t} Leave</option>)}</select></div>
-               <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Commencement</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-                  <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Resumption</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+            <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto pb-32 md:pb-10">
+               <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Leave Classification</label>                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value as any)}>{Object.values(LeaveType).map(t => <option key={t} value={t}>{t} Leave</option>)}</select></div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Commencement</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                  <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Resumption</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
                </div>
-               <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Justification</label><textarea required rows={3} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Context..." value={reason} onChange={e => setReason(e.target.value)} /></div>
+               <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Justification</label><textarea required rows={3} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Context..." value={reason} onChange={e => setReason(e.target.value)} /></div>
             </form>
-            <div className="p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-4">
-               <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-600 transition-all">Cancel</button>
-               <button type="submit" onClick={handleSubmit} className="flex-2 py-5 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl active:scale-95 transition-all">Submit Application</button>
+            <div className="p-6 md:p-10 border-t-2 border-slate-100 bg-slate-50 flex flex-col md:flex-row gap-3 md:gap-4 sticky bottom-0 z-20">
+               <button type="button" onClick={onClose} className="py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-400 hover:text-slate-600 transition-all order-2 md:order-1">Cancel</button>
+               <button type="submit" onClick={handleSubmit} className="py-4 md:py-5 bg-slate-950 text-white rounded-xl md:rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] shadow-2xl active:scale-95 transition-all order-1 md:order-2">Submit Application</button>
             </div>
          </div>
       </div>
@@ -528,22 +528,24 @@ const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, on
 
    return (
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
-         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-6">
-            <div className="flex justify-between items-center">
-               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Request Advance</h3>
-               <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 w-full max-w-md shadow-2xl space-y-6">
+            <div className="flex justify-between items-center bg-slate-50/50 -mx-6 -mt-6 p-6 md:mx-0 md:mt-0 md:p-0 md:bg-transparent rounded-t-[2rem]">
+               <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight">Request Advance</h3>
+               <button onClick={onClose} className="p-2 md:p-2 bg-white md:bg-slate-50 border border-slate-100 md:border-transparent hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
             </div>
-            <div>
-               <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required (₦)</label>
-               <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-2xl text-slate-900 outline-none focus:border-indigo-500" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+            <div className="space-y-4">
+               <div>
+                  <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required (₦)</label>
+                  <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-xl md:text-2xl text-slate-900 outline-none focus:border-indigo-500" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+               </div>
+               <div>
+                  <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Reason / Context</label>
+                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 min-h-[100px]" placeholder="Briefly explain the need..." value={reason} onChange={e => setReason(e.target.value)}></textarea>
+               </div>
             </div>
-            <div>
-               <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Reason / Context</label>
-               <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 min-h-[100px]" placeholder="Briefly explain the need..." value={reason} onChange={e => setReason(e.target.value)}></textarea>
-            </div>
-            <div className="flex gap-4">
-               <button onClick={onClose} className="px-6 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
-               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl">Submit Request</button>
+            <div className="flex flex-col md:flex-row gap-3">
+               <button onClick={onClose} className="py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-xl transition-all order-2 md:order-1">Cancel</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl order-1 md:order-2">Submit Request</button>
             </div>
          </div>
       </div>

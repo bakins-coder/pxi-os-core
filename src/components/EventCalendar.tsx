@@ -57,13 +57,13 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
   for (let i = 1; i <= daysInMonth(currentDate); i++) days.push(i);
 
   return (
-    <div className={`bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden flex flex-col h-full min-h-[400px] md:min-h-[600px] animate-in fade-in ${className}`}>
+    <div className={`bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden flex flex-col h-full min-h-[400px] md:min-h-[500px] animate-in fade-in ${className}`}>
       <div className="p-4 md:p-8 border-b border-slate-50 flex items-center justify-between bg-white">
-        <div>
-          <h2 className="text-xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter">
+        <div className="py-2">
+          <h2 className="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tighter">
             {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
           </h2>
-          <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 md:mt-1">Operational Heatmap</p>
+          <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Operational Heatmap</p>
         </div>
         <div className="flex gap-1 md:gap-2">
           <button onClick={prevMonth} className="p-2 md:p-3 hover:bg-slate-100 rounded-xl md:rounded-2xl transition-all border border-slate-100 shadow-sm"><ChevronLeft size={16} className="md:w-5 md:h-5" /></button>

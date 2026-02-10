@@ -105,13 +105,13 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    };
 
    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-4xl rounded-[3rem] max-h-[90vh]'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-4xl rounded-t-[2rem] md:rounded-[3rem] h-full md:max-h-[90vh]'}`}
          >
-            <div className="p-4 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <div className="flex items-center gap-2 md:gap-4">
+            <div className="p-5 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
+               <div className="flex items-center gap-3 md:gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
                   <div>
                      <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
@@ -120,14 +120,14 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                </div>
 
                <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-2 md:p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
                      {isMaximized ? <Minimize2 size={18} className="md:w-5 md:h-5" /> : <Maximize2 size={18} className="md:w-5 md:h-5" />}
                   </button>
                   <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
                </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-5 md:p-10 space-y-6 md:space-y-10 scrollbar-thin pb-32 md:pb-10">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                   <div className="space-y-3 md:space-y-4">
                      <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 block">Portion Multiplier</label>
@@ -865,22 +865,22 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
    if (!isOpen) return null;
 
    return (
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-0 md:p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3rem]'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-t-[2rem] md:rounded-[3rem] h-full md:h-auto md:max-h-[90vh]'}`}
          >
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <h2 className="text-xl font-black text-slate-900 uppercase">{editItem ? 'Edit Ingredient' : 'New Ingredient'}</h2>
+            <div className="p-6 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
+               <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter">{editItem ? 'Refine Substance' : 'Ingest Substance'}</h2>
                <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
 
-            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto pb-32 md:pb-10">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Item Name</label>
                   <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Basmati Rice" />
@@ -1072,22 +1072,22 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
    if (!isOpen) return null;
 
    return (
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={() => { if (!showCamera) onClose(); }}>
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-0 md:p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={() => { if (!showCamera) onClose(); }}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3rem]'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-t-[2rem] md:rounded-[3rem] h-full md:h-auto md:max-h-[90vh]'}`}
          >
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <h2 className="text-xl font-black text-slate-900 uppercase">{editItem ? 'Edit Product' : 'New Product'}</h2>
+            <div className="p-6 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
+               <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter">{editItem ? 'Refine Logic' : 'Provision Entity'}</h2>
                <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
 
-            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto pb-32 md:pb-10">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Name</label>
                   <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Grilled Chicken" />

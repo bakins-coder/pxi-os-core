@@ -1,0 +1,28 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import {
+  TrendingUp,
+  Activity,
+  Receipt,
+  Calendar,
+  AlertCircle,
+  ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  UserCheck,
+  Plane,
+  BrainCircuit,
+  X,
+  Receipt as ReceiptIcon,
+  Box,
+  Calendar as CalendarIcon,
+  User,
+  Tag,
+  Clock,
+  CheckCircle2
+} from 'lucide-react';
+import { Role, Invoice, Requisition, CateringEvent } from '../types';
+import { EventCalendar } from './EventCalendar';
+import { EventDetailCard } from './EventDetailCard';

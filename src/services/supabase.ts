@@ -245,13 +245,22 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     return newItem;
   });
 
-  const { error } = await supabase
-    .from(tableName)
-    .upsert(sanitizedData, { onConflict: 'id' });
+  // Batch items to avoid payload limits
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < sanitizedData.length; i += BATCH_SIZE) {
+    const batch = sanitizedData.slice(i, i + BATCH_SIZE);
 
-  if (error) {
-    console.error(`Cloud Sync Failed [${tableName}]:`, error.message);
-    throw error;
+    // Skip empty batches/filters
+    if (batch.length === 0) continue;
+
+    const { error } = await supabase
+      .from(tableName)
+      .upsert(batch, { onConflict: 'id' });
+
+    if (error) {
+      console.error(`Cloud Sync Failed [${tableName}] (Batch ${i}-${i + BATCH_SIZE}):`, error.message);
+      throw error;
+    }
   }
 };
 
