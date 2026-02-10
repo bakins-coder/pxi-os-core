@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 const getAIInstance = () => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     // Fallback to process.env for 'process.env.API_KEY' replacement in Vite config
-    const legacyKey = process.env.API_KEY;
+    const legacyKey = (import.meta as any).env?.VITE_API_KEY; // Replaced process.env with Vite-friendly fallback if needed
 
     // Debug logging
     console.log("[AI Service] Loading Keys:", {
