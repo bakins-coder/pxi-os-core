@@ -620,7 +620,7 @@ export const ChatWidget = () => {
       {/* Main Chat Container */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full h-[100dvh] sm:w-[450px] sm:h-[650px] bg-slate-50/95 backdrop-blur-xl sm:rounded-[2.5rem] shadow-2xl border-t sm:border border-white/20 flex flex-col overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative"
+        className="w-full h-[100dvh] sm:w-[450px] sm:h-[650px] sm:max-h-[calc(100vh-3rem)] bg-slate-50/95 backdrop-blur-xl sm:rounded-[2.5rem] shadow-2xl border-t sm:border border-white/20 flex flex-col overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-5 duration-300 relative"
       >
 
         {/* Sidebar */}
