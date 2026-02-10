@@ -3,7 +3,7 @@ import { Printer, Download, Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { Invoice, Contact } from '../types';
+import { Invoice, Contact, InvoiceStatus } from '../types';
 
 
 // Brand Colors
