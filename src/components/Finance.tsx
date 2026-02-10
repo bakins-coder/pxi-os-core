@@ -302,7 +302,6 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
             id: l.id,
             description: l.description,
             quantity: l.quantity || 0,
-            quantity: l.quantity || 0,
             unitPriceCents: (l.price || 0) * 100,
             manualPriceCents: l.manualPrice !== undefined ? l.manualPrice * 100 : undefined
          })),

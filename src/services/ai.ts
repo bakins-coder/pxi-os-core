@@ -1088,6 +1088,8 @@ export async function getCFOAdvice(): Promise<any> {
 
     // LOGGING
     useDataStore.getState().addAgenticLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
         agentName: 'CFO Advisor',
         action: 'Financial Analysis',
         details: resultData.summary || 'Analyzed financial posture.',
@@ -1129,6 +1131,8 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
 
         // LOGGING
         useDataStore.getState().addAgenticLog({
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
             agentName: 'Voice Interface',
             action: 'Command Processing',
             details: `Processed voice command: "${response.transcription || 'Audio Input'}" -> Intent: ${response.intent} `,
@@ -1199,6 +1203,8 @@ export async function getFormGuidance(formName: string, fieldName: string, value
 
     // LOGGING
     useDataStore.getState().addAgenticLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
         agentName: 'Form Assistant',
         action: 'Guidance',
         details: `Provided guidance for field: ${fieldName} in form: ${formName}`,
