@@ -375,7 +375,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 
 
 
-const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void }) => {
+const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number }) => {
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
    const contacts = useDataStore(state => state.contacts);
@@ -387,7 +387,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
    const [isBanquetMode, setIsBanquetMode] = useState(
-      (invoice.lines && invoice.lines.length > 0 && invoice.lines[0].description.toLowerCase().includes('supply')) || false
+      (invoice.lines && (invoice.lines.some(l => l.description.startsWith('[SECTION]')) || (invoice.lines.length > 0 && invoice.lines[0].description.toLowerCase().includes('supply')))) || false
    );
    const [showDiscountCol, setShowDiscountCol] = useState(
       (invoice.lines && invoice.lines.some(l => l.manualPriceCents !== undefined && l.manualPriceCents !== null)) || false
@@ -400,7 +400,12 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
    const handleLineChange = (idx: number, field: keyof InvoiceLine, value: any) => {
       const newLines = [...editableLines];
-      newLines[idx] = { ...newLines[idx], [field]: value };
+      // Preserve SECTION marker if editing description of a header
+      if (field === 'description' && newLines[idx].description.startsWith('[SECTION] ')) {
+         newLines[idx] = { ...newLines[idx], [field]: `[SECTION] ${value}` };
+      } else {
+         newLines[idx] = { ...newLines[idx], [field]: value };
+      }
       setEditableLines(newLines);
    };
 
@@ -411,19 +416,86 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
       ]);
    };
 
+   const autoStructureBanquet = () => {
+      const buckets: Record<string, InvoiceLine[]> = {
+         'Nigerian Menu': [],
+         'Oriental Menu': [],
+         'Continental Menu': [],
+         'Small Chops & Starters': [],
+         'Drinks & Beverages': [],
+         'Logistics & Service': [],
+         'General': []
+      };
+
+      // 1. Bucketize existing items
+      editableLines.forEach(line => {
+         if (line.description.startsWith('[SECTION] ')) return; // Skip existing headers
+
+         const desc = line.description.toLowerCase();
+         if (desc.includes('transport') || desc.includes('truck') || desc.includes('waiter') || desc.includes('service') || desc.includes('logistics') || desc.includes('rental')) {
+            buckets['Logistics & Service'].push(line);
+         } else if (desc.includes('spring roll') || desc.includes('samosa') || desc.includes('prawn') || desc.includes('dim sum')) {
+            buckets['Small Chops & Starters'].push(line);
+         } else if (desc.includes('rice') || desc.includes('yam') || desc.includes('swallow') || desc.includes('soup') || desc.includes('stew') || desc.includes('moimoi') || desc.includes('eba') || desc.includes('amala')) {
+            buckets['Nigerian Menu'].push(line);
+         } else if (desc.includes('pasta') || desc.includes('burger') || desc.includes('steak') || desc.includes('salad')) {
+            buckets['Continental Menu'].push(line);
+         } else if (desc.includes('water') || desc.includes('ice') || desc.includes('drink') || desc.includes('wine') || desc.includes('juice') || desc.includes('chapman')) {
+            buckets['Drinks & Beverages'].push(line);
+         } else {
+            buckets['General'].push(line);
+         }
+      });
+
+      // 2. Reconstruct Lines with Headers
+      const newLines: InvoiceLine[] = [];
+      Object.entries(buckets).forEach(([category, items]) => {
+         if (items.length > 0) {
+            // Special Rule: Logistics don't use guest count multiplier
+            const isLogistics = category.includes('Logistics');
+            const headerQty = isLogistics ? 1 : guestCount;
+
+            // Add Header
+            newLines.push({
+               id: `header-${category}-${Date.now()}`,
+               description: `[SECTION] ${category}`,
+               quantity: headerQty,
+               unitPriceCents: 0 // User fills this
+            });
+
+            // Add Items
+            items.forEach(item => newLines.push(item));
+         }
+      });
+
+      setEditableLines(newLines);
+   };
+
    const toggleBanquetMode = () => {
       if (!isBanquetMode) {
-         // Enable Banquet Mode: Inject header if missing
-         let newLines = [...editableLines];
-         if (newLines.length === 0 || !newLines[0].description.toLowerCase().includes('supply')) {
-            newLines = [{
-               id: `line-${Date.now()}`,
-               description: 'Supply of various menu items listed below:',
-               quantity: 0,
-               unitPriceCents: 0
-            }, ...newLines];
+         // Enable Banquet Mode
+         // Check if we need to auto-structure (if no sections exist)
+         const hasSections = editableLines.some(l => l.description.startsWith('[SECTION]'));
+         if (!hasSections) {
+            if (editableLines.length > 0 && confirm("Automatically group items into Banquet Sections (e.g. Menu, Logistics)?")) {
+               autoStructureBanquet();
+            } else {
+               // Fallback to single header legacy behavior if they decline or list empty
+               let newLines = [...editableLines];
+               if (newLines.length === 0 || !newLines[0].description.toLowerCase().includes('supply')) {
+                  const hasSupplyHeader = newLines.length > 0 && newLines[0].description.toLowerCase().includes('supply');
+                  if (!hasSupplyHeader) {
+                     newLines = [{
+                        id: `line-${Date.now()}`,
+                        description: '[SECTION] Supply of various menu items listed below:',
+                        quantity: guestCount,
+                        unitPriceCents: 0
+                     }, ...newLines];
+                  }
+               }
+               setEditableLines(newLines);
+            }
          }
-         setEditableLines(newLines);
          setIsBanquetMode(true);
       } else {
          setIsBanquetMode(false);
@@ -537,11 +609,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
                         editableLines.map((line, idx) => {
-                           // Banquet Logic: Only show prices/amounts for the first row (Header)
-                           const showPricing = !isBanquetMode || idx === 0;
+                           // Banquet Logic:
+                           const isHeader = line.description.startsWith('[SECTION] ');
+
+                           // Show Pricing IF: Not Banquet Mode OR It *IS* a Header row
+                           const showPricing = !isBanquetMode || isHeader;
 
                            return (
-                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0`}>
+                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''}`}>
                                  {isProformaMode ? (
                                     <>
                                        {/* Description (Top on Mobile, First Col on Desktop) */}
@@ -552,10 +627,11 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                           >
                                              <Trash2 size={12} />
                                           </button>
+                                          {isHeader && <span className="p-1 bg-orange-100 text-orange-600 rounded text-[10px] uppercase font-black tracking-widest mr-1 hidden md:inline-block">Section</span>}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isBanquetMode && idx === 0 ? 'font-black uppercase tracking-wide' : ''}`}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''}`}
                                              placeholder="Item description"
-                                             value={line.description}
+                                             value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
                                           />
                                        </div>
@@ -563,10 +639,10 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                        {/* Mobile Details Row / Desktop Columns */}
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
-                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">{isBanquetMode && idx === 0 ? 'Guests' : 'Quantity'}</label>
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">{isHeader ? 'Qty/Guests' : 'Quantity'}</label>
                                              <input
                                                 type="number"
-                                                className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
+                                                className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center ${isHeader ? 'font-black text-slate-900' : ''}`}
                                                 value={line.quantity}
                                                 onFocus={e => e.target.select()}
                                                 onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
@@ -580,7 +656,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                                    <span className="text-[10px] text-slate-400 mr-1">₦</span>
                                                    <input
                                                       type="number"
-                                                      className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
+                                                      className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}`}
                                                       value={line.unitPriceCents / 100}
                                                       onFocus={e => e.target.select()}
                                                       onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
@@ -613,7 +689,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                           <div className="flex flex-col md:block items-end md:items-stretch">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
                                              {showPricing && (
-                                                <span className="text-slate-900 font-bold text-right py-1 block">
+                                                <span className={`text-slate-900 font-bold text-right py-1 block ${isHeader ? 'text-lg text-emerald-600' : ''}`}>
                                                    {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
                                                 </span>
                                              )}
@@ -624,12 +700,13 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                                     <>
                                        {/* View Mode (Non-Editable) */}
                                        <div className="w-full md:pr-4">
-                                          <span className={`text-slate-800 font-medium block ${isBanquetMode && idx === 0 ? 'font-black uppercase tracking-wide' : ''}`}>{line.description}</span>
+                                          {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1">Section</span>}
+                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isBanquetMode ? 'text-xs md:ml-6 text-slate-600' : ''}`}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
                                        </div>
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Qty</label>
-                                             <span className="text-slate-600 md:text-center block">{line.quantity}</span>
+                                             <span className={`text-slate-600 md:text-center block ${isHeader ? 'font-black' : ''}`}>{line.quantity}</span>
                                           </div>
                                           <div className="flex flex-col md:block">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
@@ -751,8 +828,10 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
                            const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
-                              // In Banquet Mode, ONLY the first line (Summary) contributes to cost
-                              if (isBanquetMode && idx > 0) return acc;
+                              // Banquet Mode: ONLY lines marked as [SECTION] headers contribute to cost
+                              if (isBanquetMode) {
+                                 if (!l.description.startsWith('[SECTION] ')) return acc;
+                              }
 
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
@@ -1229,49 +1308,49 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
          {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
          {showLogistics && <LogisticsReturnModal event={event} onClose={() => setShowLogistics(false)} onComplete={onClose} />}
 
-         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-            <div className="space-y-4 w-full">
-               <div className="flex flex-wrap gap-2 md:gap-4">
-                  <button onClick={() => onAmend(event)} className="px-4 md:px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
+         <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-slate-100 pb-8">
+            <div className="space-y-6 w-full max-w-2xl">
+               <div className="flex flex-wrap gap-3">
+                  <button onClick={() => onAmend(event)} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-100 transition-all flex items-center gap-2">
                      <FileText size={14} /> <span className="hidden sm:inline">Amend Record</span><span className="sm:hidden">Amend</span>
                   </button>
                   {salesInvoice && (
-                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-4 md:px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2">
+                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
                         <Printer size={14} /> <span className="hidden sm:inline">View Invoice</span><span className="sm:hidden">Invoice</span>
                      </button>
                   )}
                   {event.currentPhase === 'Execution' && (
-                     <button onClick={() => setShowDispatch(true)} className="px-4 md:px-6 py-2 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2">
+                     <button onClick={() => setShowDispatch(true)} className="px-5 py-2.5 bg-orange-50 text-orange-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-orange-100 transition-all flex items-center gap-2">
                         <Truck size={14} /> <span className="hidden sm:inline">Dispatch Assets</span><span className="sm:hidden">Dispatch</span>
                      </button>
                   )}
                </div>
                <div>
-                  <h3 className="text-2xl md:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words">{event.customerName}</h3>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
-                     <span className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase border-2 ${event.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{event.status}</span>
-                     <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest leading-tight">{event.eventDate} • {event.location || 'Venue TBD'}</p>
+                  <h3 className="text-3xl md:text-5xl font-black text-slate-800 uppercase tracking-tighter leading-none break-words mb-4">{event.customerName}</h3>
+                  <div className="flex flex-wrap items-center gap-3">
+                     <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{event.status}</span>
+                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{event.eventDate} • {event.location || 'Venue TBD'}</p>
                   </div>
                </div>
             </div>
-            <div className="text-left md:text-right shrink-0">
-               <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
-               <p className="text-2xl md:text-3xl font-black text-slate-900">{event.guestCount}</p>
+            <div className="text-right shrink-0 bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
+               <p className="text-4xl font-black text-slate-900 tracking-tighter">{event.guestCount}</p>
             </div>
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Gross Revenue</p>
-               <h4 className="text-2xl font-black text-slate-900">₦{(event.financials.revenueCents / 100).toLocaleString()}</h4>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="p-6 bg-white rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Revenue</p>
+               <h4 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">₦{(event.financials.revenueCents / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Est. Direct Costs</p>
-               <h4 className="text-2xl font-black text-rose-600">₦{(estimatedCost / 100).toLocaleString()}</h4>
+            <div className="p-6 bg-white rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Est. Direct Costs</p>
+               <h4 className="text-xl md:text-2xl font-black text-rose-600 tracking-tight">₦{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-8 bg-slate-950 rounded-[2.5rem] shadow-xl">
-               <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-3">Projected Net</p>
-               <h4 className="text-2xl font-black text-white">₦{(estimatedNet / 100).toLocaleString()}</h4>
+            <div className="p-6 bg-slate-900 rounded-[2rem] shadow-xl ring-4 ring-slate-50">
+               <p className="text-[9px] font-black text-[#00ff9d] uppercase tracking-widest mb-2">Projected Net</p>
+               <h4 className="text-xl md:text-2xl font-black text-white tracking-tight">₦{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
 
@@ -1480,6 +1559,24 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
    const createCateringOrder = useDataStore(state => state.createCateringOrder);
 
+   useEffect(() => {
+      const savedDraft = localStorage.getItem('cuisine_draft');
+      if (savedDraft) {
+         try {
+            const draft = JSON.parse(savedDraft);
+            if (window.confirm("Found an unfinished Cuisine Order draft. Restore it?")) {
+               setCustomerName(draft.customerName || '');
+               setEventDate(draft.eventDate || new Date().toISOString().split('T')[0]);
+               setItems(draft.items || []);
+            } else {
+               localStorage.removeItem('cuisine_draft');
+            }
+         } catch (e) {
+            console.error(e);
+         }
+      }
+   }, []);
+
    const filteredProducts = PREDEFINED_CUISINE_PRODUCTS.filter(p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1554,11 +1651,21 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
       try {
          const { invoice } = await createCateringOrder(payload);
+         localStorage.removeItem('cuisine_draft');
          onFinalize(invoice);
          onClose();
       } catch (err) {
          console.error(err);
-         alert("Failed to create cuisine order.");
+
+         const draft = {
+            customerName,
+            eventDate,
+            items,
+            timestamp: Date.now()
+         };
+         localStorage.setItem('cuisine_draft', JSON.stringify(draft));
+
+         alert("Failed to create cuisine order. Your data has been saved as a draft. Reload to restore.");
       }
    };
 
@@ -1925,21 +2032,14 @@ export const Catering = () => {
             )
          }
 
-         {
-            generatedInvoice && (
-               <WaveInvoiceModal
-                  invoice={generatedInvoice}
-                  onSave={handleCommitInvoice}
-                  onClose={() => setGeneratedInvoice(null)}
-               />
-            )
-         }
+
 
          {generatedInvoice && (
             <WaveInvoiceModal
                invoice={generatedInvoice}
                onSave={handleCommitInvoice}
                onClose={() => setGeneratedInvoice(null)}
+               guestCount={selectedEvent?.guestCount}
             />
          )}
 

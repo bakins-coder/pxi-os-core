@@ -63,6 +63,40 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
     const createCateringOrder = useDataStore(state => state.createCateringOrder);
     const updateCateringOrder = useDataStore(state => state.updateCateringOrder);
 
+    // [DRAFT LOGIC]
+    useEffect(() => {
+        const savedDraft = localStorage.getItem('banquet_order_draft');
+        if (savedDraft) {
+            try {
+                const draft = JSON.parse(savedDraft);
+                // Check if draft is recent (e.g. < 24 hours)? For now, just ask based on existence.
+                if (window.confirm("We found an unfinished order draft saved from a previous error. Would you like to restore it?")) {
+                    setCustomerName(draft.customerName || '');
+                    setContactPerson(draft.contactPerson || '');
+                    setContactEmail(draft.contactEmail || '');
+                    setContactPhone(draft.contactPhone || '');
+                    setEventType(draft.eventType || 'Wedding');
+                    setThemeColor(draft.themeColor || '#4f46e5');
+                    setEventDate(draft.eventDate || '');
+                    setGuestCount(draft.guestCount || 100);
+                    setEventLocation(draft.eventLocation || '');
+                    setEventPlannerName(draft.eventPlannerName || '');
+                    setEventPlannerPhone(draft.eventPlannerPhone || '');
+                    setNotes(draft.notes || '');
+                    setSelected(draft.selected || {});
+                    setCustomItems(draft.customItems || {});
+                    console.log("Draft restored successfully.");
+                } else {
+                    // If they decline, maybe clear it? Or keep it until they manually clear/overwrite?
+                    // Let's clear it to avoid annoying them.
+                    localStorage.removeItem('banquet_order_draft');
+                }
+            } catch (e) {
+                console.error("Failed to parse draft", e);
+            }
+        }
+    }, []);
+
     useEffect(() => {
         // REFACTOR: Use new strict type taxonomy
         // Only show 'product' (Menu Items) or 'raw_material' (Ingredients) in the brochure
@@ -300,11 +334,23 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     banquetDetails
                 });
                 setIsSubmitting(false);
+                localStorage.removeItem('banquet_order_draft');
                 onFinalize(invoice);
             }
         } catch (err) {
             console.error(err);
-            alert("Failed to process order update.");
+
+            // [DRAFT SAVE]
+            const draftData = {
+                customerName, contactPerson, contactEmail, contactPhone,
+                eventType, themeColor, eventDate, guestCount,
+                eventLocation, eventPlannerName, eventPlannerPhone, notes,
+                selected, customItems,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('banquet_order_draft', JSON.stringify(draftData));
+
+            alert("Failed to finalize order due to a system error. \n\nYour order data has been saved locally as a 'Pending Draft'. \n\nPlease reload the page or check your connection, and you will be prompted to restore this data so you don't have to start over.");
             setIsSubmitting(false);
         }
     };
