@@ -375,7 +375,7 @@ export interface Contact {
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
 export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; }
 export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId?: string; isSuperAdmin?: boolean; permissionTags?: string[]; staffId?: string; }
-export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; }
+export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; paymentMethod?: string; }
 
 export interface Requisition {
   id: string;
@@ -387,9 +387,10 @@ export interface Requisition {
   pricePerUnitCents: number;
   totalAmountCents: number;
   requestorId: string;
-  status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Paid' | 'Rejected' | 'Issued';
   referenceId?: string;
   notes?: string;
+  sourceAccountId?: string; // ID of the bank account used for payment
 }
 
 export interface RentalRecord {
@@ -443,9 +444,22 @@ export interface MarketingPost { id: string; companyId: string; type: string; ti
 export interface SocialInteraction { id: string; platform: string; user: string; handle: string; timestamp: string; sentiment: string; content: string; aiAnalysis: string; suggestedResponse: string; status: string; }
 export interface SocialPost { id: string; platform: string; title: string; content: string; scheduledDate: string; status: string; generatedByAI: boolean; }
 export interface Workflow { id: string; name: string; trigger: string; status: 'Active' | 'Inactive'; lastRun?: string; logs: string[]; agentName: string; agentRole: string; }
-export interface BankTransaction { id: string; companyId: string; date: string; description: string; amountCents: number; type: string; category: string; contactId?: string; }
+export interface BankTransaction { id: string; companyId: string; date: string; description: string; amountCents: number; type: string; category: string; contactId?: string; bankAccountId?: string; referenceId?: string; }
 export interface ChartOfAccount { id: string; companyId: string; code: string; name: string; type: string; subtype: string; balanceCents: number; currency: 'NGN' | 'USD'; }
 export interface BankStatementLine { id: string; date: string; description: string; amountCents: number; type: 'Credit' | 'Debit'; isMatched: boolean; suggestedAccountId?: string; }
+
+export interface BankAccount {
+  id: string;
+  companyId: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  currency: 'NGN' | 'USD' | 'GBP' | 'EUR';
+  balanceCents: number;
+  isActive: boolean;
+  lastUpdated: string;
+}
+
 export enum InvoiceStatus { PAID = 'Paid', UNPAID = 'Unpaid', OVERDUE = 'Overdue', PROFORMA = 'Pro-forma' }
 
 export interface InvoiceLine {

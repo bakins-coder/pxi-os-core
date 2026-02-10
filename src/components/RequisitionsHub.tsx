@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Requisition } from '../types';
@@ -9,113 +9,142 @@ import {
 } from 'lucide-react';
 
 // Reusing and adapting RequisitionEditModal logic
-const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolean, onClose: () => void, requisition: Requisition | null }) => {
-    const { updateRequisition, approveRequisition, rejectRequisition } = useDataStore();
+export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolean, onClose: () => void, requisition: Requisition | null }) => {
+    const { updateRequisition, approveRequisition, rejectRequisition, reverseRequisition, bankAccounts, cashAtHandCents } = useDataStore();
 
     const [editedReq, setEditedReq] = useState<Partial<Requisition>>({});
+    const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
-    React.useEffect(() => {
-        if (requisition) setEditedReq(requisition);
+    useEffect(() => {
+        if (requisition) {
+            setEditedReq(requisition);
+            setSelectedAccountId(requisition.sourceAccountId || '');
+        }
     }, [requisition]);
 
-    if (!isOpen || !requisition) return null;
-
-    const handleApprove = () => {
-        approveRequisition(requisition.id);
-        onClose();
-    };
-
-    const handleReject = () => {
-        rejectRequisition(requisition.id);
-        onClose();
-    };
-
     const handleSave = () => {
+        if (!requisition) return;
         updateRequisition(requisition.id, editedReq);
         onClose();
     };
 
+    const handleApprove = () => {
+        if (!requisition) return;
+        approveRequisition(requisition.id, selectedAccountId || undefined);
+        onClose();
+    };
+
+    const handleReject = () => {
+        if (!requisition) return;
+        rejectRequisition(requisition.id);
+        onClose();
+    };
+
+    const handleReverse = () => {
+        if (!requisition) return;
+        if (confirm("Are you sure you want to reverse this requisition? If it was paid, funds will be restored.")) {
+            reverseRequisition(requisition.id);
+            onClose();
+        }
+    };
+
+    if (!isOpen || !requisition) return null;
+
+    const activeBankAccounts = bankAccounts.filter(a => a.isActive);
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#020617]/90 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#0f172a] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl">
-                <div className="p-8 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-indigo-500/10 to-transparent">
-                    <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-tighter">Review Requisition</h2>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Ref: {requisition.id.slice(0, 8)}</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X size={20} className="text-slate-500" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">Manage Requisition</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} className="text-slate-500" /></button>
                 </div>
 
-                <div className="p-8 space-y-6 text-white">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Item Name</label>
+                <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Item Name</label>
                             <input
                                 type="text"
                                 value={editedReq.itemName || ''}
                                 onChange={e => setEditedReq({ ...editedReq, itemName: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                disabled={requisition.status !== 'Pending' && requisition.status !== 'Rejected'}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Category</label>
-                            <select
-                                value={editedReq.category}
-                                onChange={e => setEditedReq({ ...editedReq, category: e.target.value as any })}
-                                className="w-full bg-[#0f172a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
-                            >
-                                <option value="Food">Food & Beverage</option>
-                                <option value="Hardware">Hardware / Equipment</option>
-                                <option value="Service">Services / Freelance</option>
-                                <option value="Financial">Financial / Operational</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Quantity</label>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Quantity</label>
                             <input
                                 type="number"
                                 value={editedReq.quantity || 0}
-                                onChange={e => setEditedReq({ ...editedReq, quantity: Number(e.target.value), totalAmountCents: (editedReq.pricePerUnitCents || 0) * Number(e.target.value) })}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Price per Unit (Cents)</label>
-                            <input
-                                type="number"
-                                value={editedReq.pricePerUnitCents || 0}
-                                onChange={e => setEditedReq({ ...editedReq, pricePerUnitCents: Number(e.target.value), totalAmountCents: (editedReq.quantity || 0) * Number(e.target.value) })}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                onChange={e => setEditedReq({ ...editedReq, quantity: parseInt(e.target.value) || 0 })}
+                                disabled={requisition.status !== 'Pending' && requisition.status !== 'Rejected'}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500"
                             />
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Internal Notes</label>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Description / Notes</label>
                         <textarea
                             value={editedReq.notes || ''}
                             onChange={e => setEditedReq({ ...editedReq, notes: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm h-24 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                            placeholder="Provide reason for this request or specific details..."
+                            disabled={requisition.status !== 'Pending' && requisition.status !== 'Rejected'}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 outline-none focus:border-indigo-500 h-24 resize-none"
                         />
                     </div>
 
-                    <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl flex items-center justify-between">
-                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Projected Total Cost</span>
-                        <span className="text-xl font-black text-white">₦{((editedReq.totalAmountCents || 0) / 100).toLocaleString()}</span>
-                    </div>
+                    {/* Approval Section */}
+                    {requisition.status === 'Pending' && (
+                        <div className="pt-4 border-t border-slate-100 space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Source Bank Account (Required)</label>
+                                <select
+                                    value={selectedAccountId}
+                                    onChange={e => setSelectedAccountId(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 appearance-none"
+                                >
+                                    <option value="">-- Select Payment Source --</option>
+                                    <option value="cash">Cash at Hand (₦{(cashAtHandCents / 100).toLocaleString()})</option>
+                                    {activeBankAccounts.map(account => (
+                                        <option key={account.id} value={account.id}>
+                                            {account.bankName} - {account.accountNumber} (₦{(account.balanceCents / 100).toLocaleString()})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-slate-400 font-medium">Selecting a bank account will immediately deduct funds and mark as Paid.</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                <div className="p-8 bg-[#020617]/50 flex flex-col sm:flex-row gap-4">
-                    <button onClick={handleReject} className="flex-1 px-6 py-4 rounded-2xl border-2 border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2">
-                        <XCircle size={16} /> Deny Request
-                    </button>
-                    <button onClick={handleSave} className="flex-1 px-6 py-4 rounded-2xl border-2 border-white/10 text-slate-400 hover:border-indigo-500 hover:text-indigo-400 font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2">
-                        <Edit3 size={16} /> Save Changes
-                    </button>
-                    <button onClick={handleApprove} className="sm:flex-[1.5] px-8 py-4 rounded-2xl bg-[#00ff9d] text-slate-950 font-black uppercase text-[10px] tracking-widest transition-all hover:shadow-[0_0_30px_rgba(0,255,157,0.3)] active:scale-95 flex items-center justify-center gap-2">
-                        <CheckCircle2 size={16} /> Approve Now
-                    </button>
+                <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+                    {requisition.status === 'Pending' ? (
+                        <>
+                            <button onClick={handleReject} className="flex-1 py-3 bg-rose-100 text-rose-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-rose-200 transition-colors">Reject</button>
+                            <button onClick={handleSave} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-colors">Save Changes</button>
+                            <button
+                                onClick={handleApprove}
+                                disabled={!selectedAccountId}
+                                className={`flex-[2] py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-lg ${!selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'}`}
+                            >
+                                Pay & Approve
+                            </button>
+                        </>
+                    ) : requisition.status === 'Rejected' ? (
+                        <>
+                            <button onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">Save & Re-submit</button>
+                        </>
+                    ) : (
+                        <>
+                            {(requisition.status === 'Approved' || requisition.status === 'Paid') && (
+                                <button onClick={handleReverse} className="flex-1 py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-rose-100 transition-colors">
+                                    Reverse to Pending
+                                </button>
+                            )}
+                            <button onClick={onClose} className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-colors">Close</button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
@@ -237,15 +266,15 @@ export const RequisitionsHub: React.FC = () => {
                             >
                                 {/* Status Indicator Bar */}
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${req.status === 'Pending' ? 'bg-amber-500' :
-                                        (req.status === 'Approved' || req.status === 'Paid') ? 'bg-emerald-500' :
-                                            'bg-rose-500'}`}
+                                    (req.status === 'Approved' || req.status === 'Paid') ? 'bg-emerald-500' :
+                                        'bg-rose-500'}`}
                                 />
 
                                 <div className="flex items-center gap-6 mb-4 md:mb-0">
                                     <div className={`p-4 rounded-2xl shrink-0 ${req.category === 'Food' ? 'bg-orange-500/10 text-orange-400' :
-                                            req.category === 'Hardware' ? 'bg-blue-500/10 text-blue-400' :
-                                                req.category === 'Service' ? 'bg-purple-500/10 text-purple-400' :
-                                                    'bg-emerald-500/10 text-emerald-400'
+                                        req.category === 'Hardware' ? 'bg-blue-500/10 text-blue-400' :
+                                            req.category === 'Service' ? 'bg-purple-500/10 text-purple-400' :
+                                                'bg-emerald-500/10 text-emerald-400'
                                         }`}>
                                         <Box size={20} />
                                     </div>
@@ -279,13 +308,6 @@ export const RequisitionsHub: React.FC = () => {
                                                     title="Quick Reject"
                                                 >
                                                     <X size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); useDataStore.getState().approveRequisition(req.id); }}
-                                                    className="p-3 rounded-xl bg-[#00ff9d] text-slate-950 font-black shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
-                                                    title="Quick Approve"
-                                                >
-                                                    <Check size={16} />
                                                 </button>
                                             </>
                                         )}

@@ -57,27 +57,26 @@ export const InvoicePrototype = () => {
     }
 
     // Calculations
-    // Calculations
-    let totalAmount = invoice.totalCents / 100;
-    let subtotal = invoice.subtotalCents ? invoice.subtotalCents / 100 : 0;
-    let serviceCharge = invoice.serviceChargeCents ? invoice.serviceChargeCents / 100 : 0;
-    let vat = invoice.vatCents ? invoice.vatCents / 100 : 0;
+    const standardSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0) / 100;
 
-    // Fallback for legacy invoices (calculate breakdown if missing)
-    if (!subtotal && !serviceCharge && !vat) {
-        // Calculate based on the stored total or calculate from lines
-        // Option A: Treat total as subtotal and calculate taxes on top (User intent: "Show me taxes")
+    // Effective subtotal (using manual prices where set)
+    const effectiveSubtotal = invoice.lines.reduce((acc, l) => {
+        const price = l.manualPriceCents !== undefined ? l.manualPriceCents : l.unitPriceCents;
+        return acc + (l.quantity * price);
+    }, 0) / 100;
 
-        // Recalculate subtotal from lines to be safe
-        const calculatedSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0) / 100;
+    let subtotal = invoice.subtotalCents ? invoice.subtotalCents / 100 : effectiveSubtotal;
+    let serviceCharge = invoice.serviceChargeCents ? invoice.serviceChargeCents / 100 : subtotal * 0.15;
+    let vat = invoice.vatCents ? invoice.vatCents / 100 : (subtotal + serviceCharge) * 0.075;
+    let totalAmount = invoice.totalCents ? invoice.totalCents / 100 : subtotal + serviceCharge + vat;
 
-        subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : totalAmount;
-        serviceCharge = subtotal * 0.15;
-        vat = (subtotal + serviceCharge) * 0.075;
-        totalAmount = subtotal + serviceCharge + vat;
-    }
     const paidAmount = invoice.paidAmountCents / 100;
     const balanceDue = totalAmount - paidAmount;
+
+    // Calculate discount
+    const impliedStandardTotal = (standardSubtotal * 1.15 * 1.075);
+    const discountAmount = Math.max(0, impliedStandardTotal - totalAmount);
+    const hasDiscount = discountAmount > 1; // Tolerance for float math
 
     // Fallback Customer Data
     const customerName = customer?.name || 'Valued Customer';
@@ -193,8 +192,11 @@ export const InvoicePrototype = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                             {invoice.lines.map((item, index) => {
-                                const linePrice = item.unitPriceCents / 100;
-                                const lineTotal = (item.quantity * item.unitPriceCents) / 100;
+                                const originalPrice = item.unitPriceCents / 100;
+                                const effectivePrice = item.manualPriceCents !== undefined ? item.manualPriceCents / 100 : originalPrice;
+                                const isDiscounted = item.manualPriceCents !== undefined && item.manualPriceCents !== item.unitPriceCents;
+                                const lineTotal = (item.quantity * effectivePrice);
+
                                 return (
                                     <tr key={item.id} className="group hover:bg-slate-50/50">
                                         <td className="py-6 pr-8 align-top break-words">
@@ -202,10 +204,17 @@ export const InvoicePrototype = () => {
                                         </td>
                                         <td className="py-6 text-center align-top text-sm font-medium text-slate-600">{item.quantity}</td>
                                         <td className="py-6 text-right align-top text-sm font-medium text-slate-600">
-                                            {linePrice ? `₦${linePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
+                                            {isDiscounted ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-xs text-slate-400 line-through decoration-slate-300">₦{originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                                    <span className="text-orange-500 font-bold">₦{effectivePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                                </div>
+                                            ) : (
+                                                `₦${originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+                                            )}
                                         </td>
                                         <td className="py-6 text-right align-top text-sm font-bold text-slate-800">
-                                            {lineTotal ? `₦${lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
+                                            ₦{lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 )
@@ -232,10 +241,25 @@ export const InvoicePrototype = () => {
                             <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="w-full h-px bg-slate-200 my-2"></div>
+
+                        {hasDiscount && (
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-400 uppercase">Standard Total:</span>
+                                <span className="font-medium text-slate-400 line-through decoration-slate-300">₦{impliedStandardTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center text-sm">
                             <span className="font-bold text-slate-600 uppercase">Total Amount:</span>
-                            <span className="font-bold text-slate-900 text-lg">₦{(subtotal + serviceCharge + vat).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            <span className="font-bold text-slate-900 text-lg">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
+
+                        {hasDiscount && (
+                            <div className="flex justify-between items-center text-xs bg-green-50 p-2 rounded text-green-700">
+                                <span className="font-bold uppercase">You Save:</span>
+                                <span className="font-bold">₦{discountAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between items-center text-xs">
                             <span className="font-medium text-slate-500">Amount Paid:</span>
                             <span className="font-medium text-slate-800">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>

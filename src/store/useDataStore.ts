@@ -6,7 +6,7 @@ import {
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview,
-    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn
+    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount
 } from '../types';
 
 import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
@@ -36,6 +36,7 @@ interface DataState {
     chartOfAccounts: ChartOfAccount[];
     bankTransactions: BankTransaction[];
     bankStatementLines: BankStatementLine[];
+    bankAccounts: BankAccount[];
     leaveRequests: LeaveRequest[];
     departmentMatrix: DepartmentMatrix[];
     calendarEvents: any[];
@@ -44,6 +45,7 @@ interface DataState {
     performanceReviews: PerformanceReview[];
     interactionLogs: InteractionLog[];
     messages: Message[];
+    cashAtHandCents: number;
     syncStatus: 'Synced' | 'Syncing' | 'Error' | 'Offline';
     lastSyncError: string | null;
     isSyncing: boolean;
@@ -55,7 +57,7 @@ interface DataState {
     updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
     addRequisition: (req: Partial<Requisition>) => void;
     updateRequisition: (id: string, updates: Partial<Requisition>) => void;
-    approveRequisition: (id: string) => void;
+    approveRequisition: (id: string, sourceAccountId?: string) => void;
     rejectRequisition: (id: string) => void;
     receiveFoodStock: (ingId: string, qty: number, cost: number) => void;
     issueRental: (eventId: string, itemId: string, qty: number, vendor?: string) => void;
@@ -72,6 +74,11 @@ interface DataState {
     addTransaction: (tx: BankTransaction) => void;
     recordPayment: (id: string, amount: number) => void;
     reconcileMatch: (lineId: string, accountId: string) => void;
+
+    // Bank Account Actions
+    addBankAccount: (account: Partial<BankAccount>) => void;
+    updateBankAccount: (id: string, updates: Partial<BankAccount>) => void;
+    deleteBankAccount: (id: string) => void;
 
     // HR Actions
     addEmployee: (emp: Partial<Employee>) => Promise<Employee>;
@@ -93,8 +100,13 @@ interface DataState {
     addTask: (task: Partial<Task>) => void;
     updateTask: (id: string, updates: Partial<Task>) => void;
     addMarketingPost: (post: Partial<MarketingPost>) => MarketingPost;
-    addAIAgent: (agent: Partial<AIAgent>) => void;
-    addWorkflow: (wf: Partial<Workflow>) => void;
+    addAIAgent: (a: AIAgent) => void;
+    addWorkflow: (wf: Workflow) => void;
+    addAgenticLog: (log: AgenticLog) => void;
+    reverseRequisition: (id: string) => void;
+    reapplyRequisitions: (eventId: string) => void;
+    addMessage: (message: Partial<Message>) => Promise<void>;
+    markMessageRead: (messageId: string) => Promise<void>;
     addProject: (proj: Partial<Project>) => void;
     addRecipe: (recipe: Partial<Recipe>) => void;
     updateRecipe: (id: string, updates: Partial<Recipe>) => void;
@@ -118,9 +130,6 @@ interface DataState {
     hydrateFromCloud: () => Promise<void>;
     subscribeToRealtimeUpdates: () => void;
     unsubscribeFromRealtimeUpdates: () => void;
-    addAgenticLog: (log: Partial<AgenticLog>) => void;
-    addMessage: (message: Message) => Promise<void>;
-    markMessageRead: (messageId: string) => Promise<void>;
     // Portion Monitor Actions
     initializePortionMonitor: (eventId: string, tableCount: number, guestsPerTable: number) => void;
     addPortionMonitorTable: (eventId: string, guestCapacity: number) => void;
@@ -140,6 +149,7 @@ interface DataState {
 
 
     reset: () => void;
+    updateCashAtHand: (cents: number) => void;
 }
 
 export const useDataStore = create<DataState>()(
@@ -167,6 +177,12 @@ export const useDataStore = create<DataState>()(
             chartOfAccounts: [],
             bankTransactions: [],
             bankStatementLines: [],
+            bankAccounts: [
+                { id: 'ba-gt-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Xquisite Cuisine', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                { id: 'ba-gt-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Xquisite Celebrations', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                { id: 'ba-zenith-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'Zenith Bank', accountName: 'Xquisite Celebrations', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                { id: 'ba-first-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() }
+            ],
             leaveRequests: [],
             calendarEvents: [],
             socialInteractions: [],
@@ -174,6 +190,7 @@ export const useDataStore = create<DataState>()(
             performanceReviews: [],
             interactionLogs: [],
             messages: [],
+            cashAtHandCents: 0,
             syncStatus: 'Synced',
             lastSyncError: null,
             isSyncing: false,
@@ -186,11 +203,15 @@ export const useDataStore = create<DataState>()(
                     inventory: [], recipes: [], cateringEvents: [], invoices: [], tasks: [], bookkeeping: [],
                     projects: [], aiAgents: [], ingredients: [], suppliers: [], marketingPosts: [], workflows: [],
                     tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [], chartOfAccounts: [],
-                    bankTransactions: [], bankStatementLines: [], leaveRequests: [], calendarEvents: [],
+                    bankTransactions: [], bankStatementLines: [], bankAccounts: [], leaveRequests: [], calendarEvents: [],
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
-                    interactionLogs: [], messages: [],
+                    interactionLogs: [], messages: [], cashAtHandCents: 0,
                     syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected'
                 });
+            },
+
+            updateCashAtHand: (cents) => {
+                set({ cashAtHandCents: cents });
             },
 
             addInventoryItem: async (item) => {
@@ -431,9 +452,91 @@ export const useDataStore = create<DataState>()(
                 }));
                 get().syncWithCloud();
             },
-            approveRequisition: (id) => {
+            approveRequisition: (id, sourceAccountId) => {
+                const state = get();
+                const req = state.requisitions.find(r => r.id === id);
+                if (!req) return;
+
+                const isCash = sourceAccountId === 'cash';
+                const isBank = !!sourceAccountId && !isCash;
+                const newStatus = (isCash || isBank) ? 'Paid' : 'Approved';
+
+                let updatedBankAccounts = state.bankAccounts;
+                let updatedBankTransactions = state.bankTransactions;
+                let updatedBookkeeping = state.bookkeeping;
+                let updatedCashAtHand = state.cashAtHandCents;
+
+                // Handle Bank Deduction & Transaction Logging
+                if (isBank) {
+                    const account = state.bankAccounts.find(a => a.id === sourceAccountId);
+                    if (account) {
+                        updatedBankAccounts = state.bankAccounts.map(a =>
+                            a.id === sourceAccountId
+                                ? { ...a, balanceCents: a.balanceCents - req.totalAmountCents, lastUpdated: new Date().toISOString() }
+                                : a
+                        );
+
+                        // 1. Create Bank Transaction Record
+                        const newBankTx: BankTransaction = {
+                            id: crypto.randomUUID(),
+                            companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                            bankAccountId: sourceAccountId,
+                            date: new Date().toISOString().split('T')[0],
+                            description: `Requisition Payment: ${req.itemName}`,
+                            amountCents: req.totalAmountCents,
+                            type: 'Outflow',
+                            category: req.category,
+                            referenceId: req.id
+                        };
+                        updatedBankTransactions = [newBankTx, ...state.bankTransactions];
+
+                        // 2. Create Bookkeeping Entry (Central Cash Book)
+                        const newBookkeepingEntry: BookkeepingEntry = {
+                            id: crypto.randomUUID(),
+                            date: new Date().toISOString().split('T')[0],
+                            description: `Requisition (Bank): ${req.itemName}`,
+                            category: req.category,
+                            amountCents: req.totalAmountCents,
+                            type: 'Outflow',
+                            referenceId: req.id,
+                            paymentMethod: 'Bank Transfer'
+                        };
+                        updatedBookkeeping = [newBookkeepingEntry, ...state.bookkeeping];
+
+                        // Persist Bank Account Update
+                        if (supabase) {
+                            supabase.from('bank_accounts').update({
+                                balance_cents: account.balanceCents - req.totalAmountCents,
+                                last_updated: new Date().toISOString()
+                            }).eq('id', sourceAccountId).then(({ error }) => {
+                                if (error) console.error("Failed to update bank balance:", error);
+                            });
+                        }
+                    }
+                } else if (isCash) {
+                    // Handle Cash Deduction
+                    updatedCashAtHand = state.cashAtHandCents - req.totalAmountCents;
+
+                    // Create Bookkeeping Entry (Cash Ledger)
+                    const newBookkeepingEntry: BookkeepingEntry = {
+                        id: crypto.randomUUID(),
+                        date: new Date().toISOString().split('T')[0],
+                        description: `Requisition (Cash): ${req.itemName}`,
+                        category: req.category,
+                        amountCents: req.totalAmountCents,
+                        type: 'Outflow',
+                        referenceId: req.id,
+                        paymentMethod: 'Cash'
+                    };
+                    updatedBookkeeping = [newBookkeepingEntry, ...state.bookkeeping];
+                }
+
                 set((state) => ({
-                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Approved' } : r)
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: newStatus, sourceAccountId: isCash ? 'cash' : sourceAccountId } : r),
+                    bankAccounts: updatedBankAccounts,
+                    bankTransactions: updatedBankTransactions,
+                    bookkeeping: updatedBookkeeping,
+                    cashAtHandCents: updatedCashAtHand
                 }));
                 get().syncWithCloud();
             },
@@ -443,6 +546,76 @@ export const useDataStore = create<DataState>()(
                 }));
                 get().syncWithCloud();
             },
+            reverseRequisition: (id) => {
+                const state = get();
+                const req = state.requisitions.find(r => r.id === id);
+                if (!req) return;
+
+                // 1. Check Phase Restriction
+                if (req.referenceId) {
+                    const event = state.cateringEvents.find(e => e.id === req.referenceId);
+                    if (event && event.currentPhase !== 'Procurement') {
+                        console.warn(`Cannot reverse requisition for event in ${event.currentPhase} phase.`);
+                        return;
+                    }
+                }
+
+                let updatedBankAccounts = state.bankAccounts;
+                let updatedBankTransactions = state.bankTransactions;
+                let updatedBookkeeping = state.bookkeeping;
+                let updatedCashAtHand = state.cashAtHandCents;
+
+                // 2. Handle Financial Rollback if 'Paid'
+                if (req.status === 'Paid' && req.sourceAccountId) {
+                    if (req.sourceAccountId === 'cash') {
+                        // Restore cash at hand
+                        updatedCashAtHand = state.cashAtHandCents + req.totalAmountCents;
+                    } else {
+                        const account = state.bankAccounts.find(a => a.id === req.sourceAccountId);
+                        if (account) {
+                            updatedBankAccounts = state.bankAccounts.map(a =>
+                                a.id === req.sourceAccountId
+                                    ? { ...a, balanceCents: a.balanceCents + req.totalAmountCents, lastUpdated: new Date().toISOString() }
+                                    : a
+                            );
+
+                            // Persist Bank Account Restoration
+                            if (supabase) {
+                                supabase.from('bank_accounts').update({
+                                    balance_cents: account.balanceCents + req.totalAmountCents,
+                                    last_updated: new Date().toISOString()
+                                }).eq('id', req.sourceAccountId).then(({ error }) => {
+                                    if (error) console.error("Failed to restore bank balance:", error);
+                                });
+                            }
+                        }
+                    }
+
+                    // Remove associated transactions
+                    updatedBankTransactions = state.bankTransactions.filter(tx => tx.referenceId !== req.id);
+                    updatedBookkeeping = state.bookkeeping.filter(ent => ent.referenceId !== req.id);
+                }
+
+                set((state) => ({
+                    requisitions: state.requisitions.map(r => r.id === id ? { ...r, status: 'Pending', sourceAccountId: undefined } : r),
+                    bankAccounts: updatedBankAccounts,
+                    bankTransactions: updatedBankTransactions,
+                    bookkeeping: updatedBookkeeping,
+                    cashAtHandCents: updatedCashAtHand
+                }));
+                get().syncWithCloud();
+            },
+            reapplyRequisitions: (eventId) => {
+                set((state) => ({
+                    requisitions: state.requisitions.map(r =>
+                        (r.referenceId === eventId && r.status === 'Rejected')
+                            ? { ...r, status: 'Pending' }
+                            : r
+                    )
+                }));
+                get().syncWithCloud();
+            },
+
             receiveFoodStock: async (ingId, qty, cost) => {
                 const user = useAuthStore.getState().user;
                 if (!user || !user.companyId) {
@@ -899,6 +1072,70 @@ export const useDataStore = create<DataState>()(
             reconcileMatch: (lineId, accountId) => set((state) => ({
                 bankStatementLines: state.bankStatementLines.map(l => l.id === lineId ? { ...l, isMatched: true } : l)
             })),
+
+            addBankAccount: async (account) => {
+                const user = useAuthStore.getState().user;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const newAccount = {
+                    ...account,
+                    id: account.id || crypto.randomUUID(),
+                    companyId,
+                    isActive: true,
+                    lastUpdated: new Date().toISOString()
+                } as BankAccount;
+
+                set(state => ({ bankAccounts: [newAccount, ...state.bankAccounts] }));
+
+                if (supabase) {
+                    try {
+                        await supabase.from('bank_accounts').upsert({
+                            id: newAccount.id,
+                            organization_id: companyId,
+                            bank_name: newAccount.bankName,
+                            account_name: newAccount.accountName,
+                            account_number: newAccount.accountNumber,
+                            currency: newAccount.currency,
+                            balance_cents: newAccount.balanceCents,
+                            is_active: true,
+                            last_updated: newAccount.lastUpdated
+                        });
+                    } catch (e) { console.error("Failed to add bank account", e); }
+                }
+            },
+
+            updateBankAccount: async (id, updates) => {
+                set(state => ({
+                    bankAccounts: state.bankAccounts.map(b => b.id === id ? { ...b, ...updates, lastUpdated: new Date().toISOString() } : b)
+                }));
+
+                if (supabase) {
+                    try {
+                        const account = get().bankAccounts.find(b => b.id === id);
+                        if (account) {
+                            await supabase.from('bank_accounts').upsert({
+                                id: account.id,
+                                organization_id: account.companyId,
+                                bank_name: account.bankName,
+                                account_name: account.accountName,
+                                account_number: account.accountNumber,
+                                currency: account.currency,
+                                balance_cents: account.balanceCents,
+                                is_active: account.isActive,
+                                last_updated: new Date().toISOString()
+                            });
+                        }
+                    } catch (e) { console.error("Failed to update bank account", e); }
+                }
+            },
+
+            deleteBankAccount: async (id) => {
+                set(state => ({ bankAccounts: state.bankAccounts.filter(b => b.id !== id) }));
+                if (supabase) {
+                    try {
+                        await supabase.from('bank_accounts').delete().eq('id', id);
+                    } catch (e) { console.error("Failed to delete bank account", e); }
+                }
+            },
 
             addEmployee: async (emp) => {
                 const user = useAuthStore.getState().user;

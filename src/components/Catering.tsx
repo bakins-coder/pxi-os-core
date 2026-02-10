@@ -8,12 +8,13 @@ import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
    Clock, Users, Palette, AlertCircle, Activity, Box,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag,
-   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, ArrowUpRight, Info
+   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, ArrowUpRight, Info, ClipboardList
 } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport } from '../utils/exportUtils';
 import { ManualInvoiceModal } from './Finance';
+import { RequisitionTracker } from './RequisitionTracker';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
@@ -1072,10 +1073,14 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
    const requisitions = useDataStore(state => state.requisitions);
    const createProcurementInvoice = useDataStore(state => state.createProcurementInvoice);
 
+   const reapplyRequisitions = useDataStore(state => state.reapplyRequisitions);
+
    const eventRequisitions = requisitions.filter(r => r.referenceId === event.id);
+   const hasRejections = eventRequisitions.some(r => r.status === 'Rejected');
    const procurementStatus = eventRequisitions.length === 0 ? 'None'
-      : eventRequisitions.every(r => r.status === 'Approved') ? 'Approved'
-         : 'Pending';
+      : hasRejections ? 'Rejected'
+         : eventRequisitions.every(r => r.status === 'Approved' || r.status === 'Paid') ? 'Approved'
+            : 'Pending';
 
    const handleGeneratePO = async () => {
       await createProcurementInvoice(event.id, eventRequisitions);
@@ -1089,6 +1094,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
    const [showMonitor, setShowMonitor] = useState(false);
    const [showDispatch, setShowDispatch] = useState(false);
    const [showLogistics, setShowLogistics] = useState(false);
+   const [showRequisitions, setShowRequisitions] = useState(false);
 
    if (showMonitor) {
       return (
@@ -1114,6 +1120,20 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
          {/* LOGISTICS MODALS */}
          {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
          {showLogistics && <LogisticsReturnModal event={event} onClose={() => setShowLogistics(false)} onComplete={onClose} />}
+
+         {showRequisitions && (
+            <div className="fixed inset-0 z-[250] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+               <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+                  <div className="flex justify-between items-center mb-6">
+                     <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Procurement Status</h3>
+                     <button onClick={() => setShowRequisitions(false)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+                        <X size={20} className="text-slate-500" />
+                     </button>
+                  </div>
+                  <RequisitionTracker eventId={event.id} />
+               </div>
+            </div>
+         )}
 
          <div className="flex justify-between items-start">
             <div className="space-y-4">
@@ -1235,6 +1255,21 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                   <div className="flex items-center gap-3 px-8 py-4 bg-amber-50 text-amber-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-amber-100">
                      <Clock size={18} className="animate-pulse" /> Awaiting Finance Approval
                   </div>
+               )}
+               {event.currentPhase === 'Procurement' && procurementStatus === 'Rejected' && (
+                  <div className="flex gap-2">
+                     <div className="flex items-center gap-3 px-8 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-rose-100">
+                        <AlertCircle size={18} className="animate-pulse" /> Needs Attention
+                     </div>
+                     <button onClick={() => setShowRequisitions(true)} className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                        <ClipboardList size={18} /> Manage Requisitions
+                     </button>
+                  </div>
+               )}
+               {event.currentPhase === 'Procurement' && (procurementStatus === 'Pending' || procurementStatus === 'Approved') && (
+                  <button onClick={() => setShowRequisitions(true)} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                     <ClipboardList size={18} /> Track Requisitions
+                  </button>
                )}
                {event.currentPhase === 'Procurement' && procurementStatus === 'Approved' && (
                   <button onClick={handleGeneratePO} className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">

@@ -154,7 +154,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
             ['SQ-0001', 'XQ-0001'].includes(currentUser?.staffId?.toUpperCase() || '');
 
           if (isMD) {
-            const hiddenForMD = ['Super Admin', 'IT Console', 'Automation', 'Service Hub'];
+            const hiddenForMD = ['Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub', 'Reporting'];
             if (hiddenForMD.includes(i.label)) return false;
           }
 
