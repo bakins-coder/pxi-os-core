@@ -123,7 +123,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
                      {isMaximized ? <Minimize2 size={18} className="md:w-5 md:h-5" /> : <Maximize2 size={18} className="md:w-5 md:h-5" />}
                   </button>
-                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
+                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
                </div>
             </div>
 
@@ -358,7 +358,7 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 bg-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
@@ -400,7 +400,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-rose-50 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-rose-50 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
@@ -470,7 +470,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
 
@@ -586,7 +586,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 bg-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
 
@@ -715,7 +715,7 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
 

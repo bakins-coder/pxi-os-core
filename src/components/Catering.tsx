@@ -155,7 +155,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                   <div className="text-left md:text-right w-full md:w-auto">
                      <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: ₦{(event.financials.revenueCents / 100).toLocaleString()}</p>
                      <div className="flex flex-col md:flex-row gap-4">
-                        <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Abort</button>
+                        <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Cancel</button>
                         <button onClick={handleFinalizePlan} className="px-8 py-4 md:px-12 md:py-5 bg-[#00ff9d] text-slate-950 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 w-full md:w-auto">Submit for Finance <ArrowRight size={16} /></button>
                      </div>
                   </div>
@@ -246,7 +246,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                      <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
-               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
+               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scrollbar-thin">
@@ -433,7 +433,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
    return (
       <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in zoom-in duration-200">
-         <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl flex flex-col h-[90vh] overflow-hidden">
+         <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl flex flex-col h-[90vh] overflow-hidden relative">
+            <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-white/80 backdrop-blur-sm border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-lg transition-all shadow-lg"><X size={20} /></button>
 
             {/* INVOICE DOCUMENT SCROLLABLE AREA */}
             <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-8 md:p-12 relative">
@@ -834,7 +835,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                      <p className="text-[10px] text-slate-500 font-bold uppercase">Select items leaving the warehouse</p>
                   </div>
                </div>
-               <button onClick={onClose}><X size={24} className="text-slate-400 hover:text-rose-500" /></button>
+               <button onClick={onClose} className="p-2 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
             <div className="flex-1 flex overflow-hidden">
@@ -880,9 +881,12 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                         </div>
                      ))}
                   </div>
-                  <button onClick={handleDispatch} disabled={cart.length === 0} className="w-full py-4 bg-orange-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 transition-all">
-                     Confirm Dispatch
-                  </button>
+                  <div className="flex gap-4">
+                     <button onClick={onClose} className="px-6 py-3 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+                     <button onClick={handleDispatch} disabled={cart.length === 0} className="flex-1 py-4 bg-orange-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 transition-all">
+                        Confirm Dispatch
+                     </button>
+                  </div>
                </div>
             </div>
          </div>
@@ -944,7 +948,7 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
                   <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Logistics Reconciliation</h2>
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Post-Event Asset Recovery & Returns</p>
                </div>
-               <button onClick={onClose}><X size={24} className="text-slate-400 hover:text-slate-900" /></button>
+               <button onClick={onClose} className="p-2 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-12 space-y-12">
@@ -1280,6 +1284,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                      )}
                   </>
                )}
+               <button onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">Close Node</button>
             </div>
          </div>
       </div>

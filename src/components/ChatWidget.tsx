@@ -316,6 +316,7 @@ export const ChatWidget = () => {
             updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: "I need a bit more info. What is the staff member's name and role?", sender: 'bot' }]);
           } else {
             try {
+              const companyId = useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
               await useDataStore.getState().addEmployee({
                 firstName: payload.firstName || 'Unknown',
                 lastName: payload.lastName || 'Staff',
@@ -323,7 +324,7 @@ export const ChatWidget = () => {
                 role: payload.role || 'Employee',
                 salaryCents: 0,
                 status: EmployeeStatus.ACTIVE,
-                companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                companyId: companyId,
                 dob: payload.dob || new Date().toISOString(),
                 gender: payload.gender as any || 'Male',
                 dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
@@ -386,6 +387,16 @@ export const ChatWidget = () => {
           } catch (e) {
             updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Event Creation Failed.`, sender: 'bot' }]);
           }
+        } else if (intent === 'ADD_TASK') {
+          useDataStore.getState().addTask({
+            id: `task-${Date.now()}`,
+            title: payload.title || 'New Task',
+            description: payload.description || '',
+            priority: payload.priority || 'Medium',
+            status: 'Todo' as any,
+            companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6'
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Task Added: "${payload.title}" has been recorded.`, sender: 'bot' }]);
         } else {
           // Standard Response
           const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
@@ -468,6 +479,7 @@ export const ChatWidget = () => {
             }
 
             try {
+              const companyId = useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
               await useDataStore.getState().addEmployee({
                 firstName: payload.firstName || 'Unknown',
                 lastName: payload.lastName || 'Staff',
@@ -475,7 +487,7 @@ export const ChatWidget = () => {
                 role: payload.role || 'Employee',
                 salaryCents: 0,
                 status: EmployeeStatus.ACTIVE,
-                companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                companyId: companyId,
                 dob: payload.dob || new Date().toISOString(),
                 gender: payload.gender as any || 'Male',
                 dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
@@ -502,7 +514,7 @@ export const ChatWidget = () => {
               category: payload.category || 'General',
               type: 'raw_material',
               priceCents: 0,
-              companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+              companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
               id: `inv-voice-${Date.now()}`
             });
             replyText = `✅ Voice Action: Added ${payload.quantity} ${payload.itemName} to inventory.`;

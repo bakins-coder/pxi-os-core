@@ -307,7 +307,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                         <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={handleCVUpload} />
                      </>
                   )}
-                  <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-3 md:p-4 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
             <form id="hire-staff-form" onSubmit={handleHire} className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 overflow-y-auto flex-1 scrollbar-thin">
@@ -383,7 +383,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                </div>
             </form>
             <div className="p-6 md:p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-4 md:gap-6 shrink-0">
-               <button type="button" onClick={onClose} className="flex-1 py-4 md:py-6 rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-500 hover:bg-white hover:text-slate-800 border-2 border-transparent hover:border-slate-200 transition-all bg-white shadow-sm">Abort</button>
+               <button type="button" onClick={onClose} className="flex-1 py-4 md:py-6 rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-400 hover:bg-white hover:text-slate-600 border-2 border-transparent hover:border-slate-200 transition-all bg-white shadow-sm">Cancel</button>
                <button type="submit" form="hire-staff-form" disabled={isSubmitting} className="flex-2 py-4 md:py-6 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] md:text-[11px] shadow-2xl flex items-center justify-center gap-3 transition-all hover:brightness-110 active:scale-95 group shrink-0 min-w-[160px] md:min-w-[240px]">{isSubmitting ? <Activity className="animate-spin" size={20} /> : <ShieldCheck size={20} className="text-[#00ff9d] group-hover:scale-110 transition-transform" />}{isSubmitting ? 'Onboarding...' : editingEmployee ? 'Update' : 'Hire Staff'}</button>
             </div>
          </div>
@@ -434,7 +434,7 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
             <form onSubmit={handleSubmit} className="p-10 space-y-8 flex-1 overflow-y-auto">
@@ -446,7 +446,7 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
                <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Justification</label><textarea required rows={3} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Context..." value={reason} onChange={e => setReason(e.target.value)} /></div>
             </form>
             <div className="p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-4">
-               <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-800 transition-all">Abort</button>
+               <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-600 transition-all">Cancel</button>
                <button type="submit" onClick={handleSubmit} className="flex-2 py-5 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl active:scale-95 transition-all">Submit Application</button>
             </div>
          </div>
@@ -483,10 +483,13 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
          {adjustingBand && (
             <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl animate-in zoom-in duration-300">
                <div className="bg-white rounded-[3.5rem] p-10 md:p-12 max-w-sm w-full shadow-2xl border border-slate-100">
-                  <div className="flex justify-between items-start mb-8"><div><h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Adjust Band {adjustingBand}</h3></div><button onClick={() => setAdjustingBand(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X size={20} /></button></div>
+                  <div className="flex justify-between items-start mb-8"><div><h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Adjust Band {adjustingBand}</h3></div><button onClick={() => setAdjustingBand(null)} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button></div>
                   <div className="space-y-8"><div><label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-3 block">Percentage Multiplier (%)</label><div className="relative"><input type="number" className="w-full p-6 bg-slate-50 border-2 border-slate-200 rounded-[2rem] font-black text-4xl text-slate-900 outline-none text-center" value={percentChange} onChange={e => setPercentChange(parseFloat(e.target.value) || 0)} /><span className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-300 font-black text-2xl">%</span></div></div>
                      <div className="p-6 bg-amber-50 rounded-2xl flex items-start gap-4 border border-amber-100 shadow-sm"><Info className="text-amber-600 shrink-0 mt-1" size={20} /><p className="text-[10px] font-bold text-amber-900 leading-relaxed uppercase">Strategic Impact: Updating all roles in this tier.</p></div>
-                     <div className="grid grid-cols-1 gap-4"><button onClick={handleAdjust} className="w-full py-5 md:py-6 bg-slate-950 text-[#00ff9d] rounded-[2rem] font-black uppercase text-[10px] md:text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"><ShieldCheck size={20} /> Authorize Sync</button></div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <button onClick={() => setAdjustingBand(null)} className="py-5 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-50 rounded-[2rem] transition-all">Cancel</button>
+                        <button onClick={handleAdjust} className="w-full py-5 md:py-6 bg-slate-950 text-[#00ff9d] rounded-[2rem] font-black uppercase text-[10px] md:text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"><ShieldCheck size={20} /> Authorize Sync</button>
+                     </div>
                   </div>
                </div>
             </div>
@@ -528,7 +531,7 @@ const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, on
          <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex justify-between items-center">
                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Request Advance</h3>
-               <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-rose-500" /></button>
+               <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
             </div>
             <div>
                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required (₦)</label>
@@ -538,7 +541,10 @@ const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, on
                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Reason / Context</label>
                <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 min-h-[100px]" placeholder="Briefly explain the need..." value={reason} onChange={e => setReason(e.target.value)}></textarea>
             </div>
-            <button onClick={handleSubmit} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl">Submit Request</button>
+            <div className="flex gap-4">
+               <button onClick={onClose} className="px-6 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl">Submit Request</button>
+            </div>
          </div>
       </div>
    );

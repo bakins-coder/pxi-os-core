@@ -104,7 +104,7 @@ const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
 
@@ -325,7 +325,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
          <div onClick={e => e.stopPropagation()} className="bg-white shadow-2xl w-full max-w-4xl md:rounded-[3rem] rounded-t-[2rem] overflow-hidden flex flex-col md:my-8 min-h-[50vh] md:max-h-[90vh]">
             <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">New Invoice</h2>
-               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
             <div className="p-5 md:p-8 overflow-y-auto flex-1 space-y-6 md:space-y-8 pb-32 md:pb-8">
@@ -541,7 +541,7 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
             <div className="p-10 space-y-8 overflow-y-auto">
@@ -570,6 +570,7 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
                </div>
             </div>
             <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-100 rounded-2xl transition-all">Cancel</button>
                {canApprove && (
                   <button
                      onClick={handleReject}
