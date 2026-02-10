@@ -1936,6 +1936,7 @@ export const useDataStore = create<DataState>()(
                     status: 'Confirmed',
                     currentPhase: 'Procurement',
                     items: d.items,
+                    orderType: d.orderType || 'Banquet',
                     banquetDetails: d.banquetDetails,
                     readinessScore: 40,
                     hardwareChecklist: [],

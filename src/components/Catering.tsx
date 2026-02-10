@@ -14,6 +14,7 @@ import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport } from '../utils/exportUtils';
 import { ManualInvoiceModal } from './Finance';
+import { PREDEFINED_CUISINE_PRODUCTS, CuisineProduct } from '../data/cuisineProducts';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
@@ -437,7 +438,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
             <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-white/80 backdrop-blur-sm border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-lg transition-all shadow-lg"><X size={20} /></button>
 
             {/* INVOICE DOCUMENT SCROLLABLE AREA */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-8 md:p-12 relative">
+            <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-4 md:p-12 relative">
 
                {/* 1. Header */}
                <div className="flex justify-between items-start mb-6">
@@ -456,7 +457,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                <div className="h-1 w-full bg-orange-400 mb-10"></div>
 
                {/* 2. Info Section (Bill To & Invoice Details) */}
-               <div className="flex flex-col md:flex-row justify-between items-start gap-10 mb-12">
+               <div className="flex flex-col md:flex-row justify-between items-start gap-6 md:gap-10 mb-8 md:mb-12">
 
                   {/* Bill To */}
                   <div className="flex-1">
@@ -469,9 +470,9 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                   </div>
 
                   {/* Invoice Meta */}
-                  <div className="flex-[0.8] flex flex-col items-end">
+                  <div className="w-full md:flex-[0.8] flex flex-col items-center md:items-end">
                      {/* Orange Invoice Box */}
-                     <div className="border-2 border-orange-400 px-6 py-2 rounded-lg mb-6 transform -rotate-2">
+                     <div className="border-2 border-orange-400 px-4 md:px-6 py-2 rounded-lg mb-4 md:mb-6 transform md:-rotate-2">
                         <span className="text-xl md:text-2xl font-black text-orange-500 uppercase tracking-widest text-opacity-80">
                            {isProformaMode ? 'PRO-FORMA' : 'INVOICE'}
                         </span>
@@ -493,12 +494,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className="grid grid-cols-[3fr_1fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
+                  <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right text-orange-500">DISCOUNT PRICE</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">AMOUNT</span>
+                  </div>
+                  {/* Mobile Header (Table Style) */}
+                  <div className="md:hidden flex justify-between border-b-2 border-slate-100 pb-2 mb-4">
+                     <span className="text-[10px] font-black text-slate-400 uppercase">ITEM DETAILS</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-right">TOTAL</span>
                   </div>
 
                   <div className="space-y-4">
@@ -506,72 +512,108 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
                         editableLines.map((line, idx) => (
-                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr_1fr] items-start text-sm group relative">
+                           <div key={idx} className="flex flex-col md:grid md:grid-cols-[3fr_1fr_1fr_1fr_1fr] items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0">
                               {isProformaMode ? (
                                  <>
-                                    <div className="flex items-center gap-2 pr-4">
+                                    {/* Description (Top on Mobile, First Col on Desktop) */}
+                                    <div className="flex items-center gap-2 pr-4 w-full">
                                        <button
                                           onClick={() => removeLineItem(idx)}
-                                          className="opacity-0 group-hover:opacity-100 p-1 text-rose-500 hover:bg-rose-50 rounded transition-all"
+                                          className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100"
                                        >
                                           <Trash2 size={12} />
                                        </button>
                                        <input
                                           className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium"
+                                          placeholder="Item description"
                                           value={line.description}
                                           onChange={e => handleLineChange(idx, 'description', e.target.value)}
                                        />
                                     </div>
-                                    <input
-                                       type="number"
-                                       className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
-                                       value={line.quantity}
-                                       onFocus={e => e.target.select()}
-                                       onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
-                                    />
-                                    {/* Standard Unit Price */}
-                                    <div className="flex items-center bg-slate-50 rounded px-2 py-1 ml-auto">
-                                       <span className="text-[10px] text-slate-400 mr-1">₦</span>
-                                       <input
-                                          type="number"
-                                          className={`w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
-                                          value={line.unitPriceCents / 100}
-                                          onFocus={e => e.target.select()}
-                                          onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
-                                       />
-                                    </div>
-                                    {/* Discounted Price (Manual) */}
-                                    <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
-                                       <span className="text-[10px] text-orange-300 mr-1">₦</span>
-                                       <input
-                                          type="number"
-                                          className="w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
-                                          placeholder="-"
-                                          value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
-                                          onChange={e => {
-                                             const val = parseFloat(e.target.value);
-                                             handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
-                                          }}
-                                       />
+
+                                    {/* Mobile Details Row / Desktop Columns */}
+                                    <div className="grid grid-cols-2 md:contents w-full gap-2">
+                                       <div className="flex flex-col md:block">
+                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Quantity</label>
+                                          <input
+                                             type="number"
+                                             className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
+                                             value={line.quantity}
+                                             onFocus={e => e.target.select()}
+                                             onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
+                                          />
+                                       </div>
+
+                                       <div className="flex flex-col md:block">
+                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Unit Price</label>
+                                          <div className="flex items-center bg-slate-50 rounded px-2 py-1 md:ml-auto">
+                                             <span className="text-[10px] text-slate-400 mr-1">₦</span>
+                                             <input
+                                                type="number"
+                                                className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
+                                                value={line.unitPriceCents / 100}
+                                                onFocus={e => e.target.select()}
+                                                onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                             />
+                                          </div>
+                                       </div>
+
+                                       <div className="flex flex-col md:block">
+                                          <label className="md:hidden text-[8px] font-black text-orange-400 uppercase mb-1">Discount Price</label>
+                                          <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 md:ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
+                                             <span className="text-[10px] text-orange-300 mr-1">₦</span>
+                                             <input
+                                                type="number"
+                                                className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
+                                                placeholder="-"
+                                                value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
+                                                onChange={e => {
+                                                   const val = parseFloat(e.target.value);
+                                                   handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+
+                                       <div className="flex flex-col md:block items-end md:items-stretch">
+                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
+                                          <span className="text-slate-900 font-bold text-right py-1 block">
+                                             {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                                          </span>
+                                       </div>
                                     </div>
                                  </>
                               ) : (
                                  <>
-                                    <span className="text-slate-800 font-medium pr-4">{line.description}</span>
-                                    <span className="text-slate-600 text-center">{line.quantity}</span>
-                                    {/* Unit Price Display */}
-                                    <span className={`text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
-                                       {formatCurrency(line.unitPriceCents)}
-                                    </span>
-                                    {/* Discount Price Display */}
-                                    <span className="text-right font-bold text-orange-600">
-                                       {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
-                                    </span>
+                                    <div className="w-full md:pr-4">
+                                       <span className="text-slate-800 font-medium block">{line.description}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:contents w-full gap-2">
+                                       <div className="flex flex-col md:block">
+                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Qty</label>
+                                          <span className="text-slate-600 md:text-center block">{line.quantity}</span>
+                                       </div>
+                                       <div className="flex flex-col md:block">
+                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
+                                          <span className={`block md:text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
+                                             {formatCurrency(line.unitPriceCents)}
+                                          </span>
+                                       </div>
+                                       <div className="flex flex-col md:block">
+                                          <label className="md:hidden text-[8px] font-black text-orange-400 uppercase">Discount</label>
+                                          <span className="block md:text-right font-bold text-orange-600">
+                                             {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
+                                          </span>
+                                       </div>
+                                       <div className="flex flex-col md:block items-end md:items-stretch">
+                                          <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Total</label>
+                                          <span className="text-slate-900 font-bold text-right block">
+                                             {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                                          </span>
+                                       </div>
+                                    </div>
                                  </>
                               )}
-                              <span className="text-slate-900 font-bold text-right">
-                                 {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
-                              </span>
                            </div>
                         ))
                      )}
@@ -767,8 +809,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                      <Share2 size={16} /> Share
                   </button>
                </div>
-               <div className="flex gap-2 flex-[1.5]">
-                  <button onClick={onClose} className="px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
+               <div className="flex flex-col md:flex-row gap-2 flex-[1.5]">
+                  <button onClick={onClose} className="w-full md:w-auto px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
                   {isProformaMode ? (
                      <button
                         onClick={handleFinalize}
@@ -1360,6 +1402,260 @@ const CostingMatrix = () => {
    );
 };
 
+const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
+   const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string }[]>([]);
+   const [customerName, setCustomerName] = useState('');
+   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+   const [searchQuery, setSearchQuery] = useState('');
+
+   const [customProductName, setCustomProductName] = useState('');
+   const [customProductPrice, setCustomProductPrice] = useState(0);
+   const [customProductCategory, setCustomProductCategory] = useState('Others');
+
+   const createCateringOrder = useDataStore(state => state.createCateringOrder);
+
+   const filteredProducts = PREDEFINED_CUISINE_PRODUCTS.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+   );
+
+   const addItem = (p: CuisineProduct) => {
+      const existing = items.find(i => i.name === p.name);
+      const minQty = p.minPortions || 10;
+      if (existing) {
+         setItems(items.map(i => i.name === p.name ? { ...i, quantity: i.quantity + minQty } : i));
+      } else {
+         setItems([...items, {
+            id: `cuisine-${Date.now()}`,
+            name: p.name,
+            quantity: minQty,
+            priceCents: p.price * 100,
+            category: p.category
+         }]);
+      }
+   };
+
+   const addCustomItem = () => {
+      if (!customProductName || customProductPrice <= 0) return;
+      setItems([...items, {
+         id: `custom-${Date.now()}`,
+         name: customProductName,
+         quantity: 10,
+         priceCents: customProductPrice * 100,
+         category: customProductCategory
+      }]);
+      setCustomProductName('');
+      setCustomProductPrice(0);
+   };
+
+   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
+
+   const updateQty = (idx: number, qty: number) => {
+      const item = items[idx];
+      const originalProduct = PREDEFINED_CUISINE_PRODUCTS.find(p => p.name === item.name);
+      const minQty = originalProduct?.minPortions || 1; // Default to 1 for custom items if not found
+
+      const newItems = [...items];
+      newItems[idx].quantity = Math.max(minQty, qty);
+      setItems(newItems);
+   };
+
+   const totalCents = items.reduce((acc, it) => acc + (it.priceCents * it.quantity), 0);
+
+   const handleCreate = async () => {
+      if (!customerName || items.length === 0) {
+         alert("Please provide customer name and at least one item.");
+         return;
+      }
+
+      const payload = {
+         customerName,
+         eventDate,
+         guestCount: items.reduce((a, b) => a + b.quantity, 0),
+         items: items.map(i => ({
+            inventoryItemId: i.id,
+            name: i.name,
+            quantity: i.quantity,
+            priceCents: i.priceCents,
+            costCents: i.priceCents * 0.4 // Default cost estimate
+         })),
+         orderType: 'Cuisine',
+         banquetDetails: {
+            notes: 'Cuisine Order (Smaller portions)',
+            eventType: 'Cuisine Order'
+         }
+      };
+
+      try {
+         const { invoice } = await createCateringOrder(payload);
+         onFinalize(invoice);
+         onClose();
+      } catch (err) {
+         console.error(err);
+         alert("Failed to create cuisine order.");
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
+         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[90vh] border border-slate-200">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><UtensilsCrossed size={24} /></div>
+                  <div>
+                     <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Cuisine Order Portal</h2>
+                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1">Select products for immediate fulfillment (Min 10 portions)</p>
+                  </div>
+               </div>
+               <button onClick={onClose} className="p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+               {/* Left Pane: Product Selector */}
+               <div className="w-1/2 border-r border-slate-100 flex flex-col bg-slate-50/30">
+                  <div className="p-6 space-y-4">
+                     <div className="relative">
+                        <input
+                           type="text"
+                           placeholder="Search products or categories..."
+                           className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-900 shadow-sm"
+                           value={searchQuery}
+                           onChange={e => setSearchQuery(e.target.value)}
+                        />
+                        <Grid3X3 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                     </div>
+
+                     <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 space-y-3">
+                        <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Add Custom Product</p>
+                        <div className="grid grid-cols-2 gap-3">
+                           <input
+                              type="text"
+                              placeholder="Product Name"
+                              className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold outline-none"
+                              value={customProductName}
+                              onChange={e => setCustomProductName(e.target.value)}
+                           />
+                           <input
+                              type="number"
+                              placeholder="Price (₦)"
+                              className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold outline-none"
+                              value={customProductPrice || ''}
+                              onChange={e => setCustomProductPrice(parseInt(e.target.value) || 0)}
+                           />
+                        </div>
+                        <button
+                           onClick={addCustomItem}
+                           className="w-full py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2"
+                        >
+                           <Plus size={14} /> Add to Order
+                        </button>
+                     </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
+                     {Array.from(new Set(filteredProducts.map(p => p.category))).map(cat => (
+                        <div key={cat} className="space-y-3">
+                           <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] sticky top-0 bg-slate-50/50 backdrop-blur-md py-2">{cat}</h4>
+                           <div className="grid grid-cols-1 gap-2">
+                              {filteredProducts.filter(p => p.category === cat).map(product => (
+                                 <div
+                                    key={product.name}
+                                    onClick={() => addItem(product)}
+                                    className="p-4 bg-white border border-slate-100 rounded-2xl hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all group flex justify-between items-center"
+                                 >
+                                    <div>
+                                       <p className="font-bold text-slate-800 text-sm group-hover:text-emerald-700">{product.name}</p>
+                                       <p className="text-[10px] text-slate-400 font-bold">₦{product.price.toLocaleString()} {product.unit ? `per ${product.unit}` : '/ portion'}</p>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"><Plus size={16} /></div>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Right Pane: Order Cart & Details */}
+               <div className="w-1/2 flex flex-col p-8 bg-white">
+                  <div className="space-y-6 flex-1 flex flex-col min-h-0">
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer Name</label>
+                           <input
+                              type="text"
+                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              value={customerName}
+                              onChange={e => setCustomerName(e.target.value)}
+                              placeholder="e.g. John Doe"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Delivery Date</label>
+                           <input
+                              type="date"
+                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none"
+                              value={eventDate}
+                              onChange={e => setEventDate(e.target.value)}
+                           />
+                        </div>
+                     </div>
+
+                     <div className="flex-1 flex flex-col min-h-0">
+                        <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest mb-4 flex items-center gap-2"><ShoppingCart size={16} /> Order Manifest</h3>
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                           {items.length === 0 && (
+                              <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-50 space-y-4">
+                                 <ShoppingBag size={48} strokeWidth={1} />
+                                 <p className="text-sm font-bold uppercase tracking-widest">No items selected</p>
+                              </div>
+                           )}
+                           {items.map((item, idx) => (
+                              <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 animate-in slide-in-from-right-4 duration-300">
+                                 <div className="flex-1">
+                                    <p className="font-black text-slate-800 text-sm uppercase">{item.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{item.category}</p>
+                                 </div>
+                                 <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-end">
+                                       <p className="text-[8px] font-black text-slate-400 uppercase">Portions</p>
+                                       <input
+                                          type="number"
+                                          className="w-16 p-2 bg-white border border-slate-200 rounded-xl text-center text-xs font-black text-slate-900"
+                                          value={item.quantity}
+                                          onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
+                                       />
+                                    </div>
+                                    <button onClick={() => removeItem(idx)} className="p-2 text-slate-300 hover:text-rose-500 transition-all"><Trash2 size={16} /></button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+
+                     <div className="bg-slate-950 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl">
+                        <div className="flex justify-between items-end">
+                           <div>
+                              <p className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] mb-1">Estimated Total</p>
+                              <h4 className="text-4xl font-black tracking-tighter">₦{(totalCents / 100).toLocaleString()}</h4>
+                           </div>
+                           <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-1">{items.length} Unique Items</p>
+                        </div>
+                        <button
+                           onClick={handleCreate}
+                           className="w-full py-5 bg-emerald-500 text-slate-950 rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-400 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                        >
+                           Generate Invoice & Close <ArrowRight size={18} />
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 import { EventDetailCard } from './EventDetailCard';
 
 export const Catering = () => {
@@ -1368,8 +1664,9 @@ export const Catering = () => {
    const [richDetailEvent, setRichDetailEvent] = useState<CateringEvent | null>(null);
    const [amendEvent, setAmendEvent] = useState<CateringEvent | null>(null);
    const [showBrochure, setShowBrochure] = useState(false);
+   const [showCuisineOrder, setShowCuisineOrder] = useState(false);
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
-   const [activeTab, setActiveTab] = useState<'orders' | 'matrix'>('orders');
+   const [activeTab, setActiveTab] = useState<'orders' | 'cuisine' | 'matrix'>('cuisine');
    const [showProcurement, setShowProcurement] = useState(false);
    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
@@ -1378,11 +1675,18 @@ export const Catering = () => {
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
 
    const filteredEvents = useMemo(() => {
-      if (viewMode === 'active') {
-         return events.filter(e => e.status !== 'Archived');
+      let base = events;
+      if (activeTab === 'orders') {
+         base = events.filter(e => !e.orderType || e.orderType === 'Banquet');
+      } else if (activeTab === 'cuisine') {
+         base = events.filter(e => e.orderType === 'Cuisine');
       }
-      return events.filter(e => e.status === 'Archived');
-   }, [events, viewMode]);
+
+      if (viewMode === 'active') {
+         return base.filter(e => e.status !== 'Archived');
+      }
+      return base.filter(e => e.status === 'Archived');
+   }, [events, viewMode, activeTab]);
 
    useEffect(() => {
       setEvents(cateringEvents);
@@ -1408,7 +1712,6 @@ export const Catering = () => {
    const handleCommitInvoice = (inv: Invoice) => {
       finalizeProforma(inv.id);
       setGeneratedInvoice(null);
-      setViewingInvoice(inv);
       // Auto-select the newest event if none is currently viewed
       if (!selectedEvent && cateringEvents.length > 0) {
          setSelectedEvent(cateringEvents[0]);
@@ -1422,36 +1725,45 @@ export const Catering = () => {
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
                   <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
-                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Catering Operations</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Banquet Management Node Active</p></div>
+                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Catering Operations</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Cuisine & Banquet Management Node Active</p></div>
                </div>
-               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2">
+               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
                      onClick={() => {
                         const url = `${window.location.origin}/#/brochure`;
                         navigator.clipboard.writeText(url);
                         alert('Brochure Link Copied to Clipboard!');
                      }}
-                     className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 text-[#00ff9d] hover:bg-white/5"
+                     className="whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 text-[#00ff9d] hover:bg-white/5"
                   >
-                     <Share2 size={14} /> Share Booking Link
+                     <Share2 size={14} /> <span className="hidden md:inline">Share Booking Link</span><span className="md:hidden">Share</span>
                   </button>
-                  <div className="w-px bg-white/10 my-2"></div>
-                  {[{ id: 'orders', label: 'Banquets', icon: ShoppingBag }, { id: 'matrix', label: 'Costing Matrix', icon: Grid3X3 }].map(tab => (
-                     <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
+                  <div className="w-px bg-white/10 my-2 shrink-0"></div>
+                  {[{ id: 'cuisine', label: 'Cuisine', icon: UtensilsCrossed }, { id: 'orders', label: 'Banquets', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
+                     <button
+                        key={tab.id}
+                        onClick={() => { setActiveTab(tab.id as any); setSelectedEvent(null); }}
+                        className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
+                     >
+                        <tab.icon size={14} /> {tab.label}
+                     </button>
                   ))}
                </div>
             </div>
          </div>
 
-         {activeTab === 'orders' && (
+         {(activeTab === 'orders' || activeTab === 'cuisine') && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
                <div className={`transition-all duration-300 ${selectedEvent ? 'lg:col-span-1 space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'}`}>
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
-                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} Banquets</h2>
+                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} {activeTab === 'orders' ? 'Banquets' : 'Cuisine Orders'}</h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                           <button onClick={() => setIsManualInvoiceModalOpen(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create Invoice</button>
-                           <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                           {activeTab === 'orders' ? (
+                              <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                           ) : (
+                              <button onClick={() => setIsManualInvoiceModalOpen(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create New Cuisine Order</button>
+                           )}
                         </div>
                      </div>
                      <div className="flex bg-slate-100 p-1 rounded-xl">
@@ -1535,6 +1847,15 @@ export const Catering = () => {
                      }}
                   />
                </div>
+            )
+         }
+
+         {
+            showCuisineOrder && (
+               <CuisineOrderModal
+                  onClose={() => setShowCuisineOrder(false)}
+                  onFinalize={handleFinalizePush}
+               />
             )
          }
 

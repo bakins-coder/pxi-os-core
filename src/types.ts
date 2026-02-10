@@ -162,14 +162,14 @@ export interface EventTask {
 }
 
 export interface BanquetDetails {
-  location: string;
-  contactPerson: string;
-  contactEmail: string;
-  contactPhone: string;
-  eventType: string;
-  themeColor: string;
-  eventPlanner: string;
-  notes: string;
+  location?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  eventType?: string;
+  themeColor?: string;
+  eventPlanner?: string;
+  notes?: string;
   productionConfirmed?: boolean;
 }
 
@@ -214,6 +214,7 @@ export interface CateringEvent {
   currentPhase: CateringPhase;
   readinessScore: number;
   items: DealItem[];
+  orderType?: 'Banquet' | 'Cuisine';
   tasks: EventTask[];
   hardwareChecklist: HardwareCheckoutRecord[];
   dispatchedAssets?: DispatchedAsset[];

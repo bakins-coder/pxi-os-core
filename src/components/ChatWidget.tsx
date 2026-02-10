@@ -40,6 +40,16 @@ export const ChatWidget = () => {
   });
   const [activeSessionId, setActiveSessionId] = useState<string>('default');
   const [showSidebar, setShowSidebar] = useState(false);
+  const [isMagenta, setIsMagenta] = useState(() => localStorage.getItem('chat_theme_magenta') === 'true');
+
+  const themeColor = isMagenta ? '#ff00ff' : '#00ff9d';
+  const themeText = isMagenta ? 'text-fuchsia-500' : 'text-[#00ff9d]';
+  const themeBg = isMagenta ? 'bg-fuchsia-500' : 'bg-[#00ff9d]';
+  const themeShadow = isMagenta ? 'shadow-fuchsia-500/20' : 'shadow-[#00ff9d]/20';
+
+  useEffect(() => {
+    localStorage.setItem('chat_theme_magenta', isMagenta.toString());
+  }, [isMagenta]);
 
   useEffect(() => {
     localStorage.setItem('ai_chat_sessions', JSON.stringify(sessions));
@@ -290,8 +300,7 @@ export const ChatWidget = () => {
         if (attach.mimeType.startsWith('image/')) {
           mode = 'image';
           payload = attach.base64;
-          // We lose the 'text' input here if we just switch to image mode. 
-          // Ideally we pass both.
+          // Note: The AI service now handles the mimeType dynamically from the attach object if available
         }
       }
 
@@ -594,7 +603,7 @@ export const ChatWidget = () => {
         <button
           onClick={() => setIsOpen(true)}
           disabled={strictMode}
-          className={`pointer-events-auto h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 transform hover:scale-110 active:scale-95 ${strictMode ? 'bg-slate-800 border-2 border-white/10 opacity-50 cursor-not-allowed' : 'bg-[#00ff9d] hover:shadow-[#00ff9d]/20'}`}
+          className={`pointer-events-auto h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 transform hover:scale-110 active:scale-95 ${strictMode ? 'bg-slate-800 border-2 border-white/10 opacity-50 cursor-not-allowed' : `${themeBg} ${themeShadow}`}`}
         >
           {strictMode ? <ShieldOff size={24} className="text-slate-500" /> : <MessageSquare size={28} className="text-slate-950" />}
         </button>
@@ -633,7 +642,7 @@ export const ChatWidget = () => {
                   className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${activeSessionId === session.id ? 'bg-white border-slate-200 shadow-sm' : 'hover:bg-white/50 border-transparent'}`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
-                    <MessageSquare size={14} className={activeSessionId === session.id ? 'text-[#00ff9d]' : 'text-slate-400'} />
+                    <MessageSquare size={14} className={activeSessionId === session.id ? themeText : 'text-slate-400'} />
                     <span className={`text-sm truncate font-medium ${activeSessionId === session.id ? 'text-slate-900' : 'text-slate-500'}`}>{session.title}</span>
                   </div>
                   <button onClick={(e) => deleteSession(e, session.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all">
@@ -661,12 +670,20 @@ export const ChatWidget = () => {
               <div className="flex flex-col">
                 <span className="font-bold text-sm tracking-wide">{activeSession.title}</span>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-[#00ff9d] rounded-full animate-pulse"></div>
+                  <div className={`w-1.5 h-1.5 ${themeBg} rounded-full animate-pulse`}></div>
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Paradigm AI Active</span>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsMagenta(!isMagenta)}
+                className={`p-2 rounded-lg transition-all text-[10px] font-black uppercase tracking-tighter flex items-center gap-1.5 ${isMagenta ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/20' : 'bg-white/10 text-slate-400 border border-white/5'}`}
+                title="Toggle Magenta Theme"
+              >
+                <Sparkles size={12} className={isMagenta ? 'animate-spin text-fuchsia-400' : 'text-slate-400'} />
+                {isMagenta ? 'Magenta' : 'Standard'}
+              </button>
               <button
                 onClick={createNewSession}
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
@@ -689,7 +706,7 @@ export const ChatWidget = () => {
             {activeSessionId === 'default' && sessions.length === 1 && messages.length === 1 && (
               <div className="flex flex-col items-center justify-center py-10 opacity-50">
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4">
-                  <Sparkles size={32} className="text-[#00ff9d]" />
+                  <Sparkles size={32} className={themeText} />
                 </div>
                 <p className="text-slate-400 text-sm font-medium">Go ahead, ask me anything.</p>
               </div>
@@ -711,7 +728,7 @@ export const ChatWidget = () => {
                     </div>
                   ) : msg.text}
                   {msg.hasAudio && (
-                    <div className="mt-2 flex items-center gap-2 text-[10px] text-indigo-500 font-bold uppercase tracking-widest">
+                    <div className={`mt-2 flex items-center gap-2 text-[10px] ${themeText} font-bold uppercase tracking-widest`}>
                       <Sparkles size={12} /> Audio Response Playing
                     </div>
                   )}
@@ -721,9 +738,9 @@ export const ChatWidget = () => {
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-white border border-slate-100 p-4 rounded-2xl rounded-bl-none shadow-sm flex space-x-2">
-                  <div className="w-1.5 h-1.5 bg-[#00ff9d] rounded-full animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 bg-[#00ff9d] rounded-full animate-bounce delay-100"></div>
-                  <div className="w-1.5 h-1.5 bg-[#00ff9d] rounded-full animate-bounce delay-200"></div>
+                  <div className={`w-1.5 h-1.5 ${themeBg} rounded-full animate-bounce`}></div>
+                  <div className={`w-1.5 h-1.5 ${themeBg} rounded-full animate-bounce delay-100`}></div>
+                  <div className={`w-1.5 h-1.5 ${themeBg} rounded-full animate-bounce delay-200`}></div>
                 </div>
               </div>
             )}
@@ -786,7 +803,7 @@ export const ChatWidget = () => {
                     <Square size={18} className="fill-current" />
                   </button>
                 ) : (
-                  <button onClick={startRecording} className="p-3 hover:bg-slate-100 rounded-full text-slate-400 hover:text-[#00ff9d] transition-colors">
+                  <button onClick={startRecording} className={`p-3 hover:bg-slate-100 rounded-full text-slate-400 hover:${themeText} transition-colors`}>
                     <Mic size={18} />
                   </button>
                 )}
@@ -794,7 +811,7 @@ export const ChatWidget = () => {
                 <button
                   onClick={handleSend}
                   disabled={(!input.trim() && !attachment) || isTyping || isRecording}
-                  className="p-3 bg-slate-900 text-white rounded-full hover:bg-[#00ff9d] hover:text-slate-900 disabled:opacity-20 disabled:hover:bg-slate-900 disabled:hover:text-white transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+                  className={`p-3 bg-slate-900 text-white rounded-full hover:${themeBg} hover:text-slate-900 disabled:opacity-20 disabled:hover:bg-slate-900 disabled:hover:text-white transition-all active:scale-95 shadow-lg shadow-slate-900/20`}
                 >
                   <Send size={16} />
                 </button>
