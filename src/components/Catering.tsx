@@ -15,6 +15,7 @@ import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport } from '../utils/exportUtils';
 import { ManualInvoiceModal } from './Finance';
 import { RequisitionTracker } from './RequisitionTracker';
+import { PREDEFINED_CUISINE_PRODUCTS, CuisineProduct } from '../data/cuisineProducts';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
@@ -156,7 +157,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                   <div className="text-left md:text-right w-full md:w-auto">
                      <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: ₦{(event.financials.revenueCents / 100).toLocaleString()}</p>
                      <div className="flex flex-col md:flex-row gap-4">
-                        <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Abort</button>
+                        <button onClick={onClose} className="px-8 py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Cancel</button>
                         <button onClick={handleFinalizePlan} className="px-8 py-4 md:px-12 md:py-5 bg-[#00ff9d] text-slate-950 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 w-full md:w-auto">Submit for Finance <ArrowRight size={16} /></button>
                      </div>
                   </div>
@@ -247,7 +248,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                      <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
-               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
+               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scrollbar-thin">
@@ -386,6 +387,12 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
+   const [isBanquetMode, setIsBanquetMode] = useState(
+      (invoice.lines && invoice.lines.length > 0 && invoice.lines[0].description.toLowerCase().includes('supply')) || false
+   );
+   const [showDiscountCol, setShowDiscountCol] = useState(
+      (invoice.lines && invoice.lines.some(l => l.manualPriceCents !== undefined && l.manualPriceCents !== null)) || false
+   );
 
    const [isFinalizing, setIsFinalizing] = useState(false);
 
@@ -403,6 +410,25 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
          ...editableLines,
          { id: `line-${Date.now()}`, description: 'New Item', quantity: 1, unitPriceCents: 0 }
       ]);
+   };
+
+   const toggleBanquetMode = () => {
+      if (!isBanquetMode) {
+         // Enable Banquet Mode: Inject header if missing
+         let newLines = [...editableLines];
+         if (newLines.length === 0 || !newLines[0].description.toLowerCase().includes('supply')) {
+            newLines = [{
+               id: `line-${Date.now()}`,
+               description: 'Supply of various menu items listed below:',
+               quantity: 0,
+               unitPriceCents: 0
+            }, ...newLines];
+         }
+         setEditableLines(newLines);
+         setIsBanquetMode(true);
+      } else {
+         setIsBanquetMode(false);
+      }
    };
 
    const removeLineItem = (idx: number) => {
@@ -434,10 +460,11 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
    return (
       <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in zoom-in duration-200">
-         <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl flex flex-col h-[90vh] overflow-hidden">
+         <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl flex flex-col h-[90vh] overflow-hidden relative">
+            <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-white/80 backdrop-blur-sm border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-lg transition-all shadow-lg"><X size={20} /></button>
 
             {/* INVOICE DOCUMENT SCROLLABLE AREA */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-8 md:p-12 relative">
+            <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-4 md:p-12 relative">
 
                {/* 1. Header */}
                <div className="flex justify-between items-start mb-6">
@@ -456,7 +483,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                <div className="h-1 w-full bg-orange-400 mb-10"></div>
 
                {/* 2. Info Section (Bill To & Invoice Details) */}
-               <div className="flex flex-col md:flex-row justify-between items-start gap-10 mb-12">
+               <div className="flex flex-col md:flex-row justify-between items-start gap-6 md:gap-10 mb-8 md:mb-12">
 
                   {/* Bill To */}
                   <div className="flex-1">
@@ -469,9 +496,9 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                   </div>
 
                   {/* Invoice Meta */}
-                  <div className="flex-[0.8] flex flex-col items-end">
+                  <div className="w-full md:flex-[0.8] flex flex-col items-center md:items-end">
                      {/* Orange Invoice Box */}
-                     <div className="border-2 border-orange-400 px-6 py-2 rounded-lg mb-6 transform -rotate-2">
+                     <div className="border-2 border-orange-400 px-4 md:px-6 py-2 rounded-lg mb-4 md:mb-6 transform md:-rotate-2">
                         <span className="text-xl md:text-2xl font-black text-orange-500 uppercase tracking-widest text-opacity-80">
                            {isProformaMode ? 'PRO-FORMA' : 'INVOICE'}
                         </span>
@@ -493,88 +520,152 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className="grid grid-cols-[3fr_1fr_1fr_1fr_1fr] border-b-2 border-slate-100 pb-2 mb-4">
+                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} border-b-2 border-slate-100 pb-2 mb-4`}>
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
-                     <span className="text-[10px] font-black text-slate-400 uppercase text-right text-orange-500">DISCOUNT PRICE</span>
+                     {showDiscountCol && <span className="text-[10px] font-black text-slate-400 uppercase text-right text-orange-500">DISCOUNT PRICE</span>}
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">AMOUNT</span>
+                  </div>
+                  {/* Mobile Header (Table Style) */}
+                  <div className="md:hidden flex justify-between border-b-2 border-slate-100 pb-2 mb-4">
+                     <span className="text-[10px] font-black text-slate-400 uppercase">ITEM DETAILS</span>
+                     <span className="text-[10px] font-black text-slate-400 uppercase text-right">TOTAL</span>
                   </div>
 
                   <div className="space-y-4">
                      {editableLines.length === 0 ? (
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
-                        editableLines.map((line, idx) => (
-                           <div key={idx} className="grid grid-cols-[3fr_1fr_1fr_1fr_1fr] items-start text-sm group relative">
-                              {isProformaMode ? (
-                                 <>
-                                    <div className="flex items-center gap-2 pr-4">
-                                       <button
-                                          onClick={() => removeLineItem(idx)}
-                                          className="opacity-0 group-hover:opacity-100 p-1 text-rose-500 hover:bg-rose-50 rounded transition-all"
-                                       >
-                                          <Trash2 size={12} />
-                                       </button>
-                                       <input
-                                          className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium"
-                                          value={line.description}
-                                          onChange={e => handleLineChange(idx, 'description', e.target.value)}
-                                       />
-                                    </div>
-                                    <input
-                                       type="number"
-                                       className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
-                                       value={line.quantity}
-                                       onFocus={e => e.target.select()}
-                                       onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
-                                    />
-                                    {/* Standard Unit Price */}
-                                    <div className="flex items-center bg-slate-50 rounded px-2 py-1 ml-auto">
-                                       <span className="text-[10px] text-slate-400 mr-1">₦</span>
-                                       <input
-                                          type="number"
-                                          className={`w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
-                                          value={line.unitPriceCents / 100}
-                                          onFocus={e => e.target.select()}
-                                          onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
-                                       />
-                                    </div>
-                                    {/* Discounted Price (Manual) */}
-                                    <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
-                                       <span className="text-[10px] text-orange-300 mr-1">₦</span>
-                                       <input
-                                          type="number"
-                                          className="w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
-                                          placeholder="-"
-                                          value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
-                                          onChange={e => {
-                                             const val = parseFloat(e.target.value);
-                                             handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
-                                          }}
-                                       />
-                                    </div>
-                                 </>
-                              ) : (
-                                 <>
-                                    <span className="text-slate-800 font-medium pr-4">{line.description}</span>
-                                    <span className="text-slate-600 text-center">{line.quantity}</span>
-                                    {/* Unit Price Display */}
-                                    <span className={`text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
-                                       {formatCurrency(line.unitPriceCents)}
-                                    </span>
-                                    {/* Discount Price Display */}
-                                    <span className="text-right font-bold text-orange-600">
-                                       {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
-                                    </span>
-                                 </>
-                              )}
-                              <span className="text-slate-900 font-bold text-right">
-                                 {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
-                              </span>
-                           </div>
-                        ))
+                        editableLines.map((line, idx) => {
+                           // Banquet Logic: Only show prices/amounts for the first row (Header)
+                           const showPricing = !isBanquetMode || idx === 0;
+
+                           return (
+                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[3fr_1fr_1fr_1fr_1fr]' : 'grid-cols-[3fr_1fr_1fr_1fr]'} items-start text-sm group relative gap-3 md:gap-0 border-b border-slate-50 md:border-none pb-4 md:pb-0`}>
+                                 {isProformaMode ? (
+                                    <>
+                                       {/* Description (Top on Mobile, First Col on Desktop) */}
+                                       <div className="flex items-center gap-2 pr-4 w-full">
+                                          <button
+                                             onClick={() => removeLineItem(idx)}
+                                             className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100"
+                                          >
+                                             <Trash2 size={12} />
+                                          </button>
+                                          <input
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isBanquetMode && idx === 0 ? 'font-black uppercase tracking-wide' : ''}`}
+                                             placeholder="Item description"
+                                             value={line.description}
+                                             onChange={e => handleLineChange(idx, 'description', e.target.value)}
+                                          />
+                                       </div>
+
+                                       {/* Mobile Details Row / Desktop Columns */}
+                                       <div className="grid grid-cols-2 md:contents w-full gap-2">
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">{isBanquetMode && idx === 0 ? 'Guests' : 'Quantity'}</label>
+                                             <input
+                                                type="number"
+                                                className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center"
+                                                value={line.quantity}
+                                                onFocus={e => e.target.select()}
+                                                onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
+                                             />
+                                          </div>
+
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Unit Price</label>
+                                             {showPricing ? (
+                                                <div className="flex items-center bg-slate-50 rounded px-2 py-1 md:ml-auto">
+                                                   <span className="text-[10px] text-slate-400 mr-1">₦</span>
+                                                   <input
+                                                      type="number"
+                                                      className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}
+                                                      value={line.unitPriceCents / 100}
+                                                      onFocus={e => e.target.select()}
+                                                      onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                                   />
+                                                </div>
+                                             ) : <div className="hidden md:block"></div>}
+                                          </div>
+
+                                          {showDiscountCol && (
+                                             <div className="flex flex-col md:block">
+                                                <label className="md:hidden text-[8px] font-black text-orange-400 uppercase mb-1">Discount Price</label>
+                                                {showPricing ? (
+                                                   <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 md:ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
+                                                      <span className="text-[10px] text-orange-300 mr-1">₦</span>
+                                                      <input
+                                                         type="number"
+                                                         className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
+                                                         placeholder="-"
+                                                         value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
+                                                         onChange={e => {
+                                                            const val = parseFloat(e.target.value);
+                                                            handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
+                                                         }}
+                                                      />
+                                                   </div>
+                                                ) : <div className="hidden md:block"></div>}
+                                             </div>
+                                          )}
+
+                                          <div className="flex flex-col md:block items-end md:items-stretch">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
+                                             {showPricing && (
+                                                <span className="text-slate-900 font-bold text-right py-1 block">
+                                                   {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                                                </span>
+                                             )}
+                                          </div>
+                                       </div>
+                                    </>
+                                 ) : (
+                                    <>
+                                       {/* View Mode (Non-Editable) */}
+                                       <div className="w-full md:pr-4">
+                                          <span className={`text-slate-800 font-medium block ${isBanquetMode && idx === 0 ? 'font-black uppercase tracking-wide' : ''}`}>{line.description}</span>
+                                       </div>
+                                       <div className="grid grid-cols-2 md:contents w-full gap-2">
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Qty</label>
+                                             <span className="text-slate-600 md:text-center block">{line.quantity}</span>
+                                          </div>
+                                          <div className="flex flex-col md:block">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
+                                             {showPricing && (
+                                                <span className={`block md:text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300 text-xs' : 'text-slate-600'}`}>
+                                                   {formatCurrency(line.unitPriceCents)}
+                                                </span>
+                                             )}
+                                          </div>
+                                          {showDiscountCol && (
+                                             <div className="flex flex-col md:block">
+                                                <label className="md:hidden text-[8px] font-black text-orange-400 uppercase">Discount</label>
+                                                {showPricing && (
+                                                   <span className="block md:text-right font-bold text-orange-600">
+                                                      {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
+                                                   </span>
+                                                )}
+                                             </div>
+                                          )}
+                                          <div className="flex flex-col md:block items-end md:items-stretch">
+                                             <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Total</label>
+                                             {showPricing && (
+                                                <span className="text-slate-900 font-bold text-right block">
+                                                   {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
+                                                </span>
+                                             )}
+                                          </div>
+                                       </div>
+                                    </>
+                                 )}
+                              </div>
+                           );
+                        })
                      )}
+
 
                      {isProformaMode && (
                         <button
@@ -660,7 +751,10 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
-                           const effectiveSubtotal = editableLines.reduce((acc, l) => {
+                           const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
+                              // In Banquet Mode, ONLY the first line (Summary) contributes to cost
+                              if (isBanquetMode && idx > 0) return acc;
+
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
                                  : l.unitPriceCents;
@@ -736,7 +830,24 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
 
             {/* ACTION BAR (Not Printed) */}
             <div className="bg-slate-100 p-4 md:p-6 flex flex-col md:flex-row gap-4 border-t border-slate-200 shrink-0">
-               <div className="flex gap-2 flex-1">
+               <div className="flex gap-2 flex-1 items-center">
+                  <button
+                     onClick={() => toggleBanquetMode()}
+                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                  >
+                     {isBanquetMode ? 'Banquet Mode ON' : 'Banquet Mode OFF'}
+                  </button>
+                  {isBanquetMode && (
+                     <button
+                        onClick={() => setShowDiscountCol(!showDiscountCol)}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                     >
+                        {showDiscountCol ? 'Discount ON' : 'Discount OFF'}
+                     </button>
+                  )}
+
+                  <div className="h-6 w-px bg-slate-200 mx-1"></div>
+
                   <button
                      onClick={() => {
                         const win = window.open('', '_blank');
@@ -767,8 +878,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose }: { invoice: Invoice, onSa
                      <Share2 size={16} /> Share
                   </button>
                </div>
-               <div className="flex gap-2 flex-[1.5]">
-                  <button onClick={onClose} className="px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
+               <div className="flex flex-col md:flex-row gap-2 flex-[1.5]">
+                  <button onClick={onClose} className="w-full md:w-auto px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
                   {isProformaMode ? (
                      <button
                         onClick={handleFinalize}
@@ -835,7 +946,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                      <p className="text-[10px] text-slate-500 font-bold uppercase">Select items leaving the warehouse</p>
                   </div>
                </div>
-               <button onClick={onClose}><X size={24} className="text-slate-400 hover:text-rose-500" /></button>
+               <button onClick={onClose} className="p-2 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
             <div className="flex-1 flex overflow-hidden">
@@ -881,9 +992,12 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                         </div>
                      ))}
                   </div>
-                  <button onClick={handleDispatch} disabled={cart.length === 0} className="w-full py-4 bg-orange-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 transition-all">
-                     Confirm Dispatch
-                  </button>
+                  <div className="flex gap-4">
+                     <button onClick={onClose} className="px-6 py-3 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+                     <button onClick={handleDispatch} disabled={cart.length === 0} className="flex-1 py-4 bg-orange-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 transition-all">
+                        Confirm Dispatch
+                     </button>
+                  </div>
                </div>
             </div>
          </div>
@@ -945,7 +1059,7 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
                   <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Logistics Reconciliation</h2>
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Post-Event Asset Recovery & Returns</p>
                </div>
-               <button onClick={onClose}><X size={24} className="text-slate-400 hover:text-slate-900" /></button>
+               <button onClick={onClose} className="p-2 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-12 space-y-12">
@@ -1105,14 +1219,14 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
    }
 
    return (
-      <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-12 relative">
+      <div className="bg-white p-6 md:p-12 rounded-[2rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-8 md:space-y-12 relative overflow-x-hidden">
          {onClose && (
             <button
                onClick={onClose}
-               className="absolute top-6 right-6 p-3 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all z-10"
+               className="absolute top-4 right-4 md:top-6 md:right-6 p-2 md:p-3 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all z-10"
                title="Close Details"
             >
-               <X size={20} />
+               <X size={18} />
             </button>
          )}
          {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => { }} onClose={() => setViewingInvoice(null)} />}
@@ -1135,36 +1249,37 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
             </div>
          )}
 
-         <div className="flex justify-between items-start">
-            <div className="space-y-4">
-               <div className="flex gap-4">
-                  <button onClick={() => onAmend(event)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 items-center">
-                     <FileText size={14} /> Amend Record
+         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+            <div className="space-y-4 w-full">
+               <div className="flex flex-wrap gap-2 md:gap-4">
+                  <button onClick={() => onAmend(event)} className="px-4 md:px-6 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
+                     <FileText size={14} /> <span className="hidden sm:inline">Amend Record</span><span className="sm:hidden">Amend</span>
                   </button>
-                  {/* ... other top buttons ... */}
+                  <button onClick={() => setShowRequisitions(true)} className="px-4 md:px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-100 transition-all flex items-center gap-2">
+                     <FileText size={14} /> <span className="hidden sm:inline">Track Requisitions</span><span className="sm:hidden">Reqs</span>
+                  </button>
                   {salesInvoice && (
-                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 items-center">
-                        <Printer size={14} /> View Invoice
+                     <button onClick={() => setViewingInvoice(salesInvoice)} className="px-4 md:px-6 py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2">
+                        <Printer size={14} /> <span className="hidden sm:inline">View Invoice</span><span className="sm:hidden">Invoice</span>
                      </button>
                   )}
                   {event.currentPhase === 'Execution' && (
-                     <button onClick={() => setShowDispatch(true)} className="px-6 py-2 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2 items-center">
-                        <Truck size={14} /> Dispatch Assets
+                     <button onClick={() => setShowDispatch(true)} className="px-4 md:px-6 py-2 bg-orange-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2">
+                        <Truck size={14} /> <span className="hidden sm:inline">Dispatch Assets</span><span className="sm:hidden">Dispatch</span>
                      </button>
                   )}
-                  {/* ... */}
                </div>
                <div>
-                  <h3 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none">{event.customerName}</h3>
-                  <div className="flex items-center gap-4 mt-4">
-                     <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase border-2 ${event.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{event.status}</span>
-                     <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{event.eventDate} • {event.location || 'Venue TBD'}</p>
+                  <h3 className="text-2xl md:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words">{event.customerName}</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-4">
+                     <span className={`w-fit px-3 py-1 rounded-lg text-[9px] font-black uppercase border-2 ${event.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>{event.status}</span>
+                     <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest leading-tight">{event.eventDate} • {event.location || 'Venue TBD'}</p>
                   </div>
                </div>
             </div>
-            <div className="text-right">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
-               <p className="text-3xl font-black text-slate-900">{event.guestCount}</p>
+            <div className="text-left md:text-right shrink-0">
+               <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
+               <p className="text-2xl md:text-3xl font-black text-slate-900">{event.guestCount}</p>
             </div>
          </div>
 
@@ -1315,6 +1430,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                      )}
                   </>
                )}
+               <button onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">Close Node</button>
             </div>
          </div>
       </div>
@@ -1390,6 +1506,260 @@ const CostingMatrix = () => {
    );
 };
 
+const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
+   const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string }[]>([]);
+   const [customerName, setCustomerName] = useState('');
+   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+   const [searchQuery, setSearchQuery] = useState('');
+
+   const [customProductName, setCustomProductName] = useState('');
+   const [customProductPrice, setCustomProductPrice] = useState(0);
+   const [customProductCategory, setCustomProductCategory] = useState('Others');
+
+   const createCateringOrder = useDataStore(state => state.createCateringOrder);
+
+   const filteredProducts = PREDEFINED_CUISINE_PRODUCTS.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+   );
+
+   const addItem = (p: CuisineProduct) => {
+      const existing = items.find(i => i.name === p.name);
+      const minQty = p.minPortions || 10;
+      if (existing) {
+         setItems(items.map(i => i.name === p.name ? { ...i, quantity: i.quantity + minQty } : i));
+      } else {
+         setItems([...items, {
+            id: `cuisine-${Date.now()}`,
+            name: p.name,
+            quantity: minQty,
+            priceCents: p.price * 100,
+            category: p.category
+         }]);
+      }
+   };
+
+   const addCustomItem = () => {
+      if (!customProductName || customProductPrice <= 0) return;
+      setItems([...items, {
+         id: `custom-${Date.now()}`,
+         name: customProductName,
+         quantity: 10,
+         priceCents: customProductPrice * 100,
+         category: customProductCategory
+      }]);
+      setCustomProductName('');
+      setCustomProductPrice(0);
+   };
+
+   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
+
+   const updateQty = (idx: number, qty: number) => {
+      const item = items[idx];
+      const originalProduct = PREDEFINED_CUISINE_PRODUCTS.find(p => p.name === item.name);
+      const minQty = originalProduct?.minPortions || 1; // Default to 1 for custom items if not found
+
+      const newItems = [...items];
+      newItems[idx].quantity = Math.max(minQty, qty);
+      setItems(newItems);
+   };
+
+   const totalCents = items.reduce((acc, it) => acc + (it.priceCents * it.quantity), 0);
+
+   const handleCreate = async () => {
+      if (!customerName || items.length === 0) {
+         alert("Please provide customer name and at least one item.");
+         return;
+      }
+
+      const payload = {
+         customerName,
+         eventDate,
+         guestCount: items.reduce((a, b) => a + b.quantity, 0),
+         items: items.map(i => ({
+            inventoryItemId: i.id,
+            name: i.name,
+            quantity: i.quantity,
+            priceCents: i.priceCents,
+            costCents: i.priceCents * 0.4 // Default cost estimate
+         })),
+         orderType: 'Cuisine',
+         banquetDetails: {
+            notes: 'Cuisine Order (Smaller portions)',
+            eventType: 'Cuisine Order'
+         }
+      };
+
+      try {
+         const { invoice } = await createCateringOrder(payload);
+         onFinalize(invoice);
+         onClose();
+      } catch (err) {
+         console.error(err);
+         alert("Failed to create cuisine order.");
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
+         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[90vh] border border-slate-200">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><UtensilsCrossed size={24} /></div>
+                  <div>
+                     <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Cuisine Order Portal</h2>
+                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1">Select products for immediate fulfillment (Min 10 portions)</p>
+                  </div>
+               </div>
+               <button onClick={onClose} className="p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+               {/* Left Pane: Product Selector */}
+               <div className="w-1/2 border-r border-slate-100 flex flex-col bg-slate-50/30">
+                  <div className="p-6 space-y-4">
+                     <div className="relative">
+                        <input
+                           type="text"
+                           placeholder="Search products or categories..."
+                           className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-900 shadow-sm"
+                           value={searchQuery}
+                           onChange={e => setSearchQuery(e.target.value)}
+                        />
+                        <Grid3X3 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                     </div>
+
+                     <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 space-y-3">
+                        <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Add Custom Product</p>
+                        <div className="grid grid-cols-2 gap-3">
+                           <input
+                              type="text"
+                              placeholder="Product Name"
+                              className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold outline-none"
+                              value={customProductName}
+                              onChange={e => setCustomProductName(e.target.value)}
+                           />
+                           <input
+                              type="number"
+                              placeholder="Price (₦)"
+                              className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold outline-none"
+                              value={customProductPrice || ''}
+                              onChange={e => setCustomProductPrice(parseInt(e.target.value) || 0)}
+                           />
+                        </div>
+                        <button
+                           onClick={addCustomItem}
+                           className="w-full py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2"
+                        >
+                           <Plus size={14} /> Add to Order
+                        </button>
+                     </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
+                     {Array.from(new Set(filteredProducts.map(p => p.category))).map(cat => (
+                        <div key={cat} className="space-y-3">
+                           <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] sticky top-0 bg-slate-50/50 backdrop-blur-md py-2">{cat}</h4>
+                           <div className="grid grid-cols-1 gap-2">
+                              {filteredProducts.filter(p => p.category === cat).map(product => (
+                                 <div
+                                    key={product.name}
+                                    onClick={() => addItem(product)}
+                                    className="p-4 bg-white border border-slate-100 rounded-2xl hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all group flex justify-between items-center"
+                                 >
+                                    <div>
+                                       <p className="font-bold text-slate-800 text-sm group-hover:text-emerald-700">{product.name}</p>
+                                       <p className="text-[10px] text-slate-400 font-bold">₦{product.price.toLocaleString()} {product.unit ? `per ${product.unit}` : '/ portion'}</p>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"><Plus size={16} /></div>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Right Pane: Order Cart & Details */}
+               <div className="w-1/2 flex flex-col p-8 bg-white">
+                  <div className="space-y-6 flex-1 flex flex-col min-h-0">
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer Name</label>
+                           <input
+                              type="text"
+                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              value={customerName}
+                              onChange={e => setCustomerName(e.target.value)}
+                              placeholder="e.g. John Doe"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Delivery Date</label>
+                           <input
+                              type="date"
+                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none"
+                              value={eventDate}
+                              onChange={e => setEventDate(e.target.value)}
+                           />
+                        </div>
+                     </div>
+
+                     <div className="flex-1 flex flex-col min-h-0">
+                        <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest mb-4 flex items-center gap-2"><ShoppingCart size={16} /> Order Manifest</h3>
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                           {items.length === 0 && (
+                              <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-50 space-y-4">
+                                 <ShoppingBag size={48} strokeWidth={1} />
+                                 <p className="text-sm font-bold uppercase tracking-widest">No items selected</p>
+                              </div>
+                           )}
+                           {items.map((item, idx) => (
+                              <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 animate-in slide-in-from-right-4 duration-300">
+                                 <div className="flex-1">
+                                    <p className="font-black text-slate-800 text-sm uppercase">{item.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{item.category}</p>
+                                 </div>
+                                 <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-end">
+                                       <p className="text-[8px] font-black text-slate-400 uppercase">Portions</p>
+                                       <input
+                                          type="number"
+                                          className="w-16 p-2 bg-white border border-slate-200 rounded-xl text-center text-xs font-black text-slate-900"
+                                          value={item.quantity}
+                                          onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
+                                       />
+                                    </div>
+                                    <button onClick={() => removeItem(idx)} className="p-2 text-slate-300 hover:text-rose-500 transition-all"><Trash2 size={16} /></button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+
+                     <div className="bg-slate-950 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl">
+                        <div className="flex justify-between items-end">
+                           <div>
+                              <p className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] mb-1">Estimated Total</p>
+                              <h4 className="text-4xl font-black tracking-tighter">₦{(totalCents / 100).toLocaleString()}</h4>
+                           </div>
+                           <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-1">{items.length} Unique Items</p>
+                        </div>
+                        <button
+                           onClick={handleCreate}
+                           className="w-full py-5 bg-emerald-500 text-slate-950 rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-400 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                        >
+                           Generate Invoice & Close <ArrowRight size={18} />
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 import { EventDetailCard } from './EventDetailCard';
 
 export const Catering = () => {
@@ -1398,8 +1768,9 @@ export const Catering = () => {
    const [richDetailEvent, setRichDetailEvent] = useState<CateringEvent | null>(null);
    const [amendEvent, setAmendEvent] = useState<CateringEvent | null>(null);
    const [showBrochure, setShowBrochure] = useState(false);
+   const [showCuisineOrder, setShowCuisineOrder] = useState(false);
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
-   const [activeTab, setActiveTab] = useState<'orders' | 'matrix'>('orders');
+   const [activeTab, setActiveTab] = useState<'orders' | 'cuisine' | 'matrix'>('cuisine');
    const [showProcurement, setShowProcurement] = useState(false);
    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
@@ -1408,11 +1779,18 @@ export const Catering = () => {
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
 
    const filteredEvents = useMemo(() => {
-      if (viewMode === 'active') {
-         return events.filter(e => e.status !== 'Archived');
+      let base = events;
+      if (activeTab === 'orders') {
+         base = events.filter(e => !e.orderType || e.orderType === 'Banquet');
+      } else if (activeTab === 'cuisine') {
+         base = events.filter(e => e.orderType === 'Cuisine');
       }
-      return events.filter(e => e.status === 'Archived');
-   }, [events, viewMode]);
+
+      if (viewMode === 'active') {
+         return base.filter(e => e.status !== 'Archived');
+      }
+      return base.filter(e => e.status === 'Archived');
+   }, [events, viewMode, activeTab]);
 
    useEffect(() => {
       setEvents(cateringEvents);
@@ -1438,7 +1816,6 @@ export const Catering = () => {
    const handleCommitInvoice = (inv: Invoice) => {
       finalizeProforma(inv.id);
       setGeneratedInvoice(null);
-      setViewingInvoice(inv);
       // Auto-select the newest event if none is currently viewed
       if (!selectedEvent && cateringEvents.length > 0) {
          setSelectedEvent(cateringEvents[0]);
@@ -1452,36 +1829,45 @@ export const Catering = () => {
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
                   <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
-                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Catering Operations</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Banquet Management Node Active</p></div>
+                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Catering Operations</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Cuisine & Banquet Management Node Active</p></div>
                </div>
-               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2">
+               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
                      onClick={() => {
                         const url = `${window.location.origin}/#/brochure`;
                         navigator.clipboard.writeText(url);
                         alert('Brochure Link Copied to Clipboard!');
                      }}
-                     className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 text-[#00ff9d] hover:bg-white/5"
+                     className="whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 text-[#00ff9d] hover:bg-white/5"
                   >
-                     <Share2 size={14} /> Share Booking Link
+                     <Share2 size={14} /> <span className="hidden md:inline">Share Booking Link</span><span className="md:hidden">Share</span>
                   </button>
-                  <div className="w-px bg-white/10 my-2"></div>
-                  {[{ id: 'orders', label: 'Banquets', icon: ShoppingBag }, { id: 'matrix', label: 'Costing Matrix', icon: Grid3X3 }].map(tab => (
-                     <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
+                  <div className="w-px bg-white/10 my-2 shrink-0"></div>
+                  {[{ id: 'cuisine', label: 'Cuisine', icon: UtensilsCrossed }, { id: 'orders', label: 'Banquets', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
+                     <button
+                        key={tab.id}
+                        onClick={() => { setActiveTab(tab.id as any); setSelectedEvent(null); }}
+                        className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
+                     >
+                        <tab.icon size={14} /> {tab.label}
+                     </button>
                   ))}
                </div>
             </div>
          </div>
 
-         {activeTab === 'orders' && (
+         {(activeTab === 'orders' || activeTab === 'cuisine') && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
                <div className={`transition-all duration-300 ${selectedEvent ? 'lg:col-span-1 space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'}`}>
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
-                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} Banquets</h2>
+                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} {activeTab === 'orders' ? 'Banquets' : 'Cuisine Orders'}</h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                           <button onClick={() => setIsManualInvoiceModalOpen(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create Invoice</button>
-                           <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                           {activeTab === 'orders' ? (
+                              <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                           ) : (
+                              <button onClick={() => setIsManualInvoiceModalOpen(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create New Cuisine Order</button>
+                           )}
                         </div>
                      </div>
                      <div className="flex bg-slate-100 p-1 rounded-xl">
@@ -1565,6 +1951,15 @@ export const Catering = () => {
                      }}
                   />
                </div>
+            )
+         }
+
+         {
+            showCuisineOrder && (
+               <CuisineOrderModal
+                  onClose={() => setShowCuisineOrder(false)}
+                  onFinalize={handleFinalizePush}
+               />
             )
          }
 

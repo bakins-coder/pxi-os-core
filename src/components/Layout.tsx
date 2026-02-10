@@ -510,7 +510,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-10 transition-all duration-300 bg-[#020617] w-full overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-10 pb-64 md:pb-10 transition-all duration-300 bg-[#020617] w-full overflow-x-hidden">
           <div className="max-w-[1600px] mx-auto w-full">{children}</div>
         </main>
       </div>

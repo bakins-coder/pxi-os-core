@@ -44,47 +44,47 @@ const AddContactModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose:
    };
 
    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200 h-[85vh]">
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 cursor-grab active:cursor-grabbing">
-               <div className="flex items-center gap-4">
-                  <GripHorizontal className="text-slate-300" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white shadow-2xl w-full max-w-2xl md:rounded-[3rem] rounded-[2rem] overflow-hidden flex flex-col border border-slate-200 h-[90vh] md:h-[85vh]">
+            <div className="p-5 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
+               <div className="flex items-center gap-3 md:gap-4">
+                  <GripHorizontal className="text-slate-300 hidden md:block" />
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">Acquisition Input</h2>
-                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Segmenting your lead pipeline into the OS core.</p>
+                     <h2 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">Acquisition Input</h2>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest truncate max-w-[200px] md:max-w-none">Segmenting your lead pipeline.</p>
                   </div>
                </div>
-               <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+               <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-10 space-y-10 flex-1 overflow-y-auto scrollbar-thin">
-               <div className="flex bg-slate-100 p-1.5 rounded-[1.5rem] border border-slate-200">
+            <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-6 md:space-y-10 flex-1 overflow-y-auto scrollbar-thin pb-32 md:pb-10">
+               <div className="flex bg-slate-100 p-1 rounded-2xl md:rounded-[1.5rem] border border-slate-200">
                   <button
                      type="button"
                      onClick={() => { setSegment('Individual'); updateField('type', 'Individual'); }}
-                     className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all ${segment === 'Individual' ? 'bg-white text-slate-900 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}
+                     className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-[0.2em] transition-all ${segment === 'Individual' ? 'bg-white text-slate-900 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                      Individual
                   </button>
                   <button
                      type="button"
                      onClick={() => { setSegment('Company'); updateField('type', 'Company'); }}
-                     className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all ${segment === 'Company' ? 'bg-white text-slate-900 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}
+                     className={`flex-1 flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-[0.2em] transition-all ${segment === 'Company' ? 'bg-white text-slate-900 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}
                   >
-                     Company / B2B
+                     Company
                   </button>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                   <div className="md:col-span-2">
-                     <label className="block text-[11px] font-black text-slate-600 uppercase tracking-widest mb-3 ml-2">
+                     <label className="block text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2 md:mb-3 ml-2">
                         {segment === 'Individual' ? 'Full Legal Name *' : 'Registered Business Name *'}
                      </label>
                      <input
                         required
                         onFocus={() => setActiveField('Name')}
-                        className="w-full border-2 border-slate-200 rounded-[1.5rem] p-5 bg-white text-slate-900 text-lg font-black shadow-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-slate-300"
-                        placeholder={segment === 'Individual' ? "Enter full name (e.g., Tunde Enitan)" : "Enter registered entity name (e.g., Zenith Global Services)"}
+                        className="w-full border-2 border-slate-200 rounded-2xl md:rounded-[1.5rem] p-4 md:p-5 bg-white text-slate-900 text-base md:text-lg font-black shadow-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300"
+                        placeholder={segment === 'Individual' ? "e.g., Tunde Enitan" : "e.g., Zenith Global Services"}
                         value={formData.name || ''}
                         onChange={e => updateField('name', e.target.value)}
                      />
@@ -93,12 +93,12 @@ const AddContactModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose:
                   {segment === 'Company' ? (
                      <>
                         <div>
-                           <label className="block text-[11px] font-black text-slate-600 uppercase tracking-widest mb-3 ml-2">Registration No (RC/BN)</label>
-                           <input onFocus={() => setActiveField('RegistrationNumber')} className="w-full p-5 border-2 border-slate-200 rounded-[1.5rem] bg-white text-slate-900 font-black text-lg focus:border-indigo-500 outline-none transition-all" placeholder="RC-123456" value={formData.registrationNumber || ''} onChange={e => updateField('registrationNumber', e.target.value)} />
+                           <label className="block text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2 md:mb-3 ml-2">Registration No</label>
+                           <input onFocus={() => setActiveField('RegistrationNumber')} className="w-full p-4 md:p-5 border-2 border-slate-200 rounded-2xl md:rounded-[1.5rem] bg-white text-slate-900 font-black text-base md:text-lg focus:border-indigo-500 outline-none transition-all" placeholder="RC-123456" value={formData.registrationNumber || ''} onChange={e => updateField('registrationNumber', e.target.value)} />
                         </div>
                         <div>
-                           <label className="block text-[11px] font-black text-slate-600 uppercase tracking-widest mb-3 ml-2">Industry Sector</label>
-                           <select onFocus={() => setActiveField('Industry')} className="w-full p-5 border-2 border-slate-200 rounded-[1.5rem] bg-white text-slate-900 font-black text-lg focus:border-indigo-500 outline-none cursor-pointer" value={formData.industry || ''} onChange={e => updateField('industry', e.target.value)}>
+                           <label className="block text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2 md:mb-3 ml-2">Industry Sector</label>
+                           <select onFocus={() => setActiveField('Industry')} className="w-full p-4 md:p-5 border-2 border-slate-200 rounded-2xl md:rounded-[1.5rem] bg-white text-slate-900 font-black text-base md:text-lg focus:border-indigo-500 outline-none cursor-pointer" value={formData.industry || ''} onChange={e => updateField('industry', e.target.value)}>
                               <option value="">Choose industry...</option>
                               <option value="Banking">Banking & Finance</option>
                               <option value="FMCG">FMCG / Retail</option>
@@ -109,29 +109,29 @@ const AddContactModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose:
                      </>
                   ) : (
                      <div className="md:col-span-2">
-                        <label className="block text-[11px] font-black text-slate-600 uppercase tracking-widest mb-3 ml-2">Job Designation</label>
-                        <input onFocus={() => setActiveField('JobTitle')} className="w-full p-5 border-2 border-slate-200 rounded-[1.5rem] bg-white text-slate-900 font-black text-lg focus:border-indigo-500 outline-none transition-all" placeholder="e.g., General Manager" value={formData.jobTitle || ''} onChange={e => updateField('jobTitle', e.target.value)} />
+                        <label className="block text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2 md:mb-3 ml-2">Job Designation</label>
+                        <input onFocus={() => setActiveField('JobTitle')} className="w-full p-4 md:p-5 border-2 border-slate-200 rounded-2xl md:rounded-[1.5rem] bg-white text-slate-900 font-black text-base md:text-lg focus:border-indigo-500 outline-none transition-all" placeholder="e.g., General Manager" value={formData.jobTitle || ''} onChange={e => updateField('jobTitle', e.target.value)} />
                      </div>
                   )}
 
                   <div>
-                     <label className="block text-[11px] font-black text-slate-600 uppercase tracking-widest mb-3 ml-2">Direct Contact (Phone) *</label>
-                     <input required onFocus={() => setActiveField('Phone')} className="w-full p-5 border-2 border-slate-200 rounded-[1.5rem] bg-white text-slate-900 font-black text-lg focus:border-indigo-500 outline-none transition-all" placeholder="+234 80..." value={formData.phone || ''} onChange={e => updateField('phone', e.target.value)} />
+                     <label className="block text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2 md:mb-3 ml-2">Direct Phone *</label>
+                     <input required onFocus={() => setActiveField('Phone')} className="w-full p-4 md:p-5 border-2 border-slate-200 rounded-2xl md:rounded-[1.5rem] bg-white text-slate-900 font-black text-base md:text-lg focus:border-indigo-500 outline-none transition-all" placeholder="+234..." value={formData.phone || ''} onChange={e => updateField('phone', e.target.value)} />
                   </div>
 
                   <div>
-                     <label className="block text-[11px] font-black text-slate-600 uppercase tracking-widest mb-3 ml-2">Digital Correspondence (Email) *</label>
-                     <input required onFocus={() => setActiveField('Email')} type="email" className="w-full p-5 border-2 border-slate-200 rounded-[1.5rem] bg-white text-slate-900 font-black text-lg focus:border-indigo-500 outline-none transition-all" placeholder="name@domain.com" value={formData.email || ''} onChange={e => updateField('email', e.target.value)} />
+                     <label className="block text-[9px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2 md:mb-3 ml-2">Correspondence Email *</label>
+                     <input required onFocus={() => setActiveField('Email')} type="email" className="w-full p-4 md:p-5 border-2 border-slate-200 rounded-2xl md:rounded-[1.5rem] bg-white text-slate-900 font-black text-base md:text-lg focus:border-indigo-500 outline-none transition-all" placeholder="name@domain.com" value={formData.email || ''} onChange={e => updateField('email', e.target.value)} />
                   </div>
                </div>
             </form>
 
-            <div className="p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-               <button type="button" onClick={onClose} className="flex-1 py-5 text-slate-500 font-black uppercase tracking-widest text-[11px] hover:bg-white hover:text-slate-800 border-2 border-transparent hover:border-slate-200 rounded-[2rem] transition-all">Cancel Entry</button>
+            <div className="p-6 md:p-10 border-t-2 border-slate-100 bg-slate-50 flex flex-col md:flex-row gap-3 md:gap-6 sticky bottom-0 z-20">
+               <button type="button" onClick={onClose} className="py-4 md:py-5 order-2 md:order-1 text-slate-500 font-black uppercase tracking-widest text-[10px] md:text-[11px] hover:bg-white rounded-2xl md:rounded-[2rem] transition-all border-2 border-transparent">Cancel Entry</button>
                <button
                   onClick={handleSubmit}
-                  className="flex-1 py-5 text-white font-black uppercase tracking-widest text-[11px] rounded-[2rem] shadow-2xl transition-all active:scale-95 hover:brightness-110"
-                  style={{ backgroundColor: brandColor, boxShadow: `0 20px 40px ${brandColor}33` }}
+                  className="py-4 md:py-5 order-1 md:order-2 text-white font-black uppercase tracking-widest text-[10px] md:text-[11px] rounded-2xl md:rounded-[2rem] shadow-2xl transition-all"
+                  style={{ backgroundColor: brandColor }}
                >
                   Integrate Contact <ChevronRight className="inline-block ml-2" size={16} />
                </button>

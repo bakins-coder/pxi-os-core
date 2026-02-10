@@ -2173,6 +2173,7 @@ export const useDataStore = create<DataState>()(
                     status: 'Confirmed',
                     currentPhase: 'Procurement',
                     items: d.items,
+                    orderType: d.orderType || 'Banquet',
                     banquetDetails: d.banquetDetails,
                     readinessScore: 40,
                     hardwareChecklist: [],
@@ -2583,7 +2584,11 @@ export const useDataStore = create<DataState>()(
 
                 try {
                     // Critical: Sync Contacts FIRST to ensure FK relationships (Invoices -> Contacts)
-                    await safeSync('contacts', state.contacts);
+                    try {
+                        await safeSync('contacts', state.contacts);
+                    } catch (e) {
+                        console.warn("Contacts sync failed, proceeding to others", e);
+                    }
 
                     await Promise.all([
                         // syncTableToCloud('inventory', state.inventory), // DISABLED

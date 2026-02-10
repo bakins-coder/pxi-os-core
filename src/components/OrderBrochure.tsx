@@ -586,7 +586,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 </div>
 
                 <div className="flex gap-1.5 w-full md:w-auto mt-0.5 md:mt-0">
-                    <button onClick={onComplete} className="px-3 py-2 md:py-3 font-black uppercase text-[8px] text-slate-500 bg-slate-50 rounded-lg md:bg-transparent hover:text-rose-500 shrink-0">Cancel</button>
+                    <button onClick={onComplete} className="px-3 py-2 md:py-3 font-black uppercase text-[8px] text-slate-400 bg-slate-100 md:bg-transparent rounded-lg hover:text-rose-500 transition-all shrink-0">Cancel</button>
                     <button
                         onClick={handlePlaceOrder}
                         disabled={!hasSelection || isSubmitting || !customerName}
@@ -603,8 +603,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                 <div className="fixed inset-0 z-[100] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in duration-300">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black uppercase tracking-tight">Add Custom Product</h3>
-                            <button onClick={() => setShowCustomModal(false)} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+                            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Add Custom Product</h3>
+                            <button
+                                onClick={() => setShowCustomModal(false)}
+                                className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-full transition-all"
+                            >
+                                <X size={20} />
+                            </button>
                         </div>
                         <div className="space-y-4">
                             <div>
@@ -638,13 +643,22 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                                     />
                                 </div>
                             </div>
-                            <button
-                                onClick={addCustomItem}
-                                disabled={!newCustomName || newCustomQty <= 0}
-                                className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 shadow-xl"
-                            >
-                                Add to Order Node
-                            </button>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setShowCustomModal(false)}
+                                    className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all font-black"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={addCustomItem}
+                                    disabled={!newCustomName || newCustomQty <= 0}
+                                    className="flex-[2] py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
+                                >
+                                    Add to Order Node
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

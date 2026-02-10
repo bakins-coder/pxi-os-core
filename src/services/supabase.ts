@@ -226,6 +226,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('costingSheet' in newItem) { newItem.costing_sheet = newItem.costingSheet; delete newItem.costingSheet; }
 
     if ('portionMonitor' in newItem) { newItem.portion_monitor = newItem.portionMonitor; delete newItem.portionMonitor; }
+    if ('orderType' in newItem) { newItem.order_type = newItem.orderType; delete newItem.orderType; }
 
     // Image Mapping (General)
     if ('image' in newItem) {
@@ -245,13 +246,22 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     return newItem;
   });
 
-  const { error } = await supabase
-    .from(tableName)
-    .upsert(sanitizedData, { onConflict: 'id' });
+  // Batch items to avoid payload limits
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < sanitizedData.length; i += BATCH_SIZE) {
+    const batch = sanitizedData.slice(i, i + BATCH_SIZE);
 
-  if (error) {
-    console.error(`Cloud Sync Failed [${tableName}]:`, error.message);
-    throw error;
+    // Skip empty batches/filters
+    if (batch.length === 0) continue;
+
+    const { error } = await supabase
+      .from(tableName)
+      .upsert(batch, { onConflict: 'id' });
+
+    if (error) {
+      console.error(`Cloud Sync Failed [${tableName}] (Batch ${i}-${i + BATCH_SIZE}):`, error.message);
+      throw error;
+    }
   }
 };
 
@@ -384,6 +394,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('reconciliation_status' in newItem) { newItem.reconciliationStatus = newItem.reconciliation_status; delete newItem.reconciliation_status; }
     if ('costing_sheet' in newItem) { newItem.costingSheet = newItem.costing_sheet; delete newItem.costing_sheet; }
     if ('portion_monitor' in newItem) { newItem.portionMonitor = newItem.portion_monitor; delete newItem.portion_monitor; }
+    if ('order_type' in newItem) { newItem.orderType = newItem.order_type; delete newItem.order_type; }
 
     // Image Mapping (General) - Additive, not destructive
     if ('image_url' in newItem) {

@@ -35,7 +35,7 @@ const SYSTEM_TOOLS = {
         const debtorMap: Record<string, { customer_name: string, amount_naira: number, status: string }> = {};
 
         dataStore.invoices
-            .filter(i => (i.status as any) !== 'Paid' && (i.status as any) !== 'Draft')
+            .filter(i => (i.status as string) !== 'Paid' && (i.status as string) !== 'Draft')
             .forEach(i => {
                 const contactId = i.contactId || 'unknown';
                 const balance = (i.totalCents - i.paidAmountCents) / 100;
@@ -86,20 +86,29 @@ const SYSTEM_TOOLS = {
         }));
         return { contacts: data };
     },
-    get_inventory_status: (args: { query: string }) => {
-        const { query } = args;
+    get_inventory_status: (args: { query?: string; type?: string; category?: string; limit?: number }) => {
+        const { query, type, category, limit = 20 } = args || {};
         const dataStore = useDataStore.getState();
-        const data = dataStore.inventory
-            .filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
-            .slice(0, 10)
-            .map(i => ({
-                name: i.name,
-                stock: i.stockQuantity,
-                type: i.type,
-                price_naira: i.priceCents / 100,
-                category: i.category
-            }));
-        return { items: data };
+        let results = dataStore.inventory;
+
+        if (query) {
+            results = results.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+        }
+        if (type) {
+            results = results.filter(i => i.type === type);
+        }
+        if (category) {
+            results = results.filter(i => i.category === category);
+        }
+
+        const data = results.slice(0, limit).map(i => ({
+            name: i.name,
+            stock: i.stockQuantity,
+            type: i.type,
+            price_naira: i.priceCents / 100,
+            category: i.category
+        }));
+        return { items: data, total_found: results.length };
     },
     get_staff_directory: () => {
         const dataStore = useDataStore.getState();
@@ -192,17 +201,42 @@ const SYSTEM_TOOLS = {
     },
     get_system_overview: () => {
         const dataStore = useDataStore.getState();
+        const totalReceivables = dataStore.invoices
+            .filter(i => (i.status as string) !== 'Paid' && (i.status as string) !== 'Draft')
+            .reduce((sum, inv) => sum + (inv.totalCents - (inv.paidAmountCents || 0)), 0);
+
         return {
             counts: {
                 ingredients: dataStore.ingredients.length,
-                inventory_products: dataStore.inventory.length,
+                sale_products: dataStore.inventory.filter(i => i.type === 'product').length,
+                reusable_assets: dataStore.inventory.filter(i => i.type === 'asset' || i.type === 'reusable').length,
+                total_inventory_entries: dataStore.inventory.length,
                 employees: dataStore.employees.length,
                 active_projects: dataStore.projects.filter(p => (p.status as any) === 'In Progress' || (p.status as any) === 'Active').length,
                 unpaid_invoices: dataStore.invoices.filter(i => (i.status as any) !== 'Paid' && (i.status as any) !== 'Draft').length,
                 contacts_crm: dataStore.contacts.length,
                 recipes: dataStore.recipes.length
             },
+            financials: {
+                total_pending_receivables: totalReceivables / 100,
+                total_receivables_formatted: new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(totalReceivables / 100)
+            },
             status: "Systems operational. Data synced."
+        };
+    },
+    get_financial_summary: () => {
+        const dataStore = useDataStore.getState();
+        const invoices = dataStore.invoices;
+        const totalRevenue = invoices.filter(i => (i.status as string) === 'Paid').reduce((sum, i) => sum + i.totalCents, 0);
+        const totalPending = invoices.filter(i => (i.status as string) !== 'Paid' && (i.status as string) !== 'Draft').reduce((sum, i) => sum + (i.totalCents - i.paidAmountCents), 0);
+        const totalExpenses = dataStore.bookkeeping.filter(e => e.type === 'Outflow').reduce((sum, e) => sum + e.amountCents, 0);
+
+        return {
+            revenue_paid: totalRevenue / 100,
+            pending_receivables: totalPending / 100,
+            recorded_expenses: totalExpenses / 100,
+            cash_on_hand_estimate: (totalRevenue - totalExpenses) / 100,
+            currency: "NGN"
         };
     },
     get_recipe_analysis: (args: { recipe_name: string }) => {
@@ -224,6 +258,80 @@ const SYSTEM_TOOLS = {
                 };
             })
         };
+    },
+    get_catering_events: (args: { status?: string; limit?: number }) => {
+        const { status, limit = 20 } = args || {};
+        const dataStore = useDataStore.getState();
+        let events = dataStore.cateringEvents || [];
+
+        if (status) {
+            events = events.filter(e => e.status.toLowerCase() === status.toLowerCase());
+        }
+
+        const sorted = [...events].sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+        const now = new Date().getTime();
+        const upcoming = sorted.filter(e => new Date(e.eventDate).getTime() >= now);
+        const results = upcoming.length > 0 ? upcoming : sorted;
+
+        return {
+            events: results.slice(0, limit).map(e => ({
+                id: e.id,
+                customer: e.customerName,
+                date: e.eventDate,
+                guests: e.guestCount,
+                status: e.status,
+                location: e.location || 'Not Specified',
+                phase: e.currentPhase
+            })),
+            total_count: events.length
+        };
+    },
+    get_project_details: (args: { project_id: string }) => {
+        const { project_id } = args;
+        const dataStore = useDataStore.getState();
+        const project = dataStore.projects.find(p => p.id === project_id);
+        if (!project) return { error: "Project not found." };
+        const tasks = dataStore.tasks.filter(t => t.projectId === project_id);
+        return {
+            name: project.name,
+            status: project.status,
+            budget: project.budgetCents / 100,
+            tasks: tasks.map(t => ({ title: t.title, status: t.status, priority: t.priority }))
+        };
+    },
+    get_all_invoices: (args: { limit?: number; contact_id?: string }) => {
+        const { limit = 20, contact_id } = args || {};
+        const dataStore = useDataStore.getState();
+        let invoices = dataStore.invoices;
+        if (contact_id) {
+            invoices = invoices.filter(i => i.contactId === contact_id);
+        }
+        return {
+            invoices: invoices.slice(0, limit).map(i => ({
+                number: i.number,
+                date: i.date,
+                status: i.status,
+                total: (i.totalCents / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
+                paid: (i.paidAmountCents / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
+            }))
+        };
+    },
+    add_task: (args: { title: string; description?: string; priority?: 'Low' | 'Medium' | 'High' | 'Critical'; dueDate?: string; projectId?: string }) => {
+        const { title, description = '', priority = 'Medium', dueDate, projectId } = args;
+        const dataStore = useDataStore.getState();
+        const user = useAuthStore.getState().user;
+        const task = {
+            id: `task-${Date.now()}`,
+            companyId: user?.companyId || 'sys',
+            title,
+            description,
+            priority,
+            status: 'Todo' as any,
+            dueDate: dueDate || new Date(Date.now() + 86400000).toISOString(),
+            projectId
+        };
+        dataStore.addTask(task);
+        return { success: true, task_id: task.id };
     }
 };
 
@@ -253,13 +361,15 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "get_inventory_status",
-        description: "Check stock levels and prices for items in the warehouse or products on the menu.",
+        description: "Fetch status of inventory items. Use this to check stock levels, prices, and categories for products, reusables, or assets.",
         parameters: {
             type: SchemaType.OBJECT,
             properties: {
-                query: { type: SchemaType.STRING, description: "Name of the item to check" }
-            },
-            required: ["query"]
+                query: { type: SchemaType.STRING, description: "Search term for item name" },
+                type: { type: SchemaType.STRING, description: "Filter by type: 'product', 'asset', 'reusable', 'rental', 'raw_material'" },
+                category: { type: SchemaType.STRING, description: "Filter by category" },
+                limit: { type: SchemaType.NUMBER, description: "Max results" }
+            }
         }
     },
     {
@@ -286,7 +396,12 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "get_system_overview",
-        description: "Core KPI tool for organizational statistics. Use this for 'How many...' type questions about the entire organization (total staff, total ingredients, total projects, total debt).",
+        description: "Get a high-level overview of the entire system including counts for employees, projects, invoices, and inventory (products vs assets).",
+        parameters: { type: SchemaType.OBJECT, properties: {} }
+    },
+    {
+        name: "get_financial_summary",
+        description: "Get a summary of revenue, expenses, and pending payments.",
         parameters: { type: SchemaType.OBJECT, properties: {} }
     },
     {
@@ -309,6 +424,54 @@ const SYSTEM_TOOL_DECLARATIONS = [
                 query: { type: SchemaType.STRING, description: "The specific question or topic to search for" }
             },
             required: ["query"]
+        }
+    },
+    {
+        name: "get_catering_events",
+        description: "Fetch a list of catering events, orders, or banquets. Use this for 'when is the next event', 'list my upcoming events', or event status checks.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                status: { type: SchemaType.STRING, description: "Filter by status: 'Draft', 'Confirmed', 'Completed', etc." },
+                limit: { type: SchemaType.NUMBER, description: "Maximum number of events to return" }
+            }
+        }
+    },
+    {
+        name: "get_all_invoices",
+        description: "Get all invoices regardless of status. Use this to see history or specific invoice details.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                contact_id: { type: SchemaType.STRING, description: "Optional contact ID filter" },
+                limit: { type: SchemaType.NUMBER, description: "Max count" }
+            }
+        }
+    },
+    {
+        name: "get_project_details",
+        description: "Get detailed information about a specific project including its tasks.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                project_id: { type: SchemaType.STRING, description: "The ID of the project" }
+            },
+            required: ["project_id"]
+        }
+    },
+    {
+        name: "add_task",
+        description: "Add a new task to the system. Use this when the user asks to 'remind me', 'create a task', or 'add a todo'.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                title: { type: SchemaType.STRING, description: "Task title" },
+                description: { type: SchemaType.STRING, description: "Task details" },
+                priority: { type: SchemaType.STRING, enum: ["Low", "Medium", "High", "Critical"] },
+                dueDate: { type: SchemaType.STRING, description: "ISO date string" },
+                projectId: { type: SchemaType.STRING, description: "Optional project ID" }
+            },
+            required: ["title"]
         }
     }
 ];
@@ -646,7 +809,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
     }
 }
 
-export async function processAgentRequest(input: string, context: string, mode: 'text' | 'audio'): Promise<any> {
+export async function processAgentRequest(input: string, context: string, mode: 'text' | 'audio' | 'image' | 'pdf' = 'text'): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
     const ai = getAIInstance();
 
@@ -691,11 +854,20 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 
                 MISSION: Be the ultimate organizational logic node. If users ask about stats, ingredients, projects, or staff, be precise.
                 
+                Inventory Taxonomy:
+                - "Reusable items" or "Assets" map to type: 'asset' or 'reusable'.
+                - "Products" or "Menu Items" map to type: 'product'.
+                - "Ingredients" or "Raw Materials" map to type: 'raw_material' (found in BOTH ingredients and inventory lists).
+                - Use 'get_system_overview' for high-level counts.
+                - Use 'get_inventory_status' with explicit filters for specific item types.
+                
                 Data Access Tools: 
+                - get_catering_events: Access the calendar/list of all catering events. Use this for 'Next event', 'What events do we have', etc.
                 - get_system_overview: Core KPI node. Use this IMMEDIATELY for 'How many...' or 'Overview' questions. NEVER ask for permission; JUST CALL IT.
+                - get_financial_summary: High-level money overview (Revenue, Expenses).
                 - get_ingredient_list: Raw material details and counts.
                 - get_project_summary: Project tracking and progress.
-                - get_outstanding_invoices: Financial debtors.
+                - get_outstanding_invoices: Financial debtors list.
                 - search_contacts: CRM lookups.
                 - get_inventory_status: Stock for products/assets.
                 - get_staff_directory: Personnel node.
@@ -706,30 +878,39 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 1. CALL TOOLS FIRST: You MUST call the appropriate tool BEFORE generating your final response. If the user asks a question that requires data (counts, lists, details), your first turn MUST be a tool call.
                 2. NO PLAN-ONLY RESPONSES: Do not say 'I will retrieve the information' or ask 'Would you like me to...'. Just call the tool.
                 3. **STRICT TABLE REQUIREMENT**:
-                   If the user asks for lists (Debtors, Ingredients, Projects, Staff, Inventory), respond ONLY with a Markdown table.
+                   If the user asks for lists (Events, Debtors, Ingredients, Projects, Staff, Inventory), respond ONLY with a Markdown table.
+                   - Event Table: | Customer | Date | Guests | Status | Location |
                    - Debtor Table: | Customer Name | Balance | Status | (Use 'amount_formatted')
                    - Project Table: | Project Name | Status | Progress | Tasks |
+                   - Inventory Table: | Item Name | Stock | Type | Category |
                 4. MULTI-TURN PERSISTENCE: Use previously fetched data instead of re-calling tools for the same information.
                 5. NAMES: Use human-readable names.
                 6. JSON WRAPPER: Always return final answer in the JSON structure.
+                7. PERFORM ACTIONS: If a user asks to "Add", "Create", "Set up", or "Record" something, identify the intent and provide the necessary payload. Do not just say you've done it—the UI will handle the actual creation based on your intent response.
                 
                 Return JSON:
                 {
-                    "response": "Answer to the user...",
+                    "response": "Detailed answer confirming the data or action...",
                     "intent": "GENERAL_QUERY | ADD_EMPLOYEE | ADD_INVENTORY | ADD_CUSTOMER | ADD_SUPPLIER | ADD_PROJECT | CREATE_EVENT",
                     "payload": { ... }
                 }
             `;
 
             let contentParts: any[] = [];
-            if (mode === 'audio') {
-                contentParts = [
-                    { inlineData: { data: input, mimeType: 'audio/webm' } }
-                ];
+            const activeMode = mode as string;
+            if (activeMode === 'audio') {
+                contentParts = [{ inlineData: { data: input, mimeType: 'audio/webm' } }];
+            } else if (activeMode === 'image') {
+                contentParts = [{ inlineData: { data: input, mimeType: 'image/jpeg' } }];
+            } else if (activeMode === 'pdf') {
+                contentParts = [{ inlineData: { data: input, mimeType: 'application/pdf' } }];
             } else {
-                contentParts = [
-                    { text: input }
-                ];
+                contentParts = [{ text: input }];
+            }
+
+            // If we have extra context from a document/file, append it
+            if (context) {
+                contentParts.push({ text: `\n\nADDITIONAL CONTEXT FROM FILE/HISTORY:\n${context}` });
             }
 
             const generationConfig = {
@@ -835,25 +1016,31 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         User Role: ${userRole}.
         Operational Summary: ${operationalContextSummary}
         
-        Data Access: You MUST use the provided tools to fetch specific information. 
-        DO NOT guess data. If the information isn't in your tools, say you don't have access.
+        Data Access Tools: 
+        - get_catering_events: Access the calendar/list of all catering events. Use this for 'Next event', 'What events do we have', etc.
+        - get_system_overview: Core KPI node. Use this IMMEDIATELY for 'How many...' or 'Overview' questions. NEVER ask for permission; JUST CALL IT.
+        - get_ingredient_list: Raw material details and counts.
+        - get_project_summary: Project tracking and progress.
+        - get_project_details: Specific project task breakdown.
+        - get_outstanding_invoices: Financial debtors.
+        - get_all_invoices: Historical invoice lookup.
+        - search_contacts: CRM lookups.
+        - get_inventory_status: Stock for products/assets.
+        - get_staff_directory: Personnel node.
+        - get_recipe_analysis: Detailed menu item logic.
+        - search_knowledge_base: Troubleshooting / Methodology.
         
         Instructions:
-        1. CALL TOOLS FIRST: You MUST call the appropriate tool (e.g., 'get_outstanding_invoices') BEFORE generating your final response. 
-        2. WAIT FOR TOOL DATA: Do not guess or hallucinate data. If a tool returns no records, state "No records found."
-        3. NO PLAN-ONLY RESPONSES: Do not say "I will retrieve the information." Just call the tool and then provide the data.
-        4. **STRICT DEBTOR TABLE REQUIREMENT**:
-           When asked for "top debtors" or lists of outstanding balances, you MUST ALWAYS respond with a Markdown table.
-           
-           Table Rules:
-           - Columns: | Customer Name | Balance | Status |
-           - Formatting: Use the 'amount_formatted' field from the tool for the Balance column.
-           
-        5. MULTI-TURN DATA PERSISTENCE: Refer back to previously fetched data if the user asks for view changes.
-        6. LIMITING: If "top 2" or "top 3" is asked, show exactly that number of rows.
-        7. MISSION-ALIGNED SUGGESTIONS: You are a productivity OS. Suggest reminders or follow-ups.
-        8. MARKDOWN TABLES: Use standard Markdown for the response.
-        9. NAMES: Always show the human-readable Customer Name.
+        1. CALL TOOLS FIRST: You MUST call the appropriate tool BEFORE generating your final response.
+        2. NO PLAN-ONLY RESPONSES: Do not say "I will retrieve the information." Just call the tool and then provide the data.
+        3. **STRICT TABLE REQUIREMENT**:
+           If the user asks for lists (Events, Debtors, Ingredients, Projects, Staff, Inventory), respond ONLY with a Markdown table.
+           - Event Table: | Customer | Date | Guests | Status | Location |
+           - Debtor Table: | Customer Name | Balance | Status | (Use 'amount_formatted')
+           - Project Table: | Project Name | Status | Progress | Tasks |
+        4. MULTI-TURN DATA PERSISTENCE: Refer back to previously fetched data.
+        5. NAMES: Always show the human-readable Customer Name.
+        6. ACTIONS: If the user asks to "Add", "Create", "Remind", or "Task", use the appropriate tools like 'add_task'.
     `;
 
     const userParts: any[] = [{ text: prompt }];
