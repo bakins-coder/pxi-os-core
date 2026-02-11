@@ -89,9 +89,10 @@ describe('useDataStore', () => {
             expect(result.current.invoices[0].totalCents).toBe(100000);
         });
 
-        it('should record payment on an invoice', () => {
+        it('should record payment on an invoice and update bank balance', () => {
             const { result } = renderHook(() => useDataStore());
 
+            const bankAccountId = 'ba-test';
             const testInvoice = {
                 id: 'inv-001',
                 number: 'INV-001',
@@ -106,14 +107,31 @@ describe('useDataStore', () => {
             };
 
             act(() => {
-                result.current.addInvoice(testInvoice);
+                useDataStore.setState({
+                    invoices: [testInvoice],
+                    bankAccounts: [{
+                        id: bankAccountId,
+                        companyId: 'org-test',
+                        bankName: 'Test Bank',
+                        accountName: 'Test Account',
+                        accountNumber: '123',
+                        currency: 'NGN',
+                        balanceCents: 10000,
+                        isActive: true,
+                        lastUpdated: new Date().toISOString()
+                    } as any],
+                    bankTransactions: []
+                });
             });
 
             act(() => {
-                result.current.recordPayment('inv-001', 50000);
+                result.current.recordPayment('inv-001', 50000, bankAccountId);
             });
 
             expect(result.current.invoices[0].paidAmountCents).toBe(50000);
+            expect(result.current.bankAccounts[0].balanceCents).toBe(60000); // 10000 + 50000
+            expect(result.current.bankTransactions).toHaveLength(1);
+            expect(result.current.bankTransactions[0].amountCents).toBe(50000);
         });
     });
 

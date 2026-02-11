@@ -8,7 +8,7 @@ import {
    Plus, FileText, Download, X, ArrowRight, Eye,
    ChevronRight, Receipt,
    CheckCircle2, Banknote, ArrowDownLeft, TrendingDown, TrendingUp, ShoppingBag, Zap, Clock, GripHorizontal, Check, ShieldCheck, Users,
-   BookOpen, Bot, Landmark, RefreshCw, ShieldAlert, AlertTriangle, Cloud, Activity, Camera, Upload, FileSpreadsheet, Maximize2, Minimize2, Database
+   BookOpen, Bot, Landmark, RefreshCw, ShieldAlert, AlertTriangle, Cloud, Activity, Camera, Upload, FileSpreadsheet, Maximize2, Minimize2, Database, Bell
 } from 'lucide-react';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { getCFOAdvice, suggestCOAForTransaction, generateAIResponse, parseFinancialDocument } from '../services/ai';
@@ -833,6 +833,51 @@ const BankAccountHistoryModal = ({ accountId, isOpen, onClose }: { accountId: st
    );
 };
 
+export const PaymentNoticeModal = ({ isOpen, onClose, invoice }: { isOpen: boolean, onClose: () => void, invoice: Invoice | null }) => {
+   if (!isOpen || !invoice) return null;
+   const { contacts } = useDataStore();
+   const contact = contacts.find(c => c.id === invoice.contactId);
+   const [copied, setCopied] = useState(false);
+
+   const noticeText = `Dear ${contact?.name || 'Customer'},\n\nThis is a friendly reminder regarding Invoice #${invoice.number} for ₦${(invoice.totalCents / 100).toLocaleString()}. \n\nBalance Outstanding: ₦${((invoice.totalCents - invoice.paidAmountCents) / 100).toLocaleString()}\nDue Date: ${invoice.dueDate}\n\nPlease ensure payment is made at your earliest convenience to avoid service interruption.\n\nBest regards,\nAccounts Receivable Team`;
+
+   const handleCopy = () => {
+      navigator.clipboard.writeText(noticeText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+   };
+
+   return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
+         <div className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+               <div>
+                  <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Payment Notice</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Invoice #{invoice.number}</p>
+               </div>
+               <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20} className="text-slate-400" /></button>
+            </div>
+            <div className="p-8">
+               <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 mb-6">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-slate-600 leading-relaxed">
+                     {noticeText}
+                  </pre>
+               </div>
+               <div className="flex gap-4">
+                  <button onClick={handleCopy} className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all">
+                     {copied ? <Check size={16} /> : <Download size={16} />} {copied ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
+                  <button onClick={onClose} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all">
+                     Close
+                  </button>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 export const Finance = () => {
    const [activeTab, setActiveTab] = useState<'collections' | 'bookkeeping' | 'requisitions' | 'ledger' | 'reports' | 'advisor' | 'reconcile' | 'watchdog'>('collections');
 
@@ -859,6 +904,9 @@ export const Finance = () => {
    const [isEditingCash, setIsEditingCash] = useState(false);
    const [cashInput, setCashInput] = useState('');
    const [selectedBankDetailsId, setSelectedBankDetailsId] = useState<string | null>(null);
+   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>('');
+   const [paymentStatusOverride, setPaymentStatusOverride] = useState<InvoiceStatus | ''>('');
+   const [noticeInvoice, setNoticeInvoice] = useState<Invoice | null>(null);
 
    // Auto-seed bank accounts if missing (Recover state)
    useEffect(() => {
@@ -972,9 +1020,19 @@ export const Finance = () => {
    };
 
    const handlePartialPayment = () => {
-      if (!selectedInvoice || !paymentAmount) return;
-      recordPayment(selectedInvoice.id, Math.round(parseFloat(paymentAmount) * 100));
+      if (!selectedInvoice || !paymentAmount || !selectedBankAccountId) {
+         alert("Please select a receiving bank account.");
+         return;
+      }
+      recordPayment(
+         selectedInvoice.id,
+         Math.round(parseFloat(paymentAmount) * 100),
+         selectedBankAccountId || undefined,
+         (paymentStatusOverride as InvoiceStatus) || undefined
+      );
       setPaymentAmount('');
+      setSelectedBankAccountId('');
+      setPaymentStatusOverride('');
       setSelectedInvoice(null);
    };
 
@@ -1070,7 +1128,9 @@ export const Finance = () => {
                               </span>
                            </div>
                         </td>
-                        <td className="px-8 py-6 text-right font-black text-indigo-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2"><button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View formatted invoice"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
+                        <td className="px-8 py-6 text-right font-black text-indigo-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : inv.status === InvoiceStatus.PROFORMA ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
+                           <button onClick={() => setNoticeInvoice(inv)} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all" title="Generate Notice"><Bell size={16} /></button>
+                           <button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View formatted invoice"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
                   </table>
                </div>
             </div>
@@ -1350,7 +1410,39 @@ export const Finance = () => {
                                     </div>
                                  </div>
                               )}
-                              <div className="grid grid-cols-2 gap-6"><div className="p-6 bg-slate-50 rounded-3xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Due</p><p className="text-xl font-black text-slate-900">₦{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div><div className="p-6 bg-rose-50 rounded-3xl border border-rose-100"><p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Balance Remaining</p><p className="text-xl font-black text-rose-600">₦{((selectedInvoice.totalCents - selectedInvoice.paidAmountCents) / 100).toLocaleString()}</p></div></div><div><label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Payment Amount (₦)</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">₦</span><input type="number" className="w-full pl-14 pr-8 py-8 bg-slate-50 border-2 border-slate-200 rounded-[2.5rem] font-black text-4xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="0.00" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div></div></div>
+                              <div className="grid grid-cols-2 gap-6">
+                                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Due</p><p className="text-xl font-black text-slate-900">₦{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div>
+                                 <div className="p-6 bg-rose-50 rounded-3xl border border-rose-100"><p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Balance Remaining</p><p className="text-xl font-black text-rose-600">₦{((selectedInvoice.totalCents - selectedInvoice.paidAmountCents) / 100).toLocaleString()}</p></div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                 <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Receiving Bank Account</label>
+                                    <select
+                                       className={`w-full p-4 bg-slate-50 border-2 ${!selectedBankAccountId ? 'border-amber-200' : 'border-slate-100'} rounded-2xl font-bold text-slate-900 outline-none focus:border-indigo-500 transition-all`}
+                                       value={selectedBankAccountId}
+                                       onChange={e => setSelectedBankAccountId(e.target.value)}
+                                    >
+                                       <option value="">Select Receiving Account (Required)</option>
+                                       {(bankAccounts || []).map(acc => (
+                                          <option key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</option>
+                                       ))}
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Update Status To</label>
+                                    <select
+                                       className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-900 outline-none focus:border-indigo-500 transition-all"
+                                       value={paymentStatusOverride}
+                                       onChange={e => setPaymentStatusOverride(e.target.value as any)}
+                                    >
+                                       <option value="">Auto (Based on Balance)</option>
+                                       <option value={InvoiceStatus.PAID}>Fully Paid</option>
+                                       <option value={InvoiceStatus.UNPAID}>Unpaid (Partial)</option>
+                                       <option value={InvoiceStatus.PROFORMA}>Pro-forma</option>
+                                    </select>
+                                 </div>
+                              </div>
+                              <div><label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Payment Amount (₦)</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">₦</span><input type="number" className="w-full pl-14 pr-8 py-8 bg-slate-50 border-2 border-slate-200 rounded-[2.5rem] font-black text-4xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="0.00" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div></div></div>
                         )}
                      </div>
                      <div className="p-8 border-t border-slate-100 bg-white flex gap-4">
@@ -1375,6 +1467,7 @@ export const Finance = () => {
          <ManualInvoiceModal isOpen={isManualInvoiceModalOpen} onClose={() => setIsManualInvoiceModalOpen(false)} />
          <AddBankAccountModal isOpen={isAddBankModalOpen} onClose={() => setIsAddBankModalOpen(false)} />
          <BankAccountHistoryModal isOpen={!!selectedBankDetailsId} onClose={() => setSelectedBankDetailsId(null)} accountId={selectedBankDetailsId} />
+         <PaymentNoticeModal isOpen={!!noticeInvoice} onClose={() => setNoticeInvoice(null)} invoice={noticeInvoice} />
       </div >
    );
 };

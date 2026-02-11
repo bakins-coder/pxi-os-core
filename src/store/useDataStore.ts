@@ -72,7 +72,7 @@ interface DataState {
     updateInvoiceStatus: (id: string, status: any) => void;
     addBookkeepingEntry: (entry: BookkeepingEntry) => void;
     addTransaction: (tx: BankTransaction) => void;
-    recordPayment: (id: string, amount: number) => void;
+    recordPayment: (id: string, amount: number, bankAccountId?: string, statusOverride?: InvoiceStatus) => void;
     reconcileMatch: (lineId: string, accountId: string) => void;
 
     // Bank Account Actions
@@ -1042,16 +1042,53 @@ export const useDataStore = create<DataState>()(
             addTransaction: (tx) => set((state) => ({
                 bankTransactions: [tx, ...state.bankTransactions]
             })),
-            recordPayment: (id, amount) => set((state) => {
+            recordPayment: (id, amount, bankAccountId, statusOverride) => set((state) => {
                 const invoice = state.invoices.find(inv => inv.id === id);
                 if (!invoice) return state;
 
                 const newPaid = invoice.paidAmountCents + amount;
-                const newStatus = newPaid >= invoice.totalCents ? InvoiceStatus.PAID : invoice.status;
+                const newStatus = statusOverride || (newPaid >= invoice.totalCents ? InvoiceStatus.PAID : invoice.status);
 
                 const updatedInvoices = state.invoices.map(inv =>
                     inv.id === id ? { ...inv, paidAmountCents: newPaid, status: newStatus } : inv
                 );
+
+                let updatedBankAccounts = state.bankAccounts;
+                let updatedBankTransactions = state.bankTransactions;
+
+                if (bankAccountId) {
+                    const account = state.bankAccounts.find(a => a.id === bankAccountId);
+                    if (account) {
+                        updatedBankAccounts = state.bankAccounts.map(a =>
+                            a.id === bankAccountId
+                                ? { ...a, balanceCents: a.balanceCents + amount, lastUpdated: new Date().toISOString() }
+                                : a
+                        );
+
+                        const newBankTx: BankTransaction = {
+                            id: crypto.randomUUID(),
+                            companyId: invoice.companyId,
+                            bankAccountId: bankAccountId,
+                            date: new Date().toISOString().split('T')[0],
+                            description: `Payment for Invoice #${invoice.number}`,
+                            amountCents: amount,
+                            type: 'Inflow',
+                            category: 'Sales',
+                            referenceId: id
+                        };
+                        updatedBankTransactions = [newBankTx, ...state.bankTransactions];
+
+                        // Persist Bank Account Update
+                        if (supabase) {
+                            supabase.from('bank_accounts').update({
+                                balance_cents: account.balanceCents + amount,
+                                last_updated: new Date().toISOString()
+                            }).eq('id', bankAccountId).then(({ error }) => {
+                                if (error) console.error("Failed to update bank balance:", error);
+                            });
+                        }
+                    }
+                }
 
                 const newEntry: BookkeepingEntry = {
                     id: crypto.randomUUID(),
@@ -1061,12 +1098,25 @@ export const useDataStore = create<DataState>()(
                     description: `Payment for Invoice #${invoice.number}`,
                     amountCents: amount,
                     referenceId: id,
-                    contactId: invoice.contactId
+                    contactId: invoice.contactId,
+                    paymentMethod: bankAccountId ? 'Bank Transfer' : 'Cash'
                 };
+
+                // Sync invoice update to Supabase
+                if (supabase) {
+                    supabase.from('invoices').update({
+                        paid_amount_cents: newPaid,
+                        status: newStatus
+                    }).eq('id', id).then(({ error }) => {
+                        if (error) console.error("Failed to update invoice:", error);
+                    });
+                }
 
                 return {
                     invoices: updatedInvoices,
-                    bookkeeping: [newEntry, ...state.bookkeeping]
+                    bookkeeping: [newEntry, ...state.bookkeeping],
+                    bankAccounts: updatedBankAccounts,
+                    bankTransactions: updatedBankTransactions
                 };
             }),
             reconcileMatch: (lineId, accountId) => set((state) => ({
