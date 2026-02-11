@@ -1190,6 +1190,7 @@ export const Inventory = () => {
    const [selectedRental, setSelectedRental] = useState<RentalRecord | null>(null);
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
    const [selectedEditItem, setSelectedEditItem] = useState<InventoryItem | null>(null);
+   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
    // BoQ Specific States
    const [selectedBoQItem, setSelectedBoQItem] = useState<InventoryItem | null>(null);
@@ -1264,6 +1265,20 @@ export const Inventory = () => {
          return next;
       });
    }, [products.length, recipes.length]); // Updated to include recipes
+
+   const groupedRequisitions = useMemo(() => {
+      const groups: Record<string, Requisition[]> = {};
+      requisitions.forEach(req => {
+         const refId = req.referenceId || 'general';
+         if (!groups[refId]) groups[refId] = [];
+         groups[refId].push(req);
+      });
+      return Object.entries(groups).map(([refId, items]) => ({
+         refId,
+         items,
+         customerName: events.find(e => e.id === refId)?.customerName || 'General Project',
+      })).sort((a, b) => a.customerName.localeCompare(b.customerName));
+   }, [requisitions, events]);
 
    const handleApproveRelease = (id: string) => approveRequisition(id);
    const totalLiability = rentalLedger.filter(r => r.status === 'Issued').reduce((sum, r) => sum + r.estimatedReplacementValueCents, 0);
@@ -1412,7 +1427,82 @@ export const Inventory = () => {
 
          {activeTab === 'requisitions' && (
             <div className="space-y-6 animate-in slide-in-from-bottom-4">
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden"><div className="p-8 border-b border-slate-50 flex justify-between items-center"><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Active Requisitions Hub</h3></div><div className="p-8 space-y-6">{requisitions.map(req => (<div key={req.id} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:border-indigo-200 transition-all"><div className="flex items-center gap-5"><div className={`w-12 h-12 rounded-xl flex items-center justify-center ${req.type === 'Release' ? 'bg-orange-50 text-orange-600' : req.type === 'Rental' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>{req.type === 'Release' ? <Flame size={20} /> : req.type === 'Rental' ? <RotateCcw size={20} /> : <ShoppingBag size={20} />}</div><div><p className="font-black text-slate-800 uppercase text-xs">{req.itemName}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{req.category} • Qty: {req.quantity} • Ref: {events.find(e => e.id === req.referenceId)?.customerName || req.referenceId || 'General'}</p></div></div><div className="flex items-center gap-6"><div className="text-right"><span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{req.status}</span></div>{req.status === 'Pending' && (<button onClick={() => handleApproveRelease(req.id)} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all"><Check size={18} strokeWidth={3} /></button>)}</div></div>))}</div></div>
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
+                  <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                     <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Active Requisitions Hub</h3>
+                     <div className="flex items-center gap-4">
+                        <button
+                           onClick={() => {
+                              const allExpanded = groupedRequisitions.reduce((acc, curr) => ({ ...acc, [curr.refId]: true }), {});
+                              setExpandedGroups(allExpanded);
+                           }}
+                           className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                        >
+                           Expand All
+                        </button>
+                        <button
+                           onClick={() => setExpandedGroups({})}
+                           className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-colors"
+                        >
+                           Collapse All
+                        </button>
+                     </div>
+                  </div>
+                  <div className="p-8 space-y-4">
+                     {groupedRequisitions.map(group => {
+                        const isExpanded = expandedGroups[group.refId];
+                        return (
+                           <div key={group.refId} className="space-y-3">
+                              <div
+                                 onClick={() => setExpandedGroups(prev => ({ ...prev, [group.refId]: !prev[group.refId] }))}
+                                 className="p-5 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-all group"
+                              >
+                                 <div className="flex items-center gap-5">
+                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg">
+                                       <Users size={20} />
+                                    </div>
+                                    <div>
+                                       <p className="font-black text-slate-800 uppercase text-sm">{group.customerName}</p>
+                                       <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">{group.items.length} Pending Requisitions</p>
+                                    </div>
+                                 </div>
+                                 <div className={`p-2 rounded-full border border-slate-200 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                                    <ChevronRight size={18} />
+                                 </div>
+                              </div>
+
+                              {isExpanded && (
+                                 <div className="pl-16 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                    {group.items.map(req => (
+                                       <div key={req.id} className="p-6 bg-white rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:border-indigo-200 transition-all">
+                                          <div className="flex items-center gap-5">
+                                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${req.type === 'Release' ? 'bg-orange-50 text-orange-600' : req.type === 'Rental' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                {req.type === 'Release' ? <Flame size={20} /> : req.type === 'Rental' ? <RotateCcw size={20} /> : <ShoppingBag size={20} />}
+                                             </div>
+                                             <div>
+                                                <p className="font-black text-slate-800 uppercase text-xs">{req.itemName}</p>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{req.category} • Qty: {req.quantity}</p>
+                                             </div>
+                                          </div>
+                                          <div className="flex items-center gap-6">
+                                             <div className="text-right">
+                                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{req.status}</span>
+                                             </div>
+                                             {req.status === 'Pending' && (
+                                                <button onClick={() => handleApproveRelease(req.id)} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all">
+                                                   <Check size={18} strokeWidth={3} />
+                                                </button>
+                                             )}
+                                          </div>
+                                       </div>
+                                    ))}
+                                 </div>
+                              )}
+                           </div>
+                        );
+                     })}
+                  </div>
+               </div>
             </div>
          )}
 

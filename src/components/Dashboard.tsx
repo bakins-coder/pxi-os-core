@@ -68,7 +68,7 @@ const SummaryList = ({ title, items, type, onItemClick }: { title: string; items
                     </p>
                     <p className="text-[8px] text-slate-400 font-bold uppercase">
                       {type === 'receivable' ? `${item.number || 'INV'} • ${item.date || 'Today'}` :
-                        type === 'payable' ? `${item.category || 'Procurement'} • ${item.notes || 'Pending Approval'}` :
+                        type === 'payable' ? `${item.category || 'Procurement'} ${item.customerName ? `• ${item.customerName}` : ''} • ${item.notes || 'Pending Approval'}` :
                           (item.date || item.eventDate || item.email || item.role || 'Pending cycle')}
                     </p>
                   </div>
@@ -141,7 +141,13 @@ export const Dashboard = () => {
           customerName: contacts.find(c => c.id === inv.contactId)?.name || 'Standard Vendor'
         }))
         .sort((a, b) => b.totalCents - a.totalCents),
-      payables: [...requisitions].filter(r => r.status === 'Pending').sort((a, b) => b.totalAmountCents - a.totalAmountCents),
+      payables: [...requisitions]
+        .filter(r => r.status === 'Pending')
+        .map(req => ({
+          ...req,
+          customerName: cateringEvents.find(e => e.id === req.referenceId)?.customerName
+        }))
+        .sort((a, b) => b.totalAmountCents - a.totalAmountCents),
       upcomingEvents: [...cateringEvents].filter(e => e.status !== 'Completed').sort((a, b) => (a.eventDate || '').localeCompare(b.eventDate || '')),
       complaints: [...tickets].filter(t => t.status !== 'Resolved'),
       newCustomers: [...contacts].slice(0, 5),

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Requisition } from '../types';
 import {
     ClipboardList, CheckCircle2, XCircle, Clock,
     Search, Filter, ChevronRight, Edit3,
-    Check, X, Box, Info
+    Check, X, Box, Info, Users
 } from 'lucide-react';
 
 // Reusing and adapting RequisitionEditModal logic
@@ -56,7 +56,17 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">Manage Requisition</h3>
+                    <div className="flex flex-col">
+                        <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">Manage Requisition</h3>
+                        {requisition.referenceId && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <Users size={12} className="text-emerald-500" />
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    {useDataStore.getState().cateringEvents.find(e => e.id === requisition.referenceId)?.customerName || 'General Event'}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} className="text-slate-500" /></button>
                 </div>
 
@@ -152,11 +162,16 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
 };
 
 export const RequisitionsHub: React.FC = () => {
-    const { requisitions } = useDataStore();
+    const { requisitions, cateringEvents } = useDataStore();
     const [activeTab, setActiveTab] = useState<'Pending' | 'Approved' | 'Rejected'>('Pending');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState<string>('All');
     const [selectedReq, setSelectedReq] = useState<Requisition | null>(null);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    const toggleGroup = (refId: string) => {
+        setExpandedGroups(prev => ({ ...prev, [refId]: !prev[refId] }));
+    };
 
     const filteredRequisitions = requisitions.filter(r => {
         // Show Paid as well in Approved tab for overview
@@ -165,6 +180,22 @@ export const RequisitionsHub: React.FC = () => {
         const matchesCategory = filterCategory === 'All' || r.category === filterCategory;
         return matchesSearch && matchesCategory;
     });
+
+    const groupedRequisitions = useMemo(() => {
+        const groups: Record<string, Requisition[]> = {};
+        filteredRequisitions.forEach(req => {
+            const refId = req.referenceId || 'general';
+            if (!groups[refId]) groups[refId] = [];
+            groups[refId].push(req);
+        });
+
+        return Object.entries(groups).map(([refId, items]) => ({
+            refId,
+            items,
+            event: cateringEvents.find(e => e.id === refId),
+            totalAmount: items.reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
+        })).sort((a, b) => b.totalAmount - a.totalAmount);
+    }, [filteredRequisitions, cateringEvents]);
 
     const stats = {
         pending: requisitions.filter(r => r.status === 'Pending').length,
@@ -212,18 +243,39 @@ export const RequisitionsHub: React.FC = () => {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] pointer-events-none"></div>
 
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
-                    <div className="flex bg-[#020617] p-1.5 rounded-2xl border border-white/5 self-start">
-                        {(['Pending', 'Approved', 'Rejected'] as const).map(tab => (
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex bg-[#020617] p-1.5 rounded-2xl border border-white/5 self-start">
+                            {(['Pending', 'Approved', 'Rejected'] as const).map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => { setActiveTab(tab); setExpandedGroups({}); }}
+                                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
+                                        ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                        : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    {tab} {tab === 'Pending' && stats.pending > 0 && <span className="ml-1 bg-white/10 px-1.5 rounded-md text-slate-300">{stats.pending}</span>}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-2">
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
-                                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                    : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                onClick={() => {
+                                    const allExpanded = groupedRequisitions.reduce((acc, curr) => ({ ...acc, [curr.refId]: true }), {});
+                                    setExpandedGroups(allExpanded);
+                                }}
+                                className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-400 transition-colors"
                             >
-                                {tab} {tab === 'Pending' && stats.pending > 0 && <span className="ml-1 bg-white/10 px-1.5 rounded-md text-slate-300">{stats.pending}</span>}
+                                Expand All
                             </button>
-                        ))}
+                            <span className="text-slate-700">|</span>
+                            <button
+                                onClick={() => setExpandedGroups({})}
+                                className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-400 transition-colors"
+                            >
+                                Collapse All
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -255,69 +307,101 @@ export const RequisitionsHub: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Requisition List */}
-                <div className="space-y-4">
-                    {filteredRequisitions.length > 0 ? (
-                        filteredRequisitions.map(req => (
-                            <div
-                                key={req.id}
-                                onClick={() => setSelectedReq(req)}
-                                className="group flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl bg-[#020617]/50 border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all cursor-pointer relative overflow-hidden"
-                            >
-                                {/* Status Indicator Bar */}
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${req.status === 'Pending' ? 'bg-amber-500' :
-                                    (req.status === 'Approved' || req.status === 'Paid') ? 'bg-emerald-500' :
-                                        'bg-rose-500'}`}
-                                />
-
-                                <div className="flex items-center gap-6 mb-4 md:mb-0">
-                                    <div className={`p-4 rounded-2xl shrink-0 ${req.category === 'Food' ? 'bg-orange-500/10 text-orange-400' :
-                                        req.category === 'Hardware' ? 'bg-blue-500/10 text-blue-400' :
-                                            req.category === 'Service' ? 'bg-purple-500/10 text-purple-400' :
-                                                'bg-emerald-500/10 text-emerald-400'
-                                        }`}>
-                                        <Box size={20} />
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-sm font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-colors mb-1">{req.itemName}</h3>
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                                <Clock size={10} /> {req.id.slice(0, 8)}
-                                            </span>
-                                            <span className="w-1 h-1 rounded-full bg-slate-700"></span>
-                                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{req.category}</span>
-                                            <span className="w-1 h-1 rounded-full bg-slate-700"></span>
-                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Qty: {req.quantity}</span>
+                <div className="space-y-6">
+                    {groupedRequisitions.length > 0 ? (
+                        groupedRequisitions.map((group: any) => {
+                            const isExpanded = expandedGroups[group.refId];
+                            return (
+                                <div key={group.refId} className="space-y-3">
+                                    {/* Group Header */}
+                                    <div
+                                        onClick={() => toggleGroup(group.refId)}
+                                        className="flex items-center justify-between p-6 rounded-2xl bg-indigo-500/5 border border-white/10 hover:bg-indigo-500/10 transition-all cursor-pointer group"
+                                    >
+                                        <div className="flex items-center gap-6">
+                                            <div className="p-4 rounded-2xl bg-indigo-500 text-white shrink-0 shadow-lg shadow-indigo-500/20">
+                                                <Users size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-base font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
+                                                    {group.event?.customerName || 'General / Non-Event Project'}
+                                                </h3>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-400/10 px-2 py-0.5 rounded">
+                                                        {group.items.length} {group.items.length === 1 ? 'Request' : 'Requests'}
+                                                    </span>
+                                                    {(() => {
+                                                        const pCount = group.items.filter((r: Requisition) => r.status === 'Pending').length;
+                                                        const aCount = group.items.filter((r: Requisition) => r.status === 'Approved' || r.status === 'Paid').length;
+                                                        return (
+                                                            <>
+                                                                {pCount > 0 && <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded">{pCount} Pending</span>}
+                                                                {aCount > 0 && <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded">{aCount} Approved</span>}
+                                                            </>
+                                                        );
+                                                    })()}
+                                                    <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                        Total: ₦{group.totalAmount.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className={`p-2 rounded-full border border-white/10 transition-transform duration-300 ${isExpanded ? 'rotate-90 bg-white/10' : ''}`}>
+                                            <ChevronRight size={18} className="text-slate-400" />
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="flex items-center justify-between md:justify-end gap-10">
-                                    <div className="text-right">
-                                        <p className="text-xl font-black text-white leading-none mb-1">₦{(req.totalAmountCents / 100).toLocaleString()}</p>
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{(req.pricePerUnitCents / 100).toLocaleString()} / unit</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        {req.status === 'Pending' && (
-                                            <>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); useDataStore.getState().rejectRequisition(req.id); }}
-                                                    className="p-3 rounded-xl border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all"
-                                                    title="Quick Reject"
+                                    {/* Group Items */}
+                                    {isExpanded && (
+                                        <div className="pl-12 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            {group.items.map((req: Requisition) => (
+                                                <div
+                                                    key={req.id}
+                                                    onClick={() => setSelectedReq(req)}
+                                                    className="group flex flex-col md:flex-row md:items-center justify-between p-5 rounded-xl bg-[#020617]/50 border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all cursor-pointer relative overflow-hidden"
                                                 >
-                                                    <X size={16} />
-                                                </button>
-                                            </>
-                                        )}
-                                        <div className="p-3 text-slate-700 group-hover:text-slate-400 transition-colors">
-                                            <ChevronRight size={20} />
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${req.status === 'Pending' ? 'bg-amber-500' :
+                                                        (req.status === 'Approved' || req.status === 'Paid') ? 'bg-emerald-500' :
+                                                            'bg-rose-500'}`}
+                                                    />
+
+                                                    <div className="flex items-center gap-5">
+                                                        <div className={`p-3 rounded-lg shrink-0 ${req.category === 'Food' ? 'bg-orange-500/10 text-orange-400' :
+                                                            req.category === 'Hardware' ? 'bg-blue-500/10 text-blue-400' :
+                                                                req.category === 'Service' ? 'bg-purple-500/10 text-purple-400' :
+                                                                    'bg-emerald-500/10 text-emerald-400'
+                                                            }`}>
+                                                            <Box size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-xs font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-all">{req.itemName}</h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                                                    <Info size={10} /> {req.id.slice(0, 8)}
+                                                                </span>
+                                                                <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                                <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.category}</span>
+                                                                <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Qty: {req.quantity}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between md:justify-end gap-10 mt-3 md:mt-0">
+                                                        <div className="text-right">
+                                                            <p className="text-base font-black text-white leading-none mb-1">₦{(req.totalAmountCents / 100).toLocaleString()}</p>
+                                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{(req.pricePerUnitCents / 100).toLocaleString()} / unit</p>
+                                                        </div>
+                                                        <ChevronRight size={16} className="text-slate-700 group-hover:text-indigo-400 transition-all" />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     ) : (
                         <div className="py-20 flex flex-col items-center justify-center text-center opacity-50">
                             <div className="p-6 bg-white/5 rounded-full mb-4">

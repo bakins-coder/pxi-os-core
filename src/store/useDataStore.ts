@@ -2271,43 +2271,43 @@ export const useDataStore = create<DataState>()(
 
                 const taskList: Task[] = [
                     {
-                        id: crypto.randomUUID(), companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Procurement & Requisitions',
                         description: 'Generate and approve requisitions for all deal items.',
                         dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'High', status: 'Todo'
                     },
                     {
-                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Mise en Place (Food Prep)',
                         description: 'Initial ingredient preparation and marination.',
                         dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
                     },
                     {
-                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Live Cooking / Final Production',
                         description: 'CRITICAL: Main cooking execution on event day.',
                         dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
                     },
                     {
-                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Asset Checkout & Loading',
                         description: 'Checkout hardware, cutlery, and equipment from store.',
                         dueDate: d.eventDate, priority: 'High', status: 'Todo'
                     },
                     {
-                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Event Setup',
                         description: 'Setup service points, tables, and chaffing dishes.',
                         dueDate: d.eventDate, priority: 'High', status: 'Todo'
                     },
                     {
-                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Service Delivery',
                         description: 'Execute food service and guest management.',
                         dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
                     },
                     {
-                        id: crypto.randomUUID(), companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: crypto.randomUUID(), companyId: companyId,
                         title: 'Asset Return & Reconciliation',
                         description: 'Return all assets to store and log breakages/losses.',
                         dueDate: oneDayAfter.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
@@ -2318,7 +2318,7 @@ export const useDataStore = create<DataState>()(
                 // Mock logic: If guest count > 50, assume vehicle hire needed
                 if (d.guestCount > 50) {
                     taskList.push({
-                        id: `task-veh-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        id: `task-veh-${Date.now()}`, companyId: companyId,
                         title: 'Vehicle Hire & Logistics',
                         description: 'Coordinate transport for team and equipment.',
                         dueDate: d.eventDate, priority: 'Medium', status: 'Todo'
@@ -2330,13 +2330,13 @@ export const useDataStore = create<DataState>()(
                 if (hasRentals) {
                     taskList.push(
                         {
-                            id: `task-rent-out-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                            id: `task-rent-out-${Date.now()}`, companyId: companyId,
                             title: 'Rental Pickup',
                             description: 'Collect rental items from vendors.',
                             dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
                         },
                         {
-                            id: `task-rent-in-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                            id: `task-rent-in-${Date.now()}`, companyId: companyId,
                             title: 'Rental Return',
                             description: 'Return items to vendors (Clean/Dirty as agreed).',
                             dueDate: oneDayAfter.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
@@ -2758,7 +2758,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages,
+                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages,
                         // Inventory Base Tables
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
@@ -2774,6 +2774,7 @@ export const useDataStore = create<DataState>()(
                         safePull('contacts', companyId),
                         safePull('invoices', companyId),
                         safePull('catering_events', companyId),
+                        safePull('projects', companyId),
                         safePull('tasks', companyId),
                         safePull('employees', companyId),
                         safePull('requisitions', companyId),
@@ -3002,6 +3003,7 @@ export const useDataStore = create<DataState>()(
                         contacts: contacts || [],
                         invoices: invoices || [],
                         cateringEvents: cateringEvents || [],
+                        projects: projects || [],
                         tasks: tasks || [],
                         employees: employees || [],
                         requisitions: requisitions || [],
@@ -3051,7 +3053,181 @@ export const useDataStore = create<DataState>()(
 
                 const channel = supabase
                     .channel('db-changes')
-                    // Leave Requests
+                    // 1. Catering Events (organization_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'catering_events',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.cateringEvents.some(e => e.id === newRow.id)) return state;
+                                return { cateringEvents: [newRow, ...state.cateringEvents] };
+                            } else if (eventType === 'UPDATE') {
+                                return { cateringEvents: state.cateringEvents.map(e => e.id === newRow.id ? newRow : e) };
+                            } else if (eventType === 'DELETE') {
+                                return { cateringEvents: state.cateringEvents.filter(e => e.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 2. Projects (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'projects',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.projects.some(p => p.id === newRow.id)) return state;
+                                return { projects: [newRow, ...state.projects] };
+                            } else if (eventType === 'UPDATE') {
+                                return { projects: state.projects.map(p => p.id === newRow.id ? newRow : p) };
+                            } else if (eventType === 'DELETE') {
+                                return { projects: state.projects.filter(p => p.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 3. Invoices (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'invoices',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.invoices.some(i => i.id === newRow.id)) return state;
+                                return { invoices: [newRow, ...state.invoices] };
+                            } else if (eventType === 'UPDATE') {
+                                return { invoices: state.invoices.map(i => i.id === newRow.id ? newRow : i) };
+                            } else if (eventType === 'DELETE') {
+                                return { invoices: state.invoices.filter(i => i.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 4. Products/Inventory (organization_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'products',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        const mapItem = (item: any) => ({
+                            ...item,
+                            type: 'product',
+                            category: item.category || 'Finished Goods',
+                            stockQuantity: item.stockQuantity || 100000,
+                            priceCents: item.price_cents || 0
+                        });
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.inventory.some(i => i.id === newRow.id)) return state;
+                                return { inventory: [mapItem(newRow), ...state.inventory] };
+                            } else if (eventType === 'UPDATE') {
+                                return { inventory: state.inventory.map(i => i.id === newRow.id ? mapItem(newRow) : i) };
+                            } else if (eventType === 'DELETE') {
+                                return { inventory: state.inventory.filter(i => i.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 5. Tasks (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'tasks',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.tasks.some(t => t.id === newRow.id)) return state;
+                                return { tasks: [newRow, ...state.tasks] };
+                            } else if (eventType === 'UPDATE') {
+                                return { tasks: state.tasks.map(t => t.id === newRow.id ? newRow : t) };
+                            } else if (eventType === 'DELETE') {
+                                return { tasks: state.tasks.filter(t => t.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 6. Employees (organization_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'employees',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.employees.some(e => e.id === newRow.id)) return state;
+                                return { employees: [newRow, ...state.employees] };
+                            } else if (eventType === 'UPDATE') {
+                                return { employees: state.employees.map(e => e.id === newRow.id ? newRow : e) };
+                            } else if (eventType === 'DELETE') {
+                                return { employees: state.employees.filter(e => e.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 7. Requisitions (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'requisitions',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.requisitions.some(r => r.id === newRow.id)) return state;
+                                return { requisitions: [newRow, ...state.requisitions] };
+                            } else if (eventType === 'UPDATE') {
+                                return { requisitions: state.requisitions.map(r => r.id === newRow.id ? newRow : r) };
+                            } else if (eventType === 'DELETE') {
+                                return { requisitions: state.requisitions.filter(r => r.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 8. Performance Reviews (organization_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'performance_reviews',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        const mapRow = (r: any) => ({
+                            ...r,
+                            totalScore: r.total_score,
+                            employeeId: r.employee_id,
+                            submittedDate: r.submitted_date,
+                            finalizedDate: r.finalized_date
+                        });
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.performanceReviews.some(r => r.id === newRow.id)) return state;
+                                return { performanceReviews: [mapRow(newRow), ...state.performanceReviews] };
+                            } else if (eventType === 'UPDATE') {
+                                return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapRow(newRow) : r) };
+                            } else if (eventType === 'DELETE') {
+                                return { performanceReviews: state.performanceReviews.filter(r => r.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 9. Leave Requests (organization_id)
                     .on('postgres_changes', {
                         event: '*',
                         schema: 'public',
@@ -3059,7 +3235,6 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
-                        // Helper to map DB to Local
                         const mapRow = (r: any) => {
                             const state = get();
                             const emp = state.employees.find(e => e.id === r.employee_id);
@@ -3084,233 +3259,7 @@ export const useDataStore = create<DataState>()(
                             return state;
                         });
                     })
-                    // Invoices
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'invoices',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { invoices: [newRow, ...state.invoices] };
-                            } else if (eventType === 'UPDATE') {
-                                return { invoices: state.invoices.map(i => i.id === newRow.id ? newRow : i) };
-                            } else if (eventType === 'DELETE') {
-                                return { invoices: state.invoices.filter(i => i.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Contacts
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'contacts',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { contacts: [newRow, ...state.contacts] };
-                            } else if (eventType === 'UPDATE') {
-                                return { contacts: state.contacts.map(c => c.id === newRow.id ? newRow : c) };
-                            } else if (eventType === 'DELETE') {
-                                return { contacts: state.contacts.filter(c => c.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Products
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'products',
-                        filter: `organization_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            // Map to internal format
-                            const mapItem = (item: any) => ({
-                                ...item,
-                                type: 'product',
-                                category: item.category || 'Finished Goods',
-                                stockQuantity: item.stockQuantity || 100000,
-                                priceCents: item.price_cents || 0
-                            });
-
-                            if (eventType === 'INSERT') {
-                                return { inventory: [mapItem(newRow), ...state.inventory] };
-                            } else if (eventType === 'UPDATE') {
-                                return { inventory: state.inventory.map(i => i.id === newRow.id ? mapItem(newRow) : i) };
-                            } else if (eventType === 'DELETE') {
-                                return { inventory: state.inventory.filter(i => i.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Catering Events
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'catering_events',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { cateringEvents: [newRow, ...state.cateringEvents] };
-                            } else if (eventType === 'UPDATE') {
-                                return { cateringEvents: state.cateringEvents.map(e => e.id === newRow.id ? newRow : e) };
-                            } else if (eventType === 'DELETE') {
-                                return { cateringEvents: state.cateringEvents.filter(e => e.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Employees
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'employees_api',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { employees: [newRow, ...state.employees] };
-                            } else if (eventType === 'UPDATE') {
-                                return { employees: state.employees.map(e => e.id === newRow.id ? newRow : e) };
-                            } else if (eventType === 'DELETE') {
-                                return { employees: state.employees.filter(e => e.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Tasks
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'tasks',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { tasks: [newRow, ...state.tasks] };
-                            } else if (eventType === 'UPDATE') {
-                                return { tasks: state.tasks.map(t => t.id === newRow.id ? newRow : t) };
-                            } else if (eventType === 'DELETE') {
-                                return { tasks: state.tasks.filter(t => t.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Bookkeeping
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'bookkeeping',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { bookkeeping: [newRow, ...state.bookkeeping] };
-                            } else if (eventType === 'UPDATE') {
-                                return { bookkeeping: state.bookkeeping.map(b => b.id === newRow.id ? newRow : b) };
-                            } else if (eventType === 'DELETE') {
-                                return { bookkeeping: state.bookkeeping.filter(b => b.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Requisitions
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'requisitions',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { requisitions: [newRow, ...state.requisitions] };
-                            } else if (eventType === 'UPDATE') {
-                                return { requisitions: state.requisitions.map(r => r.id === newRow.id ? newRow : r) };
-                            } else if (eventType === 'DELETE') {
-                                return { requisitions: state.requisitions.filter(r => r.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Chart of Accounts
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'chart_of_accounts',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { chartOfAccounts: [newRow, ...state.chartOfAccounts] };
-                            } else if (eventType === 'UPDATE') {
-                                return { chartOfAccounts: state.chartOfAccounts.map(a => a.id === newRow.id ? newRow : a) };
-                            } else if (eventType === 'DELETE') {
-                                return { chartOfAccounts: state.chartOfAccounts.filter(a => a.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Bank Transactions
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'bank_transactions',
-                        filter: `company_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { bankTransactions: [newRow, ...state.bankTransactions] };
-                            } else if (eventType === 'UPDATE') {
-                                return { bankTransactions: state.bankTransactions.map(t => t.id === newRow.id ? newRow : t) };
-                            } else if (eventType === 'DELETE') {
-                                return { bankTransactions: state.bankTransactions.filter(t => t.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Performance Reviews
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'performance_reviews',
-                        filter: `organization_id=eq.${companyId}`
-                    }, (payload: any) => {
-                        const { eventType, new: newRow, old: oldRow } = payload;
-                        const mapRow = (r: any) => ({
-                            ...r,
-                            totalScore: r.total_score,
-                            employeeId: r.employee_id,
-                            submittedDate: r.submitted_date,
-                            finalizedDate: r.finalized_date
-                        });
-
-                        set((state) => {
-                            if (eventType === 'INSERT') {
-                                return { performanceReviews: [mapRow(newRow), ...state.performanceReviews] };
-                            } else if (eventType === 'UPDATE') {
-                                return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapRow(newRow) : r) };
-                            } else if (eventType === 'DELETE') {
-                                return { performanceReviews: state.performanceReviews.filter(r => r.id !== oldRow.id) };
-                            }
-                            return state;
-                        });
-                    })
-                    // Messages
+                    // 10. Messages (organization_id)
                     .on('postgres_changes', {
                         event: '*',
                         schema: 'public',
@@ -3330,7 +3279,6 @@ export const useDataStore = create<DataState>()(
                                 type: m.type || 'text',
                                 status: (m.read_at ? 'read' : 'sent') as 'sent' | 'delivered' | 'read'
                             } as Message);
-
                             if (eventType === 'INSERT') {
                                 if (state.messages.some(m => m.id === newRow.id)) return state;
                                 return { messages: [...state.messages, mapMsg(newRow)] };
@@ -3338,6 +3286,66 @@ export const useDataStore = create<DataState>()(
                                 return { messages: state.messages.map(m => m.id === newRow.id ? mapMsg(newRow) : m) };
                             } else if (eventType === 'DELETE') {
                                 return { messages: state.messages.filter(m => m.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 11. Bookkeeping (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'bookkeeping',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.bookkeeping.some(b => b.id === newRow.id)) return state;
+                                return { bookkeeping: [newRow, ...state.bookkeeping] };
+                            } else if (eventType === 'UPDATE') {
+                                return { bookkeeping: state.bookkeeping.map(b => b.id === newRow.id ? newRow : b) };
+                            } else if (eventType === 'DELETE') {
+                                return { bookkeeping: state.bookkeeping.filter(b => b.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 12. Chart of Accounts (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'chart_of_accounts',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.chartOfAccounts.some(a => a.id === newRow.id)) return state;
+                                return { chartOfAccounts: [newRow, ...state.chartOfAccounts] };
+                            } else if (eventType === 'UPDATE') {
+                                return { chartOfAccounts: state.chartOfAccounts.map(a => a.id === newRow.id ? newRow : a) };
+                            } else if (eventType === 'DELETE') {
+                                return { chartOfAccounts: state.chartOfAccounts.filter(a => a.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 13. Bank Transactions (company_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'bank_transactions',
+                        filter: `company_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        set((state) => {
+                            if (eventType === 'INSERT') {
+                                if (state.bankTransactions.some(t => t.id === newRow.id)) return state;
+                                return { bankTransactions: [newRow, ...state.bankTransactions] };
+                            } else if (eventType === 'UPDATE') {
+                                return { bankTransactions: state.bankTransactions.map(t => t.id === newRow.id ? newRow : t) };
+                            } else if (eventType === 'DELETE') {
+                                return { bankTransactions: state.bankTransactions.filter(t => t.id !== oldRow.id) };
                             }
                             return state;
                         });
