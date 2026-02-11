@@ -227,6 +227,8 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 
     if ('portionMonitor' in newItem) { newItem.portion_monitor = newItem.portionMonitor; delete newItem.portionMonitor; }
     if ('orderType' in newItem) { newItem.order_type = newItem.orderType; delete newItem.orderType; }
+    if ('location' in newItem) { newItem.location = newItem.location; }
+    if ('contactId' in newItem) { newItem.contact_id = newItem.contactId; delete newItem.contactId; }
 
     // Image Mapping (General)
     if ('image' in newItem) {
@@ -395,6 +397,8 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('costing_sheet' in newItem) { newItem.costingSheet = newItem.costing_sheet; delete newItem.costing_sheet; }
     if ('portion_monitor' in newItem) { newItem.portionMonitor = newItem.portion_monitor; delete newItem.portion_monitor; }
     if ('order_type' in newItem) { newItem.orderType = newItem.order_type; delete newItem.order_type; }
+    if ('location' in newItem) { newItem.location = newItem.location; }
+    if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
 
     // Image Mapping (General) - Additive, not destructive
     if ('image_url' in newItem) {
