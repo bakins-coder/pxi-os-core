@@ -2052,10 +2052,19 @@ export const Catering = () => {
                   )}
 
                   {filteredEvents.map(ev => (
-                     <div key={ev.id} onClick={() => setSelectedEvent(ev)} className={`rounded-2xl border transition-all cursor-pointer relative group ${selectedEvent ? 'p-4' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+                     <div
+                        key={ev.id}
+                        onClick={() => {
+                           setSelectedEvent(ev);
+                           if (window.innerWidth < 1024) {
+                              setRichDetailEvent(ev);
+                           }
+                        }}
+                        className={`rounded-2xl border transition-all cursor-pointer relative group ${selectedEvent ? 'p-4' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}
+                     >
                         <button
                            onClick={(e) => { e.stopPropagation(); setRichDetailEvent(ev); }}
-                           className="absolute top-2 right-2 w-6 h-6 bg-slate-100 text-slate-400 hover:text-white hover:bg-slate-900 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                           className="absolute top-2 right-2 w-6 h-6 bg-slate-100 text-slate-400 hover:text-white hover:bg-slate-900 rounded-full flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all shadow-sm z-10"
                         >
                            <Activity size={10} />
                         </button>
