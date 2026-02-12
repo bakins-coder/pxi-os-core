@@ -8,8 +8,9 @@ import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
    Clock, Users, Palette, AlertCircle, Activity, Box,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag,
-   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, ArrowUpRight, Info, ClipboardList
+   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList
 } from 'lucide-react';
+import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport } from '../utils/exportUtils';

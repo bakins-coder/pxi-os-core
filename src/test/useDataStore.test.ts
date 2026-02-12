@@ -133,6 +133,55 @@ describe('useDataStore', () => {
             expect(result.current.bankTransactions).toHaveLength(1);
             expect(result.current.bankTransactions[0].amountCents).toBe(50000);
         });
+
+        it('should record payment on a purchase invoice and decrement bank balance', () => {
+            const { result } = renderHook(() => useDataStore());
+
+            const bankAccountId = 'ba-test';
+            const testPurchaseInvoice = {
+                id: 'inv-purchase-001',
+                number: 'PUR-001',
+                companyId: 'org-test',
+                date: '2026-01-09',
+                dueDate: '2026-02-09',
+                status: 'Unpaid' as any,
+                type: 'Purchase' as any,
+                lines: [],
+                totalCents: 50000,
+                paidAmountCents: 0,
+            };
+
+            act(() => {
+                useDataStore.setState({
+                    invoices: [testPurchaseInvoice],
+                    bankAccounts: [{
+                        id: bankAccountId,
+                        companyId: 'org-test',
+                        bankName: 'Test Bank',
+                        accountName: 'Test Account',
+                        accountNumber: '123',
+                        currency: 'NGN',
+                        balanceCents: 100000,
+                        isActive: true,
+                        lastUpdated: new Date().toISOString()
+                    } as any],
+                    bankTransactions: [],
+                    bookkeeping: []
+                });
+            });
+
+            act(() => {
+                result.current.recordPayment('inv-purchase-001', 30000, bankAccountId);
+            });
+
+            expect(result.current.invoices[0].paidAmountCents).toBe(30000);
+            expect(result.current.bankAccounts[0].balanceCents).toBe(70000); // 100000 - 30000
+            expect(result.current.bankTransactions).toHaveLength(1);
+            expect(result.current.bankTransactions[0].type).toBe('Outflow');
+            expect(result.current.bankTransactions[0].amountCents).toBe(30000);
+            expect(result.current.bookkeeping).toHaveLength(1);
+            expect(result.current.bookkeeping[0].type).toBe('Outflow');
+        });
     });
 
     describe('Sync Status', () => {

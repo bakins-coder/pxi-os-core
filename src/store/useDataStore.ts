@@ -1047,7 +1047,8 @@ export const useDataStore = create<DataState>()(
                 const invoice = state.invoices.find(inv => inv.id === id);
                 if (!invoice) return state;
 
-                const newPaid = invoice.paidAmountCents + amount;
+                const isPurchase = invoice.type === 'Purchase';
+                const newPaid = (invoice.paidAmountCents || 0) + amount;
                 const newStatus = statusOverride || (newPaid >= invoice.totalCents ? InvoiceStatus.PAID : invoice.status);
 
                 const updatedInvoices = state.invoices.map(inv =>
@@ -1060,9 +1061,11 @@ export const useDataStore = create<DataState>()(
                 if (bankAccountId) {
                     const account = state.bankAccounts.find(a => a.id === bankAccountId);
                     if (account) {
+                        // If purchase, money goes OUT (decrement balance)
+                        const balanceDelta = isPurchase ? -amount : amount;
                         updatedBankAccounts = state.bankAccounts.map(a =>
                             a.id === bankAccountId
-                                ? { ...a, balanceCents: a.balanceCents + amount, lastUpdated: new Date().toISOString() }
+                                ? { ...a, balanceCents: a.balanceCents + balanceDelta, lastUpdated: new Date().toISOString() }
                                 : a
                         );
 
@@ -1071,10 +1074,10 @@ export const useDataStore = create<DataState>()(
                             companyId: invoice.companyId,
                             bankAccountId: bankAccountId,
                             date: new Date().toISOString().split('T')[0],
-                            description: `Payment for Invoice #${invoice.number}`,
+                            description: `Payment ${isPurchase ? 'for' : 'from'} Invoice #${invoice.number}`,
                             amountCents: amount,
-                            type: 'Inflow',
-                            category: 'Sales',
+                            type: isPurchase ? 'Outflow' : 'Inflow',
+                            category: isPurchase ? (invoice.category || 'Purchase') : 'Sales',
                             referenceId: id
                         };
                         updatedBankTransactions = [newBankTx, ...state.bankTransactions];
@@ -1082,7 +1085,7 @@ export const useDataStore = create<DataState>()(
                         // Persist Bank Account Update
                         if (supabase) {
                             supabase.from('bank_accounts').update({
-                                balance_cents: account.balanceCents + amount,
+                                balance_cents: account.balanceCents + balanceDelta,
                                 last_updated: new Date().toISOString()
                             }).eq('id', bankAccountId).then(({ error }) => {
                                 if (error) console.error("Failed to update bank balance:", error);
@@ -1094,9 +1097,9 @@ export const useDataStore = create<DataState>()(
                 const newEntry: BookkeepingEntry = {
                     id: crypto.randomUUID(),
                     date: new Date().toISOString().split('T')[0],
-                    type: 'Inflow',
-                    category: 'Sales',
-                    description: `Payment for Invoice #${invoice.number}`,
+                    type: isPurchase ? 'Outflow' : 'Inflow',
+                    category: isPurchase ? (invoice.category || 'Purchase') : 'Sales',
+                    description: `Payment ${isPurchase ? 'for' : 'from'} Invoice #${invoice.number}`,
                     amountCents: amount,
                     referenceId: id,
                     contactId: invoice.contactId,

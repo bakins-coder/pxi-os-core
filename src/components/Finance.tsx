@@ -10,6 +10,7 @@ import {
    CheckCircle2, Banknote, ArrowDownLeft, TrendingDown, TrendingUp, ShoppingBag, Zap, Clock, GripHorizontal, Check, ShieldCheck, Users,
    BookOpen, Bot, Landmark, RefreshCw, ShieldAlert, AlertTriangle, Cloud, Activity, Camera, Upload, FileSpreadsheet, Maximize2, Minimize2, Database, Bell
 } from 'lucide-react';
+import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { getCFOAdvice, suggestCOAForTransaction, generateAIResponse, parseFinancialDocument } from '../services/ai';
 import { getRunwayMonths, getNetBurnRate } from '../utils/finance';
@@ -183,7 +184,7 @@ const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose
    );
 };
 
-export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales' }: { isOpen: boolean, onClose: () => void, type?: 'Sales' | 'Purchase' }) => {
    const { contacts, addContact, addInvoice, inventory } = useDataStore();
    const user = useAuthStore(state => state.user);
 
@@ -214,7 +215,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
    }, [isOpen]);
 
    const filteredContacts = contacts.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-   const productInventory = inventory.filter(i => i.type === 'product');
+   const productInventory = type === 'Sales' ? inventory.filter(i => i.type === 'product') : inventory.filter(i => i.type === 'ingredient' || i.type === 'asset' || i.type === 'rental');
 
    const handleSelectContact = (contact: Contact) => {
       setSelectedContact(contact);
@@ -262,7 +263,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
       let contactId = selectedContact?.id;
 
       if (isNewCustomer) {
-         if (!newCustomerDetails.name) return alert("Customer Name is required");
+         if (!newCustomerDetails.name) return alert(`${type === 'Sales' ? 'Customer' : 'Vendor'} Name is required`);
          contactId = crypto.randomUUID();
          await addContact({
             id: contactId,
@@ -274,7 +275,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
             companyId: user?.companyId
          });
       } else if (!contactId) {
-         return alert("Please select a customer or create a new one");
+         return alert(`Please select a ${type === 'Sales' ? 'customer' : 'vendor'} or create a new one`);
       }
 
       const subtotalCents = lines.reduce((sum, l) => {
@@ -297,7 +298,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
          date: date,
          dueDate: dueDate || date,
          status: InvoiceStatus.UNPAID,
-         type: 'Sales',
+         type: type,
          lines: lines.map(l => ({
             id: l.id,
             description: l.description,
@@ -314,7 +315,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
 
       addInvoice(newInvoice);
       onClose();
-      alert("Invoice Created Successfully");
+      alert(`${type === 'Sales' ? 'Invoice' : 'Purchase Record'} Created Successfully`);
    };
 
    if (!isOpen) return null;
@@ -337,7 +338,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
       <div className="fixed inset-0 z-50 flex md:items-center items-start md:justify-center justify-center bg-slate-900/70 backdrop-blur-md animate-in fade-in overflow-y-auto" onClick={onClose}>
          <div onClick={e => e.stopPropagation()} className="bg-white shadow-2xl w-full max-w-4xl md:rounded-[3rem] rounded-t-[2rem] overflow-hidden flex flex-col md:my-8 min-h-[50vh] md:max-h-[90vh]">
             <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
-               <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">New Invoice</h2>
+               <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">{type === 'Sales' ? 'New Invoice' : 'New Purchase Record'}</h2>
                <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
             </div>
 
@@ -345,12 +346,12 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
                {/* Customer Section */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                     <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2">Customer</label>
+                     <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2">{type === 'Sales' ? 'Customer' : 'Vendor'}</label>
                      {!isNewCustomer ? (
                         <div className="relative">
                            <input
                               className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all"
-                              placeholder="Search Customer..."
+                              placeholder={type === 'Sales' ? 'Search Customer...' : 'Search Vendor...'}
                               value={searchTerm}
                               onChange={e => { setSearchTerm(e.target.value); setSelectedContact(null); }}
                            />
@@ -362,7 +363,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
                                     </button>
                                  ))}
                                  <button onClick={handleCreateNewCustomer} className="w-full text-left p-3 bg-indigo-50 text-indigo-600 font-bold text-sm hover:bg-indigo-100">
-                                    + Create new customer "{searchTerm}"
+                                    + Create new {type === 'Sales' ? 'customer' : 'vendor'} "{searchTerm}"
                                  </button>
                               </div>
                            )}
@@ -370,7 +371,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
                      ) : (
                         <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 space-y-4 relative">
                            <button onClick={() => setIsNewCustomer(false)} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600"><X size={16} /></button>
-                           <h4 className="font-black text-indigo-900 text-sm uppercase">New Customer Details</h4>
+                           <h4 className="font-black text-indigo-900 text-sm uppercase">New {type === 'Sales' ? 'Customer' : 'Vendor'} Details</h4>
                            <input
                               className="w-full p-3 bg-white border border-indigo-100 rounded-xl text-sm font-bold text-slate-900"
                               placeholder="Full Name"
@@ -504,7 +505,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose }: { isOpen: boolean, onClo
 
             <div className="p-5 md:p-8 border-t border-slate-100 bg-white flex gap-3 md:gap-4 sticky bottom-0 z-20">
                <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-200">Cancel</button>
-               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Generate Invoice</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all">{type === 'Sales' ? 'Generate Invoice' : 'Log Purchase'}</button>
             </div>
          </div >
       </div >
@@ -879,7 +880,7 @@ export const PaymentNoticeModal = ({ isOpen, onClose, invoice }: { isOpen: boole
 };
 
 export const Finance = () => {
-   const [activeTab, setActiveTab] = useState<'collections' | 'bookkeeping' | 'requisitions' | 'ledger' | 'reports' | 'advisor' | 'reconcile' | 'watchdog'>('collections');
+   const [activeTab, setActiveTab] = useState<'collections' | 'payables' | 'bookkeeping' | 'requisitions' | 'ledger' | 'reports' | 'advisor' | 'reconcile' | 'watchdog'>('collections');
 
    const {
       invoices, bookkeeping, requisitions, chartOfAccounts: coa, bankStatementLines: bankLines, bankAccounts,
@@ -890,6 +891,7 @@ export const Finance = () => {
    const { cloudEnabled, isDemoMode, settings: org } = useSettingsStore();
 
    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
+   const [invoiceModalType, setInvoiceModalType] = useState<'Sales' | 'Purchase'>('Sales');
    const currentUser = useAuthStore(state => state.user);
 
    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -1092,6 +1094,7 @@ export const Finance = () => {
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
                      { id: 'collections', label: 'Collections', icon: ArrowDownLeft, perm: 'access:finance_bookkeeping' },
+                     { id: 'payables', label: 'Payables', icon: LucideArrowUpRight, perm: 'access:finance_bookkeeping' },
                      { id: 'bookkeeping', label: 'Cash Ledger', icon: FileText, perm: 'access:finance_bookkeeping' },
                      { id: 'requisitions', label: 'Spend Matrix', icon: Zap, perm: 'access:finance_bookkeeping' }, // Or finance_all? Let's say bookkeeping.
                      { id: 'ledger', label: 'G/L Accounts', icon: BookOpen, perm: 'access:finance_ledger' },
@@ -1114,12 +1117,12 @@ export const Finance = () => {
                <div className="p-8 border-b border-slate-50 flex justify-between items-center">
                   <div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Accounts Receivable</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Tracking outstanding banquet node payments</p></div>
                   <button onClick={handleSendReminders} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Bot size={16} /> AI Reminders</button>
-                  <button onClick={() => setIsManualInvoiceModalOpen(true)} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
+                  <button onClick={() => { setInvoiceModalType('Sales'); setIsManualInvoiceModalOpen(true); }} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
                </div>
                <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                      <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Reference</th><th className="px-8 py-4 text-right">Amount</th><th className="px-8 py-4">Status</th><th className="px-8 py-4 text-right">Ops</th></tr></thead>
-                     <tbody className="divide-y divide-slate-50">{invoices.map(inv => (<tr key={inv.id} className="hover:bg-indigo-50/20 transition-all group">
+                     <tbody className="divide-y divide-slate-50">{invoices.filter(i => i.type === 'Sales' || !i.type).map(inv => (<tr key={inv.id} className="hover:bg-indigo-50/20 transition-all group">
                         <td className="px-8 py-6 font-black text-slate-800 uppercase">
                            <div className="flex flex-col">
                               <span>INV-{inv.number}</span>
@@ -1131,6 +1134,31 @@ export const Finance = () => {
                         <td className="px-8 py-6 text-right font-black text-indigo-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : inv.status === InvoiceStatus.PROFORMA ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
                            <button onClick={() => setNoticeInvoice(inv)} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all" title="Generate Notice"><Bell size={16} /></button>
                            <button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View formatted invoice"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
+                  </table>
+               </div>
+            </div>
+         )}
+
+         {activeTab === 'payables' && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom-4">
+               <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                  <div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Accounts Payable</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Tracking outstanding vendor and service payments</p></div>
+                  <button onClick={() => { setInvoiceModalType('Purchase'); setIsManualInvoiceModalOpen(true); }} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all outline-none border-none"><Plus size={16} /> Manual Purchase</button>
+               </div>
+               <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                     <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Reference</th><th className="px-8 py-4 text-right">Amount</th><th className="px-8 py-4">Status</th><th className="px-8 py-4 text-right">Ops</th></tr></thead>
+                     <tbody className="divide-y divide-slate-50">{invoices.filter(i => i.type === 'Purchase').map(inv => (<tr key={inv.id} className="hover:bg-rose-50/20 transition-all group">
+                        <td className="px-8 py-6 font-black text-slate-800 uppercase">
+                           <div className="flex flex-col">
+                              <span>PUR-{inv.number}</span>
+                              <span className="text-[10px] text-slate-400 font-bold leading-none mt-1">
+                                 {contacts.find(c => c.id === inv.contactId)?.name || 'Unknown Vendor'}
+                              </span>
+                           </div>
+                        </td>
+                        <td className="px-8 py-6 text-right font-black text-rose-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
+                           <button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-950 hover:text-white transition-all" title="View details"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-950 hover:text-white transition-all" title="Record Payment"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
                   </table>
                </div>
             </div>
@@ -1464,7 +1492,7 @@ export const Finance = () => {
             )
          }
          {/* Manual Invoice Modal */}
-         <ManualInvoiceModal isOpen={isManualInvoiceModalOpen} onClose={() => setIsManualInvoiceModalOpen(false)} />
+         <ManualInvoiceModal isOpen={isManualInvoiceModalOpen} onClose={() => setIsManualInvoiceModalOpen(false)} type={invoiceModalType} />
          <AddBankAccountModal isOpen={isAddBankModalOpen} onClose={() => setIsAddBankModalOpen(false)} />
          <BankAccountHistoryModal isOpen={!!selectedBankDetailsId} onClose={() => setSelectedBankDetailsId(null)} accountId={selectedBankDetailsId} />
          <PaymentNoticeModal isOpen={!!noticeInvoice} onClose={() => setNoticeInvoice(null)} invoice={noticeInvoice} />

@@ -9,7 +9,6 @@ import {
   Calendar,
   AlertCircle,
   ChevronRight,
-  ArrowUpRight,
   ArrowDownRight,
   UserCheck,
   Plane,
@@ -23,6 +22,7 @@ import {
   Clock,
   CheckCircle2
 } from 'lucide-react';
+import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { Role, Invoice, Requisition, CateringEvent } from '../types';
 import { EventCalendar } from './EventCalendar';
 import { EventDetailCard } from './EventDetailCard';
@@ -54,7 +54,7 @@ const SummaryList = ({ title, items, type, onItemClick }: { title: string; items
                       type === 'complaint' ? 'bg-amber-50 text-amber-600' :
                         type === 'employee' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'
                     }`}>
-                    {type === 'receivable' ? <ArrowUpRight size={14} /> :
+                    {type === 'receivable' ? <LucideArrowUpRight size={14} /> :
                       type === 'payable' ? <ArrowDownRight size={14} /> :
                         type === 'complaint' ? <AlertCircle size={14} /> :
                           type === 'employee' ? <UserCheck size={14} /> : <ChevronRight size={14} />}

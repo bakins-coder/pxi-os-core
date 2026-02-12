@@ -481,6 +481,7 @@ export interface Invoice {
   dueDate: string;
   status: InvoiceStatus;
   type: 'Sales' | 'Purchase';
+  category?: string;
   lines: InvoiceLine[];
   totalCents: number;
   subtotalCents?: number;
