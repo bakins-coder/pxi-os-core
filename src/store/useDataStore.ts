@@ -1381,10 +1381,20 @@ export const useDataStore = create<DataState>()(
 
                 const newMetrics = review.metrics.map((m, idx) => {
                     const supScore = scores[idx] !== undefined ? scores[idx] : m.supervisorScore;
+                    let finalScore = 0;
+                    if (m.isSupervisorOnly) {
+                        finalScore = supScore;
+                    } else {
+                        // If employee hasn't submitted a score, use supervisor score as final
+                        finalScore = m.employeeScore > 0
+                            ? Math.round(((m.employeeScore + supScore) / 2) * 10) / 10
+                            : supScore;
+                    }
+
                     return {
                         ...m,
                         supervisorScore: supScore,
-                        finalScore: Math.round(((m.employeeScore + supScore) / 2) * 10) / 10,
+                        finalScore: finalScore,
                         managerOverrideReason: overrideReason
                     };
                 });

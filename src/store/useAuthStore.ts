@@ -137,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
                 const targetRole = (profile?.role as Role) || Role.ADMIN;
 
                 // 3. Fetch Permissions
-                let permissionTags: string[] = ['*']; // Default to ALL if fetch fails to ensure access
+                let permissionTags: string[] = []; // Default to empty if fetch fails for security
                 if (targetOrgId) {
                     try {
                         const response = await withTimeout(

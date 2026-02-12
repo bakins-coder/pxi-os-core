@@ -498,6 +498,336 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
    );
 };
 
+const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+   const [year, setYear] = useState(new Date().getFullYear());
+   const [quarter, setQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4'>('Q1');
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
+   const employees = useDataStore(s => s.employees);
+   const addPerformanceReview = useDataStore(s => s.addPerformanceReview);
+
+   if (!isOpen) return null;
+
+   const getDefaultKPIs = (role: Role): PerformanceMetric[] => {
+      const baseKPIs = [
+         { name: 'Professionalism & Conduct', weight: 20, description: 'Adherence to company culture and behavioral standards.' },
+         { name: 'Attendance & Reliability', weight: 10, description: 'Consistency in meeting work hours and scheduled shifts.' },
+         { name: 'Integrity & Trust', weight: 10, description: 'Supervisor-only metric for character assessment.', isSupervisorOnly: true }
+      ];
+
+      let roleSpecific: { name: string, weight: number, description: string, isSupervisorOnly?: boolean }[] = [];
+
+      const roleStr = String(role).toLowerCase();
+
+      if (roleStr.includes('chef') || roleStr.includes('kitchen') || roleStr.includes('cook')) {
+         roleSpecific = [
+            { name: 'Cooking Quality & Taste', weight: 30, description: 'Ensuring consistent flavor profiles and presentation.' },
+            { name: 'Food Safety & Hygiene', weight: 30, description: 'Maintaining station cleanliness and food storage standards.' }
+         ];
+      } else if (roleStr.includes('finance') || roleStr.includes('cfo')) {
+         roleSpecific = [
+            { name: 'Data Accuracy', weight: 30, description: 'Precision in record keeping and financial entries.' },
+            { name: 'Audit Compliance', weight: 30, description: 'Ensuring all transactions match organizational protocols.', isSupervisorOnly: true }
+         ];
+      } else if (roleStr.includes('sales') || roleStr.includes('marketing') || roleStr.includes('deal')) {
+         roleSpecific = [
+            { name: 'Lead Conversion Rate', weight: 30, description: 'Efficiency in turning inquiries into confirmed orders.' },
+            { name: 'Client Retention', weight: 30, description: 'Ability to maintain long-term relationships with marquee accounts.', isSupervisorOnly: true }
+         ];
+      } else if (roleStr.includes('logistics') || roleStr.includes('driver')) {
+         roleSpecific = [
+            { name: 'Delivery Timeliness', weight: 30, description: 'Meeting delivery windows for event setups and ingredient pickups.' },
+            { name: 'Vehicle Maintenance', weight: 30, description: 'Proactive scheduling and reporting of vehicle service needs.', isSupervisorOnly: true }
+         ];
+      } else {
+         roleSpecific = [
+            { name: 'Task Completion Rate', weight: 30, description: 'General efficiency in completing assigned responsibilities.' },
+            { name: 'Self-Improvement Dir', weight: 30, description: 'Managerial assessment of professional growth trajectory.', isSupervisorOnly: true }
+         ];
+      }
+
+      return [...baseKPIs, ...roleSpecific].map(kpi => ({
+         ...kpi,
+         type: 'KPI',
+         target: 'Exceeding Expectations',
+         actual: '',
+         employeeScore: 0,
+         supervisorScore: 0,
+         finalScore: 0,
+         comments: ''
+      }));
+   };
+
+   const handleInitializeCycle = async () => {
+      setIsSubmitting(true);
+      const activeEmployees = employees.filter(e => e.status === EmployeeStatus.ACTIVE);
+
+      try {
+         for (const emp of activeEmployees) {
+            await addPerformanceReview({
+               employeeId: emp.id,
+               year,
+               quarter,
+               metrics: getDefaultKPIs(emp.role),
+               status: 'Draft',
+               totalScore: 0
+            });
+         }
+         alert(`Success: Performance cycle for ${quarter} ${year} initiated for ${activeEmployees.length} employees.`);
+         onClose();
+      } catch (error) {
+         console.error("Cycle Init failed:", error);
+         alert("Failed to initialize performance cycle. Check logs.");
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-8">
+            <div className="flex justify-between items-center">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-amber-400 shadow-lg">
+                     <Sparkles size={24} />
+                  </div>
+                  <div>
+                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">New Assessment Cycle</h3>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">HR Performance Node</p>
+                  </div>
+               </div>
+               <button onClick={onClose} className="p-3 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-6">
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 block">Cycle Year</label>
+                     <select
+                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500"
+                        value={year}
+                        onChange={e => setYear(parseInt(e.target.value))}
+                     >
+                        {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                     </select>
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 block">Quarter</label>
+                     <select
+                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500"
+                        value={quarter}
+                        onChange={e => setQuarter(e.target.value as any)}
+                     >
+                        <option value="Q1">Q1 (Jan-Mar)</option>
+                        <option value="Q2">Q2 (Apr-Jun)</option>
+                        <option value="Q3">Q3 (Jul-Sep)</option>
+                        <option value="Q4">Q4 (Oct-Dec)</option>
+                     </select>
+                  </div>
+               </div>
+
+               <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-100 space-y-2 shadow-sm">
+                  <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-1">
+                     <Info size={16} /> Automated KPI Assignment
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 leading-relaxed uppercase">
+                     Total personnel in roster: <span className="text-indigo-600">{employees.filter(e => e.status === EmployeeStatus.ACTIVE).length}</span>. Each will be assigned 4 custom KPIs based on their career path unit.
+                  </p>
+               </div>
+            </div>
+
+            <div className="flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+               <button
+                  onClick={handleInitializeCycle}
+                  disabled={isSubmitting}
+                  className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px]"
+               >
+                  {isSubmitting ? <Activity className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                  {isSubmitting ? 'Initializing...' : 'Authorize Cycle'}
+               </button>
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const PerformanceReviewAssessmentModal = ({ isOpen, onClose, reviewId }: { isOpen: boolean, onClose: () => void, reviewId: string | null }) => {
+   const review = useDataStore(s => s.performanceReviews.find(r => r.id === reviewId));
+   const employee = useDataStore(s => s.employees.find(e => e.id === review?.employeeId));
+   const submitSelfAssessment = useDataStore(s => s.submitSelfAssessment);
+   const submitSupervisorReview = useDataStore(s => s.submitSupervisorReview);
+   const currentUser = useAuthStore(s => s.user);
+   const [scores, setScores] = useState<{ [key: number]: number }>({});
+   const [overrideReason, setOverrideReason] = useState('');
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
+   const isHRManagerial = useMemo(() => {
+      const role = String(currentUser?.role || '').toLowerCase();
+      const perms = currentUser?.permissionTags || [];
+      const hasHRAuth = perms.includes('*') || perms.includes('access:hr') || perms.includes('access:performance') || perms.includes('admin');
+
+      const isFin = role.includes('finance') || role.includes('cfo');
+      const isExec = role.includes('ceo') || role.includes('chairman') || role.includes('managing director') || role.includes('md') || role.includes('director');
+      const isAdminOrHR = role.includes('admin') || role === 'hr' || role.includes('hr manager');
+
+      return isExec || isFin || isAdminOrHR || !!currentUser?.isSuperAdmin || hasHRAuth;
+   }, [currentUser]);
+
+   const isOwnReview = currentUser?.id === review?.employeeId;
+
+   useEffect(() => {
+      if (review) {
+         const initialScores: { [key: number]: number } = {};
+         review.metrics.forEach((m, idx) => {
+            if (review.status === 'Draft' || review.status === 'Employee_Review') {
+               initialScores[idx] = m.employeeScore;
+            } else {
+               initialScores[idx] = m.supervisorScore;
+            }
+         });
+         setScores(initialScores);
+      }
+   }, [review]);
+
+   if (!isOpen || !review || !employee) return null;
+
+   const handleSubmit = async () => {
+      setIsSubmitting(true);
+      try {
+         const isManagerialFinalize = isHRManagerial && !isOwnReview;
+
+         if (isManagerialFinalize) {
+            // Managers can finalize at any stage (Draft, Employee_Review, Supervisor_Review, or even Finalized for edits)
+            await submitSupervisorReview(review.id, scores, overrideReason);
+            alert('Appraisal finalized successfully by management.');
+         } else if (review.status === 'Draft' || review.status === 'Employee_Review') {
+            await submitSelfAssessment(review.id, scores);
+            alert('Self-assessment submitted successfully.');
+         } else if (review.status === 'Supervisor_Review') {
+            await submitSupervisorReview(review.id, scores, overrideReason);
+            alert('Supervisor review finalized successfully.');
+         }
+         onClose();
+      } catch (err) {
+         console.error(err);
+         alert('Submission failed.');
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[3rem] p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col gap-8">
+            <div className="flex justify-between items-start">
+               <div className="flex items-center gap-5">
+                  <div className="relative">
+                     <img src={employee.avatar} className="w-16 h-16 rounded-[1.5rem] bg-slate-100 object-cover border-2 border-slate-50 shadow-md" alt="avatar" />
+                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></div>
+                  </div>
+                  <div>
+                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">{employee.firstName} {employee.lastName}</h3>
+                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{review.quarter} {review.year} Assessment</p>
+                  </div>
+               </div>
+               <button onClick={onClose} className="p-4 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-6">
+               <div className="p-6 bg-slate-950 rounded-[2rem] text-white flex justify-between items-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                  <div>
+                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">Current Protocol</p>
+                     <h4 className="text-lg font-black uppercase tracking-tight text-[#00ff9d]">
+                        {review.status === 'Draft' ? 'Employee Self-Assessment' : review.status === 'Supervisor_Review' ? 'Supervisor Final Review' : 'Finalized Protocol'}
+                     </h4>
+                  </div>
+                  <div className="px-5 py-2.5 bg-white/10 rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest text-[#00ff9d]">
+                     {review.status.replace('_', ' ')}
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  {review.metrics.map((metric, idx) => {
+                     const canEdit = (isOwnReview && (review.status === 'Draft' || review.status === 'Employee_Review') && !metric.isSupervisorOnly) ||
+                        (isHRManagerial && !isOwnReview && (review.status !== 'Finalized' || review.status === 'Finalized')); // Managers can always edit if it's not their own review
+
+                     if (metric.isSupervisorOnly && isOwnReview && !isHRManagerial) return null;
+
+                     return (
+                        <div key={idx} className={`p-6 bg-slate-50 rounded-[2rem] border-2 transition-all ${canEdit ? 'border-indigo-100 bg-white shadow-md' : 'border-transparent'}`}>
+                           <div className="flex justify-between items-start mb-4">
+                              <div className="flex-1 pr-4">
+                                 <div className="flex items-center gap-3 mb-1">
+                                    <h5 className="font-black text-slate-900 uppercase text-xs">{metric.name}</h5>
+                                    {metric.isSupervisorOnly && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md text-[8px] font-black uppercase border border-amber-100">Supervisor Only</span>}
+                                 </div>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">{metric.description}</p>
+                              </div>
+                              <div className="text-right">
+                                 <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Weight</p>
+                                 <p className="text-sm font-black text-slate-900">{metric.weight}%</p>
+                              </div>
+                           </div>
+
+                           <div className="flex items-center gap-4">
+                              {[1, 2, 3, 4].map(score => (
+                                 <button
+                                    key={score}
+                                    disabled={!canEdit}
+                                    onClick={() => setScores(p => ({ ...p, [idx]: score }))}
+                                    className={`flex-1 h-12 rounded-xl font-black transition-all flex items-center justify-center border-2 ${scores[idx] === score
+                                       ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg scale-105'
+                                       : canEdit
+                                          ? 'bg-white border-slate-100 text-slate-400 hover:border-indigo-300'
+                                          : 'bg-slate-50 border-transparent text-slate-200 cursor-not-allowed'
+                                       }`}
+                                 >
+                                    {score}
+                                 </button>
+                              ))}
+                           </div>
+                           <div className="flex justify-between mt-3 px-1">
+                              <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Ineffective</span>
+                              <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Exemplary</span>
+                           </div>
+                        </div>
+                     );
+                  })}
+               </div>
+
+               {review.status !== 'Finalized' && isHRManagerial && !isOwnReview && (
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-4 block">Managerial Overrides & Notes</label>
+                     <textarea
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] p-5 font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 transition-all min-h-[120px]"
+                        placeholder="Context for final scoring adjustments..."
+                        value={overrideReason}
+                        onChange={e => setOverrideReason(e.target.value)}
+                     />
+                  </div>
+               )}
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 pt-4 mt-auto border-t border-slate-100">
+               <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all order-2 md:order-1">Discard</button>
+               {(review.status === 'Draft' || review.status === 'Employee_Review' || review.status === 'Supervisor_Review' || (isHRManagerial && !isOwnReview)) && (
+                  <button
+                     onClick={handleSubmit}
+                     disabled={isSubmitting}
+                     className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px] order-1 md:order-2"
+                  >
+                     {isSubmitting ? <Activity className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                     {isSubmitting ? 'Finalizing...' : (isHRManagerial && !isOwnReview) ? 'Finalize Appraisal' : review.status === 'Supervisor_Review' ? 'Finalize Appraisal' : 'Submit My Appraisal'}
+                  </button>
+               )}
+            </div>
+         </div>
+      </div>
+   );
+};
+
 const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, onClose: () => void, employeeId: string }) => {
    const [amount, setAmount] = useState('');
    const [reason, setReason] = useState('');
@@ -559,6 +889,7 @@ export const HR = () => {
    const requisitions = useDataStore(state => state.requisitions);
    const approveLeave = useDataStore(state => state.approveLeave);
    const rejectLeave = useDataStore(state => state.rejectLeave);
+   const performanceReviews = useDataStore(state => state.performanceReviews);
    const currentUser = useAuthStore(state => state.user);
    const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
 
@@ -602,14 +933,21 @@ export const HR = () => {
    const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
    const [isHireModalOpen, setIsHireModalOpen] = useState(false);
    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
+   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+   const [performanceFilter, setPerformanceFilter] = useState<string | null>(null);
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
    const isHRManagerial = useMemo(() => {
-      const role = currentUser?.role as string;
-      const isFin = role === Role.FINANCE || role === 'CFO';
-      const isExec = role === Role.CEO || role === Role.CHAIRMAN || role === 'CEO';
-      const isAdminOrHR = role === Role.ADMIN || role === Role.SUPER_ADMIN || role === Role.HR_MANAGER || role === 'HR Manager';
-      return isExec || isFin || isAdminOrHR || !!currentUser?.isSuperAdmin;
+      const role = String(currentUser?.role || '').toLowerCase();
+      const perms = currentUser?.permissionTags || [];
+      const hasHRAuth = perms.includes('*') || perms.includes('access:hr') || perms.includes('access:performance') || perms.includes('admin');
+
+      const isFin = role.includes('finance') || role.includes('cfo');
+      const isExec = role.includes('ceo') || role.includes('chairman') || role.includes('managing director') || role.includes('md') || role.includes('director');
+      const isAdminOrHR = role.includes('admin') || role === 'hr' || role.includes('hr manager');
+
+      return isExec || isFin || isAdminOrHR || !!currentUser?.isSuperAdmin || hasHRAuth;
    }, [currentUser]);
 
    const isAdmin = isHRManagerial; // Alias for backward compatibility in components
@@ -639,7 +977,7 @@ export const HR = () => {
       // Filter roster for non-admins (maybe they can view all, or only themselves?)
       // Requirement said "personal kpis", implies restricted view.
       // Let's restrict People tab to only yourself if not admin/manager
-      const isManagerial = [Role.ADMIN, Role.HR_MANAGER, Role.SUPER_ADMIN, Role.CEO, Role.MANAGER].includes(currentUser?.role as any);
+      const isManagerial = isHRManagerial;
       if (!isManagerial) {
          roster = roster.filter(e => e.id === currentUser?.id);
       }
@@ -662,6 +1000,12 @@ export const HR = () => {
 
    return (
       <div className="space-y-6 md:space-y-10 animate-in fade-in pb-24 w-full">
+         {isPerformanceModalOpen && (
+            <PerformanceCycleModal
+               isOpen={isPerformanceModalOpen}
+               onClose={() => setIsPerformanceModalOpen(false)}
+            />
+         )}
          <div className="bg-slate-950 p-6 md:p-10 rounded-[3rem] md:rounded-[4rem] text-white relative overflow-hidden shadow-2xl border border-white/5 w-full">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-60 -mt-60 pointer-events-none"></div>
             <div className="relative z-10 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 w-full">
@@ -760,20 +1104,98 @@ export const HR = () => {
          )}
          {activeTab === 'performance' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4 w-full">
-               <div className="bg-slate-950 p-8 md:p-10 rounded-[3rem] text-white flex justify-between items-center shadow-2xl relative overflow-hidden border border-white/10">
+               <div className="bg-slate-950 p-8 md:p-10 rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-center shadow-2xl relative overflow-hidden border border-white/10 gap-8">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
                   <div className="relative z-10">
-                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">{isAdmin ? 'Performance' : 'My Performance'}</h2>
+                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">{isHRManagerial ? 'Performance Hub' : 'My Performance'}</h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2"><Sparkles size={14} className="text-amber-400" /> Quarterly Assessment Cycle</p>
                   </div>
-                  {isAdmin && <button className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>}
+
+                  {isHRManagerial && (
+                     <div className="relative z-10 flex flex-wrap gap-6 md:gap-10">
+                        <div className="space-y-1">
+                           <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Avg. Score</p>
+                           <h4 className="text-2xl font-black text-[#00ff9d]">
+                              {(performanceReviews.reduce((sum, r) => sum + (r.totalScore || 0), 0) / (performanceReviews.length || 1)).toFixed(1)}
+                           </h4>
+                        </div>
+                        <div className="space-y-1">
+                           <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Completion</p>
+                           <h4 className="text-2xl font-black text-white">
+                              {Math.round((performanceReviews.filter(r => r.status === 'Finalized').length / (performanceReviews.length || 1)) * 100)}%
+                           </h4>
+                        </div>
+                        <button onClick={() => setIsPerformanceModalOpen(true)} className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>
+                     </div>
+                  )}
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Placeholder for Review Cards - To be connected to store.performanceReviews */}
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl opacity-60">
-                     <p className="font-black text-slate-300 uppercase tracking-widest text-xs text-center">No Active Reviews</p>
+               {isHRManagerial && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                     {['Draft', 'Employee_Review', 'Supervisor_Review', 'Finalized'].map(status => (
+                        <button
+                           key={status}
+                           onClick={() => setPerformanceFilter(performanceFilter === status ? null : status)}
+                           className={`p-6 rounded-[2rem] border-2 transition-all text-left ${performanceFilter === status ? 'bg-indigo-600 border-indigo-600 shadow-lg' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
+                        >
+                           <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${performanceFilter === status ? 'text-indigo-200' : 'text-slate-400'}`}>{status.replace('_', ' ')}</p>
+                           <h3 className={`text-xl font-black ${performanceFilter === status ? 'text-white' : 'text-slate-900'}`}>{performanceReviews.filter(r => r.status === status).length}</h3>
+                        </button>
+                     ))}
                   </div>
+               )}
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {performanceReviews
+                     .filter(r => isHRManagerial || r.employeeId === currentUser?.id)
+                     .filter(r => !performanceFilter || r.status === performanceFilter)
+                     .map(review => {
+                        const employee = employees.find(e => e.id === review.employeeId);
+                        return (
+                           <div key={review.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden">
+                              <div className="flex justify-between items-start mb-6">
+                                 <div className="flex items-center gap-4">
+                                    <img src={employee?.avatar || 'https://ui-avatars.com/api/?name=' + (employee?.firstName || 'User')} className="w-12 h-12 rounded-2xl bg-slate-100 object-cover" alt="avatar" />
+                                    <div>
+                                       <h4 className="font-black text-slate-900 uppercase text-xs tracking-tight">{employee?.firstName} {employee?.lastName}</h4>
+                                       <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">{review.quarter} {review.year}</p>
+                                    </div>
+                                 </div>
+                                 <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${review.status === 'Finalized' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                    review.status === 'Draft' ? 'bg-slate-50 text-slate-400 border-slate-100' :
+                                       'bg-amber-50 text-amber-600 border-amber-100'
+                                    }`}>
+                                    {review.status.replace('_', ' ')}
+                                 </div>
+                              </div>
+
+                              <div className="space-y-4">
+                                 <div className="flex justify-between items-end">
+                                    <div className="space-y-1">
+                                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Score Index</p>
+                                       <h3 className="text-2xl font-black text-slate-900 leading-none">{review.totalScore || 0.0}<span className="text-[10px] text-slate-300 ml-1">/ 4.0</span></h3>
+                                    </div>
+                                    <button onClick={() => setSelectedReviewId(review.id)} className="p-3 bg-slate-950 text-white rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95 group-hover:px-6 flex items-center gap-2 overflow-hidden max-w-[120px]">
+                                       <ChevronRight size={18} />
+                                       <span className="text-[9px] font-black uppercase tracking-widest hidden group-hover:inline opacity-0 group-hover:opacity-100 transition-all">Review</span>
+                                    </button>
+                                 </div>
+                                 <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                       className={`h-full transition-all duration-700 ${review.totalScore >= 3 ? 'bg-emerald-500' : review.totalScore >= 2 ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                                       style={{ width: `${(review.totalScore / 4) * 100}%` }}
+                                    ></div>
+                                 </div>
+                              </div>
+                           </div>
+                        );
+                     })}
+                  {performanceReviews.length === 0 && (
+                     <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-300 space-y-4">
+                        <Sparkles size={48} className="opacity-20 translate-y-2 animate-bounce" />
+                        <p className="font-black uppercase tracking-[0.4em] text-xs">Awaiting Cycle Activation</p>
+                     </div>
+                  )}
                </div>
             </div>
          )}
@@ -1040,6 +1462,8 @@ export const HR = () => {
          <HireStaffModal isOpen={isHireModalOpen} onClose={closeHireModal} editingEmployee={editingEmployee} />
          <LeaveModal isOpen={isLeaveModalOpen} onClose={() => setIsLeaveModalOpen(false)} />
          <LoanRequestModal isOpen={isLoanModalOpen} onClose={() => setIsLoanModalOpen(false)} employeeId={payrollItems[0]?.employeeId} />
+         <PerformanceCycleModal isOpen={isPerformanceModalOpen} onClose={() => setIsPerformanceModalOpen(false)} />
+         <PerformanceReviewAssessmentModal isOpen={!!selectedReviewId} onClose={() => setSelectedReviewId(null)} reviewId={selectedReviewId} />
       </div>
    );
 };
