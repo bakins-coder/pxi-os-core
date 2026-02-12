@@ -28,42 +28,51 @@ const KanbanBoard = ({ project }: { project: Project }) => {
    };
 
    return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 overflow-x-auto pb-4">
+      <div className="flex gap-6 overflow-x-auto pb-8 snap-x no-scrollbar">
          {Object.entries(columns).map(([status, items]) => (
-            <div key={status} className="bg-slate-50 rounded-3xl p-4 min-w-[280px]">
-               <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 px-2 flex justify-between">
-                  {status} <span className="bg-slate-200 text-slate-600 px-2 rounded-full">{items.length}</span>
-               </h4>
-               <div className="space-y-3">
+            <div key={status} className="bg-slate-50/50 rounded-[2.5rem] p-6 min-w-[320px] w-[320px] flex-shrink-0 border border-slate-100/50 snap-center">
+               <div className="flex justify-between items-center mb-6 px-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                     {status}
+                  </h4>
+                  <span className="bg-white border border-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black shadow-sm">
+                     {items.length}
+                  </span>
+               </div>
+               <div className="space-y-4">
                   {items.map(task => {
                      const nextLabel = getNextStatusLabel(task.status);
                      return (
                         <div
                            key={task.id}
                            onClick={() => nextLabel && advanceProjectTask(project.id, task.id)}
-                           className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 transition-all hover:shadow-md ${nextLabel ? 'cursor-pointer hover:border-indigo-200 group' : ''} ${task.priority === 'Critical' ? 'border-l-4 border-l-rose-500' : ''}`}
+                           className={`bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${nextLabel ? 'cursor-pointer hover:border-indigo-200 group' : ''} relative overflow-hidden`}
                         >
-                           <div className="flex justify-between items-start mb-2">
-                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${task.priority === 'Critical' ? 'bg-rose-100 text-rose-600' :
-                                 task.priority === 'High' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'
+                           {task.priority === 'Critical' && (
+                              <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500" />
+                           )}
+                           <div className="flex justify-between items-start mb-4">
+                              <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-xl ${task.priority === 'Critical' ? 'bg-rose-50 text-rose-600' :
+                                 task.priority === 'High' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'
                                  }`}>{task.priority}</span>
-                              <span className="text-[10px] text-slate-400 font-bold">{task.dueDate.slice(5)}</span>
+                              <span className="text-[9px] text-slate-400 font-black tracking-widest bg-slate-50 px-2 py-1 rounded-lg">{task.dueDate.slice(5)}</span>
                            </div>
-                           <h5 className="font-bold text-slate-800 text-sm mb-1">{task.title}</h5>
-                           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">{task.description}</p>
+                           <h5 className="font-bold text-slate-900 text-[15px] mb-2 leading-tight">{task.title}</h5>
+                           <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-6 font-medium">{task.description}</p>
 
                            {nextLabel && (
-                              <div className="pt-3 border-t border-slate-50 flex items-center justify-between group-hover:text-indigo-600 transition-colors">
-                                 <span className="text-[9px] font-black uppercase tracking-widest">{nextLabel}</span>
-                                 <ChevronRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+                              <div className="pt-4 border-t border-slate-50 flex items-center justify-between group-hover:text-indigo-600 transition-colors">
+                                 <span className="text-[9px] font-black uppercase tracking-[0.2em]">{nextLabel}</span>
+                                 <ChevronRight size={14} className="transform group-hover:translate-x-2 transition-transform duration-300" />
                               </div>
                            )}
                         </div>
                      );
                   })}
                   {items.length === 0 && (
-                     <div className="text-center py-8 opacity-30 border-2 border-dashed border-slate-200 rounded-2xl">
-                        <p className="text-[10px] font-black uppercase">No tasks</p>
+                     <div className="flex flex-col items-center justify-center py-20 opacity-30 border-4 border-dotted border-slate-200 rounded-[2rem]">
+                        <ListTodo size={32} className="text-slate-300 mb-3" />
+                        <p className="text-[9px] font-black uppercase tracking-widest">No tasks pending</p>
                      </div>
                   )}
                </div>
@@ -80,41 +89,38 @@ const GanttChart = ({ project }: { project: Project }) => {
    const sortedTasks = [...projectTasks].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
    return (
-      <div className="bg-white rounded-[2rem] p-8 border border-slate-100 overflow-hidden">
-         <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-               <div className="grid grid-cols-12 gap-4 mb-6 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-50 pb-4">
-                  <div className="col-span-4">Task Activity</div>
-                  <div className="col-span-2">Due Date</div>
+      <div className="bg-white rounded-[3rem] p-10 border border-slate-100/50 shadow-2xl shadow-slate-200/50 overflow-hidden">
+         <div className="overflow-x-auto no-scrollbar">
+            <div className="min-w-[900px]">
+               <div className="grid grid-cols-12 gap-6 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-50 pb-6">
+                  <div className="col-span-5">Technical Activity</div>
+                  <div className="col-span-2">Deadline</div>
                   <div className="col-span-2">Priority</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2 text-right">Assignee</div>
+                  <div className="col-span-3 text-right">Current Status</div>
                </div>
-               <div className="space-y-2 relative">
-                  {/* Simple vertical connector line */}
-                  <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-slate-100 z-0"></div>
+               <div className="space-y-3 relative">
+                  <div className="absolute left-[22px] top-6 bottom-6 w-0.5 bg-slate-50 z-0"></div>
 
-                  {sortedTasks.map((task, idx) => (
-                     <div key={task.id} className="relative z-10 grid grid-cols-12 gap-4 items-center p-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                        <div className="col-span-4 flex items-center gap-4">
-                           <div className={`w-3 h-3 rounded-full border-2 ${task.status === 'Done' ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}></div>
-                           <div>
-                              <p className={`font-bold text-sm text-slate-800 ${task.status === 'Done' ? 'line-through opacity-50' : ''}`}>{task.title}</p>
-                              {task.title.includes('Cooking') && <span className="text-[9px] text-rose-500 font-black uppercase tracking-wider flex items-center gap-1 mt-0.5"><AlertCircle size={8} /> Day of Event Critical</span>}
+                  {sortedTasks.map((task) => (
+                     <div key={task.id} className="relative z-10 grid grid-cols-12 gap-6 items-center p-5 rounded-[1.5rem] hover:bg-slate-50 transition-all duration-300 group border border-transparent hover:border-slate-100">
+                        <div className="col-span-5 flex items-center gap-5">
+                           <div className={`w-4 h-4 rounded-full border-[3px] shrink-0 transition-colors ${task.status === 'Done' || task.status === 'Completed' ? 'bg-emerald-500 border-emerald-100 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-white border-slate-200 group-hover:border-indigo-200'}`}></div>
+                           <div className="min-w-0">
+                              <p className={`font-bold text-[14px] text-slate-800 truncate ${task.status === 'Done' || task.status === 'Completed' ? 'line-through opacity-40' : ''}`}>{task.title}</p>
+                              {(task.priority === 'Critical' || task.title.includes('Cooking')) && <span className="text-[9px] text-rose-500 font-black uppercase tracking-widest flex items-center gap-1.5 mt-1 animate-pulse"><AlertCircle size={10} /> Live Operation Critical</span>}
                            </div>
                         </div>
-                        <div className="col-span-2 text-xs font-medium text-slate-600">{task.dueDate}</div>
+                        <div className="col-span-2 text-[11px] font-black text-slate-400 uppercase tracking-widest tracking-tighter">{task.dueDate}</div>
                         <div className="col-span-2">
-                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${task.priority === 'Critical' ? 'bg-rose-100 text-rose-600' :
-                              task.priority === 'High' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'
+                           <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-xl ${task.priority === 'Critical' ? 'bg-rose-50 text-rose-600' :
+                              task.priority === 'High' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'
                               }`}>{task.priority}</span>
                         </div>
-                        <div className="col-span-2">
-                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${task.status === 'Done' ? 'bg-emerald-100 text-emerald-600' :
-                              task.status === 'In Progress' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'
+                        <div className="col-span-3 text-right">
+                           <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border ${task.status === 'Done' || task.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                              task.status === 'In Progress' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-500 border-slate-100'
                               }`}>{task.status}</span>
                         </div>
-                        <div className="col-span-2 text-right text-xs text-slate-400">Team</div>
                      </div>
                   ))}
                </div>
@@ -127,11 +133,13 @@ const GanttChart = ({ project }: { project: Project }) => {
 export const ProjectManagement = () => {
    const [activeView, setActiveView] = useState<'roster' | 'kanban' | 'gantt'>('roster');
    const projects = useDataStore(state => state.projects);
-   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
    const brandColor = useSettingsStore(s => s.settings.brandColor) || '#00ff9d';
 
+   const selectedProject = projects.find(p => p.id === selectedProjectId);
+
    const handleProjectSelect = (proj: Project) => {
-      setSelectedProject(proj);
+      setSelectedProjectId(proj.id);
       setActiveView('kanban'); // Auto switch to Kanban on select
    };
 
@@ -150,7 +158,7 @@ export const ProjectManagement = () => {
                         <div className="flex items-center gap-2 mt-2 opacity-80">
                            <span className="text-xs font-bold text-white/50">Viewing Project:</span>
                            <span className="text-sm font-black text-white">{selectedProject.name}</span>
-                           <button onClick={() => setSelectedProject(null)} className="ml-2 text-[10px] bg-white/10 px-2 py-0.5 rounded hover:bg-white/20">Change</button>
+                           <button onClick={() => setSelectedProjectId(null)} className="ml-2 text-[10px] bg-white/10 px-2 py-0.5 rounded hover:bg-white/20">Change</button>
                         </div>
                      )}
                      {!selectedProject && (
@@ -184,23 +192,31 @@ export const ProjectManagement = () => {
          </div>
 
          {!selectedProject ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                {projects.map(proj => (
-                  <div key={proj.id} onClick={() => handleProjectSelect(proj)} className="bg-white p-8 rounded-[3rem] border-2 border-slate-50 hover:border-indigo-600 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-8 opacity-10">
-                        <Layers size={100} className="text-slate-200" />
+                  <div key={proj.id} onClick={() => handleProjectSelect(proj)} className="bg-white p-10 rounded-[4rem] border border-slate-100 hover:border-indigo-600 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:-translate-y-2 transition-all group cursor-pointer relative overflow-hidden">
+                     <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <Layers size={140} className="text-slate-900" />
                      </div>
-                     <h3 className="text-xl font-black text-slate-800 uppercase mb-4 relative z-10 pr-8">{proj.name}</h3>
-                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 relative z-10">
-                        <div className="h-full bg-indigo-600" style={{ width: `${proj.progress}%` }}></div>
+                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-6 relative z-10 pr-8 leading-none">{proj.name}</h3>
+
+                     <div className="flex justify-between items-end mb-3 relative z-10">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{proj.progress}% Complete</span>
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">{proj.status}</span>
                      </div>
+                     <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mb-8 relative z-10">
+                        <div className="h-full bg-slate-950 transition-all duration-1000" style={{ width: `${proj.progress}%`, backgroundColor: brandColor }}></div>
+                     </div>
+
                      <div className="flex justify-between items-center relative z-10">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{proj.tasks?.length || 0} Management Tasks</span>
-                        <ChevronRight className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{proj.tasks?.length || 0} Actions</span>
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 transition-colors">
+                           <ChevronRight className="text-slate-300 group-hover:text-white transition-colors" />
+                        </div>
                      </div>
-                     <div className="mt-6 flex flex-wrap gap-2 relative z-10">
-                        {proj.tasks?.some(t => t.priority === 'Critical' && t.status !== 'Done') && (
-                           <span className="px-2 py-1 bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-wider rounded-lg border border-rose-100">Critical Actions Pending</span>
+                     <div className="mt-8 flex flex-wrap gap-2 relative z-10">
+                        {proj.tasks?.some(t => t.priority === 'Critical' && t.status !== 'Done' && t.status !== 'Completed') && (
+                           <span className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-widest rounded-xl border border-rose-100 shadow-sm animate-pulse">Critical Actions Pending</span>
                         )}
                      </div>
                   </div>

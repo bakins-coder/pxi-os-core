@@ -1512,9 +1512,9 @@ export const useDataStore = create<DataState>()(
                     id: proj.id || `proj-${Date.now()}`,
                     companyId: useAuthStore.getState().user?.companyId || proj.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                     status: proj.status || 'Planning',
-                    progress: 0,
-                    tasks: [],
-                    aiAlerts: []
+                    progress: proj.progress || 0,
+                    tasks: proj.tasks || [],
+                    aiAlerts: proj.aiAlerts || []
                 } as Project;
                 set((state) => ({ projects: [newProject, ...state.projects] }));
                 get().syncWithCloud();
