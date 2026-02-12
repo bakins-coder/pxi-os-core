@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { Employee, Department, EmployeeStatus, PayrollItem, DepartmentMatrix, Role, DepartmentRole, LeaveRequest, LeaveStatus, LeaveType } from '../types';
+import { Employee, Department, EmployeeStatus, PayrollItem, DepartmentMatrix, Role, DepartmentRole, LeaveRequest, LeaveStatus, LeaveType, PerformanceReview, PerformanceMetric } from '../types';
 import { calculatePayrollForEmployee, formatSalary } from '../services/hrUtils';
 import { extractInfoFromCV } from '../services/ai';
 import {

@@ -612,6 +612,7 @@ export interface PerformanceMetric {
   name: string;
   type: 'KPI' | 'KPA';
   description?: string;
+  isSupervisorOnly?: boolean;
   weight: number; // Percentage 0-100
   target: string;
   actual: string;

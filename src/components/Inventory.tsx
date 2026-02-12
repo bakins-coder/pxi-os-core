@@ -7,7 +7,7 @@ import { Ingredient, InventoryItem, Recipe, Requisition, InventoryMovement, Rent
 import { performAgenticMarketResearch, getLiveRecipeIngredientPrices } from '../services/ai';
 import { calculateItemCosting } from '../utils/costing';
 import {
-   Package, Plus, RefreshCw, Layers, TrendingUp, Utensils,
+   Package, Plus, RefreshCw, Layers, TrendingUp, Utensils, Users, ChevronRight,
    Zap, X, Trash2, Edit3, BookOpen, Info, Truck, Hammer, AlertTriangle, History, Clock, Box, Search, Check, Image as ImageIcon, Sparkles, Loader2,
    CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2, Upload, Coffee
 } from 'lucide-react';
