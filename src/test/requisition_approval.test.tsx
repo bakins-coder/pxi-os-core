@@ -43,6 +43,7 @@ vi.mock('lucide-react', () => ({
     Receipt: () => <div />, TrendingUp: () => <div />, TrendingDown: () => <div />, ShoppingBag: () => <div />,
     Users: () => <div />, Clock: () => <div />, Check: () => <div />, AlertTriangle: () => <div />,
     X: () => <div />, Plus: () => <div />, Minimize2: () => <div />, Maximize2: () => <div />,
+    ArrowUpRight: () => <div />,
     ArrowRight: () => <div />, Download: () => <div />, Activity: () => <div />, CheckCircle2: () => <div />,
     ChevronRight: () => <div />, RefreshCw: () => <div />
 }));
@@ -60,9 +61,10 @@ describe('Requisition Approval Security Verification', () => {
         quantity: 5,
         pricePerUnitCents: 50000,
         totalAmountCents: 250000,
-        status: 'Pending',
-        type: 'Purchase',
-        category: 'Equipment'
+        status: 'Pending' as const,
+        type: 'Purchase' as const,
+        category: 'Hardware' as const,
+        requestorId: 'ceo-1'
     };
 
     beforeEach(() => {

@@ -22,7 +22,8 @@ vi.mock('../services/supabase', () => ({
             on: vi.fn().mockReturnThis(),
             subscribe: vi.fn()
         }))
-    }
+    },
+    syncTableToCloud: vi.fn(() => Promise.resolve({ success: true }))
 }));
 
 describe('Cuisine Orders', () => {
