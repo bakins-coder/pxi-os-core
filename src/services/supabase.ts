@@ -365,6 +365,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('organization_id' in newItem) { newItem.organizationId = newItem.organization_id; delete newItem.organization_id; }
 
     // Invoice / General Detail Mappings
+    if ('due_date' in newItem) { newItem.dueDate = newItem.due_date; delete newItem.due_date; }
     if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
     if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
     if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }

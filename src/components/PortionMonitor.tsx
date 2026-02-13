@@ -11,7 +11,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
     const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId || null);
 
     // 2. Derived State (Must be defined early)
-    const activeEvents = cateringEvents.filter(e => e.status !== 'Completed' && e.status !== 'Draft');
+    const activeEvents = cateringEvents.filter(e => e.status !== 'Completed' && e.status !== 'Archived' && e.status !== 'Draft');
     const selectedEvent = cateringEvents.find(e => e.id === selectedEventId);
     const waiters = employees.filter(e => e.role === Role.HEAD_WAITER || e.role === Role.EVENT_COORDINATOR);
 

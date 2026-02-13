@@ -395,6 +395,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
    );
 
    const [isFinalizing, setIsFinalizing] = useState(false);
+   const [manualTotalOverride, setManualTotalOverride] = useState<number | undefined>(invoice.manualSetPriceCents);
 
    // Helper for currency formatting
    const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -561,7 +562,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
       setIsFinalizing(true);
       try {
          // Atomic update: Lines + status + totals + sync in ONE go
-         await finalizeInvoice(invoice.id, editableLines);
+         await finalizeInvoice(invoice.id, editableLines, manualTotalOverride);
 
          // Help the UI reflect the change before the print snapshot
          setIsProformaMode(false);
@@ -580,7 +581,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
 
    const handleSaveEdits = async () => {
       try {
-         await updateInvoiceLines(invoice.id, editableLines);
+         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride);
          // Update storage and notify parent if needed, but for now we just persist to cloud
       } catch (err) {
          console.error("Failed to save edits", err);
@@ -639,17 +640,21 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                         <span className="text-xs font-bold text-slate-900">{invoice.number}</span>
 
                         <span className="text-xs font-bold text-slate-500">Invoice Date:</span>
-                        <span className="text-xs font-bold text-slate-900">{new Date(invoice.date).toLocaleDateString('en-US')}</span>
+                        <span className="text-xs font-bold text-slate-900">{invoice.date ? new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</span>
 
                         <span className="text-xs font-bold text-slate-500">Payment Due:</span>
-                        <span className="text-xs font-bold text-slate-900">{new Date(invoice.dueDate).toLocaleDateString('en-US') || 'On Receipt'}</span>
+                        <span className="text-xs font-bold text-slate-900">
+                           {invoice.dueDate
+                              ? new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                              : (invoice.date ? new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'On Receipt')}
+                        </span>
                      </div>
                   </div>
                </div>
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[2fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3fr_1fr_1.2fr_1.3fr]'} gap-10 border-b-2 border-slate-100 pb-2 mb-4`}>
+                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} gap-10 border-b-2 border-slate-100 pb-2 mb-4`}>
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
@@ -674,7 +679,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                            const showPricing = !isBanquetMode || isHeader;
 
                            return (
-                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-b border-slate-50 md:border-none pb-4 md:pb-0 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''}`}>
+                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-b border-slate-50 md:border-none pb-4 md:pb-0 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''}`}>
                                  {isProformaMode ? (
                                     <>
                                        {/* Description (Top on Mobile, First Col on Desktop) */}
@@ -688,14 +693,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                           {isBanquetMode && (
                                              <button
                                                 onClick={() => toggleSection(idx)}
-                                                className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-all ${isHeader ? 'bg-orange-100 text-orange-600 border border-orange-200' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'}`}
-                                                title={isHeader ? "Currently Billed" : "Currently Itemized (No Price)"}
+                                                className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'}`}
+                                                title={isHeader ? "Currently Section Header" : "Currently Itemized (No Price)"}
                                              >
-                                                {isHeader ? 'Billed' : 'Itemized'}
+                                                {isHeader ? 'Section' : 'Itemized'}
                                              </button>
                                           )}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-2' : ''}`}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''}`}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -766,8 +771,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                     <>
                                        {/* View Mode (Non-Editable) */}
                                        <div className="w-full md:pr-4">
-                                          {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1">Section</span>}
-                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isBanquetMode ? 'text-xs md:ml-6 text-slate-600' : ''}`}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
+                                          {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-400 text-white rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1 shadow-sm">Section</span>}
+                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isBanquetMode ? 'text-xs md:ml-12 text-slate-600' : ''}`}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
                                        </div>
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
@@ -894,7 +899,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                               }
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
-                           const standardSC = Math.round(standardSubtotal * 0.15);
+                           const standardSC = Math.round(standardSubtotal * 0.05);
                            const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
@@ -911,9 +916,10 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveSC = Math.round(effectiveSubtotal * 0.15);
+                           const effectiveSC = Math.round(effectiveSubtotal * 0.05);
                            const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
-                           const finalTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+                           const calculatedTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+                           const finalTotal = manualTotalOverride ?? calculatedTotal;
 
                            const discount = Math.max(0, standardTotal - finalTotal);
                            const discountPercent = standardTotal > 0 ? (discount / standardTotal) * 100 : 0;
@@ -926,7 +932,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                     <span>{formatCurrency(effectiveSubtotal)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge (15%)</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge (5%)</span>
                                     <span>{formatCurrency(effectiveSC)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
@@ -948,6 +954,25 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                           <span>-{formatCurrency(discount)}</span>
                                        </div>
                                     </>
+                                 )}
+
+                                 {isProformaMode && showDiscountCol && (
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-orange-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 mb-2 mt-4">
+                                       <span className="uppercase tracking-widest pl-2 font-black">Override Overall Total (Discounted)</span>
+                                       <div className="flex items-center bg-white px-3 py-1 rounded border border-orange-200 shadow-sm">
+                                          <span className="mr-1 text-orange-300">₦</span>
+                                          <input
+                                             type="number"
+                                             className="w-40 bg-transparent border-none text-right font-black focus:ring-0 p-0 text-xs text-orange-600"
+                                             placeholder="Set Final Amount"
+                                             value={manualTotalOverride ? manualTotalOverride / 100 : ''}
+                                             onChange={e => {
+                                                const val = parseFloat(e.target.value);
+                                                setManualTotalOverride(isNaN(val) ? undefined : Math.round(val * 100));
+                                             }}
+                                          />
+                                       </div>
+                                    </div>
                                  )}
 
                                  <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100 mt-2">
@@ -1020,7 +1045,13 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                         Finalize & Generate Invoice
                      </button>
                   ) : (
-                     <button onClick={() => onSave(invoice)} className="flex-1 py-3 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg">
+                     <button
+                        onClick={async () => {
+                           await handleSaveEdits();
+                           onSave({ ...invoice, lines: editableLines, manualSetPriceCents: manualTotalOverride });
+                        }}
+                        className="flex-1 py-3 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg"
+                     >
                         Verified & Correct <ArrowRight size={16} />
                      </button>
                   )}
@@ -1384,10 +1415,10 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                <div className="flex flex-wrap gap-3">
                   <button onClick={() => onAmend(event)} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-100 transition-all flex items-center gap-2">
 
-                     <FileText size={14} /> <span className="hidden sm:inline">Amend Record</span><span className="sm:hidden">Amend</span>
+                     <FileText size={12} /> <span className="hidden sm:inline">Amend Record</span><span className="sm:hidden">Amend</span>
                   </button>
                   <button onClick={() => setShowRequisitions(true)} className="px-4 md:px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-100 transition-all flex items-center gap-2">
-                     <FileText size={14} /> <span className="hidden sm:inline">Track Requisitions</span><span className="sm:hidden">Reqs</span>
+                     <FileText size={12} /> <span className="hidden sm:inline">Track Requisitions</span><span className="sm:hidden">Reqs</span>
                   </button>
                   {salesInvoice && (
                      <button onClick={() => setViewingInvoice(salesInvoice)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
@@ -1401,31 +1432,31 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                   )}
                </div>
                <div>
-                  <h3 className="text-3xl md:text-5xl font-black text-slate-800 uppercase tracking-tighter leading-none break-words mb-4">{event.customerName}</h3>
+                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words mb-4 line-clamp-2">{event.customerName}</h3>
                   <div className="flex flex-wrap items-center gap-3">
-                     <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{event.status}</span>
-                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{event.eventDate} • {event.location || 'Venue TBD'}</p>
+                     <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{event.status}</span>
+                     <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">{event.eventDate} • {event.location || 'Venue TBD'}</p>
                   </div>
                </div>
             </div>
-            <div className="text-right shrink-0 bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
-               <p className="text-4xl font-black text-slate-900 tracking-tighter">{event.guestCount}</p>
+            <div className="text-right shrink-0 bg-slate-50 px-5 flex flex-col justify-center min-w-[120px] h-20 md:h-24 rounded-xl border border-slate-100">
+               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
+               <p className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter leading-none">{event.guestCount}</p>
             </div>
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <div className="p-6 bg-white rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Revenue</p>
-               <h4 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">₦{(event.financials.revenueCents / 100).toLocaleString()}</h4>
+            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center">
+               <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Revenue</p>
+               <h4 className="text-lg md:text-xl font-black text-slate-900 tracking-tight truncate">₦{(event.financials.revenueCents / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-6 bg-white rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Est. Direct Costs</p>
-               <h4 className="text-xl md:text-2xl font-black text-rose-600 tracking-tight">₦{(estimatedCost / 100).toLocaleString()}</h4>
+            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center">
+               <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Est. Direct Costs</p>
+               <h4 className="text-lg md:text-xl font-black text-rose-600 tracking-tight truncate">₦{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-6 bg-slate-900 rounded-[2rem] shadow-xl ring-4 ring-slate-50">
-               <p className="text-[9px] font-black text-[#00ff9d] uppercase tracking-widest mb-2">Projected Net</p>
-               <h4 className="text-xl md:text-2xl font-black text-white tracking-tight">₦{(estimatedNet / 100).toLocaleString()}</h4>
+            <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center">
+               <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest mb-2">Projected Net</p>
+               <h4 className="text-lg md:text-xl font-black text-white tracking-tight truncate">₦{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
 
@@ -1437,17 +1468,17 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                </div>
                <div className="grid grid-cols-1 gap-4">
                   {event.items.map((item, idx) => (
-                     <div key={idx} className="p-6 bg-white border-2 border-slate-50 rounded-3xl flex justify-between items-center group hover:border-indigo-100 transition-all">
+                     <div key={idx} className="p-4 md:p-5 bg-white border-2 border-slate-50 rounded-2xl flex justify-between items-center group hover:border-indigo-100 transition-all">
                         <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><UtensilsCrossed size={18} /></div>
+                           <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><UtensilsCrossed size={16} /></div>
                            <div>
-                              <p className="font-black text-slate-800 uppercase text-sm tracking-tight">{item.name}</p>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Fixed Portion Multiplier</p>
+                              <p className="font-black text-slate-800 uppercase text-xs md:text-sm tracking-tight truncate">{item.name}</p>
+                              <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Fixed Portion Multiplier</p>
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className="font-black text-lg text-slate-900">{item.quantity}</p>
-                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Qty</p>
+                           <p className="font-black text-base md:text-lg text-slate-900 leading-none">{item.quantity}</p>
+                           <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Qty</p>
                         </div>
                      </div>
                   ))}
@@ -1462,21 +1493,21 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                <div className="space-y-4">
                   {/* ... (Banquet Details) ... */}
                   {event.banquetDetails?.eventPlanner && (
-                     <div className="p-6 bg-slate-900 border border-[#00ff9d]/20 rounded-3xl shadow-xl">
+                     <div className="p-5 md:p-6 bg-slate-900 border border-[#00ff9d]/20 rounded-2xl shadow-xl">
                         <div className="flex items-center gap-3 mb-2">
-                           <User size={14} className="text-[#00ff9d]" />
-                           <p className="text-[9px] font-black text-[#00ff9d] uppercase tracking-widest">Lead Planner</p>
+                           <User size={12} className="text-[#00ff9d]" />
+                           <p className="text-[8px] font-black text-[#00ff9d] uppercase tracking-widest">Lead Planner</p>
                         </div>
-                        <p className="text-lg font-black text-white uppercase tracking-tight">{event.banquetDetails.eventPlanner}</p>
+                        <p className="text-base md:text-lg font-black text-white uppercase tracking-tight">{event.banquetDetails.eventPlanner}</p>
                      </div>
                   )}
                   {event.banquetDetails?.notes && (
-                     <div className="p-6 bg-white border-2 border-slate-100 rounded-3xl">
+                     <div className="p-5 md:p-6 bg-white border-2 border-slate-100 rounded-2xl">
                         <div className="flex items-center gap-3 mb-2">
-                           <FileText size={14} className="text-indigo-600" />
-                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Operational Notes</p>
+                           <FileText size={12} className="text-indigo-600" />
+                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Operational Notes</p>
                         </div>
-                        <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{event.banquetDetails.notes}"</p>
+                        <p className="text-xs md:text-sm font-medium text-slate-600 leading-relaxed italic line-clamp-4">"{event.banquetDetails.notes}"</p>
                      </div>
                   )}
                </div>
@@ -1493,7 +1524,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
             </div>
             <div className="flex gap-4">
                {event.currentPhase === 'Procurement' && procurementStatus === 'None' && (
-                  <button onClick={() => window.dispatchEvent(new CustomEvent('open-procurement'))} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                  <button onClick={() => window.dispatchEvent(new CustomEvent('open-procurement'))} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                      <Truck size={18} /> Plan Fulfillment Execution
                   </button>
                )}
@@ -1507,24 +1538,24 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                      <div className="flex items-center gap-3 px-8 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-rose-100">
                         <AlertCircle size={18} className="animate-pulse" /> Needs Attention
                      </div>
-                     <button onClick={() => setShowRequisitions(true)} className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                     <button onClick={() => setShowRequisitions(true)} className="bg-rose-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                         <ClipboardList size={18} /> Manage Requisitions
                      </button>
                   </div>
                )}
                {event.currentPhase === 'Procurement' && (procurementStatus === 'Pending' || procurementStatus === 'Approved') && (
-                  <button onClick={() => setShowRequisitions(true)} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                  <button onClick={() => setShowRequisitions(true)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                      <ClipboardList size={18} /> Track Requisitions
                   </button>
                )}
                {event.currentPhase === 'Procurement' && procurementStatus === 'Approved' && (
-                  <button onClick={handleGeneratePO} className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                  <button onClick={handleGeneratePO} className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                      <CheckCircle2 size={18} /> Generate Purchase Order
                   </button>
                )}
                {event.currentPhase === 'Execution' && event.status !== 'Completed' && (
                   <>
-                     <button onClick={() => setShowMonitor(true)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                     <button onClick={() => setShowMonitor(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                         <Activity size={18} /> Launch Live Monitor
                      </button>
                      {event.banquetDetails?.productionConfirmed ? (
@@ -1532,7 +1563,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                            <Flame size={18} className="animate-pulse" /> Kitchen In Production
                         </div>
                      ) : (
-                        <button onClick={handleCook} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all">
+                        <button onClick={handleCook} className="bg-orange-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                            <Flame size={18} /> Confirm Kitchen Production
                         </button>
                      )}
@@ -1542,14 +1573,14 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                   <>
                      <button
                         onClick={() => event.portionMonitor && generateHandoverReport(event, event.portionMonitor)}
-                        className="bg-slate-900 text-[#00ff9d] px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all"
+                        className="bg-slate-900 text-[#00ff9d] px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all"
                      >
                         <FileText size={18} /> View Handover Report
                      </button>
                      {event.status !== 'Archived' && (
                         <button
                            onClick={() => setShowLogistics(true)}
-                           className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 active:scale-95 transition-all"
+                           className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all"
                         >
                            <Truck size={18} /> Logistics Return
                         </button>

@@ -123,9 +123,9 @@ interface DataState {
     completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
     finalizeProforma: (invoiceId: string) => Promise<void>;
-    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[]) => Promise<void>;
+    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
-    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[]) => Promise<void>;
+    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -2124,11 +2124,18 @@ export const useDataStore = create<DataState>()(
             completeEvent: (eventId) => {
                 set((state) => ({
                     cateringEvents: state.cateringEvents.map((e) =>
-                        e.id === eventId ? { ...e, status: 'Completed', portionMonitor: { ...e.portionMonitor!, completedAt: new Date().toISOString() } } : e
+                        e.id === eventId ? {
+                            ...e,
+                            status: 'Archived',
+                            currentPhase: 'PostEvent',
+                            portionMonitor: e.portionMonitor ? { ...e.portionMonitor, completedAt: new Date().toISOString() } : { eventId: e.id, tables: [], leftovers: [], handoverEvidence: [], completedAt: new Date().toISOString() }
+                        } : e
                     ),
                 }));
                 get().syncWithCloud();
             },
+
+            completeCateringEvent: (eventId) => get().completeEvent(eventId),
 
             dispatchAssets: (eventId, assets) => set((state) => {
                 const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
@@ -2263,10 +2270,10 @@ export const useDataStore = create<DataState>()(
                     // Use totalRev for tests (no taxes). Check for VITEST flag or the specific verification customer.
                     totalCents: ((globalThis as any).VITEST || (globalThis as any).vitest || (globalThis as any).describe || import.meta.env.MODE === 'test' || d.customerName === 'Verification Host')
                         ? totalRev
-                        : Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
+                        : Math.round(totalRev + (totalRev * 0.05) + ((totalRev + (totalRev * 0.05)) * 0.075)),
                     subtotalCents: totalRev,
-                    serviceChargeCents: Math.round(totalRev * 0.15),
-                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
+                    serviceChargeCents: Math.round(totalRev * 0.05),
+                    vatCents: Math.round((totalRev + (totalRev * 0.05)) * 0.075),
                     paidAmountCents: 0,
                     lines: d.items.map((it: any, idx: number) => ({
                         id: `line-${idx}`,
@@ -2414,10 +2421,10 @@ export const useDataStore = create<DataState>()(
                             if (inv.id === newEvent.financials.invoiceId) {
                                 return {
                                     ...inv,
-                                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
+                                    totalCents: Math.round(totalRev + (totalRev * 0.05) + ((totalRev + (totalRev * 0.05)) * 0.075)),
                                     subtotalCents: totalRev,
-                                    serviceChargeCents: Math.round(totalRev * 0.15),
-                                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
+                                    serviceChargeCents: Math.round(totalRev * 0.05),
+                                    vatCents: Math.round((totalRev + (totalRev * 0.05)) * 0.075),
                                     lines: updates.items.map((it: any, idx: number) => ({
                                         id: crypto.randomUUID(),
                                         description: it.name,
@@ -2502,25 +2509,7 @@ export const useDataStore = create<DataState>()(
                 }
             },
 
-            completeCateringEvent: async (eventId) => {
-                // 1. Optimistic Update
-                set((state) => ({
-                    cateringEvents: state.cateringEvents.map(e => e.id === eventId ? { ...e, currentPhase: 'PostEvent', status: 'Completed' } : e)
-                }));
 
-                // 2. Persist to Supabase
-                if (supabase) {
-                    try {
-                        await supabase.from('catering_events').update({
-                            current_phase: 'PostEvent',
-                            status: 'Completed'
-                        }).eq('id', eventId);
-                    } catch (e) {
-                        console.error("Failed to complete event", e);
-                    }
-                }
-                get().syncWithCloud();
-            },
 
             addRecipe: (recipe) => {
                 set((state) => ({
@@ -2562,7 +2551,7 @@ export const useDataStore = create<DataState>()(
                 return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
             },
 
-            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[]) => {
+            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => {
                 set((state) => {
                     // 1. Calculate Standard Totals (If no discounts applied)
                     const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
@@ -2571,7 +2560,7 @@ export const useDataStore = create<DataState>()(
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = Math.round(standardSubtotal * 0.15);
+                    const standardSC = Math.round(standardSubtotal * 0.05);
                     const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
@@ -2584,12 +2573,14 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
+                    const effectiveSC = Math.round(effectiveSubtotal * 0.05);
                     const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
 
                     // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost
                     const discount = Math.max(0, standardTotal - effectiveTotal);
+
+                    const updatedTotalCents = overrideTotalCents !== undefined ? overrideTotalCents : effectiveTotal;
 
                     return {
                         invoices: state.invoices.map(inv => inv.id === invoiceId ? {
@@ -2599,10 +2590,23 @@ export const useDataStore = create<DataState>()(
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
                             standardTotalCents: standardTotal,
-                            discountCents: discount,
-                            totalCents: effectiveTotal,
-                            manualSetPriceCents: undefined // Clear global override if it existed
-                        } : inv)
+                            discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
+                            totalCents: updatedTotalCents,
+                            manualSetPriceCents: overrideTotalCents
+                        } : inv),
+                        cateringEvents: state.cateringEvents.map(event => {
+                            const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
+                            if (eventInvId === invoiceId) {
+                                return {
+                                    ...event,
+                                    financials: {
+                                        ...event.financials,
+                                        revenueCents: updatedTotalCents
+                                    }
+                                };
+                            }
+                            return event;
+                        })
                     };
                 });
                 await get().syncWithCloud();
@@ -2617,7 +2621,7 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
 
-            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[]) => {
+            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => {
                 set((state) => {
                     const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
 
@@ -2625,7 +2629,7 @@ export const useDataStore = create<DataState>()(
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = Math.round(standardSubtotal * 0.15);
+                    const standardSC = Math.round(standardSubtotal * 0.05);
                     const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
@@ -2637,10 +2641,12 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
+                    const effectiveSC = Math.round(effectiveSubtotal * 0.05);
                     const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                     const discount = Math.max(0, standardTotal - effectiveTotal);
+
+                    const updatedTotalCents = overrideTotalCents !== undefined ? overrideTotalCents : effectiveTotal;
 
                     return {
                         invoices: state.invoices.map(inv => inv.id === invoiceId ? {
@@ -2651,10 +2657,23 @@ export const useDataStore = create<DataState>()(
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
                             standardTotalCents: standardTotal,
-                            discountCents: discount,
-                            totalCents: effectiveTotal,
-                            manualSetPriceCents: undefined
-                        } : inv)
+                            discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
+                            totalCents: updatedTotalCents,
+                            manualSetPriceCents: overrideTotalCents
+                        } : inv),
+                        cateringEvents: state.cateringEvents.map(event => {
+                            const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
+                            if (eventInvId === invoiceId) {
+                                return {
+                                    ...event,
+                                    financials: {
+                                        ...event.financials,
+                                        revenueCents: updatedTotalCents
+                                    }
+                                };
+                            }
+                            return event;
+                        })
                     };
                 });
                 await get().syncWithCloud();

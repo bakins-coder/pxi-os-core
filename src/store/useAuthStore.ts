@@ -175,6 +175,13 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 set({ user });
+
+                // [FIX] Ensure Metadata Sync for RLS
+                if (targetOrgId && data.user.user_metadata?.company_id !== targetOrgId) {
+                    console.log('[Auth] Syncing company_id to Auth Metadata...');
+                    await supabase.auth.updateUser({ data: { company_id: targetOrgId } });
+                }
+
                 console.log('[Auth] Login complete.');
             },
             logout: async () => {
@@ -325,6 +332,12 @@ export const useAuthStore = create<AuthState>()(
                         staffId: user.email?.toLowerCase().startsWith('xq-') ? user.email.split('@')[0].toUpperCase() : undefined
                     }
                 });
+
+                // [FIX] Ensure Metadata Sync for RLS
+                if (targetOrgId && metadata.company_id !== targetOrgId) {
+                    console.log('[Auth] Syncing company_id to Auth Metadata (Refresh)...');
+                    await supabase.auth.updateUser({ data: { company_id: targetOrgId } });
+                }
 
                 // FIX: Force correct name for MD if recovery script reset it
                 if (user.email?.toLowerCase() === 'toxsyyb@yahoo.co.uk' || user.email?.toLowerCase() === 'toksyyb@yahoo.co.uk') {
