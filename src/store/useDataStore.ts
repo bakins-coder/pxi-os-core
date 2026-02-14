@@ -12,6 +12,8 @@ import {
 import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 import { useSettingsStore } from './useSettingsStore';
+
+console.error('[DEBUG] useDataStore.ts LOADING...');
 import { calculateItemCosting as utilsCalculateCosting } from '../utils/costing';
 
 interface DataState {
@@ -2267,13 +2269,10 @@ export const useDataStore = create<DataState>()(
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
                     status: InvoiceStatus.PROFORMA,
                     type: 'Sales',
-                    // Use totalRev for tests (no taxes). Check for VITEST flag or the specific verification customer.
-                    totalCents: ((globalThis as any).VITEST || (globalThis as any).vitest || (globalThis as any).describe || import.meta.env.MODE === 'test' || d.customerName === 'Verification Host')
-                        ? totalRev
-                        : Math.round(totalRev + (totalRev * 0.05) + ((totalRev + (totalRev * 0.05)) * 0.075)),
+                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
                     subtotalCents: totalRev,
-                    serviceChargeCents: Math.round(totalRev * 0.05),
-                    vatCents: Math.round((totalRev + (totalRev * 0.05)) * 0.075),
+                    serviceChargeCents: Math.round(totalRev * 0.15),
+                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
                     paidAmountCents: 0,
                     lines: d.items.map((it: any, idx: number) => ({
                         id: `line-${idx}`,
@@ -2421,10 +2420,10 @@ export const useDataStore = create<DataState>()(
                             if (inv.id === newEvent.financials.invoiceId) {
                                 return {
                                     ...inv,
-                                    totalCents: Math.round(totalRev + (totalRev * 0.05) + ((totalRev + (totalRev * 0.05)) * 0.075)),
+                                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
                                     subtotalCents: totalRev,
-                                    serviceChargeCents: Math.round(totalRev * 0.05),
-                                    vatCents: Math.round((totalRev + (totalRev * 0.05)) * 0.075),
+                                    serviceChargeCents: Math.round(totalRev * 0.15),
+                                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
                                     lines: updates.items.map((it: any, idx: number) => ({
                                         id: crypto.randomUUID(),
                                         description: it.name,
@@ -2560,7 +2559,7 @@ export const useDataStore = create<DataState>()(
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = Math.round(standardSubtotal * 0.05);
+                    const standardSC = Math.round(standardSubtotal * 0.15);
                     const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
@@ -2573,7 +2572,7 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = Math.round(effectiveSubtotal * 0.05);
+                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
                     const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
 
@@ -2629,7 +2628,7 @@ export const useDataStore = create<DataState>()(
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = Math.round(standardSubtotal * 0.05);
+                    const standardSC = Math.round(standardSubtotal * 0.15);
                     const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
@@ -2641,7 +2640,7 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = Math.round(effectiveSubtotal * 0.05);
+                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
                     const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                     const discount = Math.max(0, standardTotal - effectiveTotal);

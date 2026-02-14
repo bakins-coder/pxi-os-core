@@ -98,7 +98,10 @@ describe('Invoice Generation Verification', () => {
         expect(generatedInvoice.id).toBe(createdData.event.financials.invoiceId);
         expect(generatedInvoice.type).toBe('Sales');
         expect(generatedInvoice.status).toBe('Pro-forma'); // UPDATED EXPECTATION
-        expect(generatedInvoice.totalCents).toBe(150 * 250000); // 37,500,000 cents
+        const subtotal = 150 * 250000;
+        const sc = Math.round(subtotal * 0.15);
+        const vat = Math.round((subtotal + sc) * 0.075);
+        expect(generatedInvoice.totalCents).toBe(subtotal + sc + vat);
 
         console.log(`\n\n[VERIFICATION SUCCESS] Created Event ID: ${createdData.event.id}`);
         console.log(`[VERIFICATION SUCCESS] Linked Invoice ID: ${generatedInvoice.id}`);
