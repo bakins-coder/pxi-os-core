@@ -58,6 +58,7 @@ interface DataState {
     addInventoryItem: (item: Partial<InventoryItem>) => void;
     updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
     addRequisition: (req: Partial<Requisition>) => void;
+    addRequisitionsBulk: (reqs: Partial<Requisition>[]) => void;
     updateRequisition: (id: string, updates: Partial<Requisition>) => void;
     approveRequisition: (id: string, sourceAccountId?: string) => void;
     rejectRequisition: (id: string) => void;
@@ -153,6 +154,8 @@ interface DataState {
 
     reset: () => void;
     updateCashAtHand: (cents: number) => void;
+
+    isSyncPending: boolean;
 }
 
 export const useDataStore = create<DataState>()(
@@ -200,6 +203,7 @@ export const useDataStore = create<DataState>()(
             realtimeStatus: 'Disconnected',
             realtimeChannel: null,
             departmentMatrix: [], // Fetched dynamically from DB
+            isSyncPending: false,
 
             reset: () => {
                 set({
@@ -209,7 +213,7 @@ export const useDataStore = create<DataState>()(
                     bankTransactions: [], bankStatementLines: [], bankAccounts: [], leaveRequests: [], calendarEvents: [],
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
                     interactionLogs: [], messages: [], cashAtHandCents: 0,
-                    syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected'
+                    syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected', isSyncPending: false
                 });
             },
 
@@ -446,6 +450,22 @@ export const useDataStore = create<DataState>()(
                 const user = useAuthStore.getState().user;
                 set((state) => ({
                     requisitions: [{ ...req, id: req.id || crypto.randomUUID(), companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
+                }));
+                get().syncWithCloud();
+            },
+            addRequisitionsBulk: (reqs) => {
+                const user = useAuthStore.getState().user;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const newReqs = reqs.map(r => ({
+                    ...r,
+                    id: r.id || crypto.randomUUID(),
+                    companyId: companyId,
+                    status: 'Pending',
+                    requestorId: 'sys'
+                } as Requisition));
+
+                set((state) => ({
+                    requisitions: [...newReqs, ...state.requisitions]
                 }));
                 get().syncWithCloud();
             },
@@ -2477,6 +2497,8 @@ export const useDataStore = create<DataState>()(
                     cateringEvents: state.cateringEvents.map(e => e.id === eventId ? { ...e, currentPhase: 'Execution' } : e)
                 }));
 
+                await get().syncWithCloud();
+
                 return invoice;
             },
 
@@ -2702,9 +2724,12 @@ export const useDataStore = create<DataState>()(
                 }
 
                 const state = get();
-                if (state.isSyncing) return;
+                if (state.isSyncing) {
+                    set({ isSyncPending: true });
+                    return;
+                }
 
-                set({ isSyncing: true, syncStatus: 'Syncing', lastSyncError: null });
+                set({ isSyncing: true, syncStatus: 'Syncing', lastSyncError: null, isSyncPending: false });
 
                 const safeSync = async (table: string, data: any[]) => {
                     try {
@@ -2723,25 +2748,32 @@ export const useDataStore = create<DataState>()(
                         console.warn("Contacts sync failed, proceeding to others", e);
                     }
 
+                    const freshState = get(); // Get latest state just before sync call
+
                     await Promise.all([
                         // syncTableToCloud('inventory', state.inventory), // DISABLED
                         // safeSync('contacts', state.contacts), // Moved up
-                        safeSync('invoices', state.invoices),
-                        safeSync('catering_events', state.cateringEvents),
-                        safeSync('projects', state.projects),
-                        safeSync('bookkeeping', state.bookkeeping),
-                        safeSync('tasks', state.tasks),
-                        safeSync('employees', state.employees),
-                        safeSync('requisitions', state.requisitions),
-                        safeSync('chart_of_accounts', state.chartOfAccounts),
-                        safeSync('bank_transactions', state.bankTransactions)
+                        safeSync('invoices', freshState.invoices),
+                        safeSync('catering_events', freshState.cateringEvents),
+                        safeSync('projects', freshState.projects),
+                        safeSync('bookkeeping', freshState.bookkeeping),
+                        safeSync('tasks', freshState.tasks),
+                        safeSync('employees', freshState.employees),
+                        safeSync('requisitions', freshState.requisitions),
+                        safeSync('chart_of_accounts', freshState.chartOfAccounts),
+                        safeSync('bank_transactions', freshState.bankTransactions)
                     ]);
                     set({ isSyncing: false, syncStatus: 'Synced' });
+
+                    // If a sync was requested during this sync, run it again
+                    if (get().isSyncPending) {
+                        get().syncWithCloud();
+                    }
                 } catch (e) {
                     const errorMsg = (e as Error).message;
                     set({ isSyncing: false, syncStatus: 'Error', lastSyncError: errorMsg });
                     console.error('Cloud Sync Failed:', e);
-                    throw e;
+                    // Do NOT throw here, so we don't break the caller's flow, but it's logged
                 }
             },
 

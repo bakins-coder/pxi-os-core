@@ -22,7 +22,7 @@ export const RequisitionTracker: React.FC<RequisitionTrackerProps> = ({ eventId 
     // Further filter by active tab status
     const filteredReqs = useMemo(() => {
         if (activeTab === 'All') return eventRequisitions;
-        if (activeTab === 'Approved') return eventRequisitions.filter(r => r.status === 'Approved' || r.status === 'Paid');
+        if (activeTab === 'Approved') return eventRequisitions.filter(r => r.status === 'Approved' || r.status === 'Paid' || r.status === 'Issued');
         return eventRequisitions.filter(r => r.status === activeTab);
     }, [eventRequisitions, activeTab]);
 

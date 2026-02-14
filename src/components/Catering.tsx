@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { CateringEvent, InventoryItem, ItemCosting, Invoice, InvoiceLine, Requisition, Contact, BanquetDetails, InvoiceStatus, DealItem } from '../types';
+import { CateringEvent, InventoryItem, ItemCosting, Invoice, InvoiceLine, Requisition, Contact, BanquetDetails, InvoiceStatus, DealItem, Role } from '../types';
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
    Clock, Users, Palette, AlertCircle, Activity, Box,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag,
-   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList
+   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward
 } from 'lucide-react';
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
@@ -71,11 +71,12 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
    const totalEstimate = requisitions.reduce((sum, r) => sum + (r.totalAmountCents || 0), 0);
 
    const addRequisition = useDataStore(state => state.addRequisition);
+   const addRequisitionsBulk = useDataStore(state => state.addRequisitionsBulk);
    const createProcurementInvoice = useDataStore(state => state.createProcurementInvoice);
 
    const handleFinalizePlan = async () => {
       // 1. Submit Requisitions as Pending
-      requisitions.forEach(r => addRequisition({ ...r, referenceId: event.id, status: 'Pending' }));
+      addRequisitionsBulk(requisitions.map(r => ({ ...r, referenceId: event.id, status: 'Pending' })));
 
       // 2. Notify UI (No Invoice yet)
       alert("Requisitions submitted for Finance Approval.");
@@ -1326,8 +1327,17 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
    const estimatedNet = event.financials.revenueCents - estimatedCost;
 
    const deductStockFromCooking = useDataStore(state => state.deductStockFromCooking);
+   const currentUser = useAuthStore(state => state.user);
+   const isAdminOrMD = currentUser && (currentUser.role === Role.ADMIN || currentUser.role === Role.CEO || currentUser.role === Role.SUPER_ADMIN);
 
    const completeEvent = useDataStore(state => state.completeCateringEvent);
+   const updateCateringEvent = useDataStore(state => state.updateCateringEvent);
+
+   const handleBypass = () => {
+      if (confirm("Manual Bypass: Move this event to Execution phase?\n\nUse this only if procurement is complete but state hasn't updated automatically.")) {
+         updateCateringEvent(event.id, { currentPhase: 'Execution' });
+      }
+   };
 
    const handleCook = () => {
       if (confirm("Confirm Kitchen Production Phase?\n\nThis will assume cooking is in progress. You can then launch the Portion Monitor.")) {
@@ -1354,7 +1364,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
    const hasRejections = eventRequisitions.some(r => r.status === 'Rejected');
    const procurementStatus = eventRequisitions.length === 0 ? 'None'
       : hasRejections ? 'Rejected'
-         : eventRequisitions.every(r => r.status === 'Approved' || r.status === 'Paid') ? 'Approved'
+         : eventRequisitions.every(r => r.status === 'Approved' || r.status === 'Paid' || r.status === 'Issued') ? 'Approved'
             : 'Pending';
 
    const handleGeneratePO = async () => {
@@ -1591,6 +1601,11 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                         </div>
                      )}
                   </>
+               )}
+               {event.currentPhase === 'Procurement' && isAdminOrMD && (
+                  <button onClick={handleBypass} className="bg-slate-100 text-slate-400 px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest border border-slate-200 shadow-sm flex items-center gap-2 active:scale-95 transition-all opacity-60 hover:opacity-100">
+                     <SkipForward size={18} /> Bypass to Execution
+                  </button>
                )}
                <button onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">Close Node</button>
             </div>
