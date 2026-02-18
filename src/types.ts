@@ -210,7 +210,7 @@ export interface CateringEvent {
   endDate?: string;
   location?: string;
   guestCount: number;
-  status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed' | 'Archived';
+  status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed' | 'Archived' | 'Cancelled';
   currentPhase: CateringPhase;
   readinessScore: number;
   items: DealItem[];

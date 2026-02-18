@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -6,8 +6,8 @@ import { CateringEvent, InventoryItem, ItemCosting, Invoice, InvoiceLine, Requis
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
-   Clock, Users, Palette, AlertCircle, Activity, Box,
-   ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag,
+   Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown,
+   ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag, Search,
    ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward
 } from 'lucide-react';
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
@@ -16,6 +16,7 @@ import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport } from '../utils/exportUtils';
 import { ManualInvoiceModal } from './Finance';
 import { RequisitionTracker } from './RequisitionTracker';
+import { EventDetailCard } from './EventDetailCard';
 import { PREDEFINED_CUISINE_PRODUCTS, CuisineProduct } from '../data/cuisineProducts';
 
 const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
@@ -378,7 +379,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 
 
 
-const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number }) => {
+const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisine }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number, isCuisine?: boolean }) => {
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
    const contacts = useDataStore(state => state.contacts);
@@ -582,7 +583,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
 
    const handleSaveEdits = async () => {
       try {
-         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride);
+         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, isCuisine);
          // Update storage and notify parent if needed, but for now we just persist to cloud
       } catch (err) {
          console.error("Failed to save edits", err);
@@ -900,8 +901,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                               }
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
-                           const standardSC = Math.round(standardSubtotal * 0.05);
-                           const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
+                           const standardSC = isCuisine ? 0 : Math.round(standardSubtotal * 0.15);
+                           const standardVAT = isCuisine ? 0 : Math.round((standardSubtotal + standardSC) * 0.075);
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
@@ -917,8 +918,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveSC = Math.round(effectiveSubtotal * 0.05);
-                           const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                           const effectiveSC = isCuisine ? 0 : Math.round(effectiveSubtotal * 0.15);
+                           const effectiveVAT = isCuisine ? 0 : Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                            const calculatedTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                            const finalTotal = manualTotalOverride ?? calculatedTotal;
 
@@ -933,7 +934,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100 }: { invo
                                     <span>{formatCurrency(effectiveSubtotal)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge (5%)</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({isCuisine ? '0%' : '15%'})</span>
                                     <span>{formatCurrency(effectiveSC)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
@@ -1079,10 +1080,10 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
       setCart([...cart, { itemId: item.id, name: item.name, quantity: 1 }]);
    };
 
-   const updateQty = (idx: number, qty: number) => {
-      const newCart = [...cart];
-      newCart[idx].quantity = qty;
-      setCart(newCart);
+   const updateQty = (index: number, newQty: number) => {
+      const newItems = [...cart];
+      newItems[index].quantity = Math.max(1, newQty);
+      setCart(newItems);
    };
 
    const handleDispatch = () => {
@@ -1355,6 +1356,13 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
       }
    };
 
+   const handleCancelOrder = () => {
+      if (confirm("Are you sure you want to CANCEL this order?\n\nThis will mark the event as Cancelled and cannot be undone.")) {
+         updateCateringEvent(event.id, { status: 'Cancelled' });
+         if (onClose) onClose();
+      }
+   };
+
    const requisitions = useDataStore(state => state.requisitions);
    const createProcurementInvoice = useDataStore(state => state.createProcurementInvoice);
 
@@ -1400,7 +1408,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                <X size={18} />
             </button>
          )}
-         {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} onSave={() => setViewingInvoice(null)} onClose={() => setViewingInvoice(null)} />}
+         {viewingInvoice && <WaveInvoiceModal invoice={viewingInvoice} isCuisine={(event as any).orderType === 'Cuisine'} onSave={() => setViewingInvoice(null)} onClose={() => setViewingInvoice(null)} />}
 
          {/* LOGISTICS MODALS */}
          {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
@@ -1607,6 +1615,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
                      <SkipForward size={18} /> Bypass to Execution
                   </button>
                )}
+               <button onClick={handleCancelOrder} className="px-8 py-4 text-rose-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">Cancel Order</button>
                <button onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">Close Node</button>
             </div>
          </div>
@@ -1684,16 +1693,33 @@ const CostingMatrix = () => {
 };
 
 const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
-   const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string }[]>([]);
-   const [customerName, setCustomerName] = useState('');
+   const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string, discountCents?: number }[]>([]);
+   const [searchTerm, setSearchTerm] = useState('');
+   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+   const [customerName, setCustomerName] = useState(''); // Fallback or new customer
    const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
    const [searchQuery, setSearchQuery] = useState('');
+   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+   const dropdownRef = useRef<HTMLDivElement>(null);
 
    const [customProductName, setCustomProductName] = useState('');
    const [customProductPrice, setCustomProductPrice] = useState(0);
+   const [customProductQuantity, setCustomProductQuantity] = useState(10);
    const [customProductCategory, setCustomProductCategory] = useState('Others');
 
-   const createCateringOrder = useDataStore(state => state.createCateringOrder);
+
+   const { createCateringOrder, contacts } = useDataStore();
+
+   useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+         if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            setIsDropdownOpen(false);
+         }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+   }, []);
 
    useEffect(() => {
       const savedDraft = localStorage.getItem('cuisine_draft');
@@ -1701,8 +1727,10 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
          try {
             const draft = JSON.parse(savedDraft);
             if (window.confirm("Found an unfinished Cuisine Order draft. Restore it?")) {
+               setSearchTerm(draft.customerName || '');
                setCustomerName(draft.customerName || '');
                setEventDate(draft.eventDate || new Date().toISOString().split('T')[0]);
+               setInvoiceDate(draft.invoiceDate || new Date().toISOString().split('T')[0]);
                setItems(draft.items || []);
             } else {
                localStorage.removeItem('cuisine_draft');
@@ -1713,53 +1741,99 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
       }
    }, []);
 
-   const filteredProducts = PREDEFINED_CUISINE_PRODUCTS.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
-   );
+   const filteredProducts = useMemo(() => {
+      if (!searchQuery) return PREDEFINED_CUISINE_PRODUCTS;
+      return PREDEFINED_CUISINE_PRODUCTS.filter(p =>
+         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         p.category.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+   }, [searchQuery]);
+
+   const filteredContacts = useMemo(() => {
+      if (!searchTerm) return [];
+      return contacts.filter(c =>
+         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      ).slice(0, 5);
+   }, [contacts, searchTerm]);
+
 
    const addItem = (p: CuisineProduct) => {
       const existing = items.find(i => i.name === p.name);
       const minQty = p.minPortions || 10;
       if (existing) {
-         setItems(items.map(i => i.name === p.name ? { ...i, quantity: i.quantity + minQty } : i));
+         setItems(items.map(i => i.name === p.name ? { ...i, quantity: i.quantity + 1 } : i));
       } else {
          setItems([...items, {
             id: `cuisine-${Date.now()}`,
             name: p.name,
             quantity: minQty,
-            priceCents: p.price * 100,
+            priceCents: Math.round(p.price * 100),
             category: p.category
          }]);
       }
    };
 
+
    const addCustomItem = () => {
-      if (!customProductName || customProductPrice <= 0) return;
+      if (!customProductName || customProductPrice <= 0 || customProductQuantity <= 0) return;
       setItems([...items, {
          id: `custom-${Date.now()}`,
          name: customProductName,
-         quantity: 10,
-         priceCents: customProductPrice * 100,
+         quantity: customProductQuantity,
+         priceCents: Math.round(customProductPrice * 100),
          category: customProductCategory
       }]);
       setCustomProductName('');
       setCustomProductPrice(0);
+      setCustomProductQuantity(10);
    };
 
-   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
 
-   const updateQty = (idx: number, qty: number) => {
-      const item = items[idx];
-      const originalProduct = PREDEFINED_CUISINE_PRODUCTS.find(p => p.name === item.name);
-      const minQty = originalProduct?.minPortions || 1; // Default to 1 for custom items if not found
 
+
+   const updateName = (index: number, newName: string) => {
       const newItems = [...items];
-      newItems[idx].quantity = Math.max(minQty, qty);
+      newItems[index].name = newName;
       setItems(newItems);
    };
 
-   const totalCents = items.reduce((acc, it) => acc + (it.priceCents * it.quantity), 0);
+   const updateQty = (index: number, newQty: number) => {
+      const newItems = [...items];
+      newItems[index].quantity = Math.max(1, newQty);
+      setItems(newItems);
+   };
+
+   const updatePrice = (index: number, newPriceCents: number) => {
+      const newItems = [...items];
+      newItems[index].priceCents = Math.max(0, newPriceCents);
+      setItems(newItems);
+   };
+
+   const updateDiscount = (index: number, newDiscountCents: number) => {
+      const newItems = [...items];
+      newItems[index].discountCents = Math.max(0, newDiscountCents);
+      setItems(newItems);
+   };
+
+   const removeItem = (index: number) => {
+      const newItems = [...items];
+      newItems.splice(index, 1);
+      setItems(newItems);
+   };
+
+   const addNewLineItem = () => {
+      setItems([...items, {
+         id: `manual-${Date.now()}`,
+         name: '',
+         quantity: 1,
+         priceCents: 0,
+         category: 'Custom',
+         discountCents: 0
+      }]);
+   };
+
+   const totalCents = items.reduce((sum, item) => sum + (item.priceCents * item.quantity) - (item.discountCents || 0), 0);
 
    const handleCreate = async () => {
       if (!customerName || items.length === 0) {
@@ -1768,8 +1842,10 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
       }
 
       const payload = {
-         customerName,
+         customerName: selectedContact ? selectedContact.name : customerName,
+         contactId: selectedContact?.id,
          eventDate,
+         invoiceDate,
          guestCount: items.reduce((a, b) => a + b.quantity, 0),
          items: items.map(i => ({
             inventoryItemId: i.id,
@@ -1794,8 +1870,10 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
          console.error(err);
 
          const draft = {
-            customerName,
+            customerName: selectedContact ? selectedContact.name : customerName,
+            contactId: selectedContact?.id,
             eventDate,
+            invoiceDate,
             items,
             timestamp: Date.now()
          };
@@ -1805,158 +1883,306 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
       }
    };
 
+   const handleCancel = () => {
+      if (confirm("Are you sure you want to cancel? Any unsaved changes will be lost.")) {
+         localStorage.removeItem('cuisine_draft');
+         onClose();
+      }
+   };
+
    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
-         <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[90vh] border border-slate-200">
-            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+         <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col h-[90vh] max-h-[850px] border border-slate-200">
+            <div className="p-4 md:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><UtensilsCrossed size={24} /></div>
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"><UtensilsCrossed size={20} /></div>
                   <div>
-                     <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Cuisine Order Portal</h2>
-                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1">Select products for immediate fulfillment (Min 10 portions)</p>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Cuisine Order Portal</h2>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Select products for immediate fulfillment</p>
                   </div>
                </div>
                <button onClick={onClose} className="p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={24} /></button>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
-               {/* Left Pane: Product Selector */}
-               <div className="w-1/2 border-r border-slate-100 flex flex-col bg-slate-50/30">
-                  <div className="p-6 space-y-4">
-                     <div className="relative">
-                        <input
-                           type="text"
-                           placeholder="Search products or categories..."
-                           className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-900 shadow-sm"
-                           value={searchQuery}
-                           onChange={e => setSearchQuery(e.target.value)}
-                        />
-                        <Grid3X3 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                     </div>
+            <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden overflow-y-auto">
+               {/* LEFT PANE (66%): DATA ENTRY (Customer, Custom Item, Line Items, Search) */}
+               <div className="w-full lg:w-2/3 flex flex-col bg-white border-b lg:border-b-0 lg:border-r border-slate-100 lg:overflow-hidden relative z-10">
+                  <div className="flex-1 flex flex-col min-h-0 lg:overflow-y-auto scrollbar-thin">
+                     <div className="p-6 space-y-6">
+                        {/* 1. Customer Selection */}
+                        <div className="space-y-2 relative z-50">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer / Contact</label>
+                           <div className="relative group/search">
+                              <input
+                                 type="text"
+                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                 value={searchTerm}
+                                 onChange={e => {
+                                    setSearchTerm(e.target.value);
+                                    setCustomerName(e.target.value);
+                                    if (selectedContact) setSelectedContact(null);
+                                 }}
+                                 placeholder="Search or Enter Name"
+                              />
+                              <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" />
 
-                     <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 space-y-3">
-                        <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Add Custom Product</p>
-                        <div className="grid grid-cols-2 gap-3">
-                           <input
-                              type="text"
-                              placeholder="Product Name"
-                              className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold outline-none"
-                              value={customProductName}
-                              onChange={e => setCustomProductName(e.target.value)}
-                           />
-                           <input
-                              type="number"
-                              placeholder="Price (₦)"
-                              className="w-full p-3 bg-white border border-emerald-200 rounded-xl text-xs font-bold outline-none"
-                              value={customProductPrice || ''}
-                              onChange={e => setCustomProductPrice(parseInt(e.target.value) || 0)}
-                           />
+                              {searchTerm && !selectedContact && filteredContacts.length > 0 && (
+                                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 max-h-48 overflow-y-auto overflow-x-hidden p-2 space-y-1 animate-in slide-in-from-top-2">
+                                    {filteredContacts.map(c => (
+                                       <button
+                                          key={c.id}
+                                          onClick={() => {
+                                             setSelectedContact(c);
+                                             setSearchTerm(c.name);
+                                             setCustomerName(c.name);
+                                          }}
+                                          className="w-full text-left p-3 hover:bg-emerald-50 rounded-xl transition-all group/item"
+                                       >
+                                          <p className="font-bold text-slate-800 text-sm group-hover/item:text-emerald-700">{c.name}</p>
+                                          <p className="text-[10px] text-slate-400 font-bold">{c.email || 'No email'}</p>
+                                       </button>
+                                    ))}
+                                 </div>
+                              )}
+                           </div>
                         </div>
-                        <button
-                           onClick={addCustomItem}
-                           className="w-full py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2"
-                        >
-                           <Plus size={14} /> Add to Order
-                        </button>
-                     </div>
-                  </div>
 
-                  <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
-                     {Array.from(new Set(filteredProducts.map(p => p.category))).map(cat => (
-                        <div key={cat} className="space-y-3">
-                           <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] sticky top-0 bg-slate-50/50 backdrop-blur-md py-2">{cat}</h4>
-                           <div className="grid grid-cols-1 gap-2">
-                              {filteredProducts.filter(p => p.category === cat).map(product => (
-                                 <div
-                                    key={product.name}
-                                    onClick={() => addItem(product)}
-                                    className="p-4 bg-white border border-slate-100 rounded-2xl hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all group flex justify-between items-center"
+                        {/* 4. Quick Product Search (Moved to Top) */}
+                        <div className="relative group/search z-40 mb-6" ref={dropdownRef}>
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Quick Product Search</label>
+                           <div className="relative">
+                              <input
+                                 type="text"
+                                 placeholder="Search products to add..."
+                                 className="w-full pl-12 pr-12 py-3 bg-slate-50/50 border border-slate-100 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/50 text-slate-900 transition-all hover:bg-white"
+                                 value={searchQuery}
+                                 onChange={e => { setSearchQuery(e.target.value); setIsDropdownOpen(true); }}
+                                 onFocus={() => setIsDropdownOpen(true)}
+                              />
+                              <Grid3X3 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                              <button
+                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
+                              >
+                                 <ChevronDown size={18} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                              </button>
+                           </div>
+
+                           {isDropdownOpen && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[100] max-h-[300px] overflow-y-auto overflow-x-hidden p-2 space-y-1 animate-in slide-in-from-top-2">
+                                 {filteredProducts.map(product => (
+                                    <button
+                                       key={product.name}
+                                       onClick={() => {
+                                          addItem(product);
+                                          setSearchQuery('');
+                                          setIsDropdownOpen(false);
+                                       }}
+                                       className="w-full text-left p-3 hover:bg-emerald-50 rounded-xl transition-all group/item flex justify-between items-center"
+                                    >
+                                       <div className="flex-1 mr-4">
+                                          <p className="font-bold text-slate-800 text-sm group-hover/item:text-emerald-700">{product.name}</p>
+                                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                             ₦{product.price.toLocaleString()}
+                                          </p>
+                                       </div>
+                                       <span className="text-[8px] font-black uppercase text-slate-300 group-hover/item:text-emerald-500 bg-slate-50 px-2 py-1 rounded-md transition-all group-hover/item:bg-emerald-100">{product.category}</span>
+                                    </button>
+                                 ))}
+                              </div>
+                           )}
+                        </div>
+
+                        {/* 2. Add Custom Product (Manual Entry) */}
+                        <div className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 relative overflow-visible">
+                           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-full -mr-12 -mt-12 opacity-50 pointer-events-none"></div>
+                           <p className="text-[10px] font-black uppercase text-emerald-600 tracking-widest relative z-10">Add Custom Product</p>
+                           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 relative z-10">
+                              <input
+                                 type="text"
+                                 placeholder="Product Name"
+                                 className="md:col-span-2 w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
+                                 value={customProductName}
+                                 onChange={e => setCustomProductName(e.target.value)}
+                              />
+                              <div className="relative md:col-span-1">
+                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
+                                 <input
+                                    type="number"
+                                    placeholder="Price"
+                                    className="w-full p-3 pl-7 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
+                                    value={customProductPrice || ''}
+                                    onChange={e => setCustomProductPrice(parseInt(e.target.value) || 0)}
+                                 />
+                              </div>
+                              <div className="relative md:col-span-1 flex gap-2">
+                                 <div className="relative flex-1">
+                                    <input
+                                       type="number"
+                                       placeholder="Qty"
+                                       className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
+                                       value={customProductQuantity || ''}
+                                       onChange={e => setCustomProductQuantity(parseInt(e.target.value) || 0)}
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-black uppercase">Qty</span>
+                                 </div>
+                                 <button
+                                    onClick={addCustomItem}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 flex items-center justify-center shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
                                  >
-                                    <div>
-                                       <p className="font-bold text-slate-800 text-sm group-hover:text-emerald-700">{product.name}</p>
-                                       <p className="text-[10px] text-slate-400 font-bold">₦{product.price.toLocaleString()} {product.unit ? `per ${product.unit}` : '/ portion'}</p>
+                                    <Plus size={16} />
+                                 </button>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* 3. Line Items Table */}
+                        <div className="bg-white rounded-xl">
+                           <div className="flex justify-between items-center mb-4">
+                              <h3 className="text-sm font-bold uppercase text-slate-600 tracking-widest px-1">Line Items</h3>
+                              <button
+                                 onClick={addNewLineItem}
+                                 className="bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-[10px] font-bold px-4 py-2 transition-colors flex items-center gap-2 uppercase tracking-wider"
+                              >
+                                 <Plus size={12} /> Add Row
+                              </button>
+                           </div>
+
+                           <div className="space-y-4 lg:space-y-2">
+                              {items.length === 0 && (
+                                 <div className="py-12 flex flex-col items-center justify-center text-slate-300 opacity-50 space-y-4 border-2 border-dashed border-slate-100 rounded-2xl">
+                                    <ShoppingBag size={48} strokeWidth={1} />
+                                    <p className="text-sm font-bold uppercase tracking-widest">No items added</p>
+                                 </div>
+                              )}
+                              {items.map((item, idx) => (
+                                 <div key={idx} className="flex flex-col lg:flex-row lg:items-center gap-3 py-4 lg:py-2 border-b border-slate-100 lg:border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors rounded-lg px-2 group relative">
+                                    <div className="flex items-center justify-between lg:justify-start gap-3">
+                                       <span className="text-slate-400 font-bold text-sm w-6 shrink-0">{idx + 1}.</span>
+                                       <div className="flex-1 lg:flex-initial">
+                                          <input
+                                             type="text"
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all"
+                                             placeholder="Description or Select Item"
+                                             value={item.name}
+                                             onChange={e => updateName(idx, e.target.value)}
+                                          />
+                                       </div>
+                                       {/* Mobile Trash Button */}
+                                       <button
+                                          onClick={() => removeItem(idx)}
+                                          className="lg:hidden p-2 text-rose-400 hover:text-rose-600 bg-rose-50 rounded-lg"
+                                       >
+                                          <Trash2 size={16} />
+                                       </button>
                                     </div>
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"><Plus size={16} /></div>
+
+                                    <div className="flex items-center gap-2 lg:contents">
+                                       <div className="flex-1 lg:w-20 lg:shrink-0 text-center">
+                                          <div className="relative">
+                                             <input
+                                                type="number"
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-2 text-center text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
+                                                value={item.quantity}
+                                                onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
+                                             />
+                                             <span className="lg:hidden absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-black uppercase">Qty</span>
+                                          </div>
+                                       </div>
+
+                                       <div className="flex-1 lg:w-28 lg:shrink-0 relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
+                                          <input
+                                             type="number"
+                                             className="w-full bg-slate-50 border border-slate-100 rounded-lg pl-7 pr-3 py-2 text-right text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
+                                             value={item.priceCents / 100}
+                                             onChange={e => updatePrice(idx, Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                          />
+                                       </div>
+
+                                       <div className="flex-1 lg:w-28 lg:shrink-0 relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-[10px] font-bold">₦</span>
+                                          <input
+                                             type="number"
+                                             className="w-full bg-orange-50 border border-orange-100 rounded-lg pl-6 pr-3 py-2 text-right text-sm font-bold text-orange-600 placeholder-orange-300 focus:border-orange-300 outline-none"
+                                             placeholder="Discount"
+                                             value={item.discountCents ? item.discountCents / 100 : ''}
+                                             onChange={e => updateDiscount(idx, Math.round((parseFloat(e.target.value) || 0) * 100))}
+                                          />
+                                       </div>
+                                    </div>
+
+                                    <button
+                                       onClick={() => removeItem(idx)}
+                                       className="hidden lg:block p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                    >
+                                       <X size={16} />
+                                    </button>
                                  </div>
                               ))}
                            </div>
                         </div>
-                     ))}
+
+
+                     </div>
                   </div>
                </div>
 
-               {/* Right Pane: Order Cart & Details */}
-               <div className="w-1/2 flex flex-col p-8 bg-white">
-                  <div className="space-y-6 flex-1 flex flex-col min-h-0">
-                     <div className="grid grid-cols-2 gap-6">
+               {/* RIGHT PANE (33%): SUMMARY & DATES */}
+               <div className="w-full lg:w-1/3 flex flex-col bg-slate-50/50 lg:h-full border-t lg:border-t-0 lg:border-l border-slate-100 lg:overflow-hidden">
+                  {/* DATES SECTION (CONSTANT) */}
+                  <div className="p-6 bg-white border-b border-slate-100 space-y-4 z-20">
+                     <div className="space-y-4">
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer Name</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Invoice Date</label>
                            <input
-                              type="text"
-                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20"
-                              value={customerName}
-                              onChange={e => setCustomerName(e.target.value)}
-                              placeholder="e.g. John Doe"
+                              type="date"
+                              className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
+                              value={invoiceDate}
+                              onChange={e => setInvoiceDate(e.target.value)}
                            />
                         </div>
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Delivery Date</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Fulfillment Date</label>
                            <input
                               type="date"
-                              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none"
+                              className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
                               value={eventDate}
                               onChange={e => setEventDate(e.target.value)}
                            />
                         </div>
                      </div>
+                  </div>
 
-                     <div className="flex-1 flex flex-col min-h-0">
-                        <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest mb-4 flex items-center gap-2"><ShoppingCart size={16} /> Order Manifest</h3>
-                        <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
-                           {items.length === 0 && (
-                              <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-50 space-y-4">
-                                 <ShoppingBag size={48} strokeWidth={1} />
-                                 <p className="text-sm font-bold uppercase tracking-widest">No items selected</p>
-                              </div>
-                           )}
-                           {items.map((item, idx) => (
-                              <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 animate-in slide-in-from-right-4 duration-300">
-                                 <div className="flex-1">
-                                    <p className="font-black text-slate-800 text-sm uppercase">{item.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{item.category}</p>
-                                 </div>
-                                 <div className="flex items-center gap-3">
-                                    <div className="flex flex-col items-end">
-                                       <p className="text-[8px] font-black text-slate-400 uppercase">Portions</p>
-                                       <input
-                                          type="number"
-                                          className="w-16 p-2 bg-white border border-slate-200 rounded-xl text-center text-xs font-black text-slate-900"
-                                          value={item.quantity}
-                                          onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
-                                       />
-                                    </div>
-                                    <button onClick={() => removeItem(idx)} className="p-2 text-slate-300 hover:text-rose-500 transition-all"><Trash2 size={16} /></button>
-                                 </div>
-                              </div>
-                           ))}
+                  {/* FINANCIALS & ACTIONS (SCROLLABLE ON DESKTOP, FLOW ON MOBILE) */}
+                  <div className="lg:flex-1 lg:overflow-y-auto p-6 space-y-8 lg:scrollbar-thin">
+                     {/* Financials */}
+                     <div className="bg-slate-950 rounded-[2rem] p-6 shadow-xl shadow-slate-900/10 text-center space-y-1 relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
+                        <p className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">Total Amount</p>
+                        <div className="flex items-baseline justify-center gap-1">
+                           <span className="text-xl font-bold text-slate-600">₦</span>
+                           <span className="text-3xl md:text-4xl font-black text-white tracking-tight">{(totalCents / 100).toLocaleString()}</span>
                         </div>
                      </div>
 
-                     <div className="bg-slate-950 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl">
-                        <div className="flex justify-between items-end">
-                           <div>
-                              <p className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] mb-1">Estimated Total</p>
-                              <h4 className="text-4xl font-black tracking-tighter">₦{(totalCents / 100).toLocaleString()}</h4>
-                           </div>
-                           <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mb-1">{items.length} Unique Items</p>
-                        </div>
+                     <div className="space-y-3">
                         <button
                            onClick={handleCreate}
-                           className="w-full py-5 bg-emerald-500 text-slate-950 rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl hover:bg-emerald-400 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm py-4 uppercase tracking-widest shadow-xl shadow-indigo-200 hover:shadow-indigo-300 active:scale-95 transition-all"
                         >
-                           Generate Invoice & Close <ArrowRight size={18} />
+                           Generate Invoice
+                        </button>
+                        <button
+                           onClick={handleCancel}
+                           className="w-full py-3 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                        >
+                           Cancel
                         </button>
                      </div>
+
+                     {/* Visual Spacer to give padding at bottom of scroll */}
+                     <div className="h-10"></div>
                   </div>
                </div>
             </div>
@@ -1965,7 +2191,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    );
 };
 
-import { EventDetailCard } from './EventDetailCard';
+
 
 export const Catering = () => {
    const [events, setEvents] = useState<CateringEvent[]>([]);
@@ -1984,11 +2210,13 @@ export const Catering = () => {
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
 
    const filteredEvents = useMemo(() => {
-      let base = events;
+      // Filter out Cancelled events entirely from the dashboard as per user request ("remove totally")
+      let base = events.filter(e => e.status !== 'Cancelled');
+
       if (activeTab === 'orders') {
-         base = events.filter(e => !e.orderType || e.orderType === 'Banquet');
+         base = base.filter(e => !e.orderType || e.orderType === 'Banquet');
       } else if (activeTab === 'cuisine') {
-         base = events.filter(e => e.orderType === 'Cuisine');
+         base = base.filter(e => e.orderType === 'Cuisine');
       }
 
       if (viewMode === 'active') {
@@ -2071,7 +2299,7 @@ export const Catering = () => {
                            {activeTab === 'orders' ? (
                               <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
                            ) : (
-                              <button onClick={() => setIsManualInvoiceModalOpen(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create New Cuisine Order</button>
+                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create New Cuisine Order</button>
                            )}
                         </div>
                      </div>
@@ -2185,6 +2413,7 @@ export const Catering = () => {
                onSave={handleCommitInvoice}
                onClose={() => setGeneratedInvoice(null)}
                guestCount={selectedEvent?.guestCount}
+               isCuisine={activeTab === 'cuisine'}
             />
          )}
 
