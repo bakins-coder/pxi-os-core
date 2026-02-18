@@ -23,7 +23,7 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
    return (
       <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
          <div className="flex flex-col items-center gap-6 md:gap-8 max-w-sm w-full scale-[0.85] md:scale-100" onClick={(e) => e.stopPropagation()}>
-            <div id="printable-id-card" className="w-full max-w-[340px] h-[540px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0 shrink-0">
+            <div id="printable-id-card" className="w-full max-w-[340px] min-h-[580px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0 shrink-0">
                <div className="absolute top-0 left-0 w-full h-40 bg-slate-900 overflow-hidden">
                   <div className="absolute top-[-50%] left-[-20%] w-[150%] h-[150%] bg-gradient-to-br from-indigo-500/20 to-transparent rotate-12"></div>
                </div>
@@ -38,7 +38,7 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
                      <img src={employee.avatar} className="w-full h-full object-cover" alt="profile" />
                   </div>
                </div>
-               <div className="flex-1 mt-6 text-center px-8 flex flex-col justify-between pb-10">
+               <div className="flex-1 mt-4 text-center px-8 flex flex-col justify-between pb-6">
                   <div>
                      <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">{employee.title ? `${employee.title} ` : ''}{employee.firstName}<br />{employee.lastName}</h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 mb-6">{employee.role}</p>
