@@ -126,7 +126,7 @@ interface DataState {
     completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
     finalizeProforma: (invoiceId: string) => Promise<void>;
-    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => Promise<void>;
+    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean) => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
     finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => Promise<void>;
     approveInvoice: (id: string) => void;
@@ -2280,6 +2280,11 @@ export const useDataStore = create<DataState>()(
                     }
                 };
 
+                const isCuisine = (d.orderType || 'Banquet') === 'Cuisine';
+                const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
+                const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
+                const totalCents = totalRev + serviceChargeCents + vatCents;
+
                 const invoice: Invoice = {
                     id: invoiceId,
                     number: `SALES-${Date.now()}`,
@@ -2289,10 +2294,10 @@ export const useDataStore = create<DataState>()(
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
                     status: InvoiceStatus.PROFORMA,
                     type: 'Sales',
-                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
+                    totalCents,
                     subtotalCents: totalRev,
-                    serviceChargeCents: Math.round(totalRev * 0.15),
-                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
+                    serviceChargeCents,
+                    vatCents,
                     paidAmountCents: 0,
                     lines: d.items.map((it: any, idx: number) => ({
                         id: `line-${idx}`,
@@ -2438,12 +2443,17 @@ export const useDataStore = create<DataState>()(
                         const totalRev = updates.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0);
                         updatedInvoices = state.invoices.map(inv => {
                             if (inv.id === newEvent.financials.invoiceId) {
+                                const isCuisine = newEvent.orderType === 'Cuisine';
+                                const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
+                                const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
+                                const totalCents = totalRev + serviceChargeCents + vatCents;
+
                                 return {
                                     ...inv,
-                                    totalCents: Math.round(totalRev + (totalRev * 0.15) + ((totalRev + (totalRev * 0.15)) * 0.075)),
+                                    totalCents,
                                     subtotalCents: totalRev,
-                                    serviceChargeCents: Math.round(totalRev * 0.15),
-                                    vatCents: Math.round((totalRev + (totalRev * 0.15)) * 0.075),
+                                    serviceChargeCents,
+                                    vatCents,
                                     lines: updates.items.map((it: any, idx: number) => ({
                                         id: crypto.randomUUID(),
                                         description: it.name,
@@ -2572,8 +2582,12 @@ export const useDataStore = create<DataState>()(
                 return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
             },
 
-            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => {
+            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean) => {
                 set((state) => {
+                    const currentInvoice = state.invoices.find(inv => inv.id === invoiceId);
+                    // Explicitly skip taxes if isCuisine is true, OR if existing invoice already had 0 taxes (and it's not a banquet)
+                    const skipTaxes = isCuisine || (currentInvoice && currentInvoice.serviceChargeCents === 0 && currentInvoice.vatCents === 0 && !lines.some(l => l.description.startsWith('[SECTION] ')));
+
                     // 1. Calculate Standard Totals (If no discounts applied)
                     const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
 
@@ -2581,8 +2595,8 @@ export const useDataStore = create<DataState>()(
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = Math.round(standardSubtotal * 0.15);
-                    const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
+                    const standardSC = skipTaxes ? 0 : Math.round(standardSubtotal * 0.15);
+                    const standardVAT = skipTaxes ? 0 : Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     // 2. Calculate Effective Totals (Using manual prices if set)
@@ -2594,8 +2608,8 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
-                    const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                    const effectiveSC = skipTaxes ? 0 : Math.round(effectiveSubtotal * 0.15);
+                    const effectiveVAT = skipTaxes ? 0 : Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
 
                     // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost

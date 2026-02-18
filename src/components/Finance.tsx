@@ -184,7 +184,7 @@ const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose
    );
 };
 
-export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales' }: { isOpen: boolean, onClose: () => void, type?: 'Sales' | 'Purchase' }) => {
+export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales', orderType }: { isOpen: boolean, onClose: () => void, type?: 'Sales' | 'Purchase', orderType?: string }) => {
    const { contacts, addContact, addInvoice, inventory } = useDataStore();
    const user = useAuthStore(state => state.user);
 
@@ -282,8 +282,9 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales' }: { isOpen
          const effectivePrice = l.manualPrice !== undefined ? l.manualPrice : (l.price || 0);
          return sum + ((l.quantity || 0) * effectivePrice * 100);
       }, 0);
-      const serviceChargeCents = Math.round(subtotalCents * 0.15);
-      const vatCents = Math.round((subtotalCents + serviceChargeCents) * 0.075);
+      const isCuisine = orderType === 'Cuisine';
+      const serviceChargeCents = isCuisine ? 0 : Math.round(subtotalCents * 0.15);
+      const vatCents = isCuisine ? 0 : Math.round((subtotalCents + serviceChargeCents) * 0.075);
       const totalCents = subtotalCents + serviceChargeCents + vatCents;
 
       if (!user?.companyId) {
@@ -326,11 +327,12 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales' }: { isOpen
    }, 0);
    const standardSubtotal = lines.reduce((sum, l) => sum + (l.quantity * (l.price || 0)), 0);
 
-   const scPreview = subtotalPreview * 0.15;
-   const vatPreview = (subtotalPreview + scPreview) * 0.075;
+   const isCuisine = orderType === 'Cuisine';
+   const scPreview = isCuisine ? 0 : subtotalPreview * 0.15;
+   const vatPreview = isCuisine ? 0 : (subtotalPreview + scPreview) * 0.075;
    const totalAmount = subtotalPreview + scPreview + vatPreview;
 
-   const standardTotal = (standardSubtotal * 1.15 * 1.075); // Approx
+   const standardTotal = isCuisine ? standardSubtotal : (standardSubtotal * 1.15 * 1.075); // Approx
    const discount = Math.max(0, standardTotal - totalAmount);
    const hasDiscount = discount > 0;
 

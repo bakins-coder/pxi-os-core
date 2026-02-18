@@ -198,6 +198,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
       // Strip fields that are in types.ts but not in DB schema
       const fieldsToRemove = [
         'contactPerson',
+        'category',
         'preferences',
         'documentLinks',
         'document_links',

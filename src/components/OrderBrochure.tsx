@@ -9,7 +9,9 @@ import {
 } from 'lucide-react';
 import { MenuCard } from './MenuCard';
 
-export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent }) => {
+export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType: propOrderType }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent, orderType?: string }) => {
+    const orderType = propOrderType || initialEvent?.orderType || 'Banquet';
+    const isCuisine = orderType === 'Cuisine';
     const [menuItems, setMenuItems] = useState<InventoryItem[]>([]);
     const [selected, setSelected] = useState<Record<string, number>>(() => {
         if (initialEvent) {
@@ -186,7 +188,11 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
         const customRevenue = Object.values(customItems).reduce((sum, it) => sum + (it.priceCents * it.quantity), 0);
         const revenue = costings.reduce((sum, c) => sum + (c.revenueCents || 0), 0) + customRevenue;
 
-        return { totalRevenue: revenue, margin: 60 };
+        const sc = isCuisine ? 0 : Math.round(revenue * 0.15);
+        const vat = isCuisine ? 0 : Math.round((revenue + sc) * 0.075);
+        const totalWithTaxes = revenue + sc + vat;
+
+        return { totalRevenue: totalWithTaxes, margin: 60 };
     }, [selected, calculateItemCosting, customItems]);
 
     const groupedItems = useMemo(() => {
@@ -331,6 +337,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent }: { onComp
                     eventDate,
                     guestCount,
                     items: dealItems,
+                    orderType, // Pass orderType if it's being amended
                     banquetDetails
                 });
                 setIsSubmitting(false);

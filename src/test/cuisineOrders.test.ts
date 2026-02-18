@@ -84,14 +84,17 @@ describe('Cuisine Orders', () => {
         expect(result.current.invoices).toHaveLength(1);
         const invoice = result.current.invoices[0];
         expect(invoice.contactId).toBeDefined();
-        expect(invoice.subtotalCents).toBe(10 * 900000 + 10 * 250000); // 9,000,000 + 2,500,000 = 11,500,000
+        expect(invoice.subtotalCents).toBe(11500000); // 9,000,000 + 2,500,000
+        expect(invoice.serviceChargeCents).toBe(0);
+        expect(invoice.vatCents).toBe(0);
+        expect(invoice.totalCents).toBe(11500000);
 
         // Verify Project
         expect(result.current.projects).toHaveLength(1);
         expect(result.current.projects[0].name).toContain('Cuisine Test Customer');
     });
 
-    it('should default to Banquet if orderType is not provided', async () => {
+    it('should default to Banquet if orderType is not provided and include VAT/SC', async () => {
         const { result } = renderHook(() => useDataStore());
 
         const orderData = {
@@ -117,6 +120,18 @@ describe('Cuisine Orders', () => {
             await result.current.createCateringOrder(orderData);
         });
 
-        expect(result.current.cateringEvents[0].orderType).toBe('Banquet');
+        const event = result.current.cateringEvents[0];
+        expect(event.orderType).toBe('Banquet');
+
+        const invoice = result.current.invoices[0];
+        const subtotal = 50 * 500000; // 25,000,000
+        const expectedSC = Math.round(subtotal * 0.15); // 3,750,000
+        const expectedVAT = Math.round((subtotal + expectedSC) * 0.075); // (25M + 3.75M) * 0.075 = 2,156,250
+        const expectedTotal = subtotal + expectedSC + expectedVAT; // 30,906,250
+
+        expect(invoice.subtotalCents).toBe(subtotal);
+        expect(invoice.serviceChargeCents).toBe(expectedSC);
+        expect(invoice.vatCents).toBe(expectedVAT);
+        expect(invoice.totalCents).toBe(expectedTotal);
     });
 });
