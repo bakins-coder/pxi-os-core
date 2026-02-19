@@ -6,14 +6,14 @@ import { CateringEvent, InventoryItem, ItemCosting, Invoice, InvoiceLine, Requis
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
-   Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown,
+   Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown, Download, Link,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag, Search,
    ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward
 } from 'lucide-react';
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
-import { generateHandoverReport } from '../utils/exportUtils';
+import { generateHandoverReport, generateInvoicePDF } from '../utils/exportUtils';
 import { ManualInvoiceModal } from './Finance';
 import { RequisitionTracker } from './RequisitionTracker';
 import { EventDetailCard } from './EventDetailCard';
@@ -402,10 +402,11 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    // Helper for currency formatting
    const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
-   const handlePrint = () => {
+   const handlePrint = (capturedContent?: string) => {
       const win = window.open('', '_blank');
       // Ensure the printed document shows "INVOICE" if it's being finalized
-      const content = document.querySelector('.WaveInvoiceContent')?.innerHTML || '';
+      // Prioritize capturedContent (from finalize) over DOM selector (to avoid race conditions)
+      const content = capturedContent || document.querySelector('.WaveInvoiceContent')?.innerHTML || '';
 
       win?.document.write(`
          <html>
@@ -432,6 +433,68 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          // Small delay before closure to allow print spooling on some browsers
          // win?.close(); 
       }, 500);
+   };
+
+   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+   const shareMenuRef = useRef<HTMLDivElement>(null);
+
+   useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+         if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
+            setIsShareMenuOpen(false);
+         }
+      };
+      if (isShareMenuOpen) {
+         document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+   }, [isShareMenuOpen]);
+
+   const handleShareLink = async () => {
+      const url = `${window.location.origin}/#/invoice/${invoice.id}`;
+      await navigator.clipboard.writeText(url);
+      alert("Invoice link copied to clipboard!");
+      setIsShareMenuOpen(false);
+   };
+
+   const handleDownloadPDF = async () => {
+      const { settings } = useSettingsStore.getState();
+      const { contacts } = useDataStore.getState();
+      const customer = contacts.find(c => c.id === invoice.contactId);
+
+      await generateInvoicePDF(invoice, customer, settings, { save: true });
+      setIsShareMenuOpen(false);
+   };
+
+   const handleSharePDF = async () => {
+      try {
+         const { settings } = useSettingsStore.getState();
+         const { contacts } = useDataStore.getState();
+         const customer = contacts.find(c => c.id === invoice.contactId);
+
+         const doc = await generateInvoicePDF(invoice, customer, settings, { save: false, returnDoc: true }) as any;
+         const pdfBlob = doc.output('blob');
+         const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
+
+         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+               files: [file],
+               title: `Invoice ${invoice.number}`,
+               text: `Please find attached invoice ${invoice.number}.`
+            });
+         } else {
+            // Fallback to download if sharing file is not supported
+            doc.save(`Invoice-${invoice.number}.pdf`);
+            alert("Direct PDF sharing not supported on this browser. PDF downloaded instead.");
+         }
+      } catch (err) {
+         console.error("PDF Share failed", err);
+         if ((err as Error).name !== 'AbortError') {
+            alert("Could not share PDF. It has been downloaded instead.");
+            handleDownloadPDF();
+         }
+      }
+      setIsShareMenuOpen(false);
    };
 
    const handleLineChange = (idx: number, field: keyof InvoiceLine, value: any) => {
@@ -569,8 +632,12 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          // Help the UI reflect the change before the print snapshot
          setIsProformaMode(false);
 
+         // CRITICAL: Capture the content while the modal is STILL mounted.
+         // Calling handlePrint inside a setTimeout after onSave (unmounting) is a race condition.
+         const capturedContent = document.querySelector('.WaveInvoiceContent')?.innerHTML || '';
+
          // Trigger print/PDF generation automatically
-         setTimeout(() => handlePrint(), 300);
+         setTimeout(() => handlePrint(capturedContent), 300);
 
          onSave({ ...invoice, lines: editableLines, status: InvoiceStatus.UNPAID });
       } catch (err) {
@@ -1006,34 +1073,73 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
             </div>
 
             {/* ACTION BAR (Not Printed) */}
-            <div className="bg-slate-100 p-4 md:p-6 flex flex-col md:flex-row gap-4 border-t border-slate-200 shrink-0">
-               <div className="flex gap-2 flex-1 items-center">
-                  <button
-                     onClick={() => toggleBanquetMode()}
-                     className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
-                  >
-                     {isBanquetMode ? 'Banquet Mode ON' : 'Banquet Mode OFF'}
-                  </button>
-                  {isBanquetMode && (
+            <div className="bg-slate-100 p-4 md:p-6 flex flex-col md:flex-row gap-4 border-t border-slate-200 shrink-0 z-[165]">
+               <div className="flex flex-wrap gap-2 flex-1 items-center justify-between md:justify-start">
+                  <div className="flex gap-2 items-center">
                      <button
-                        onClick={() => setShowDiscountCol(!showDiscountCol)}
-                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                        onClick={() => toggleBanquetMode()}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
                      >
-                        {showDiscountCol ? 'Discount ON' : 'Discount OFF'}
+                        {isBanquetMode ? 'Banquet Mode ON' : 'Banquet Mode OFF'}
                      </button>
-                  )}
+                     {isBanquetMode && (
+                        <button
+                           onClick={() => setShowDiscountCol(!showDiscountCol)}
+                           className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                        >
+                           {showDiscountCol ? 'Discount ON' : 'Discount OFF'}
+                        </button>
+                     )}
+                  </div>
 
-                  <div className="h-6 w-px bg-slate-200 mx-1"></div>
+                  <div className="h-6 w-px bg-slate-200 mx-1 hidden min-[400px]:block"></div>
 
-                  <button
-                     onClick={handlePrint}
-                     className="flex-1 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2"
-                  >
-                     <Printer size={16} /> Print
-                  </button>
-                  <button className="flex-1 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2">
-                     <Share2 size={16} /> Share
-                  </button>
+                  <div className="flex gap-2 flex-1 md:flex-none">
+                     <button
+                        onClick={handlePrint}
+                        className="flex-1 md:flex-none md:min-w-[100px] py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2"
+                     >
+                        <Printer size={16} /> Print
+                     </button>
+                     <div className="relative flex-1 md:flex-none md:min-w-[100px]" ref={shareMenuRef}>
+                        <button
+                           onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
+                           className={`w-full py-3 border rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${isShareMenuOpen ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                        >
+                           <Share2 size={16} /> Share
+                        </button>
+
+                        {isShareMenuOpen && (
+                           <div className="absolute bottom-full md:left-0 right-0 w-64 mb-3 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-slate-200 animate-in slide-in-from-bottom-2 duration-200 z-[170]">
+                              <div className="overflow-hidden rounded-2xl">
+                                 <button onClick={handleShareLink} className="w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors border-b border-slate-100 group">
+                                    <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm"><Link size={18} /></div>
+                                    <div className="text-left">
+                                       <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Copy Share Link</p>
+                                       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Public Web Invoice</p>
+                                    </div>
+                                 </button>
+                                 <button onClick={handleDownloadPDF} className="w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors border-b border-slate-100 group">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm"><Download size={18} /></div>
+                                    <div className="text-left">
+                                       <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Download PDF</p>
+                                       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Save to this device</p>
+                                    </div>
+                                 </button>
+                                 <button onClick={handleSharePDF} className="w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors group">
+                                    <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-sm"><Share2 size={18} /></div>
+                                    <div className="text-left">
+                                       <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Share PDF File</p>
+                                       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">WhatsApp / Email</p>
+                                    </div>
+                                 </button>
+                              </div>
+                              {/* Arrow pointer */}
+                              <div className="absolute top-full md:left-10 right-10 -mt-1 w-3 h-3 bg-white border-r border-b border-slate-200 rotate-45"></div>
+                           </div>
+                        )}
+                     </div>
+                  </div>
                </div>
                <div className="flex flex-col md:flex-row gap-2 flex-[1.5]">
                   <button onClick={onClose} className="w-full md:w-auto px-6 py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-slate-800">Close</button>
@@ -1059,6 +1165,34 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                   )}
                </div>
             </div>
+
+            {/* DEBUG: Full Event List Dump */}
+            <div className="mt-8 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded-xl overflow-x-auto">
+               <h3 className="font-bold mb-2">DEBUG: ALL LOADED EVENTS ({events.length})</h3>
+               <table className="w-full text-left">
+                  <thead>
+                     <tr>
+                        <th className="p-1">ID</th>
+                        <th className="p-1">Client</th>
+                        <th className="p-1">Status</th>
+                        <th className="p-1">Type</th>
+                        <th className="p-1">Date</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {events.map(e => (
+                        <tr key={e.id} className="border-t border-slate-700">
+                           <td className="p-1">{e.id.slice(0, 4)}</td>
+                           <td className="p-1">{e.client_name}</td>
+                           <td className="p-1">{e.status}</td>
+                           <td className="p-1">{e.orderType}</td>
+                           <td className="p-1">{e.date || e.event_date}</td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </div>
+
          </div>
       </div>
    );
@@ -1324,8 +1458,9 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
 };
 
 const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, onAmend: (ev: CateringEvent) => void, onClose?: () => void }) => {
-   const estimatedCost = event.financials.revenueCents * 0.4;
-   const estimatedNet = event.financials.revenueCents - estimatedCost;
+   const revenue = event.financials?.revenueCents || 0;
+   const estimatedCost = revenue * 0.4;
+   const estimatedNet = revenue - estimatedCost;
 
    const deductStockFromCooking = useDataStore(state => state.deductStockFromCooking);
    const currentUser = useAuthStore(state => state.user);
@@ -1382,7 +1517,11 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
 
    // INVOICE LOGIC
    const invoices = useDataStore(state => state.invoices);
-   const salesInvoice = useMemo(() => invoices.find(inv => inv.id === event.financials.invoiceId), [invoices, event.financials.invoiceId]);
+   const salesInvoice = useMemo(() => {
+      const invId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
+      if (!invId) return null;
+      return invoices.find(inv => inv.id === invId);
+   }, [invoices, event.financials]);
    const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
    const [showMonitor, setShowMonitor] = useState(false);
    const [showDispatch, setShowDispatch] = useState(false);
@@ -1466,7 +1605,7 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Revenue</p>
-               <h4 className="text-lg md:text-xl font-black text-slate-900 tracking-tight truncate">₦{(event.financials.revenueCents / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-xl font-black text-slate-900 tracking-tight truncate">₦{(revenue / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Est. Direct Costs</p>
@@ -1622,8 +1761,6 @@ const EventNodeSummary = ({ event, onAmend, onClose }: { event: CateringEvent, o
       </div>
    );
 };
-
-
 
 const CostingMatrix = () => {
    const [costings, setCostings] = useState<ItemCosting[]>([]);
@@ -2250,9 +2387,12 @@ export const Catering = () => {
       setEvents(cateringEvents);
       if (selectedEvent) {
          const freshSelected = cateringEvents.find(e => e.id === selectedEvent.id);
-         if (freshSelected) setSelectedEvent(freshSelected);
+         // Deep comparison to avoid infinite update loops when individual references change during sync
+         if (freshSelected && JSON.stringify(freshSelected) !== JSON.stringify(selectedEvent)) {
+            setSelectedEvent(freshSelected);
+         }
       }
-   }, [cateringEvents, selectedEvent]);
+   }, [cateringEvents]); // Remove selectedEvent from deps to break recursion
 
    useEffect(() => {
       const handleProcOpen = () => setShowProcurement(true);
@@ -2312,10 +2452,11 @@ export const Catering = () => {
 
          {(activeTab === 'orders' || activeTab === 'cuisine') && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
-               <div className={`transition-all duration-300 ${selectedEvent ? 'lg:col-span-1 space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'}`}>
-                  <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
+
+               <div className={`${selectedEvent ? 'lg:col-span-1 grid grid-cols-1 md:grid-cols-2 gap-4 h-auto max-h-none overflow-visible lg:block lg:space-y-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'}`}>
+                  <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'}`}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
-                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} {activeTab === 'orders' ? 'Banquets' : 'Cuisine Orders'}</h2>
+                        <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">{viewMode} {activeTab === 'orders' ? 'Banquets' : 'Cuisine Orders'} ({filteredEvents.length})</h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                            {activeTab === 'orders' ? (
                               <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
@@ -2351,11 +2492,10 @@ export const Catering = () => {
                         key={ev.id}
                         onClick={() => {
                            setSelectedEvent(ev);
-                           if (window.innerWidth < 1024) {
-                              setRichDetailEvent(ev);
-                           }
+                           // Always set rich detail event for mobile modal data
+                           setRichDetailEvent(ev);
                         }}
-                        className={`rounded-2xl border transition-all cursor-pointer relative group ${selectedEvent ? 'p-4' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}
+                        className={`rounded-2xl border transition-all cursor-pointer relative group ${selectedEvent ? 'p-5 h-full lg:p-4 lg:h-auto' : 'p-5 h-full'} ${selectedEvent?.id === ev.id ? 'border-[#ff6b6b] bg-white shadow-xl ring-2 ring-[#ff6b6b]/10' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}
                      >
                         <button
                            onClick={(e) => { e.stopPropagation(); setRichDetailEvent(ev); }}
@@ -2374,27 +2514,30 @@ export const Catering = () => {
                            </div>
                            <div className="space-y-0.5 text-right">
                               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Revenue</p>
-                              <p className="text-sm font-black text-[#ff6b6b] leading-none">₦{(ev.financials.revenueCents / 100).toLocaleString()}</p>
+                              <p className="text-sm font-black text-[#ff6b6b] leading-none">₦{((ev.financials?.revenueCents || 0) / 100).toLocaleString()}</p>
                            </div>
                         </div>
                      </div>
                   ))}
                </div>
 
-               {selectedEvent && (
-                  <div className="lg:col-span-2">
-                     <EventNodeSummary
-                        event={selectedEvent}
-                        onAmend={(ev) => {
-                           setAmendEvent(ev);
-                           setShowBrochure(true);
-                        }}
-                        onClose={() => setSelectedEvent(null)}
-                     />
-                  </div>
-               )}
-            </div>
-         )}
+               {
+                  selectedEvent && (
+                     <div className="hidden lg:block lg:col-span-2">
+                        <EventNodeSummary
+                           event={selectedEvent}
+                           onAmend={(ev) => {
+                              setAmendEvent(ev);
+                              setShowBrochure(true);
+                           }}
+                           onClose={() => setSelectedEvent(null)}
+                        />
+                     </div>
+                  )
+               }
+            </div >
+         )
+         }
          {activeTab === 'matrix' && <CostingMatrix />}
 
          {/* UI Overlays */}
@@ -2428,37 +2571,47 @@ export const Catering = () => {
 
 
 
-         {generatedInvoice && (
-            <WaveInvoiceModal
-               invoice={generatedInvoice}
-               onSave={handleCommitInvoice}
-               onClose={() => setGeneratedInvoice(null)}
-               guestCount={selectedEvent?.guestCount}
-               isCuisine={activeTab === 'cuisine'}
-            />
-         )}
+         {
+            generatedInvoice && (
+               <WaveInvoiceModal
+                  invoice={generatedInvoice}
+                  onSave={handleCommitInvoice}
+                  onClose={() => setGeneratedInvoice(null)}
+                  guestCount={selectedEvent?.guestCount}
+                  isCuisine={activeTab === 'cuisine'}
+               />
+            )
+         }
 
-         {showProcurement && selectedEvent && (
-            <ProcurementWizard
-               event={selectedEvent}
-               onClose={() => setShowProcurement(false)}
-               onFinalize={handleFinalizePush}
-            />
-         )}
+         {
+            showProcurement && selectedEvent && (
+               <ProcurementWizard
+                  event={selectedEvent}
+                  onClose={() => setShowProcurement(false)}
+                  onFinalize={handleFinalizePush}
+               />
+            )
+         }
 
-         {isManualInvoiceModalOpen && (
-            <ManualInvoiceModal
-               isOpen={isManualInvoiceModalOpen}
-               onClose={() => setIsManualInvoiceModalOpen(false)}
-            />
-         )}
+         {
+            isManualInvoiceModalOpen && (
+               <ManualInvoiceModal
+                  isOpen={isManualInvoiceModalOpen}
+                  onClose={() => setIsManualInvoiceModalOpen(false)}
+               />
+            )
+         }
 
-         {richDetailEvent && (
-            <EventDetailCard
-               item={{ type: 'event', data: richDetailEvent }}
-               onClose={() => setRichDetailEvent(null)}
-            />
-         )}
-      </div>
+         {
+            richDetailEvent && (
+               <div className="lg:hidden">
+                  <EventDetailCard
+                     item={{ type: 'event', data: richDetailEvent }}
+                     onClose={() => setRichDetailEvent(null)}
+                  />
+               </div>
+            )
+         }
+      </div >
    );
 };

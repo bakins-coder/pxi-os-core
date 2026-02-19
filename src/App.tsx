@@ -199,6 +199,7 @@ function AppContent() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/update-password" element={<AuthPage initialView="update-password" />} />
         <Route path="/brochure" element={<PublicBrochure />} />
+        <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );

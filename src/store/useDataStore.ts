@@ -144,6 +144,7 @@ interface DataState {
     assignWaiterToTable: (eventId: string, tableId: string, waiterId: string) => void;
     logLeftover: (eventId: string, itemId: string, quantity: number, reason: string) => void;
     addHandoverEvidence: (eventId: string, url: string, note: string) => void;
+    generateWaiterLink: (eventId: string) => void;
     updateProjectTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
     advanceProjectTask: (projectId: string, taskId: string) => void;
     completeEvent: (eventId: string) => void;

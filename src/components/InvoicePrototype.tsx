@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, Download, Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, Loader2, Share2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Invoice, Contact, InvoiceStatus } from '../types';
+import { useAuthStore } from '../store/useAuthStore';
+import { generateInvoicePDF } from '../utils/exportUtils';
 
 
 // Brand Colors
@@ -46,12 +48,14 @@ export const InvoicePrototype = () => {
             <div className="min-h-screen p-8 bg-slate-100 flex flex-col items-center justify-center text-center">
                 <h2 className="text-2xl font-black text-slate-800 mb-2">Invoice Not Found</h2>
                 <p className="text-slate-500 mb-6">The requested invoice ID could not be located.</p>
-                <button
-                    onClick={() => navigate('/finance')}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
-                >
-                    <ArrowLeft size={16} /> Return to Finance
-                </button>
+                {useAuthStore.getState().user && (
+                    <button
+                        onClick={() => navigate('/finance')}
+                        className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
+                    >
+                        <ArrowLeft size={16} /> Return to Finance
+                    </button>
+                )}
             </div>
         );
     }
@@ -65,10 +69,10 @@ export const InvoicePrototype = () => {
         return acc + (l.quantity * price);
     }, 0) / 100;
 
-    let subtotal = invoice.subtotalCents ? invoice.subtotalCents / 100 : effectiveSubtotal;
-    let serviceCharge = invoice.serviceChargeCents ? invoice.serviceChargeCents / 100 : subtotal * 0.15;
-    let vat = invoice.vatCents ? invoice.vatCents / 100 : (subtotal + serviceCharge) * 0.075;
-    let totalAmount = invoice.totalCents ? invoice.totalCents / 100 : subtotal + serviceCharge + vat;
+    let subtotal = invoice.subtotalCents !== undefined ? invoice.subtotalCents / 100 : effectiveSubtotal;
+    let serviceCharge = invoice.serviceChargeCents !== undefined ? invoice.serviceChargeCents / 100 : subtotal * 0.15;
+    let vat = invoice.vatCents !== undefined ? invoice.vatCents / 100 : (subtotal + serviceCharge) * 0.075;
+    let totalAmount = invoice.totalCents !== undefined ? invoice.totalCents / 100 : subtotal + serviceCharge + vat;
 
     const paidAmount = invoice.paidAmountCents / 100;
     const balanceDue = totalAmount - paidAmount;
@@ -95,25 +99,65 @@ export const InvoicePrototype = () => {
     const accName = settings.bankInfo?.accountName;
     const accNum = settings.bankInfo?.accountNumber;
 
+    const handleDownloadPDF = async () => {
+        if (!invoice) return;
+        await generateInvoicePDF(invoice, customer || undefined, settings, { save: true });
+    };
+
+    const handleSharePDF = async () => {
+        if (!invoice) return;
+        try {
+            const doc = await generateInvoicePDF(invoice, customer || undefined, settings, { save: false, returnDoc: true }) as any;
+            const pdfBlob = doc.output('blob');
+            const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Invoice ${invoice.number}`,
+                    text: `Please find attached invoice ${invoice.number}.`
+                });
+            } else {
+                doc.save(`Invoice-${invoice.number}.pdf`);
+                alert("Direct PDF sharing not supported on this browser. PDF downloaded instead.");
+            }
+        } catch (err) {
+            console.error("PDF Share failed", err);
+            if ((err as Error).name !== 'AbortError') {
+                handleDownloadPDF();
+            }
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white text-slate-900">
             {/* Control Bar */}
             <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center print:hidden">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                    <ArrowLeft size={20} />
-                    <span className="font-bold">Back</span>
-                </button>
+                {useAuthStore.getState().user && (
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft size={20} />
+                        <span className="font-bold">Back</span>
+                    </button>
+                )}
                 <div className="flex gap-4">
                     <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all">
                         <Printer size={18} /> Print
                     </button>
-                    {/* Placeholder for PDF Download - browser print to PDF is usually sufficient or requires library */}
-                    {/* <button className="flex items-center gap-2 px-6 py-2 bg-[#ff6b6b] text-white rounded-full shadow-md font-bold hover:bg-[#ff5252] transition-all">
-                        <Download size={18} /> Download PDF
-                    </button> */}
+                    <button
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all"
+                    >
+                        <Download size={18} /> PDF
+                    </button>
+                    <button
+                        onClick={handleSharePDF}
+                        className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all"
+                    >
+                        <Share2 size={18} /> Share
+                    </button>
                 </div>
             </div>
 
@@ -232,14 +276,18 @@ export const InvoicePrototype = () => {
                             <span className="font-bold text-slate-600 uppercase">Subtotal:</span>
                             <span className="font-medium text-slate-900">₦{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="font-bold text-slate-600 uppercase">Service Charge (15%):</span>
-                            <span className="font-medium text-slate-900">₦{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="font-bold text-slate-600 uppercase">VAT (7.5%):</span>
-                            <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
-                        </div>
+                        {serviceCharge > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-600 uppercase">Service Charge (15%):</span>
+                                <span className="font-medium text-slate-900">₦{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        {vat > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-600 uppercase">VAT (7.5%):</span>
+                                <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
                         <div className="w-full h-px bg-slate-200 my-2"></div>
 
                         {hasDiscount && (

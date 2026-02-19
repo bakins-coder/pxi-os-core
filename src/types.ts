@@ -199,6 +199,7 @@ export interface PortionMonitor {
   handoverSignedBySupervisor?: string;
   handoverSignedByHost?: string;
   handoverDate?: string;
+  waiterAccessToken?: string;
 }
 
 export interface CateringEvent {
@@ -267,6 +268,7 @@ export interface PortionMonitor {
   handoverSignedBySupervisor?: string;
   handoverSignedByHost?: string;
   handoverDate?: string;
+  waiterAccessToken?: string;
 }
 
 // REFACTOR: New Taxonomy
