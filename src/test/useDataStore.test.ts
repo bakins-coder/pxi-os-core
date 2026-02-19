@@ -327,4 +327,26 @@ describe('useDataStore', () => {
             expect(updatedInv?.stockQuantity).toBe(20);
         });
     });
+
+    describe('Catering Management', () => {
+        it('should create a catering order and not crash if item name is null', async () => {
+            const { result } = renderHook(() => useDataStore());
+
+            const orderData = {
+                customerName: 'Test Customer',
+                eventDate: '2026-03-01',
+                guestCount: 10,
+                items: [
+                    { inventoryItemId: 'item-1', name: null, quantity: 1, priceCents: 1000 }
+                ],
+                banquetDetails: { location: 'Lagos' }
+            };
+
+            await act(async () => {
+                await result.current.createCateringOrder(orderData as any);
+            });
+
+            expect(result.current.cateringEvents).toHaveLength(1);
+        });
+    });
 });

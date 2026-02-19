@@ -119,7 +119,7 @@ interface DataState {
 
     // Catering Actions
     createCateringOrder: (data: any) => Promise<{ event: CateringEvent, invoice: Invoice }>;
-    updateCateringOrder: (eventId: string, updates: any) => void;
+    updateCateringOrder: (eventId: string, updates: any) => Promise<{ event?: CateringEvent, invoice?: Invoice }>;
     updateCateringEvent: (id: string, updates: Partial<CateringEvent>) => void;
     createProcurementInvoice: (eventId: string, reqs: Partial<Requisition>[]) => Promise<Invoice>;
     deductStockFromCooking: (eventId: string) => void;
@@ -2370,7 +2370,7 @@ export const useDataStore = create<DataState>()(
                 }
 
                 // If event includes "Rental" items (mock check)
-                const hasRentals = d.items.some((i: any) => i.name.toLowerCase().includes('rental'));
+                const hasRentals = d.items.some((i: any) => i.name?.toLowerCase()?.includes('rental'));
                 if (hasRentals) {
                     taskList.push(
                         {
@@ -2428,27 +2428,30 @@ export const useDataStore = create<DataState>()(
             },
 
             updateCateringOrder: async (eventId: string, updates: any) => {
+                let updatedEvent: CateringEvent | undefined;
+                let updatedInvoice: Invoice | undefined;
+
                 set((state) => {
                     const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                     if (eventIndex === -1) return state;
 
                     const updatedEvents = [...state.cateringEvents];
                     const oldEvent = updatedEvents[eventIndex];
-                    const newEvent = { ...oldEvent, ...updates };
-                    updatedEvents[eventIndex] = newEvent;
+                    updatedEvent = { ...oldEvent, ...updates };
+                    updatedEvents[eventIndex] = updatedEvent;
 
                     // Update associated invoice if items changed
                     let updatedInvoices = state.invoices;
-                    if (updates.items && newEvent.financials?.invoiceId) {
+                    if (updates.items && updatedEvent.financials?.invoiceId) {
                         const totalRev = updates.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0);
                         updatedInvoices = state.invoices.map(inv => {
-                            if (inv.id === newEvent.financials.invoiceId) {
-                                const isCuisine = newEvent.orderType === 'Cuisine';
+                            if (inv.id === updatedEvent?.financials.invoiceId) {
+                                const isCuisine = updatedEvent?.orderType === 'Cuisine';
                                 const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
                                 const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
                                 const totalCents = totalRev + serviceChargeCents + vatCents;
 
-                                return {
+                                updatedInvoice = {
                                     ...inv,
                                     totalCents,
                                     subtotalCents: totalRev,
@@ -2462,6 +2465,7 @@ export const useDataStore = create<DataState>()(
                                         category: it.category
                                     }))
                                 };
+                                return updatedInvoice;
                             }
                             return inv;
                         });
@@ -2473,12 +2477,15 @@ export const useDataStore = create<DataState>()(
                         invoices: updatedInvoices
                     };
                 });
+
                 try {
                     await get().syncWithCloud();
                 } catch (e) {
                     console.error("FATAL: Sync Failed during Event Update", e);
                     alert("Update saved locally but Cloud Sync Failed.");
                 }
+
+                return { event: updatedEvent, invoice: updatedInvoice };
             },
 
             createProcurementInvoice: async (eventId, reqs) => {
