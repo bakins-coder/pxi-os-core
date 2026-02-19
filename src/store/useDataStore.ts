@@ -2428,30 +2428,30 @@ export const useDataStore = create<DataState>()(
             },
 
             updateCateringOrder: async (eventId: string, updates: any) => {
-                let updatedEvent: CateringEvent | undefined;
-                let updatedInvoice: Invoice | undefined;
+                let finalEvent: CateringEvent | undefined;
+                let finalInvoice: Invoice | undefined;
 
                 set((state) => {
                     const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                     if (eventIndex === -1) return state;
 
                     const updatedEvents = [...state.cateringEvents];
-                    const oldEvent = updatedEvents[eventIndex];
-                    updatedEvent = { ...oldEvent, ...updates };
-                    updatedEvents[eventIndex] = updatedEvent;
+                    const nextEvent = { ...updatedEvents[eventIndex], ...updates } as CateringEvent;
+                    updatedEvents[eventIndex] = nextEvent;
+                    finalEvent = nextEvent;
 
                     // Update associated invoice if items changed
                     let updatedInvoices = state.invoices;
-                    if (updates.items && updatedEvent.financials?.invoiceId) {
+                    if (updates.items && nextEvent.financials?.invoiceId) {
                         const totalRev = updates.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0);
                         updatedInvoices = state.invoices.map(inv => {
-                            if (inv.id === updatedEvent?.financials.invoiceId) {
-                                const isCuisine = updatedEvent?.orderType === 'Cuisine';
+                            if (inv.id === nextEvent.financials?.invoiceId) {
+                                const isCuisine = nextEvent.orderType === 'Cuisine';
                                 const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
                                 const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
                                 const totalCents = totalRev + serviceChargeCents + vatCents;
 
-                                updatedInvoice = {
+                                const nextInvoice: Invoice = {
                                     ...inv,
                                     totalCents,
                                     subtotalCents: totalRev,
@@ -2465,7 +2465,8 @@ export const useDataStore = create<DataState>()(
                                         category: it.category
                                     }))
                                 };
-                                return updatedInvoice;
+                                finalInvoice = nextInvoice;
+                                return nextInvoice;
                             }
                             return inv;
                         });
@@ -2485,7 +2486,7 @@ export const useDataStore = create<DataState>()(
                     alert("Update saved locally but Cloud Sync Failed.");
                 }
 
-                return { event: updatedEvent, invoice: updatedInvoice };
+                return { event: finalEvent, invoice: finalInvoice };
             },
 
             createProcurementInvoice: async (eventId, reqs) => {
