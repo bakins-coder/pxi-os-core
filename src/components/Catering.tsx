@@ -1741,6 +1741,27 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
       }
    }, []);
 
+   // [AUTO-SAVE DRAFT]
+   useEffect(() => {
+      const timer = setTimeout(() => {
+         const hasData = customerName || items.length > 0;
+         if (hasData) {
+            const draft = {
+               customerName: selectedContact ? selectedContact.name : customerName,
+               contactId: selectedContact?.id,
+               eventDate,
+               invoiceDate,
+               items,
+               timestamp: Date.now()
+            };
+            localStorage.setItem('cuisine_draft', JSON.stringify(draft));
+            console.log("[CuisineOrderModal] Draft auto-saved.");
+         }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+   }, [customerName, selectedContact, eventDate, invoiceDate, items]);
+
    const filteredProducts = useMemo(() => {
       if (!searchQuery) return PREDEFINED_CUISINE_PRODUCTS;
       return PREDEFINED_CUISINE_PRODUCTS.filter(p =>

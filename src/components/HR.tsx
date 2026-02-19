@@ -176,21 +176,61 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          setStaffId(editingEmployee.staffId || ''); // Load existing if present
          setDefaultPassword('Managed by User'); // Don't show real password for edit
       } else if (isOpen) {
-         // ... (Draft logic) ...
+         // Check for draft on modal open
+         const savedDraft = localStorage.getItem(DRAFT_KEY);
+         if (savedDraft) {
+            try {
+               const draft = JSON.parse(savedDraft);
+               if (window.confirm("Found an unfinished Staff Hiring draft. Restore it?")) {
+                  setFirstName(draft.firstName || '');
+                  setLastName(draft.lastName || '');
+                  setEmail(draft.email || '');
+                  setPhoneNumber(draft.phoneNumber || '');
+                  setAddress(draft.address || '');
+                  setDob(draft.dob || '');
+                  setGender(draft.gender || 'Male');
+                  setDateOfEmployment(draft.dateOfEmployment || new Date().toISOString().split('T')[0]);
+                  setSelectedRoleTitle(draft.selectedRoleTitle || '');
+                  setSalaryNGN(draft.salaryNGN || 0);
+                  setAvatar(draft.avatar || '');
+                  setHealthNotes(draft.healthNotes || '');
+                  setHasDraft(true);
+                  console.log("[HireStaffModal] Draft restored.");
+               } else {
+                  localStorage.removeItem(DRAFT_KEY);
+               }
+            } catch (e) {
+               console.error("Failed to parse draft", e);
+            }
+         }
          if (!staffId) generateCredentials(); // Generate if new
       }
    }, [editingEmployee, isOpen]);
 
-   // Auto-Save Draft
+   // Auto-Save Draft (Debounced)
    useEffect(() => {
       if (!isOpen || editingEmployee || isSubmitting) return;
-      const formData = { firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes };
-      const isEmpty = !firstName && !lastName && !email && !selectedRoleTitle;
-      if (!isEmpty) {
-         localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-         setHasDraft(true);
-      }
-   }, [firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes, isOpen, editingEmployee, isSubmitting]);
+
+      const timer = setTimeout(() => {
+         const formData = {
+            firstName, lastName, email, phoneNumber, address, dob, gender,
+            dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes
+         };
+         const isEmpty = !firstName && !lastName && !email && !selectedRoleTitle;
+
+         if (!isEmpty) {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+            setHasDraft(true);
+            console.log("[HireStaffModal] Draft auto-saved.");
+         }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+   }, [
+      firstName, lastName, email, phoneNumber, address, dob, gender,
+      dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes,
+      isOpen, editingEmployee, isSubmitting
+   ]);
 
 
 

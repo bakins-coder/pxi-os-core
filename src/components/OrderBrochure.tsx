@@ -72,7 +72,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
             try {
                 const draft = JSON.parse(savedDraft);
                 // Check if draft is recent (e.g. < 24 hours)? For now, just ask based on existence.
-                if (window.confirm("We found an unfinished order draft saved from a previous error. Would you like to restore it?")) {
+                if (window.confirm("We found an unfinished order draft. Would you like to restore it?")) {
                     setCustomerName(draft.customerName || '');
                     setContactPerson(draft.contactPerson || '');
                     setContactEmail(draft.contactEmail || '');
@@ -89,8 +89,6 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     setCustomItems(draft.customItems || {});
                     console.log("Draft restored successfully.");
                 } else {
-                    // If they decline, maybe clear it? Or keep it until they manually clear/overwrite?
-                    // Let's clear it to avoid annoying them.
                     localStorage.removeItem('banquet_order_draft');
                 }
             } catch (e) {
@@ -98,6 +96,32 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
             }
         }
     }, []);
+
+    // [AUTO-SAVE DRAFT]
+    useEffect(() => {
+        // Debounce saving to avoid excessive localStorage writes
+        const timer = setTimeout(() => {
+            const hasData = customerName || contactPerson || Object.keys(selected).length > 0 || Object.keys(customItems).length > 0;
+            if (hasData) {
+                const draftData = {
+                    customerName, contactPerson, contactEmail, contactPhone,
+                    eventType, themeColor, eventDate, guestCount,
+                    eventLocation, eventPlannerName, eventPlannerPhone, notes,
+                    selected, customItems,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('banquet_order_draft', JSON.stringify(draftData));
+                console.log("[OrderBrochure] Draft auto-saved.");
+            }
+        }, 2000); // 2 second debounce
+
+        return () => clearTimeout(timer);
+    }, [
+        customerName, contactPerson, contactEmail, contactPhone,
+        eventType, themeColor, eventDate, guestCount,
+        eventLocation, eventPlannerName, eventPlannerPhone, notes,
+        selected, customItems
+    ]);
 
     useEffect(() => {
         // REFACTOR: Use new strict type taxonomy
@@ -225,7 +249,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 catName = catMap[catName];
             } else {
                 // Try fuzzy match
-                const found = standardCategories.find(sc => sc.toLowerCase() === catName.toLowerCase());
+                const found = standardCategories.find(sc => sc.toLowerCase() === catName?.toLowerCase());
                 if (found) catName = found;
             }
 
@@ -242,7 +266,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
     const handleHostChange = (name: string) => {
         setCustomerName(name);
         // Auto-fill if known contact
-        const existingContact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
+        const existingContact = contacts.find(c => c.name?.toLowerCase() === name.toLowerCase());
         if (existingContact) {
             setContactEmail(existingContact.email);
             setContactPhone(existingContact.phone);
@@ -268,7 +292,11 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
             ...(Object.entries(selected) as [string, number][])
                 .filter(([_, qty]) => (Number(qty) || 0) > 0)
                 .map(([id, qty]) => {
-                    const item = menuItems.find(i => i.id === id)!;
+                    const item = menuItems.find(i => i.id === id) || inventory.find(i => i.id === id);
+                    if (!item) {
+                        console.warn(`[OrderBrochure] Item ${id} not found in menuItems or global inventory. Using fallback.`);
+                        return { inventoryItemId: id, name: "Unknown Item", quantity: qty, priceCents: 0, costCents: 0 };
+                    }
                     return { inventoryItemId: id, name: item.name, quantity: qty, priceCents: item.priceCents, costCents: 0 };
                 }),
             ...Object.entries(customItems).map(([id, it]) => ({
@@ -293,7 +321,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
         try {
             if (initialEvent) {
-                await updateCateringOrder(initialEvent.id, {
+                const { invoice } = await updateCateringOrder(initialEvent.id, {
                     customerName,
                     eventDate,
                     guestCount,
@@ -301,20 +329,20 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     banquetDetails
                 });
                 setIsSubmitting(false);
-                onComplete();
+                // [CLEAR DRAFT ON SUCCESS]
+                localStorage.removeItem('banquet_order_draft');
+                if (invoice) {
+                    onFinalize(invoice);
+                } else {
+                    onComplete();
+                }
             } else {
                 // GUEST LOGIC: Ensure Contact Exists
-                let targetContactId = user?.id; // If logged in, might use their ID if they are a contact
+                let targetContactId = user?.id;
 
-                // Refined Logic:
-                // 1. If user is logged in, check if they match the email. 
-                // 2. If guest, search contact by email.
-                // 3. If not found, create new contact.
-
-                let contactMatch = contacts.find(c => c.email.toLowerCase() === contactEmail.toLowerCase());
+                let contactMatch = contacts.find(c => c.email?.toLowerCase() === contactEmail?.toLowerCase());
 
                 if (!contactMatch) {
-                    // Create new contact
                     const newContactId = crypto.randomUUID();
                     const newContact: Partial<Contact> = {
                         id: newContactId,
@@ -337,14 +365,15 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     eventDate,
                     guestCount,
                     items: dealItems,
-                    orderType, // Pass orderType if it's being amended
+                    orderType,
                     banquetDetails
                 });
                 setIsSubmitting(false);
+                // [CLEAR DRAFT ON SUCCESS]
                 localStorage.removeItem('banquet_order_draft');
                 onFinalize(invoice);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
 
             // [DRAFT SAVE]
@@ -357,10 +386,11 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
             };
             localStorage.setItem('banquet_order_draft', JSON.stringify(draftData));
 
-            alert("Failed to finalize order due to a system error. \n\nYour order data has been saved locally as a 'Pending Draft'. \n\nPlease reload the page or check your connection, and you will be prompted to restore this data so you don't have to start over.");
+            alert(`Failed to finalize order due to a system error: ${err.message || 'Unknown error'}. \n\nYour order data has been saved locally as a 'Pending Draft'. \n\nPlease reload the page or check your connection, and you will be prompted to restore this data so you don't have to start over.`);
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <div onClick={(e) => e.stopPropagation()} className="bg-white md:rounded-[3rem] shadow-2xl w-full max-w-7xl h-[100vh] md:h-[95vh] overflow-hidden flex flex-col md:border border-slate-200">
