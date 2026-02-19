@@ -38,12 +38,7 @@ const SyncIndicator = () => {
         {syncStatus} • RT: {realtimeStatus}
       </span>
       {syncStatus === 'Error' && (
-        <button
-          onClick={(e) => { e.stopPropagation(); syncWithCloud(); }}
-          className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors text-slate-400 hover:text-white"
-        >
-          <RefreshCw size={10} className={isSyncing ? 'animate-spin' : ''} />
-        </button>
+        <AlertTriangle size={10} className="text-rose-400 ml-1" />
       )}
       {lastSyncError && (
         <div className="absolute left-0 top-full mt-2 hidden group-hover:block bg-slate-900 border border-white/10 p-2 rounded shadow-2xl z-50 min-w-[200px]">
