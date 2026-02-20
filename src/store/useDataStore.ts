@@ -2224,6 +2224,10 @@ export const useDataStore = create<DataState>()(
                 };
             }),
 
+            generateWaiterLink: (eventId: string) => {
+                console.log('[Store] Generating waiter link for event:', eventId);
+                // Stub implementation
+            },
             createCateringOrder: async (d) => {
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';

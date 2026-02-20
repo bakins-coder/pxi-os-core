@@ -385,6 +385,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const contacts = useDataStore(state => state.contacts);
    const finalizeInvoice = useDataStore(state => state.finalizeInvoice);
    const updateInvoiceLines = useDataStore(state => state.updateInvoiceLines);
+   const cateringEvents = useDataStore(state => state.cateringEvents);
    const contact = contacts.find(c => c.id === invoice.contactId);
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
@@ -1096,7 +1097,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
                   <div className="flex gap-2 flex-1 md:flex-none">
                      <button
-                        onClick={handlePrint}
+                        onClick={() => handlePrint()}
                         className="flex-1 md:flex-none md:min-w-[100px] py-3 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-2"
                      >
                         <Printer size={16} /> Print
@@ -1168,7 +1169,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
             {/* DEBUG: Full Event List Dump */}
             <div className="mt-8 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded-xl overflow-x-auto">
-               <h3 className="font-bold mb-2">DEBUG: ALL LOADED EVENTS ({events.length})</h3>
+               <h3 className="font-bold mb-2">DEBUG: ALL LOADED EVENTS ({cateringEvents.length})</h3>
                <table className="w-full text-left">
                   <thead>
                      <tr>
@@ -1180,13 +1181,13 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      </tr>
                   </thead>
                   <tbody>
-                     {events.map(e => (
+                     {cateringEvents.map((e: CateringEvent) => (
                         <tr key={e.id} className="border-t border-slate-700">
                            <td className="p-1">{e.id.slice(0, 4)}</td>
-                           <td className="p-1">{e.client_name}</td>
+                           <td className="p-1">{e.customerName}</td>
                            <td className="p-1">{e.status}</td>
                            <td className="p-1">{e.orderType}</td>
-                           <td className="p-1">{e.date || e.event_date}</td>
+                           <td className="p-1">{e.eventDate}</td>
                         </tr>
                      ))}
                   </tbody>
