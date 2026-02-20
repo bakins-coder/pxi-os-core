@@ -5,7 +5,7 @@ import {
     BookkeepingEntry, Project, AIAgent, Ingredient, Supplier,
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
-    LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview,
+    LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview, PerformanceMetric,
     RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount
 } from '../types';
 
@@ -1446,6 +1446,20 @@ export const useDataStore = create<DataState>()(
                         status: 'Finalized',
                         finalized_date: finalizedDate
                     }).eq('id', id);
+                }
+            },
+
+            updateRoleKPIs: async (roleTitle: string, kpis: PerformanceMetric[]) => {
+                const { departmentMatrix } = get() as any;
+                const newMatrix = departmentMatrix.map((dept: any) => ({
+                    ...dept,
+                    roles: dept.roles.map((role: any) => role.title === roleTitle ? { ...role, kpis } : role)
+                }));
+
+                set({ departmentMatrix: newMatrix });
+
+                if (supabase) {
+                    await supabase.from('job_roles').update({ kpis }).eq('title', roleTitle);
                 }
             },
 
@@ -2909,7 +2923,8 @@ export const useDataStore = create<DataState>()(
                                     mid: r.salary_mid || r.salaryMid || 0,
                                     high: r.salary_max || r.salaryMax || 0
                                 },
-                                permissions: r.permissions || []
+                                permissions: r.permissions || [],
+                                kpis: r.kpis || []
                             }))
                         }));
                         if (constructedMatrix.length > 0) {
