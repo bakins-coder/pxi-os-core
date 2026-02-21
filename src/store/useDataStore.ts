@@ -1043,6 +1043,7 @@ export const useDataStore = create<DataState>()(
                         service_charge_cents: invoice.serviceChargeCents || 0,
                         vat_cents: invoice.vatCents || 0,
                         paid_amount_cents: invoice.paidAmountCents || 0,
+                        category: invoice.category,
                         lines: invoice.lines
                     };
 
@@ -2299,6 +2300,7 @@ export const useDataStore = create<DataState>()(
                     dueDate: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
                     status: InvoiceStatus.PROFORMA,
                     type: 'Sales',
+                    category: d.orderType || 'Banquet',
                     totalCents,
                     subtotalCents: totalRev,
                     serviceChargeCents,
@@ -2460,6 +2462,7 @@ export const useDataStore = create<DataState>()(
                                     ...inv,
                                     totalCents,
                                     subtotalCents: totalRev,
+                                    category: nextEvent.orderType || inv.category || 'Banquet',
                                     serviceChargeCents,
                                     vatCents,
                                     lines: updates.items.map((it: any, idx: number) => ({

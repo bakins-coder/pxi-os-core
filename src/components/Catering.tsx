@@ -463,7 +463,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const { contacts } = useDataStore.getState();
       const customer = contacts.find(c => c.id === invoice.contactId);
 
-      await generateInvoicePDF(invoice, customer, settings, { save: true });
+      const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Banquet') };
+      await generateInvoicePDF(pdfInvoice, customer, settings, { save: true });
       setIsShareMenuOpen(false);
    };
 
@@ -473,7 +474,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          const { contacts } = useDataStore.getState();
          const customer = contacts.find(c => c.id === invoice.contactId);
 
-         const doc = await generateInvoicePDF(invoice, customer, settings, { save: false, returnDoc: true }) as any;
+         const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Banquet') };
+         const doc = await generateInvoicePDF(pdfInvoice, customer, settings, { save: false, returnDoc: true }) as any;
          const pdfBlob = doc.output('blob');
          const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
 
@@ -673,9 +675,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      {/* Explicitly using the new uploaded branding asset */}
                      <img src="/xquisite-logo-full.png" alt="Xquisite Celebrations" className="w-full object-contain" />
                   </div>
-                  {/* Company Name */}
                   <div className="text-right">
-                     <h2 className="text-sm font-bold text-slate-900">{org.name || 'Xquisite Celebrations Limited'}</h2>
+                     <h2 className="text-sm font-bold text-slate-900">{isCuisine || invoice.category === 'Cuisine' ? 'Xquisite Cuisine Limited' : (org.name || 'Xquisite Celebrations Limited')}</h2>
                   </div>
                </div>
 
@@ -1165,33 +1166,6 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      </button>
                   )}
                </div>
-            </div>
-
-            {/* DEBUG: Full Event List Dump */}
-            <div className="mt-8 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded-xl overflow-x-auto">
-               <h3 className="font-bold mb-2">DEBUG: ALL LOADED EVENTS ({cateringEvents.length})</h3>
-               <table className="w-full text-left">
-                  <thead>
-                     <tr>
-                        <th className="p-1">ID</th>
-                        <th className="p-1">Client</th>
-                        <th className="p-1">Status</th>
-                        <th className="p-1">Type</th>
-                        <th className="p-1">Date</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     {cateringEvents.map((e: CateringEvent) => (
-                        <tr key={e.id} className="border-t border-slate-700">
-                           <td className="p-1">{e.id.slice(0, 4)}</td>
-                           <td className="p-1">{e.customerName}</td>
-                           <td className="p-1">{e.status}</td>
-                           <td className="p-1">{e.orderType}</td>
-                           <td className="p-1">{e.eventDate}</td>
-                        </tr>
-                     ))}
-                  </tbody>
-               </table>
             </div>
 
          </div>

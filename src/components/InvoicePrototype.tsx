@@ -87,7 +87,9 @@ export const InvoicePrototype = () => {
     const customerEmail = customer?.email || '';
 
     // Organization Data
-    const orgName = settings.name || 'Xquisite Celebrations Ltd';
+    // Determine organization name based on invoice category
+    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Cuisine' : 'Banquet');
+    const orgName = inferredCategory === 'Cuisine' ? 'Xquisite Cuisine Limited' : (settings.name || 'Xquisite Celebrations Limited');
     const orgAddress = settings.address || '';
     const orgPhone = settings.contactPhone;
     const orgTin = settings.firs_tin;
@@ -101,13 +103,15 @@ export const InvoicePrototype = () => {
 
     const handleDownloadPDF = async () => {
         if (!invoice) return;
-        await generateInvoicePDF(invoice, customer || undefined, settings, { save: true });
+        const pdfInvoice = { ...invoice, category: inferredCategory };
+        await generateInvoicePDF(pdfInvoice, customer || undefined, settings, { save: true });
     };
 
     const handleSharePDF = async () => {
         if (!invoice) return;
         try {
-            const doc = await generateInvoicePDF(invoice, customer || undefined, settings, { save: false, returnDoc: true }) as any;
+            const pdfInvoice = { ...invoice, category: inferredCategory };
+            const doc = await generateInvoicePDF(pdfInvoice, customer || undefined, settings, { save: false, returnDoc: true }) as any;
             const pdfBlob = doc.output('blob');
             const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
 

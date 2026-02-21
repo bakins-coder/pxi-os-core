@@ -40,7 +40,10 @@ export const generateInvoicePDF = async (
         brandColor = '#F47C20'; // Force Xquisite Orange
     }
 
-    const orgName = settings.name || 'Xquisite Celebrations Ltd';
+    // Determine organization name based on invoice category
+    // Fallback: Infer 'Cuisine' if service charge is 0 and it's a sales invoice
+    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Cuisine' : 'Banquet');
+    const orgName = inferredCategory === 'Cuisine' ? 'Xquisite Cuisine Limited' : (settings.name || 'Xquisite Celebrations Limited');
     const isProforma = invoice.status === InvoiceStatus.PROFORMA;
 
     // ---------------------------------------------------------
@@ -57,8 +60,19 @@ export const generateInvoicePDF = async (
     // Logo (Left)
     if (logoData) {
         try {
-            // Using a wider logo area based on screenshot
-            doc.addImage(logoData, 'PNG', 15, 10, 50, 25);
+            // Calculate aspect ratio to avoid squashing
+            const imgProps = doc.getImageProperties(logoData);
+            const maxWidth = 50;
+            const maxHeight = 25;
+            let imgWidth = maxWidth;
+            let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+            if (imgHeight > maxHeight) {
+                imgHeight = maxHeight;
+                imgWidth = (imgProps.width * imgHeight) / imgProps.height;
+            }
+
+            doc.addImage(logoData, 'PNG', 15, 18, imgWidth, imgHeight);
         } catch (e) {
             console.error("Error adding logo to PDF", e);
             doc.setFontSize(24);
@@ -77,7 +91,7 @@ export const generateInvoicePDF = async (
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(40, 40, 40);
-    doc.text(orgName, 195, 25, { align: 'right' });
+    doc.text(orgName, 195, 18, { align: 'right' });
 
     // Orange Line Separator
     doc.setDrawColor(brandColor);
