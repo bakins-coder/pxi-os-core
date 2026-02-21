@@ -494,11 +494,128 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
    );
 };
 
+const SetupRoleKPIsModal = ({ isOpen, onClose, roleTitle, currentKPIs }: { isOpen: boolean, onClose: () => void, roleTitle: string, currentKPIs?: PerformanceMetric[] }) => {
+   const [kpis, setKpis] = useState<Partial<PerformanceMetric>[]>(currentKPIs || []);
+   const updateRoleKPIs = useDataStore(s => s.updateRoleKPIs);
+   const [isSaving, setIsSaving] = useState(false);
+
+   const addKPI = () => {
+      setKpis([...kpis, { name: '', weight: 10, description: '', type: 'KPI', target: 'Exceeding Expectations' }]);
+   };
+
+   const removeKPI = (idx: number) => {
+      setKpis(kpis.filter((_, i) => i !== idx));
+   };
+
+   const handleSave = async () => {
+      setIsSaving(true);
+      try {
+         await updateRoleKPIs(roleTitle, kpis as PerformanceMetric[]);
+         onClose();
+      } catch (err) {
+         console.error(err);
+         alert("Failed to save KPIs");
+      } finally {
+         setIsSaving(false);
+      }
+   };
+
+   if (!isOpen) return null;
+
+   const totalWeight = kpis.reduce((sum, k) => sum + (k.weight || 0), 0);
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-8 shrink-0">
+               <div>
+                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">KPI Matrix: {roleTitle}</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Define default performance indicators</p>
+               </div>
+               <button onClick={onClose} className="p-3 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
+               {kpis.map((kpi, idx) => (
+                  <div key={idx} className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 space-y-4 relative group">
+                     <button onClick={() => removeKPI(idx)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-3">
+                           <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-1 block">Indicator Name</label>
+                           <input
+                              className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl font-bold text-sm outline-none focus:border-indigo-500"
+                              value={kpi.name}
+                              onChange={e => setKpis(kpis.map((k, i) => i === idx ? { ...k, name: e.target.value } : k))}
+                              placeholder="e.g. Service Execution"
+                           />
+                        </div>
+                        <div>
+                           <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-1 block">Weight (%)</label>
+                           <input
+                              type="number"
+                              className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl font-black text-sm outline-none focus:border-indigo-500 text-center"
+                              value={kpi.weight}
+                              onChange={e => setKpis(kpis.map((k, i) => i === idx ? { ...k, weight: parseInt(e.target.value) || 0 } : k))}
+                           />
+                        </div>
+                     </div>
+                     <div>
+                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-1 block">Expected Target / Requirement</label>
+                        <textarea
+                           rows={2}
+                           className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl font-bold text-xs outline-none focus:border-indigo-500 resize-none"
+                           value={kpi.description}
+                           onChange={e => setKpis(kpis.map((k, i) => i === idx ? { ...k, description: e.target.value } : k))}
+                           placeholder="Describe the standard for 'Exceeding Expectations'..."
+                        />
+                     </div>
+                  </div>
+               ))}
+
+               {kpis.length === 0 && (
+                  <div className="py-20 text-center border-4 border-dashed border-slate-100 rounded-[3rem]">
+                     <p className="font-black uppercase text-slate-300 tracking-widest text-xs">No KPIs Defined Yet</p>
+                  </div>
+               )}
+            </div>
+
+            <div className="pt-8 mt-4 border-t border-slate-100 shrink-0 space-y-6">
+               <div className="flex justify-between items-center px-4">
+                  <div className="flex items-center gap-2">
+                     <div className={`w-3 h-3 rounded-full ${totalWeight === 100 ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
+                     <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Total Weight: {totalWeight}%</span>
+                  </div>
+                  <button onClick={addKPI} className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-widest hover:text-indigo-800 transition-colors">
+                     <Plus size={16} /> Add Indicator
+                  </button>
+               </div>
+
+               <div className="flex gap-4">
+                  <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+                  <button
+                     onClick={handleSave}
+                     disabled={isSaving || totalWeight !== 100}
+                     className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px] disabled:opacity-50 disabled:scale-100"
+                  >
+                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                     Save KPI Matrix
+                  </button>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+};
+
 const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
    const adjustBandSalary = useDataStore(state => state.adjustBandSalary);
    const [adjustingBand, setAdjustingBand] = useState<number | null>(null);
    const [percentChange, setPercentChange] = useState<number>(0);
+   const [setupRoleTitle, setSetupRoleTitle] = useState<string | null>(null);
+   const [currentKPIs, setCurrentKPIs] = useState<PerformanceMetric[]>([]);
+
    const handleAdjust = () => { if (adjustingBand !== null) { adjustBandSalary(adjustingBand, percentChange); setAdjustingBand(null); setPercentChange(0); } };
+
    return (
       <div className="space-y-8 animate-in slide-in-from-bottom-4 w-full">
          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6 bg-white/5 p-6 md:p-8 rounded-[2.5rem] border border-white/5">
@@ -512,7 +629,22 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
                   <div className="p-8 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto">
                      {dept.roles.sort((a, b) => b.band - a.band).map((role, idx) => (
                         <div key={idx} className="relative pl-10 group/role"><div className="absolute left-0 top-0 bottom-0 w-px bg-white/10"></div><div className="absolute left-[-5px] top-2 w-2.5 h-2.5 rounded-full bg-slate-800 border-2 border-slate-900 group-hover/role:bg-[#00ff9d] shadow-lg"></div>
-                           <div className="flex justify-between items-start mb-2 gap-2"><div><h4 className="text-[13px] font-black text-slate-200 uppercase tracking-tight leading-none mb-1">{role.title}</h4><p className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">Career Path Unit</p></div><span className="bg-slate-950 px-2.5 py-1 rounded text-[8px] md:text-[9px] font-black text-[#00ff9d] border border-[#00ff9d]/20 uppercase shrink-0">Band {role.band}</span></div>
+                           <div className="flex justify-between items-start mb-2 gap-2">
+                              <div>
+                                 <h4 className="text-[13px] font-black text-slate-200 uppercase tracking-tight leading-none mb-1">{role.title}</h4>
+                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">Career Path Unit</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                 <span className="bg-slate-950 px-2.5 py-1 rounded text-[8px] md:text-[9px] font-black text-[#00ff9d] border border-[#00ff9d]/20 uppercase shrink-0">Band {role.band}</span>
+                                 <button
+                                    onClick={() => { setSetupRoleTitle(role.title); setCurrentKPIs(role.kpis || []); }}
+                                    className="p-2 bg-white/5 hover:bg-[#00ff9d]/20 text-slate-500 hover:text-[#00ff9d] rounded-lg border border-white/5 transition-all shadow-sm flex items-center gap-1.5"
+                                 >
+                                    <Sparkles size={12} />
+                                    <span className="text-[8px] font-black uppercase tracking-wider">KPIs</span>
+                                 </button>
+                              </div>
+                           </div>
                            <div className="space-y-2"><div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-indigo-600 opacity-50 shadow-[0_0_10px_rgba(79,70,229,0.5)]" style={{ width: `${(role.band / 6) * 100}%` }}></div></div><div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter gap-1"><span>₦{formatSalary(role.salaryRange.low)}</span><span className="text-indigo-400/80 truncate">₦{formatSalary(role.salaryRange.mid)} Mid</span><span>₦{formatSalary(role.salaryRange.high)}</span></div></div>
                         </div>
                      ))}
@@ -534,6 +666,12 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
                </div>
             </div>
          )}
+         <SetupRoleKPIsModal
+            isOpen={!!setupRoleTitle}
+            onClose={() => setSetupRoleTitle(null)}
+            roleTitle={setupRoleTitle || ''}
+            currentKPIs={currentKPIs}
+         />
       </div>
    );
 };
@@ -544,11 +682,38 @@ const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
    const [isSubmitting, setIsSubmitting] = useState(false);
 
    const employees = useDataStore(s => s.employees);
+   const departmentMatrix = useDataStore(s => s.departmentMatrix);
    const addPerformanceReview = useDataStore(s => s.addPerformanceReview);
 
    if (!isOpen) return null;
 
    const getDefaultKPIs = (role: Role): PerformanceMetric[] => {
+      // 1. Try to find custom KPIs in Department Matrix first
+      const roleStr = String(role).toLowerCase();
+      let templateKPIs: PerformanceMetric[] = [];
+
+      for (const dept of departmentMatrix) {
+         const foundRole = dept.roles.find(r => r.title.toLowerCase() === roleStr);
+         if (foundRole && foundRole.kpis && foundRole.kpis.length > 0) {
+            templateKPIs = foundRole.kpis;
+            break;
+         }
+      }
+
+      if (templateKPIs.length > 0) {
+         return templateKPIs.map(kpi => ({
+            ...kpi,
+            type: 'KPI',
+            target: kpi.target || 'Exceeding Expectations',
+            actual: '',
+            employeeScore: 0,
+            supervisorScore: 0,
+            finalScore: 0,
+            comments: ''
+         }));
+      }
+
+      // 2. Fallback to hardcoded defaults
       const baseKPIs = [
          { name: 'Professionalism & Conduct', weight: 20, description: 'Adherence to company culture and behavioral standards.' },
          { name: 'Attendance & Reliability', weight: 10, description: 'Consistency in meeting work hours and scheduled shifts.' },
@@ -556,8 +721,6 @@ const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
       ];
 
       let roleSpecific: { name: string, weight: number, description: string, isSupervisorOnly?: boolean }[] = [];
-
-      const roleStr = String(role).toLowerCase();
 
       if (roleStr.includes('chef') || roleStr.includes('kitchen') || roleStr.includes('cook')) {
          roleSpecific = [

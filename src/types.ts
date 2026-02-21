@@ -77,6 +77,7 @@ export interface DepartmentRole {
   band: number;
   salaryRange: SalaryRange;
   permissions?: string[];
+  kpis?: PerformanceMetric[];
 }
 
 export interface DepartmentMatrix {
