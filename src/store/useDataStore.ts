@@ -94,6 +94,8 @@ interface DataState {
     submitSelfAssessment: (id: string, scores: { [metricIndex: number]: number }) => void;
     submitSupervisorReview: (id: string, scores: { [metricIndex: number]: number }, overrideReason?: string) => void;
     checkPerformanceDue: () => void;
+    updateRoleKPIs: (roleTitle: string, kpis: PerformanceMetric[]) => Promise<void>;
+    generateWaiterLink: (eventId: string) => string;
 
     // Misc Actions
     addMeetingTask: (task: Partial<Task>) => void;
@@ -144,7 +146,6 @@ interface DataState {
     assignWaiterToTable: (eventId: string, tableId: string, waiterId: string) => void;
     logLeftover: (eventId: string, itemId: string, quantity: number, reason: string) => void;
     addHandoverEvidence: (eventId: string, url: string, note: string) => void;
-    generateWaiterLink: (eventId: string) => void;
     updateProjectTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
     advanceProjectTask: (projectId: string, taskId: string) => void;
     completeEvent: (eventId: string) => void;
@@ -2241,7 +2242,8 @@ export const useDataStore = create<DataState>()(
 
             generateWaiterLink: (eventId: string) => {
                 console.log('[Store] Generating waiter link for event:', eventId);
-                // Stub implementation
+                // Real implementation should go here
+                return '';
             },
             createCateringOrder: async (d) => {
                 const user = useAuthStore.getState().user;
