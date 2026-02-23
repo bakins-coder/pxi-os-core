@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { Role } from '../types';
 import { generateHandoverReport } from '../utils/exportUtils';
-import { Camera, FileText, Lock, User, CheckCircle, AlertTriangle, X, Menu, ChevronRight } from 'lucide-react';
+import { Camera, FileText, Lock, User, CheckCircle, AlertTriangle, X, Menu, ChevronRight, Share2, Copy, Check } from 'lucide-react';
 
 export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () => void }> = ({ initialEventId, onClose }) => {
-    const { cateringEvents, employees, initializePortionMonitor, markTableServed, removeSeatServing, assignWaiterToTable, logLeftover, addHandoverEvidence } = useDataStore();
+    const { cateringEvents, employees, initializePortionMonitor, markTableServed, removeSeatServing, assignWaiterToTable, logLeftover, addHandoverEvidence, generateWaiterLink } = useDataStore();
 
     // 1. Core Selection State
     const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId || null);
@@ -68,6 +68,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
     // Evidence Modal Inputs
     const [evidenceNote, setEvidenceNote] = useState('');
     const [evidenceFile, setEvidenceFile] = useState<string | null>(null);
+    const [isCopying, setIsCopying] = useState(false);
 
     // 5. Effects
     React.useEffect(() => {
@@ -200,6 +201,26 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
                         <p className="text-xs text-gray-500 md:hidden">{selectedEvent?.eventDate}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                if (selectedEventId) {
+                                    if (!selectedEvent?.portionMonitor?.waiterAccessToken) {
+                                        generateWaiterLink(selectedEventId);
+                                    }
+                                    const token = selectedEvent?.portionMonitor?.waiterAccessToken || useDataStore.getState().cateringEvents.find(e => e.id === selectedEventId)?.portionMonitor?.waiterAccessToken;
+                                    if (token) {
+                                        const url = `${window.location.origin}${window.location.pathname}#/monitor/${token}`;
+                                        navigator.clipboard.writeText(url);
+                                        setIsCopying(true);
+                                        setTimeout(() => setIsCopying(false), 2000);
+                                    }
+                                }
+                            }}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isCopying ? 'bg-green-500 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                        >
+                            {isCopying ? <Check size={14} /> : <Share2 size={14} />}
+                            {isCopying ? 'Link Copied!' : 'Share Waiter Link'}
+                        </button>
                         <div className="text-right mr-2 hidden sm:block">
                             <p className="text-xs text-gray-500 uppercase font-semibold">Progress</p>
                             <span className="text-sm text-gray-900 font-medium">{servedGuests}/{totalGuests} Guests</span>

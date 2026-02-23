@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -25,7 +26,7 @@ import {
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { Role, Invoice, Requisition, CateringEvent } from '../types';
 import { EventCalendar } from './EventCalendar';
-import { EventDetailCard } from './EventDetailCard';
+
 
 const SummaryList = ({ title, items, type, onItemClick }: { title: string; items: any[]; type: string; onItemClick?: (item: any) => void }) => {
   return (
@@ -95,6 +96,7 @@ const SummaryList = ({ title, items, type, onItemClick }: { title: string; items
 
 export const Dashboard = () => {
   const { invoices, requisitions, cateringEvents, tickets, contacts, employees, updateInvoiceStatus, updateRequisition } = useDataStore();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { strictMode, settings, fetchSettings } = useSettingsStore();
   const [selectedItem, setSelectedItem] = useState<{ type: string; data: any } | null>(null);
@@ -278,10 +280,10 @@ export const Dashboard = () => {
       <div className="col-span-12 lg:col-span-4 space-y-6">
         <div className="min-h-[300px]">
           {(settings.type === 'Catering') ? (
-            <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" onItemClick={(ev) => setSelectedItem({ type: 'event', data: ev })} />
+            <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" onItemClick={(ev) => navigate(`/catering?id=${ev.id}`)} />
           ) : (
             (settings.type === 'General') ? (
-              <SummaryList title="Upcoming Events" items={dataState.upcomingEvents} type="event" onItemClick={(ev) => setSelectedItem({ type: 'event', data: ev })} />
+              <SummaryList title="Upcoming Events" items={dataState.upcomingEvents} type="event" onItemClick={(ev) => navigate(`/catering?id=${ev.id}`)} />
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full p-6 text-center">
                 <Plane size={32} className="text-slate-300 mb-2" />
@@ -291,13 +293,6 @@ export const Dashboard = () => {
           )}
         </div>
       </div>
-
-      {selectedItem?.type === 'event' && (
-        <EventDetailCard
-          item={{ type: 'event', data: selectedItem.data }}
-          onClose={() => setSelectedItem(null)}
-        />
-      )}
 
       {selectedItem && selectedItem.type !== 'event' && (
         <GenericDetailModal

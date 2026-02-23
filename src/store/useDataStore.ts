@@ -2160,6 +2160,27 @@ export const useDataStore = create<DataState>()(
                 return { cateringEvents: updatedEvents };
             }),
 
+            generateWaiterLink: (eventId) => set((state) => {
+                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                if (eventIndex === -1) return state;
+                const event = state.cateringEvents[eventIndex];
+
+                const token = crypto.randomUUID();
+                const updatedEvent = {
+                    ...event,
+                    portionMonitor: {
+                        ...(event.portionMonitor || { eventId, tables: [], leftovers: [], handoverEvidence: [] }),
+                        waiterAccessToken: token
+                    }
+                };
+
+                const updatedEvents = [...state.cateringEvents];
+                updatedEvents[eventIndex] = updatedEvent;
+
+                get().syncWithCloud();
+                return { cateringEvents: updatedEvents };
+            }),
+
             completeEvent: (eventId) => {
                 set((state) => ({
                     cateringEvents: state.cateringEvents.map((e) =>
@@ -2239,12 +2260,6 @@ export const useDataStore = create<DataState>()(
                     inventory: updatedInventory
                 };
             }),
-
-            generateWaiterLink: (eventId: string) => {
-                console.log('[Store] Generating waiter link for event:', eventId);
-                // Real implementation should go here
-                return '';
-            },
             createCateringOrder: async (d) => {
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
@@ -2279,6 +2294,11 @@ export const useDataStore = create<DataState>()(
                 const invoiceId = crypto.randomUUID();
                 const totalRev = d.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0 as number);
 
+                const isCuisine = (d.orderType || 'Banquet') === 'Cuisine';
+                const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
+                const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
+                const totalCents = totalRev + serviceChargeCents + vatCents;
+
                 const event: CateringEvent = {
                     id: evId,
                     companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
@@ -2294,18 +2314,13 @@ export const useDataStore = create<DataState>()(
                     hardwareChecklist: [],
                     tasks: [],
                     financials: {
-                        revenueCents: totalRev,
+                        revenueCents: totalCents,
                         directCosts: { foodCents: totalRev * 0.4, labourCents: 0, energyCents: 0, carriageCents: 0 },
                         indirectCosts: { adminCents: 0, marketingCents: 0, waitersCents: 0, logisticsCents: 0 },
                         netProfitMargin: 60,
                         invoiceId: invoiceId
                     }
                 };
-
-                const isCuisine = (d.orderType || 'Banquet') === 'Cuisine';
-                const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
-                const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
-                const totalCents = totalRev + serviceChargeCents + vatCents;
 
                 const invoice: Invoice = {
                     id: invoiceId,
@@ -2490,6 +2505,11 @@ export const useDataStore = create<DataState>()(
                                     }))
                                 };
                                 finalInvoice = nextInvoice;
+                                // Synchronize event revenue
+                                nextEvent.financials = {
+                                    ...nextEvent.financials,
+                                    revenueCents: totalCents
+                                };
                                 return nextInvoice;
                             }
                             return inv;
@@ -2614,14 +2634,17 @@ export const useDataStore = create<DataState>()(
                 return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
             },
 
-            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean) => {
+            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string) => {
                 set((state) => {
                     const currentInvoice = state.invoices.find(inv => inv.id === invoiceId);
-                    // Explicitly skip taxes if isCuisine is true, OR if existing invoice already had 0 taxes (and it's not a banquet)
-                    const skipTaxes = isCuisine || (currentInvoice && currentInvoice.serviceChargeCents === 0 && currentInvoice.vatCents === 0 && !lines.some(l => l.description.startsWith('[SECTION] ')));
+                    const effectiveIsCuisine = isCuisine || (currentInvoice?.category === 'Cuisine');
+
+                    // Explicitly skip taxes if Cuisine. 
+                    // Fallback to 0-tax check only for Banquet/Other types.
+                    const skipTaxes = effectiveIsCuisine || (!currentInvoice?.category?.includes('Banquet') && currentInvoice?.serviceChargeCents === 0 && currentInvoice?.vatCents === 0);
 
                     // 1. Calculate Standard Totals (If no discounts applied)
-                    const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
+                    const isBanquet = (currentInvoice?.category === 'Banquet' && !effectiveIsCuisine) && lines.some(l => l.description.startsWith('[SECTION] '));
 
                     const standardSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
@@ -2632,8 +2655,9 @@ export const useDataStore = create<DataState>()(
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     // 2. Calculate Effective Totals (Using manual prices if set)
+                    const hasSections = lines.some(l => l.description.startsWith('[SECTION] '));
                     const effectiveSubtotal = lines.reduce((acc, l) => {
-                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
+                        if (isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
                             : l.unitPriceCents;
@@ -2653,6 +2677,7 @@ export const useDataStore = create<DataState>()(
                         invoices: state.invoices.map(inv => inv.id === invoiceId ? {
                             ...inv,
                             lines,
+                            category: (isCuisine || inv.category === 'Cuisine') ? 'Cuisine' : inv.category,
                             subtotalCents: effectiveSubtotal,
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
@@ -2663,12 +2688,18 @@ export const useDataStore = create<DataState>()(
                         } : inv),
                         cateringEvents: state.cateringEvents.map(event => {
                             const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
-                            if (eventInvId === invoiceId) {
+                            const isMatch = (eventId && event.id === eventId) || (eventInvId === invoiceId);
+
+                            if (isMatch) {
                                 return {
                                     ...event,
                                     financials: {
                                         ...event.financials,
-                                        revenueCents: updatedTotalCents
+                                        revenueCents: updatedTotalCents,
+                                        directCosts: {
+                                            ...(event.financials?.directCosts || { foodCents: 0, labourCents: 0, energyCents: 0, carriageCents: 0 }),
+                                            foodCents: Math.round(updatedTotalCents * 0.4)
+                                        }
                                     }
                                 };
                             }
@@ -2688,28 +2719,33 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
 
-            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => {
+            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string) => {
                 set((state) => {
-                    const isBanquet = lines.some(l => l.description.startsWith('[SECTION] '));
+                    const currentInv = state.invoices.find(i => i.id === invoiceId);
+                    const event = eventId ? state.cateringEvents.find(e => e.id === eventId) : undefined;
+                    const effectiveIsCuisine = (currentInv?.category === 'Cuisine' || event?.orderType === 'Cuisine');
+
+                    const isBanquet = (currentInv?.category === 'Banquet' && !effectiveIsCuisine) && lines.some(l => l.description.startsWith('[SECTION] '));
 
                     const standardSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = Math.round(standardSubtotal * 0.15);
-                    const standardVAT = Math.round((standardSubtotal + standardSC) * 0.075);
+                    const standardSC = effectiveIsCuisine ? 0 : Math.round(standardSubtotal * 0.15);
+                    const standardVAT = effectiveIsCuisine ? 0 : Math.round((standardSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
+                    const hasSections = lines.some(l => l.description.startsWith('[SECTION] '));
                     const effectiveSubtotal = lines.reduce((acc, l) => {
-                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
+                        if (isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
                             : l.unitPriceCents;
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = Math.round(effectiveSubtotal * 0.15);
-                    const effectiveVAT = Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                    const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveSubtotal * 0.15);
+                    const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                     const discount = Math.max(0, standardTotal - effectiveTotal);
 
@@ -2720,6 +2756,7 @@ export const useDataStore = create<DataState>()(
                             ...inv,
                             lines,
                             status: InvoiceStatus.UNPAID,
+                            category: effectiveIsCuisine ? 'Cuisine' : inv.category,
                             subtotalCents: effectiveSubtotal,
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
@@ -2730,12 +2767,18 @@ export const useDataStore = create<DataState>()(
                         } : inv),
                         cateringEvents: state.cateringEvents.map(event => {
                             const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
-                            if (eventInvId === invoiceId) {
+                            const isMatch = (eventId && event.id === eventId) || (eventInvId === invoiceId);
+
+                            if (isMatch) {
                                 return {
                                     ...event,
                                     financials: {
                                         ...event.financials,
-                                        revenueCents: updatedTotalCents
+                                        revenueCents: updatedTotalCents,
+                                        directCosts: {
+                                            ...(event.financials?.directCosts || { foodCents: 0, labourCents: 0, energyCents: 0, carriageCents: 0 }),
+                                            foodCents: Math.round(updatedTotalCents * 0.4)
+                                        }
                                     }
                                 };
                             }
@@ -2848,10 +2891,11 @@ export const useDataStore = create<DataState>()(
                     // Safe Pull Helper: Prevents one table failure from crashing the entire app
                     const safePull = async (table: string, cid?: string) => {
                         try {
-                            return await pullCloudState(table, cid);
-                        } catch (err) {
-                            console.error(`[Hydration Error] Failed to fetch ${table}:`, err);
-                            return []; // Return empty array so destructuring doesn't fail
+                            const data = await pullCloudState(table, cid);
+                            return data;
+                        } catch (e: any) {
+                            console.error(`[DataStore] safePull FAILURE for ${table}:`, e.message || e);
+                            return [];
                         }
                     };
 
@@ -2909,6 +2953,8 @@ export const useDataStore = create<DataState>()(
                         safePull('recipes', companyId),
                         safePull('recipe_ingredients', undefined), // No org filter - joins through recipes
                     ]); // End Promise.all
+
+                    console.log(`[Hydration] Sync complete for ${companyId}`);
 
                     // Separate fetch for Department Matrix to keep things clean
                     const [rawDepartments, rawJobRoles] = await Promise.all([

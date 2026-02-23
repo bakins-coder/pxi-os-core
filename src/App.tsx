@@ -27,6 +27,7 @@ import { ITPortal } from './components/ITPortal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PortionMonitor } from './components/PortionMonitor';
 import { PublicBrochure } from './components/PublicBrochure';
+import { ExternalMonitor } from './components/ExternalMonitor';
 import { RequisitionsHub } from './components/RequisitionsHub';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
@@ -200,6 +201,7 @@ function AppContent() {
         <Route path="/update-password" element={<AuthPage initialView="update-password" />} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
+        <Route path="/monitor/:token" element={<ExternalMonitor />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -245,6 +247,7 @@ function AppContent() {
         <Route path="/customer-portal" element={<CustomerPortal />} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
+        <Route path="/monitor/:token" element={<ExternalMonitor />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

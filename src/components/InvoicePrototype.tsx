@@ -233,7 +233,7 @@ export const InvoicePrototype = () => {
                         <thead>
                             <tr className="border-b-2 border-slate-100">
                                 <th className="text-left py-4 text-sm font-bold text-slate-600 uppercase w-3/5">Items</th>
-                                <th className="text-center py-4 text-sm font-bold text-slate-600 uppercase w-[10%]">Qty</th>
+                                <th className="text-center py-4 text-sm font-bold text-slate-600 uppercase w-[10%] whitespace-nowrap">Qty</th>
                                 <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase w-[15%]">Price</th>
                                 <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase w-[15%]">Amount</th>
                             </tr>
@@ -288,7 +288,7 @@ export const InvoicePrototype = () => {
                         )}
                         {vat > 0 && (
                             <div className="flex justify-between items-center text-sm">
-                                <span className="font-bold text-slate-600 uppercase">VAT (7.5%):</span>
+                                <span className="font-bold text-slate-600 uppercase">VAT ({invoice.category === 'Cuisine' ? '0%' : '7.5%'}):</span>
                                 <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}

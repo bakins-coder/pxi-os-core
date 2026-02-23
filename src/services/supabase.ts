@@ -223,13 +223,14 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('readinessScore' in newItem) { newItem.readiness_score = newItem.readinessScore; delete newItem.readinessScore; }
     if ('banquetDetails' in newItem) { newItem.banquet_details = newItem.banquetDetails; delete newItem.banquetDetails; }
     if ('hardwareChecklist' in newItem) { newItem.hardware_checklist = newItem.hardwareChecklist; delete newItem.hardwareChecklist; }
-    if ('reconciliationStatus' in newItem) { newItem.reconciliation_status = newItem.reconciliationStatus; delete newItem.reconciliationStatus; }
-    if ('costingSheet' in newItem) { newItem.costing_sheet = newItem.costingSheet; delete newItem.costingSheet; }
+    if ('reconciliationStatus' in newItem) { newItem.reconciliation_status = newItem.reconciliationStatus; delete newItem.reconciliation_status; }
+    if ('costingSheet' in newItem) { newItem.costing_sheet = newItem.costingSheet; delete newItem.costing_sheet; }
 
     if ('portionMonitor' in newItem) { newItem.portion_monitor = newItem.portionMonitor; delete newItem.portionMonitor; }
     if ('orderType' in newItem) { newItem.order_type = newItem.orderType; delete newItem.orderType; }
     if ('location' in newItem) { newItem.location = newItem.location; }
     if ('contactId' in newItem) { newItem.contact_id = newItem.contactId; delete newItem.contactId; }
+    // financials is stored as JSONB, keep as is
 
     // Image Mapping (General)
     if ('image' in newItem) {
@@ -282,27 +283,15 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     'performance_reviews', 'recipes', 'messages'
   ].includes(tableName);
 
-  let query = supabase.from(tableName).select('*');
+  const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
+  const LEGACY_ID = 'org-xquisite';
+  const effectiveId = companyId === 'org-xquisite' ? VALID_UUID : companyId;
 
-  if (companyId) {
-    if (useOrgId) {
-      query = query.eq('organization_id', companyId);
-    } else {
-      query = query.eq('company_id', companyId);
-    }
-  }
-
-  const { data, error } = await query;
-
-  if (error) throw error;
-
-
-
-  // Map back snake_case to camelCase
-  return data.map((item: any) => {
+  // Helper for consistent snake_case to camelCase mapping
+  const mapItem = (item: any) => {
     const newItem = { ...item };
 
-    // Explicit mappings for known fields
+    // Org/Company Mappings
     if ('company_id' in newItem) { newItem.companyId = newItem.company_id; delete newItem.company_id; }
     if ('organization_id' in newItem) {
       const orgId = newItem.organization_id;
@@ -311,82 +300,8 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
       delete newItem.organization_id;
     }
 
-    // Inventory Mappings
-    if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }
-    if ('stock_level' in newItem) { newItem.stockQuantity = newItem.stock_level; delete newItem.stock_level; }
-    if ('price_cents' in newItem) { newItem.priceCents = newItem.price_cents; delete newItem.price_cents; }
-    if ('cost_price_cents' in newItem) { newItem.costPriceCents = newItem.cost_price_cents; delete newItem.cost_price_cents; }
-    if ('recipe_id' in newItem) { newItem.recipeId = newItem.recipe_id; delete newItem.recipe_id; }
-    if ('is_asset' in newItem) { newItem.isAsset = newItem.is_asset; delete newItem.is_asset; }
-    if ('is_rental' in newItem) { newItem.isRental = newItem.is_rental; delete newItem.is_rental; }
-    if ('rental_vendor' in newItem) { newItem.rentalVendor = newItem.rental_vendor; delete newItem.rental_vendor; }
-    if ('category_id' in newItem) { newItem.categoryId = newItem.category_id; delete newItem.category_id; }
-    if ('product_category_id' in newItem) { newItem.productCategoryId = newItem.product_category_id; delete newItem.product_category_id; }
-
-    // Recipe Mappings
-    if ('base_portions' in newItem) { newItem.basePortions = newItem.base_portions; delete newItem.base_portions; }
-    if ('ingredient_name' in newItem) { newItem.ingredientName = newItem.ingredient_name; delete newItem.ingredient_name; }
-    if ('qty_per_portion' in newItem) { newItem.qtyPerPortion = newItem.qty_per_portion; delete newItem.qty_per_portion; }
-    if ('price_source_query' in newItem) { newItem.priceSourceQuery = newItem.price_source_query; delete newItem.price_source_query; }
-    if ('sub_recipe_group' in newItem) { newItem.subRecipeGroup = newItem.sub_recipe_group; delete newItem.sub_recipe_group; }
-
-    // Contact Mappings
-    if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }
-    if ('registration_number' in newItem) { newItem.registrationNumber = newItem.registration_number; delete newItem.registration_number; }
-    if ('job_title' in newItem) { newItem.jobTitle = newItem.job_title; delete newItem.job_title; }
-
-
-    // Ledger Mappings
-    if ('balance_cents' in newItem) { newItem.balanceCents = newItem.balance_cents; delete newItem.balance_cents; }
-
-    // Employee Mappings
-    if ('first_name' in newItem) { newItem.firstName = newItem.first_name; delete newItem.first_name; }
-    if ('last_name' in newItem) { newItem.lastName = newItem.last_name; delete newItem.last_name; }
-
-    // Legacy Name Support: If firstName is missing but 'name' exists, map it
-    if (!newItem.firstName && 'name' in newItem) {
-      newItem.firstName = newItem.name;
-    }
-
-    if ('phone_number' in newItem) { newItem.phoneNumber = newItem.phone_number; delete newItem.phone_number; }
-    if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
-    if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
-    if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
-    if ('user_id' in newItem) { newItem.userId = newItem.user_id; delete newItem.user_id; }
-
-    // Message Mappings
-    if ('sender_id' in newItem) { newItem.senderId = newItem.sender_id; delete newItem.sender_id; }
-    if ('recipient_id' in newItem) { newItem.recipientId = newItem.recipient_id; delete newItem.recipient_id; }
-    if ('created_at' in newItem) { newItem.createdAt = newItem.created_at; delete newItem.created_at; }
-    if ('read_at' in newItem) { newItem.readAt = newItem.read_at; delete newItem.read_at; }
-
-    if (tableName === 'messages') {
-      newItem.status = newItem.readAt ? 'read' : 'sent';
-    }
-    if ('organization_id' in newItem) { newItem.organizationId = newItem.organization_id; delete newItem.organization_id; }
-
-    // Invoice / General Detail Mappings
-    if ('due_date' in newItem) { newItem.dueDate = newItem.due_date; delete newItem.due_date; }
-    if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
-    if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
-    if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }
-    if ('unit_price_cents' in newItem) { newItem.unitPriceCents = newItem.unit_price_cents; delete newItem.unit_price_cents; }
-    if ('subtotal_cents' in newItem) { newItem.subtotalCents = newItem.subtotal_cents; delete newItem.subtotal_cents; }
-    if ('service_charge_cents' in newItem) { newItem.serviceChargeCents = newItem.service_charge_cents; delete newItem.service_charge_cents; }
-    if ('vat_cents' in newItem) { newItem.vatCents = newItem.vat_cents; delete newItem.vat_cents; }
-    if ('manual_set_price_cents' in newItem) { newItem.manualSetPriceCents = newItem.manual_set_price_cents; delete newItem.manual_set_price_cents; }
-    if ('discount_cents' in newItem) { newItem.discountCents = newItem.discount_cents; delete newItem.discount_cents; }
-    if ('standard_total_cents' in newItem) { newItem.standardTotalCents = newItem.standard_total_cents; delete newItem.standard_total_cents; }
-
-    // Requisition Mappings (Pull)
-    if ('item_name' in newItem) { newItem.itemName = newItem.item_name; delete newItem.item_name; }
-    if ('ingredient_id' in newItem) { newItem.ingredientId = newItem.ingredient_id; delete newItem.ingredient_id; }
-    if ('price_per_unit_cents' in newItem) { newItem.pricePerUnitCents = newItem.price_per_unit_cents; delete newItem.price_per_unit_cents; }
-    if ('total_amount_cents' in newItem) { newItem.totalAmountCents = newItem.total_amount_cents; delete newItem.total_amount_cents; }
-    if ('requestor_id' in newItem) { newItem.requestorId = newItem.requestor_id; delete newItem.requestor_id; }
-    if ('reference_id' in newItem) { newItem.referenceId = newItem.reference_id; delete newItem.reference_id; }
-
-    // Catering Event Mappings
+    // Catering Mappings
+    if ('order_type' in newItem) { newItem.orderType = newItem.order_type; delete newItem.order_type; }
     if ('customer_name' in newItem) { newItem.customerName = newItem.customer_name; delete newItem.customer_name; }
     if ('event_date' in newItem) { newItem.eventDate = newItem.event_date; delete newItem.event_date; }
     if ('end_date' in newItem) { newItem.endDate = newItem.end_date; delete newItem.end_date; }
@@ -398,34 +313,85 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     if ('reconciliation_status' in newItem) { newItem.reconciliationStatus = newItem.reconciliation_status; delete newItem.reconciliation_status; }
     if ('costing_sheet' in newItem) { newItem.costingSheet = newItem.costing_sheet; delete newItem.costing_sheet; }
     if ('portion_monitor' in newItem) { newItem.portionMonitor = newItem.portion_monitor; delete newItem.portion_monitor; }
-    if ('order_type' in newItem) { newItem.orderType = newItem.order_type; delete newItem.order_type; }
-    if ('location' in newItem) { newItem.location = newItem.location; }
-    if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
 
-    // Image Mapping (General) - Additive, not destructive
-    if ('image_url' in newItem) {
-      if (newItem.image_url) {
-        newItem.imageUrl = newItem.image_url;
-        if (!newItem.image) newItem.image = newItem.image_url;
-      }
-      delete newItem.image_url;
-    }
-    if ('primary_image_url' in newItem) {
-      if (newItem.primary_image_url) {
-        newItem.primaryImageUrl = newItem.primary_image_url;
-        if (!newItem.image) newItem.image = newItem.primary_image_url;
-      }
-      delete newItem.primary_image_url;
-    }
-    // Fallback for stock_level if stock_quantity is missing (common schema variance)
-    if (!('stockQuantity' in newItem) && 'stock_level' in newItem) {
-      newItem.stockQuantity = newItem.stock_level;
-      delete newItem.stock_level;
-    }
+    // Financial Mappings
+    if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }
+    if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
+    if ('due_date' in newItem) { newItem.dueDate = newItem.due_date; delete newItem.due_date; }
 
+    // Inventory Mappings
+    if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }
+    if ('stock_level' in newItem) { newItem.stockQuantity = newItem.stock_level; delete newItem.stock_level; }
+    if ('price_cents' in newItem) { newItem.priceCents = newItem.price_cents; delete newItem.price_cents; }
+    if ('cost_price_cents' in newItem) { newItem.costPriceCents = newItem.cost_price_cents; delete newItem.cost_price_cents; }
+    if ('recipe_id' in newItem) { newItem.recipeId = newItem.recipe_id; delete newItem.recipe_id; }
+    if ('is_asset' in newItem) { newItem.isAsset = newItem.is_asset; delete newItem.is_asset; }
+    if ('is_rental' in newItem) { newItem.isRental = newItem.is_rental; delete newItem.is_rental; }
+    if ('rental_vendor' in newItem) { newItem.rentalVendor = newItem.rental_vendor; delete newItem.rental_vendor; }
+
+    // Contact Mappings
+    if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }
+    if ('registration_number' in newItem) { newItem.registrationNumber = newItem.registration_number; delete newItem.registration_number; }
+    if ('job_title' in newItem) { newItem.jobTitle = newItem.job_title; delete newItem.job_title; }
+
+    // Employee Mappings
+    if ('first_name' in newItem) { newItem.firstName = newItem.first_name; delete newItem.first_name; }
+    if ('last_name' in newItem) { newItem.lastName = newItem.last_name; delete newItem.last_name; }
+    if ('phone_number' in newItem) { newItem.phoneNumber = newItem.phone_number; delete newItem.phone_number; }
+    if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
+    if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
+    if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
+
+    // Recipe Mappings
+    if ('base_portions' in newItem) { newItem.basePortions = newItem.base_portions; delete newItem.base_portions; }
+    if ('ingredient_name' in newItem) { newItem.ingredientName = newItem.ingredient_name; delete newItem.ingredient_name; }
+    if ('qty_per_portion' in newItem) { newItem.qtyPerPortion = newItem.qty_per_portion; delete newItem.qty_per_portion; }
+    if ('price_source_query' in newItem) { newItem.priceSourceQuery = newItem.price_source_query; delete newItem.price_source_query; }
+    if ('sub_recipe_group' in newItem) { newItem.subRecipeGroup = newItem.sub_recipe_group; delete newItem.sub_recipe_group; }
+
+    // Ledger Mappings
+    if ('balance_cents' in newItem) { newItem.balanceCents = newItem.balance_cents; delete newItem.balance_cents; }
+
+    // Message Mappings
+    if ('sender_id' in newItem) { newItem.senderId = newItem.sender_id; delete newItem.sender_id; }
+    if ('recipient_id' in newItem) { newItem.recipientId = newItem.recipient_id; delete newItem.recipient_id; }
+    if ('created_at' in newItem) { newItem.createdAt = newItem.created_at; delete newItem.created_at; }
+    if ('read_at' in newItem) { newItem.readAt = newItem.read_at; delete newItem.read_at; }
+
+    if (tableName === 'messages') {
+      newItem.status = newItem.readAt ? 'read' : 'sent';
+    }
 
     return newItem;
-  });
+  };
+
+  let query = supabase.from(tableName).select('*');
+
+  if (effectiveId) {
+    const col = useOrgId ? 'organization_id' : 'company_id';
+    if (effectiveId === VALID_UUID) {
+      // Defensive: Query by UUID first
+      const { data: uuidData, error: uuidError } = await supabase.from(tableName).select('*').eq(col, VALID_UUID);
+      if (uuidError) throw uuidError;
+
+      // Attempt legacy query separately to avoid invalid UUID syntax errors in .or() logic
+      try {
+        const { data: legacyData, error: legacyError } = await supabase.from(tableName).select('*').eq(col, LEGACY_ID);
+        if (!legacyError && legacyData && legacyData.length > 0) {
+          return [...(uuidData || []), ...legacyData].map(mapItem);
+        }
+      } catch (e) {
+        console.warn(`[Supabase] Skipping legacy ID for ${tableName} due to type mismatch.`);
+      }
+      return (uuidData || []).map(mapItem);
+    } else {
+      query = query.eq(col, effectiveId);
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data.map(mapItem);
 };
 
 // --- RPC Helpers ---

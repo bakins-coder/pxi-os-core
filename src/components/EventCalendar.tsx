@@ -1,11 +1,11 @@
-
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { Task, CateringEvent } from '../types';
 import {
   ChevronLeft, ChevronRight, ChefHat, X
 } from 'lucide-react';
-import { EventDetailCard } from './EventDetailCard';
+
 
 interface EventCalendarProps {
   tasks?: Task[];
@@ -22,6 +22,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedItem, setSelectedItem] = useState<{ type: 'task' | 'event', data: any } | null>(null);
+  const navigate = useNavigate();
 
   const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
@@ -84,7 +85,13 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
                   {itemsByDate[day]?.map((item, idx) => (
                     <div
                       key={idx}
-                      onClick={() => setSelectedItem(item)}
+                      onClick={() => {
+                        if (item.type === 'event') {
+                          navigate(`/catering?id=${item.data.id}`);
+                        } else {
+                          setSelectedItem(item);
+                        }
+                      }}
                       className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase truncate shadow-sm cursor-pointer border ${item.type === 'event'
                         ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700'
                         : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-700'
@@ -101,12 +108,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
         ))}
       </div>
 
-      {selectedItem && (
-        <EventDetailCard
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-        />
-      )}
+      {/* We no longer render EventDetailCard for items that should navigate instead */}
     </div>
   );
 };
