@@ -2644,12 +2644,15 @@ export const useDataStore = create<DataState>()(
                     const currentInvoice = state.invoices.find(inv => inv.id === invoiceId);
                     const effectiveIsCuisine = isCuisine || (currentInvoice?.category === 'Cuisine');
 
-                    // Explicitly skip taxes if Cuisine. 
-                    // Fallback to 0-tax check only for Banquet/Other types.
-                    const skipTaxes = effectiveIsCuisine || (!currentInvoice?.category?.includes('Banquet') && currentInvoice?.serviceChargeCents === 0 && currentInvoice?.vatCents === 0);
-
                     // 1. Calculate Standard Totals (If no discounts applied)
-                    const isBanquet = (currentInvoice?.category === 'Banquet' && !effectiveIsCuisine) && lines.some(l => l.description.startsWith('[SECTION] '));
+                    const isBanquet = !effectiveIsCuisine && lines.some(l => l.description.startsWith('[SECTION] '));
+
+                    const skipTaxes = effectiveIsCuisine || (
+                        !isBanquet &&
+                        !currentInvoice?.category?.includes('Banquet') &&
+                        currentInvoice?.serviceChargeCents === 0 &&
+                        currentInvoice?.vatCents === 0
+                    );
 
                     const standardSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
