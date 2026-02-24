@@ -205,6 +205,24 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
       delete newItem.organization_id;
     }
 
+    // Generic ID Mappings (Shared across many tables)
+    if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
+    if ('reference_id' in newItem) { newItem.referenceId = newItem.reference_id; delete newItem.reference_id; }
+    if ('project_id' in newItem) { newItem.projectId = newItem.project_id; delete newItem.project_id; }
+    if ('assignee_id' in newItem) { newItem.assigneeId = newItem.assignee_id; delete newItem.assignee_id; }
+    if ('ingredient_id' in newItem) { newItem.ingredientId = newItem.ingredient_id; delete newItem.ingredient_id; }
+    if ('supplier_id' in newItem) { newItem.supplierId = newItem.supplier_id; delete newItem.supplier_id; }
+    if ('category_id' in newItem) { newItem.categoryId = newItem.category_id; delete newItem.category_id; }
+    if ('unit_id' in newItem) { newItem.unitId = newItem.unit_id; delete newItem.unit_id; }
+    if ('parent_id' in newItem) { newItem.parentId = newItem.parent_id; delete newItem.parent_id; }
+
+    // Generic Field Mappings
+    if ('image_url' in newItem) { newItem.imageUrl = newItem.image_url; delete newItem.image_url; }
+    if ('budget_cents' in newItem) { newItem.budgetCents = newItem.budget_cents; delete newItem.budget_cents; }
+    if ('client_contact_id' in newItem) { newItem.clientContactId = newItem.client_contact_id; delete newItem.client_contact_id; }
+    if ('ai_alerts' in newItem) { newItem.aiAlerts = newItem.ai_alerts; delete newItem.ai_alerts; }
+    if ('start_date' in newItem) { newItem.startDate = newItem.start_date; delete newItem.start_date; }
+
     // Catering Mappings & Unpacking
     if (tableName === 'catering_events' && newItem.financials && typeof newItem.financials === 'object') {
       // Unpack fields from 'financials' blob back to top level
