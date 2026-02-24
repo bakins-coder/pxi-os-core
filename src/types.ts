@@ -480,6 +480,7 @@ export interface Invoice {
   number: string;
   companyId: string;
   contactId?: string;
+  customerName?: string;
   date: string;
   dueDate: string;
   status: InvoiceStatus;

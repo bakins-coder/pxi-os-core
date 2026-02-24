@@ -1469,7 +1469,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
    if (!evInvoice || Number(evInvoice.totalCents) === 0) {
       const candidates = invoices.filter(inv => {
          if (Number(inv.totalCents) <= 0) return false;
-         const invName = normalize(inv.contactName || (inv as any).customerName);
+         const invName = normalize(inv.customerName);
 
          // Normalize parts to handle cases like "ADEJOKE" vs "ADEJOKE ADEDIRAN"
          const isMutualMatch = evName && invName && (evName.includes(invName) || invName.includes(evName));
@@ -2443,7 +2443,7 @@ export const Catering = () => {
                return s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
             };
             const evName = normalize(ev.customerName);
-            const invName = normalize(inv.contactName || (inv as any).customerName);
+            const invName = normalize(inv.customerName);
             return evName && invName && (evName.includes(invName) || invName.includes(evName)) && Number(inv.totalCents) > 0;
          });
 

@@ -128,9 +128,9 @@ interface DataState {
     completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
     finalizeProforma: (invoiceId: string) => Promise<void>;
-    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean) => Promise<void>;
+    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string) => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
-    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number) => Promise<void>;
+    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string) => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -2160,26 +2160,31 @@ export const useDataStore = create<DataState>()(
                 return { cateringEvents: updatedEvents };
             }),
 
-            generateWaiterLink: (eventId) => set((state) => {
-                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
-                if (eventIndex === -1) return state;
-                const event = state.cateringEvents[eventIndex];
-
+            generateWaiterLink: (eventId: string) => {
                 const token = crypto.randomUUID();
-                const updatedEvent = {
-                    ...event,
-                    portionMonitor: {
-                        ...(event.portionMonitor || { eventId, tables: [], leftovers: [], handoverEvidence: [] }),
-                        waiterAccessToken: token
-                    }
-                };
+                const link = `${window.location.origin}/monitor/waiter?token=${token}&eventId=${eventId}`;
 
-                const updatedEvents = [...state.cateringEvents];
-                updatedEvents[eventIndex] = updatedEvent;
+                set((state) => {
+                    const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                    if (eventIndex === -1) return state;
+                    const event = state.cateringEvents[eventIndex];
+
+                    const updatedEvent = {
+                        ...event,
+                        portionMonitor: {
+                            ...(event.portionMonitor || { eventId, tables: [], leftovers: [], handoverEvidence: [] }),
+                            waiterAccessToken: token
+                        }
+                    };
+
+                    const updatedEvents = [...state.cateringEvents];
+                    updatedEvents[eventIndex] = updatedEvent;
+                    return { cateringEvents: updatedEvents };
+                });
 
                 get().syncWithCloud();
-                return { cateringEvents: updatedEvents };
-            }),
+                return link;
+            },
 
             completeEvent: (eventId) => {
                 set((state) => ({
