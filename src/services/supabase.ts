@@ -109,6 +109,15 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('organizationId' in newItem) { newItem.organization_id = newItem.organizationId; delete newItem.organizationId; }
     if ('totalCents' in newItem) { newItem.total_cents = newItem.totalCents; delete newItem.totalCents; }
     if ('createdAt' in newItem) { newItem.created_at = newItem.createdAt; delete newItem.createdAt; }
+    if ('customerName' in newItem) { newItem.customer_name = newItem.customerName; delete newItem.customerName; }
+    if ('guestCount' in newItem) { newItem.guest_count = newItem.guestCount; delete newItem.guestCount; }
+    if ('itemName' in newItem) { newItem.item_name = newItem.itemName; delete newItem.itemName; }
+    if ('pricePerUnitCents' in newItem) { newItem.price_per_unit_cents = newItem.pricePerUnitCents; delete newItem.pricePerUnitCents; }
+    if ('totalAmountCents' in newItem) { newItem.total_amount_cents = newItem.totalAmountCents; delete newItem.totalAmountCents; }
+    if ('requestorId' in newItem) { newItem.requestor_id = newItem.requestorId; delete newItem.requestorId; }
+    if ('sourceAccountId' in newItem) { newItem.source_account_id = newItem.sourceAccountId; delete newItem.sourceAccountId; }
+    if ('referenceId' in newItem) { newItem.reference_id = newItem.referenceId; delete newItem.referenceId; }
+    if ('ingredientId' in newItem) { newItem.ingredient_id = newItem.ingredientId; delete newItem.ingredientId; }
 
     // Inventory/Product
     if ('priceCents' in newItem) { newItem.price_cents = newItem.priceCents; delete newItem.priceCents; }
@@ -123,19 +132,19 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if (tableName === 'catering_events') {
       // Pack all fields NOT in the whitelist into the 'financials' object
       // This preserves full frontend state (items, costingSheet, etc.) in a JSONB column
-      const whitelist = SCHEMA_WHITELISTS.catering_events || [];
       const packedData: any = { ...newItem.financials };
 
       const fieldsToPack = [
         'items', 'costingSheet', 'orderType', 'banquetDetails', 'currentPhase',
         'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
-        'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor'
+        'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor',
+        'customerName', 'guestCount'
       ];
 
       fieldsToPack.forEach(field => {
-        if (field in newItem) {
+        if (field in newItem && newItem[field] !== undefined && newItem[field] !== null) {
           packedData[field] = newItem[field];
-          delete newItem[field];
+          // delete newItem[field]; // Already mapped to snake_case if in whitelist
         }
       });
 
@@ -151,9 +160,16 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
       whitelist.forEach(key => {
         if (key in newItem) filteredItem[key] = newItem[key];
       });
+      if (tableName === 'catering_events') {
+        console.log(`[Supabase] Syncing catering_event ${newItem.id}:`, {
+          customer_name: newItem.customer_name,
+          guest_count: newItem.guest_count,
+          financials: !!newItem.financials
+        });
+      }
+
       return filteredItem;
     }
-
     return newItem;
   });
 
@@ -175,6 +191,114 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 };
 
 /**
+ * Helper for consistent snake_case to camelCase mapping
+ */
+export const mapItem = (item: any, tableName?: string) => {
+  const newItem = { ...item };
+
+  // 1. Column Mappings (Snake -> Camel)
+  const mappings: Record<string, string> = {
+    'company_id': 'companyId',
+    'organization_id': 'organizationId',
+    'contact_id': 'contactId',
+    'customer_id': 'customerId',
+    'bank_account_id': 'bankAccountId',
+    'reference_id': 'referenceId',
+    'project_id': 'projectId',
+    'assignee_id': 'assigneeId',
+    'ingredient_id': 'ingredientId',
+    'supplier_id': 'supplierId',
+    'category_id': 'categoryId',
+    'unit_id': 'unitId',
+    'parent_id': 'parentId',
+    'price_cents': 'priceCents',
+    'total_cents': 'totalCents',
+    'customer_name': 'customerName',
+    'guest_count': 'guestCount',
+    'event_date': 'eventDate',
+    'end_date': 'endDate',
+    'item_name': 'itemName',
+    'price_per_unit_cents': 'pricePerUnitCents',
+    'total_amount_cents': 'totalAmountCents',
+    'requestor_id': 'requestorId',
+    'source_account_id': 'sourceAccountId',
+    'current_phase': 'currentPhase',
+    'readiness_score': 'readinessScore',
+    'banquet_details': 'banquetDetails',
+    'hardware_checklist': 'hardwareChecklist',
+    'reconciliation_status': 'reconciliationStatus',
+    'costing_sheet': 'costingSheet',
+    'portion_monitor': 'portionMonitor',
+    'order_type': 'orderType',
+    'image_url': 'imageUrl',
+    'budget_cents': 'budgetCents',
+    'client_contact_id': 'clientContactId',
+    'ai_alerts': 'aiAlerts',
+    'start_date': 'startDate',
+    'paid_amount_cents': 'paidAmountCents',
+    'due_date': 'dueDate',
+    'stock_quantity': 'stockQuantity',
+    'stock_level': 'stockQuantity',
+    'cost_price_cents': 'costPriceCents',
+    'recipe_id': 'recipeId',
+    'is_asset': 'isAsset',
+    'is_rental': 'isRental',
+    'base_portions': 'basePortions',
+    'ingredient_name': 'ingredientName',
+    'qty_per_portion': 'qtyPerPortion',
+    'price_source_query': 'priceSourceQuery',
+    'sub_recipe_group': 'subRecipeGroup',
+    'balance_cents': 'balanceCents',
+    'sender_id': 'senderId',
+    'recipient_id': 'recipientId',
+    'created_at': 'createdAt',
+    'read_at': 'readAt'
+  };
+
+  Object.entries(mappings).forEach(([snake, camel]) => {
+    if (snake in newItem) {
+      if (newItem[snake] !== null || !(camel in newItem)) {
+        newItem[camel] = newItem[snake];
+      }
+      delete newItem[snake];
+    }
+  });
+
+  // 2. Catering Special Unpacking
+  if (tableName === 'catering_events' && newItem.financials && typeof newItem.financials === 'object') {
+    const financials = newItem.financials as any;
+    const packedFields = [
+      'items', 'costingSheet', 'orderType', 'banquetDetails', 'currentPhase',
+      'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
+      'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor',
+      'customerName', 'guestCount'
+    ];
+
+    packedFields.forEach(field => {
+      const val = financials[field];
+      if (field in financials && val !== null && val !== undefined && val !== 'undefined' && val !== 'null') {
+        newItem[field] = val;
+      }
+    });
+  }
+
+  // Final Sanitization: Ensure customerName isn't a literal "undefined"/"null" string
+  if (newItem.customerName === 'undefined' || newItem.customerName === 'null') {
+    newItem.customerName = '';
+  }
+
+
+  if (tableName === 'catering_events') {
+    console.log(`[Supabase] Mapped Item ${newItem.id}:`, {
+      customerName: newItem.customerName,
+      guestCount: newItem.guestCount
+    });
+  }
+
+  return newItem;
+};
+
+/**
  * Pull cloud state to local storage, filtered by current session company_id if possible
  */
 export const pullCloudState = async (tableName: string, companyId?: string) => {
@@ -192,117 +316,11 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   const LEGACY_ID = 'org-xquisite';
   const effectiveId = companyId === 'org-xquisite' ? VALID_UUID : companyId;
 
-  // Helper for consistent snake_case to camelCase mapping
-  const mapItem = (item: any) => {
-    const newItem = { ...item };
-
-    // Org/Company Mappings
-    if ('company_id' in newItem) { newItem.companyId = newItem.company_id; delete newItem.company_id; }
-    if ('organization_id' in newItem) {
-      const orgId = newItem.organization_id;
-      newItem.companyId = orgId;
-      newItem.organizationId = orgId;
-      delete newItem.organization_id;
-    }
-
-    // Generic ID Mappings (Shared across many tables)
-    if ('contact_id' in newItem) { newItem.contactId = newItem.contact_id; delete newItem.contact_id; }
-    if ('reference_id' in newItem) { newItem.referenceId = newItem.reference_id; delete newItem.reference_id; }
-    if ('project_id' in newItem) { newItem.projectId = newItem.project_id; delete newItem.project_id; }
-    if ('assignee_id' in newItem) { newItem.assigneeId = newItem.assignee_id; delete newItem.assignee_id; }
-    if ('ingredient_id' in newItem) { newItem.ingredientId = newItem.ingredient_id; delete newItem.ingredient_id; }
-    if ('supplier_id' in newItem) { newItem.supplierId = newItem.supplier_id; delete newItem.supplier_id; }
-    if ('category_id' in newItem) { newItem.categoryId = newItem.category_id; delete newItem.category_id; }
-    if ('unit_id' in newItem) { newItem.unitId = newItem.unit_id; delete newItem.unit_id; }
-    if ('parent_id' in newItem) { newItem.parentId = newItem.parent_id; delete newItem.parent_id; }
-
-    // Generic Field Mappings
-    if ('image_url' in newItem) { newItem.imageUrl = newItem.image_url; delete newItem.image_url; }
-    if ('budget_cents' in newItem) { newItem.budgetCents = newItem.budget_cents; delete newItem.budget_cents; }
-    if ('client_contact_id' in newItem) { newItem.clientContactId = newItem.client_contact_id; delete newItem.client_contact_id; }
-    if ('ai_alerts' in newItem) { newItem.aiAlerts = newItem.ai_alerts; delete newItem.ai_alerts; }
-    if ('start_date' in newItem) { newItem.startDate = newItem.start_date; delete newItem.start_date; }
-
-    // Catering Mappings & Unpacking
-    if (tableName === 'catering_events' && newItem.financials && typeof newItem.financials === 'object') {
-      // Unpack fields from 'financials' blob back to top level
-      const packedFields = [
-        'items', 'costingSheet', 'orderType', 'banquetDetails', 'currentPhase',
-        'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
-        'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor'
-      ];
-
-      const financials = newItem.financials;
-      packedFields.forEach(field => {
-        if (field in financials) {
-          newItem[field] = financials[field];
-          // We don't delete from financials yet, as it also contains revenue/costs etc.
-        }
-      });
-    }
-
-    if ('order_type' in newItem) { newItem.orderType = newItem.order_type; delete newItem.order_type; }
-    if ('customer_name' in newItem) { newItem.customerName = newItem.customer_name; delete newItem.customer_name; }
-    if ('event_date' in newItem) { newItem.eventDate = newItem.event_date; delete newItem.event_date; }
-    if ('end_date' in newItem) { newItem.endDate = newItem.end_date; delete newItem.end_date; }
-    if ('guest_count' in newItem) { newItem.guestCount = newItem.guest_count; delete newItem.guest_count; }
-    if ('current_phase' in newItem) { newItem.currentPhase = newItem.current_phase; delete newItem.current_phase; }
-    if ('readiness_score' in newItem) { newItem.readinessScore = newItem.readiness_score; delete newItem.readiness_score; }
-    if ('banquet_details' in newItem) { newItem.banquetDetails = newItem.banquet_details; delete newItem.banquet_details; }
-    if ('hardware_checklist' in newItem) { newItem.hardwareChecklist = newItem.hardware_checklist; delete newItem.hardware_checklist; }
-    if ('reconciliation_status' in newItem) { newItem.reconciliationStatus = newItem.reconciliation_status; delete newItem.reconciliation_status; }
-    if ('costing_sheet' in newItem) { newItem.costingSheet = newItem.costing_sheet; delete newItem.costing_sheet; }
-    if ('portion_monitor' in newItem) { newItem.portionMonitor = newItem.portion_monitor; delete newItem.portion_monitor; }
-
-    // Financial Mappings
-    if ('paid_amount_cents' in newItem) { newItem.paidAmountCents = newItem.paid_amount_cents; delete newItem.paid_amount_cents; }
-    if ('total_cents' in newItem) { newItem.totalCents = newItem.total_cents; delete newItem.total_cents; }
-    if ('due_date' in newItem) { newItem.dueDate = newItem.due_date; delete newItem.due_date; }
-
-    // Inventory Mappings
-    if ('stock_quantity' in newItem) { newItem.stockQuantity = newItem.stock_quantity; delete newItem.stock_quantity; }
-    if ('stock_level' in newItem) { newItem.stockQuantity = newItem.stock_level; delete newItem.stock_level; }
-    if ('price_cents' in newItem) { newItem.priceCents = newItem.price_cents; delete newItem.price_cents; }
-    if ('cost_price_cents' in newItem) { newItem.costPriceCents = newItem.cost_price_cents; delete newItem.cost_price_cents; }
-    if ('recipe_id' in newItem) { newItem.recipeId = newItem.recipe_id; delete newItem.recipe_id; }
-    if ('is_asset' in newItem) { newItem.isAsset = newItem.is_asset; delete newItem.is_asset; }
-    if ('is_rental' in newItem) { newItem.isRental = newItem.is_rental; delete newItem.is_rental; }
-    if ('rental_vendor' in newItem) { newItem.rentalVendor = newItem.rental_vendor; delete newItem.rental_vendor; }
-
-    // Contact Mappings
-    if ('customer_type' in newItem) { newItem.customerType = newItem.customer_type; delete newItem.customer_type; }
-    if ('registration_number' in newItem) { newItem.registrationNumber = newItem.registration_number; delete newItem.registration_number; }
-    if ('job_title' in newItem) { newItem.jobTitle = newItem.job_title; delete newItem.job_title; }
-
-    // Employee Mappings
-    if ('first_name' in newItem) { newItem.firstName = newItem.first_name; delete newItem.first_name; }
-    if ('last_name' in newItem) { newItem.lastName = newItem.last_name; delete newItem.last_name; }
-    if ('phone_number' in newItem) { newItem.phoneNumber = newItem.phone_number; delete newItem.phone_number; }
-    if ('salary_cents' in newItem) { newItem.salaryCents = newItem.salary_cents; delete newItem.salary_cents; }
-    if ('health_notes' in newItem) { newItem.healthNotes = newItem.health_notes; delete newItem.health_notes; }
-    if ('date_of_employment' in newItem) { newItem.dateOfEmployment = newItem.date_of_employment; delete newItem.date_of_employment; }
-
-    // Recipe Mappings
-    if ('base_portions' in newItem) { newItem.basePortions = newItem.base_portions; delete newItem.base_portions; }
-    if ('ingredient_name' in newItem) { newItem.ingredientName = newItem.ingredient_name; delete newItem.ingredient_name; }
-    if ('qty_per_portion' in newItem) { newItem.qtyPerPortion = newItem.qty_per_portion; delete newItem.qty_per_portion; }
-    if ('price_source_query' in newItem) { newItem.priceSourceQuery = newItem.price_source_query; delete newItem.price_source_query; }
-    if ('sub_recipe_group' in newItem) { newItem.subRecipeGroup = newItem.sub_recipe_group; delete newItem.sub_recipe_group; }
-
-    // Ledger Mappings
-    if ('balance_cents' in newItem) { newItem.balanceCents = newItem.balance_cents; delete newItem.balance_cents; }
-
-    // Message Mappings
-    if ('sender_id' in newItem) { newItem.senderId = newItem.sender_id; delete newItem.sender_id; }
-    if ('recipient_id' in newItem) { newItem.recipientId = newItem.recipient_id; delete newItem.recipient_id; }
-    if ('created_at' in newItem) { newItem.createdAt = newItem.created_at; delete newItem.created_at; }
-    if ('read_at' in newItem) { newItem.readAt = newItem.read_at; delete newItem.read_at; }
-
-    if (tableName === 'messages') {
-      newItem.status = newItem.readAt ? 'read' : 'sent';
-    }
-
-    return newItem;
+  // UUID Validation Regex
+  const isUUID = (id?: string) => {
+    if (!id) return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
   };
 
   let query = supabase.from(tableName).select('*');
@@ -310,28 +328,31 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (effectiveId) {
     const col = useOrgId ? 'organization_id' : 'company_id';
     if (effectiveId === VALID_UUID) {
-      // Defensive: Query by UUID first
       const { data: uuidData, error: uuidError } = await supabase.from(tableName).select('*').eq(col, VALID_UUID);
       if (uuidError) throw uuidError;
 
-      // Attempt legacy query separately to avoid invalid UUID syntax errors in .or() logic
       try {
         const { data: legacyData, error: legacyError } = await supabase.from(tableName).select('*').eq(col, LEGACY_ID);
         if (!legacyError && legacyData && legacyData.length > 0) {
-          return [...(uuidData || []), ...legacyData].map(mapItem);
+          return [...(uuidData || []), ...legacyData].map(item => mapItem(item, tableName));
         }
       } catch (e) {
         console.warn(`[Supabase] Skipping legacy ID for ${tableName} due to type mismatch.`);
       }
-      return (uuidData || []).map(mapItem);
-    } else {
-      query = query.eq(col, effectiveId);
+      return (uuidData || []).map(item => mapItem(item, tableName));
+    } else if (effectiveId) {
+      if (isUUID(effectiveId)) {
+        query = query.eq(col, effectiveId);
+      } else {
+        console.warn(`[Supabase] Skipping query for ${tableName} because ${effectiveId} is not a valid UUID for ${col}.`);
+        return [];
+      }
     }
   }
 
   const { data, error } = await query;
   if (error) throw error;
-  return data.map(mapItem);
+  return (data || []).map(item => mapItem(item, tableName));
 };
 
 // --- RPC Helpers ---

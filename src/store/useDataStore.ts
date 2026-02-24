@@ -9,7 +9,7 @@ import {
     RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount
 } from '../types';
 
-import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
+import { supabase, syncTableToCloud, pullCloudState, mapItem, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 import { useSettingsStore } from './useSettingsStore';
 
@@ -2903,7 +2903,7 @@ export const useDataStore = create<DataState>()(
                             return data;
                         } catch (e: any) {
                             console.error(`[DataStore] safePull FAILURE for ${table}:`, e.message || e);
-                            return [];
+                            return null; // Return null to signal failure without overwriting local state
                         }
                     };
 
@@ -3160,40 +3160,49 @@ export const useDataStore = create<DataState>()(
                     console.log('[Hydration] Recipes loaded:', processedRecipes.length);
 
 
-                    set({
-                        inventory: combinedInventory,
-                        ingredients: processedIngredients,
-                        recipes: processedRecipes,
-                        contacts: contacts || [],
-                        invoices: invoices || [],
-                        cateringEvents: cateringEvents || [],
-                        projects: projects || [],
-                        tasks: tasks || [],
-                        employees: employees || [],
-                        requisitions: requisitions || [],
-                        chartOfAccounts: chartOfAccounts || [],
-                        bankTransactions: bankTransactions || [],
-                        messages: messages || [],
-                        leaveRequests: (leaveRequests || []).map((lr: any) => ({
+                    const newState: any = {
+                        isSyncing: false,
+                        syncStatus: 'Synced',
+                        lastSyncError: null
+                    };
+
+                    if (combinedInventory.length > 0) newState.inventory = combinedInventory;
+                    if (processedIngredients.length > 0) newState.ingredients = processedIngredients;
+                    if (processedRecipes.length > 0) newState.recipes = processedRecipes;
+
+                    if (contacts !== null) newState.contacts = contacts;
+                    if (invoices !== null) newState.invoices = invoices;
+                    if (cateringEvents !== null) newState.cateringEvents = cateringEvents;
+                    if (projects !== null) newState.projects = projects;
+                    if (tasks !== null) newState.tasks = tasks;
+                    if (employees !== null) newState.employees = employees;
+                    if (requisitions !== null) newState.requisitions = requisitions;
+                    if (chartOfAccounts !== null) newState.chartOfAccounts = chartOfAccounts;
+                    if (bankTransactions !== null) newState.bankTransactions = bankTransactions;
+                    if (messages !== null) newState.messages = messages;
+
+                    if (leaveRequests !== null) {
+                        newState.leaveRequests = (leaveRequests || []).map((lr: any) => ({
                             ...lr,
                             startDate: lr.start_date,
                             endDate: lr.end_date,
                             appliedDate: lr.applied_date,
                             employeeId: lr.employee_id,
                             employeeName: employees?.find((e: any) => e.id === lr.employee_id)?.firstName + ' ' + employees?.find((e: any) => e.id === lr.employee_id)?.lastName || 'Unknown'
-                        })),
-                        performanceReviews: (performanceReviews || []).map((pr: any) => ({
+                        }));
+                    }
+
+                    if (performanceReviews !== null) {
+                        newState.performanceReviews = (performanceReviews || []).map((pr: any) => ({
                             ...pr,
-                            // id, metrics, year, quarter, status match directly
                             totalScore: pr.total_score,
                             employeeId: pr.employee_id,
                             submittedDate: pr.submitted_date,
                             finalizedDate: pr.finalized_date
-                        })),
-                        isSyncing: false,
-                        syncStatus: 'Synced',
-                        lastSyncError: null
-                    });
+                        }));
+                    }
+
+                    set(newState);
 
                 } catch (e) {
                     set({ isSyncing: false, syncStatus: 'Error', lastSyncError: (e as Error).message });
@@ -3228,9 +3237,9 @@ export const useDataStore = create<DataState>()(
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.cateringEvents.some(e => e.id === newRow.id)) return state;
-                                return { cateringEvents: [newRow, ...state.cateringEvents] };
+                                return { cateringEvents: [mapItem(newRow, 'catering_events'), ...state.cateringEvents] };
                             } else if (eventType === 'UPDATE') {
-                                return { cateringEvents: state.cateringEvents.map(e => e.id === newRow.id ? newRow : e) };
+                                return { cateringEvents: state.cateringEvents.map(e => e.id === newRow.id ? mapItem(newRow, 'catering_events') : e) };
                             } else if (eventType === 'DELETE') {
                                 return { cateringEvents: state.cateringEvents.filter(e => e.id !== oldRow.id) };
                             }
@@ -3248,9 +3257,9 @@ export const useDataStore = create<DataState>()(
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.projects.some(p => p.id === newRow.id)) return state;
-                                return { projects: [newRow, ...state.projects] };
+                                return { projects: [mapItem(newRow, 'projects'), ...state.projects] };
                             } else if (eventType === 'UPDATE') {
-                                return { projects: state.projects.map(p => p.id === newRow.id ? newRow : p) };
+                                return { projects: state.projects.map(p => p.id === newRow.id ? mapItem(newRow, 'projects') : p) };
                             } else if (eventType === 'DELETE') {
                                 return { projects: state.projects.filter(p => p.id !== oldRow.id) };
                             }
@@ -3268,9 +3277,9 @@ export const useDataStore = create<DataState>()(
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.invoices.some(i => i.id === newRow.id)) return state;
-                                return { invoices: [newRow, ...state.invoices] };
+                                return { invoices: [mapItem(newRow, 'invoices'), ...state.invoices] };
                             } else if (eventType === 'UPDATE') {
-                                return { invoices: state.invoices.map(i => i.id === newRow.id ? newRow : i) };
+                                return { invoices: state.invoices.map(i => i.id === newRow.id ? mapItem(newRow, 'invoices') : i) };
                             } else if (eventType === 'DELETE') {
                                 return { invoices: state.invoices.filter(i => i.id !== oldRow.id) };
                             }
@@ -3285,19 +3294,21 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
-                        const mapItem = (item: any) => ({
-                            ...item,
-                            type: 'product',
-                            category: item.category || 'Finished Goods',
-                            stockQuantity: item.stockQuantity || 100000,
-                            priceCents: item.price_cents || 0
-                        });
+                        const hydrate = (item: any) => {
+                            const mapped = mapItem(item, 'products');
+                            return {
+                                ...mapped,
+                                type: 'product',
+                                category: mapped.category || 'Finished Goods',
+                                stockQuantity: mapped.stockQuantity || 100000
+                            };
+                        };
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.inventory.some(i => i.id === newRow.id)) return state;
-                                return { inventory: [mapItem(newRow), ...state.inventory] };
+                                return { inventory: [hydrate(newRow), ...state.inventory] };
                             } else if (eventType === 'UPDATE') {
-                                return { inventory: state.inventory.map(i => i.id === newRow.id ? mapItem(newRow) : i) };
+                                return { inventory: state.inventory.map(i => i.id === newRow.id ? hydrate(newRow) : i) };
                             } else if (eventType === 'DELETE') {
                                 return { inventory: state.inventory.filter(i => i.id !== oldRow.id) };
                             }
@@ -3315,9 +3326,9 @@ export const useDataStore = create<DataState>()(
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.tasks.some(t => t.id === newRow.id)) return state;
-                                return { tasks: [newRow, ...state.tasks] };
+                                return { tasks: [mapItem(newRow, 'tasks'), ...state.tasks] };
                             } else if (eventType === 'UPDATE') {
-                                return { tasks: state.tasks.map(t => t.id === newRow.id ? newRow : t) };
+                                return { tasks: state.tasks.map(t => t.id === newRow.id ? mapItem(newRow, 'tasks') : t) };
                             } else if (eventType === 'DELETE') {
                                 return { tasks: state.tasks.filter(t => t.id !== oldRow.id) };
                             }
@@ -3335,9 +3346,9 @@ export const useDataStore = create<DataState>()(
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.employees.some(e => e.id === newRow.id)) return state;
-                                return { employees: [newRow, ...state.employees] };
+                                return { employees: [mapItem(newRow, 'employees'), ...state.employees] };
                             } else if (eventType === 'UPDATE') {
-                                return { employees: state.employees.map(e => e.id === newRow.id ? newRow : e) };
+                                return { employees: state.employees.map(e => e.id === newRow.id ? mapItem(newRow, 'employees') : e) };
                             } else if (eventType === 'DELETE') {
                                 return { employees: state.employees.filter(e => e.id !== oldRow.id) };
                             }
@@ -3355,9 +3366,9 @@ export const useDataStore = create<DataState>()(
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.requisitions.some(r => r.id === newRow.id)) return state;
-                                return { requisitions: [newRow, ...state.requisitions] };
+                                return { requisitions: [mapItem(newRow, 'requisitions'), ...state.requisitions] };
                             } else if (eventType === 'UPDATE') {
-                                return { requisitions: state.requisitions.map(r => r.id === newRow.id ? newRow : r) };
+                                return { requisitions: state.requisitions.map(r => r.id === newRow.id ? mapItem(newRow, 'requisitions') : r) };
                             } else if (eventType === 'DELETE') {
                                 return { requisitions: state.requisitions.filter(r => r.id !== oldRow.id) };
                             }
@@ -3372,19 +3383,12 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
-                        const mapRow = (r: any) => ({
-                            ...r,
-                            totalScore: r.total_score,
-                            employeeId: r.employee_id,
-                            submittedDate: r.submitted_date,
-                            finalizedDate: r.finalized_date
-                        });
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.performanceReviews.some(r => r.id === newRow.id)) return state;
-                                return { performanceReviews: [mapRow(newRow), ...state.performanceReviews] };
+                                return { performanceReviews: [mapItem(newRow, 'performance_reviews'), ...state.performanceReviews] };
                             } else if (eventType === 'UPDATE') {
-                                return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapRow(newRow) : r) };
+                                return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapItem(newRow, 'performance_reviews') : r) };
                             } else if (eventType === 'DELETE') {
                                 return { performanceReviews: state.performanceReviews.filter(r => r.id !== oldRow.id) };
                             }
@@ -3399,24 +3403,21 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
-                        const mapRow = (r: any) => {
+                        const hydrate = (r: any) => {
                             const state = get();
-                            const emp = state.employees.find(e => e.id === r.employee_id);
+                            const mapped = mapItem(r, 'leave_requests');
+                            const emp = state.employees.find(e => e.id === mapped.employeeId);
                             return {
-                                ...r,
-                                startDate: r.start_date,
-                                endDate: r.end_date,
-                                appliedDate: r.applied_date,
-                                employeeId: r.employee_id,
+                                ...mapped,
                                 employeeName: emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown'
                             };
                         };
                         set((state) => {
                             if (eventType === 'INSERT') {
                                 if (state.leaveRequests.some(l => l.id === newRow.id)) return state;
-                                return { leaveRequests: [mapRow(newRow), ...state.leaveRequests] };
+                                return { leaveRequests: [hydrate(newRow), ...state.leaveRequests] };
                             } else if (eventType === 'UPDATE') {
-                                return { leaveRequests: state.leaveRequests.map(l => l.id === newRow.id ? mapRow(newRow) : l) };
+                                return { leaveRequests: state.leaveRequests.map(l => l.id === newRow.id ? hydrate(newRow) : l) };
                             } else if (eventType === 'DELETE') {
                                 return { leaveRequests: state.leaveRequests.filter(l => l.id !== oldRow.id) };
                             }
