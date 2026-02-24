@@ -2870,7 +2870,7 @@ export const useDataStore = create<DataState>()(
                     const errorMsg = (e as Error).message;
                     set({ isSyncing: false, syncStatus: 'Error', lastSyncError: errorMsg });
                     console.error('Cloud Sync Failed:', e);
-                    // Do NOT throw here, so we don't break the caller's flow, but it's logged
+                    throw e; // Re-throw to allow caller (like createCateringOrder) to handle it
                 }
             },
 
