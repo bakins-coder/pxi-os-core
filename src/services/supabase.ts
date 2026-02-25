@@ -191,9 +191,10 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 };
 
 /**
- * Helper for consistent snake_case to camelCase mapping
+ * Consistent snake_case to camelCase mapping for incoming Supabase data
  */
-export const mapItem = (item: any, tableName?: string) => {
+export const mapIncomingRow = (tableName: string, item: any) => {
+  if (!item) return item;
   const newItem = { ...item };
 
   // 1. Column Mappings (Snake -> Camel)
@@ -253,7 +254,20 @@ export const mapItem = (item: any, tableName?: string) => {
     'sender_id': 'senderId',
     'recipient_id': 'recipientId',
     'created_at': 'createdAt',
-    'read_at': 'readAt'
+    'read_at': 'readAt',
+    // Employee mappings
+    'first_name': 'firstName',
+    'last_name': 'lastName',
+    'phone_number': 'phoneNumber',
+    'salary_cents': 'salaryCents',
+    'health_notes': 'healthNotes',
+    'date_of_employment': 'dateOfEmployment',
+    // Contact mappings
+    'customer_type': 'customerType',
+    'registration_number': 'registrationNumber',
+    'job_title': 'jobTitle',
+    // Misc
+    'rental_vendor': 'rentalVendor'
   };
 
   Object.entries(mappings).forEach(([snake, camel]) => {
@@ -264,6 +278,11 @@ export const mapItem = (item: any, tableName?: string) => {
       delete newItem[snake];
     }
   });
+
+  // Handle orgId to companyId mapping for consistency across all tables
+  if ('organization_id' in item) {
+    newItem.companyId = item.organization_id;
+  }
 
   // 2. Catering Special Unpacking
   if (tableName === 'catering_events' && newItem.financials && typeof newItem.financials === 'object') {
@@ -288,6 +307,9 @@ export const mapItem = (item: any, tableName?: string) => {
     newItem.customerName = '';
   }
 
+  if (tableName === 'messages') {
+    newItem.status = newItem.readAt ? 'read' : 'sent';
+  }
 
   if (tableName === 'catering_events') {
     console.log(`[Supabase] Mapped Item ${newItem.id}:`, {
@@ -323,6 +345,10 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(id);
   };
+
+  // Helper for consistent snake_case to camelCase mapping
+  const mapItem = (item: any) => mapIncomingRow(tableName, item);
+
 
   let query = supabase.from(tableName).select('*');
 

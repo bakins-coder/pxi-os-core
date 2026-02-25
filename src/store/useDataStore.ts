@@ -9,7 +9,7 @@ import {
     RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount
 } from '../types';
 
-import { supabase, syncTableToCloud, pullCloudState, mapItem, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
+import { supabase, syncTableToCloud, pullCloudState, mapIncomingRow, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 import { useSettingsStore } from './useSettingsStore';
 
@@ -2162,8 +2162,6 @@ export const useDataStore = create<DataState>()(
 
             generateWaiterLink: (eventId: string) => {
                 const token = crypto.randomUUID();
-                const link = `${window.location.origin}/monitor/waiter?token=${token}&eventId=${eventId}`;
-
                 set((state) => {
                     const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
                     if (eventIndex === -1) return state;
@@ -2183,7 +2181,7 @@ export const useDataStore = create<DataState>()(
                 });
 
                 get().syncWithCloud();
-                return link;
+                return `${window.location.origin}/waiter/${token}`;
             },
 
             completeEvent: (eventId) => {
@@ -3235,13 +3233,14 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('catering_events', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.cateringEvents.some(e => e.id === newRow.id)) return state;
-                                return { cateringEvents: [mapItem(newRow, 'catering_events'), ...state.cateringEvents] };
-                            } else if (eventType === 'UPDATE') {
-                                return { cateringEvents: state.cateringEvents.map(e => e.id === newRow.id ? mapItem(newRow, 'catering_events') : e) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.cateringEvents.some(e => e.id === mappedNew.id)) return state;
+                                return { cateringEvents: [mappedNew, ...state.cateringEvents] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { cateringEvents: state.cateringEvents.map(e => e.id === mappedNew.id ? mappedNew : e) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { cateringEvents: state.cateringEvents.filter(e => e.id !== oldRow.id) };
                             }
                             return state;
@@ -3255,13 +3254,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('projects', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.projects.some(p => p.id === newRow.id)) return state;
-                                return { projects: [mapItem(newRow, 'projects'), ...state.projects] };
-                            } else if (eventType === 'UPDATE') {
-                                return { projects: state.projects.map(p => p.id === newRow.id ? mapItem(newRow, 'projects') : p) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.projects.some(p => p.id === mappedNew.id)) return state;
+                                return { projects: [mappedNew, ...state.projects] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { projects: state.projects.map(p => p.id === mappedNew.id ? mappedNew : p) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { projects: state.projects.filter(p => p.id !== oldRow.id) };
                             }
                             return state;
@@ -3275,13 +3275,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('invoices', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.invoices.some(i => i.id === newRow.id)) return state;
-                                return { invoices: [mapItem(newRow, 'invoices'), ...state.invoices] };
-                            } else if (eventType === 'UPDATE') {
-                                return { invoices: state.invoices.map(i => i.id === newRow.id ? mapItem(newRow, 'invoices') : i) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.invoices.some(i => i.id === mappedNew.id)) return state;
+                                return { invoices: [mappedNew, ...state.invoices] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { invoices: state.invoices.map(i => i.id === mappedNew.id ? mappedNew : i) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { invoices: state.invoices.filter(i => i.id !== oldRow.id) };
                             }
                             return state;
@@ -3295,22 +3296,25 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
-                        const hydrate = (item: any) => {
-                            const mapped = mapItem(item, 'products');
+                        const mapProduct = (item: any) => {
+                            const mapped = mapIncomingRow('products', item);
                             return {
                                 ...mapped,
                                 type: 'product',
                                 category: mapped.category || 'Finished Goods',
-                                stockQuantity: mapped.stockQuantity || 100000
+                                stockQuantity: mapped.stockQuantity || 100000,
+                                priceCents: mapped.priceCents || 0
                             };
                         };
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.inventory.some(i => i.id === newRow.id)) return state;
-                                return { inventory: [hydrate(newRow), ...state.inventory] };
-                            } else if (eventType === 'UPDATE') {
-                                return { inventory: state.inventory.map(i => i.id === newRow.id ? hydrate(newRow) : i) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && newRow) {
+                                const mappedNew = mapProduct(newRow);
+                                if (state.inventory.some(i => i.id === mappedNew.id)) return state;
+                                return { inventory: [mappedNew, ...state.inventory] };
+                            } else if (eventType === 'UPDATE' && newRow) {
+                                const mappedNew = mapProduct(newRow);
+                                return { inventory: state.inventory.map(i => i.id === mappedNew.id ? mappedNew : i) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { inventory: state.inventory.filter(i => i.id !== oldRow.id) };
                             }
                             return state;
@@ -3324,13 +3328,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('tasks', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.tasks.some(t => t.id === newRow.id)) return state;
-                                return { tasks: [mapItem(newRow, 'tasks'), ...state.tasks] };
-                            } else if (eventType === 'UPDATE') {
-                                return { tasks: state.tasks.map(t => t.id === newRow.id ? mapItem(newRow, 'tasks') : t) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.tasks.some(t => t.id === mappedNew.id)) return state;
+                                return { tasks: [mappedNew, ...state.tasks] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { tasks: state.tasks.map(t => t.id === mappedNew.id ? mappedNew : t) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { tasks: state.tasks.filter(t => t.id !== oldRow.id) };
                             }
                             return state;
@@ -3344,13 +3349,14 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('employees', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.employees.some(e => e.id === newRow.id)) return state;
-                                return { employees: [mapItem(newRow, 'employees'), ...state.employees] };
-                            } else if (eventType === 'UPDATE') {
-                                return { employees: state.employees.map(e => e.id === newRow.id ? mapItem(newRow, 'employees') : e) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.employees.some(e => e.id === mappedNew.id)) return state;
+                                return { employees: [mappedNew, ...state.employees] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { employees: state.employees.map(e => e.id === mappedNew.id ? mappedNew : e) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { employees: state.employees.filter(e => e.id !== oldRow.id) };
                             }
                             return state;
@@ -3364,13 +3370,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('requisitions', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.requisitions.some(r => r.id === newRow.id)) return state;
-                                return { requisitions: [mapItem(newRow, 'requisitions'), ...state.requisitions] };
-                            } else if (eventType === 'UPDATE') {
-                                return { requisitions: state.requisitions.map(r => r.id === newRow.id ? mapItem(newRow, 'requisitions') : r) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.requisitions.some(r => r.id === mappedNew.id)) return state;
+                                return { requisitions: [mappedNew, ...state.requisitions] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { requisitions: state.requisitions.map(r => r.id === mappedNew.id ? mappedNew : r) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { requisitions: state.requisitions.filter(r => r.id !== oldRow.id) };
                             }
                             return state;
@@ -3384,13 +3391,14 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('performance_reviews', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.performanceReviews.some(r => r.id === newRow.id)) return state;
-                                return { performanceReviews: [mapItem(newRow, 'performance_reviews'), ...state.performanceReviews] };
-                            } else if (eventType === 'UPDATE') {
-                                return { performanceReviews: state.performanceReviews.map(r => r.id === newRow.id ? mapItem(newRow, 'performance_reviews') : r) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.performanceReviews.some(r => r.id === mappedNew.id)) return state;
+                                return { performanceReviews: [mappedNew, ...state.performanceReviews] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { performanceReviews: state.performanceReviews.map(r => r.id === mappedNew.id ? mappedNew : r) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { performanceReviews: state.performanceReviews.filter(r => r.id !== oldRow.id) };
                             }
                             return state;
@@ -3404,9 +3412,9 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
-                        const hydrate = (r: any) => {
+                        const mapLeave = (r: any) => {
+                            const mapped = mapIncomingRow('leave_requests', r);
                             const state = get();
-                            const mapped = mapItem(r, 'leave_requests');
                             const emp = state.employees.find(e => e.id === mapped.employeeId);
                             return {
                                 ...mapped,
@@ -3414,12 +3422,14 @@ export const useDataStore = create<DataState>()(
                             };
                         };
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.leaveRequests.some(l => l.id === newRow.id)) return state;
-                                return { leaveRequests: [hydrate(newRow), ...state.leaveRequests] };
-                            } else if (eventType === 'UPDATE') {
-                                return { leaveRequests: state.leaveRequests.map(l => l.id === newRow.id ? hydrate(newRow) : l) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && newRow) {
+                                const mappedNew = mapLeave(newRow);
+                                if (state.leaveRequests.some(l => l.id === mappedNew.id)) return state;
+                                return { leaveRequests: [mappedNew, ...state.leaveRequests] };
+                            } else if (eventType === 'UPDATE' && newRow) {
+                                const mappedNew = mapLeave(newRow);
+                                return { leaveRequests: state.leaveRequests.map(l => l.id === mappedNew.id ? mappedNew : l) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { leaveRequests: state.leaveRequests.filter(l => l.id !== oldRow.id) };
                             }
                             return state;
@@ -3433,24 +3443,14 @@ export const useDataStore = create<DataState>()(
                         filter: `organization_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('messages', newRow) : null;
                         set((state) => {
-                            const mapMsg = (m: any) => ({
-                                id: m.id,
-                                senderId: m.sender_id,
-                                recipientId: m.recipient_id,
-                                content: m.content,
-                                createdAt: m.created_at,
-                                readAt: m.read_at,
-                                organizationId: m.organization_id,
-                                type: m.type || 'text',
-                                status: (m.read_at ? 'read' : 'sent') as 'sent' | 'delivered' | 'read'
-                            } as Message);
-                            if (eventType === 'INSERT') {
-                                if (state.messages.some(m => m.id === newRow.id)) return state;
-                                return { messages: [...state.messages, mapMsg(newRow)] };
-                            } else if (eventType === 'UPDATE') {
-                                return { messages: state.messages.map(m => m.id === newRow.id ? mapMsg(newRow) : m) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.messages.some(m => m.id === mappedNew.id)) return state;
+                                return { messages: [...state.messages, mappedNew] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { messages: state.messages.map(m => m.id === mappedNew.id ? mappedNew : m) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { messages: state.messages.filter(m => m.id !== oldRow.id) };
                             }
                             return state;
@@ -3464,13 +3464,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('bookkeeping', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.bookkeeping.some(b => b.id === newRow.id)) return state;
-                                return { bookkeeping: [newRow, ...state.bookkeeping] };
-                            } else if (eventType === 'UPDATE') {
-                                return { bookkeeping: state.bookkeeping.map(b => b.id === newRow.id ? newRow : b) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.bookkeeping.some(b => b.id === mappedNew.id)) return state;
+                                return { bookkeeping: [mappedNew, ...state.bookkeeping] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { bookkeeping: state.bookkeeping.map(b => b.id === mappedNew.id ? mappedNew : b) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { bookkeeping: state.bookkeeping.filter(b => b.id !== oldRow.id) };
                             }
                             return state;
@@ -3484,13 +3485,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('chart_of_accounts', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.chartOfAccounts.some(a => a.id === newRow.id)) return state;
-                                return { chartOfAccounts: [newRow, ...state.chartOfAccounts] };
-                            } else if (eventType === 'UPDATE') {
-                                return { chartOfAccounts: state.chartOfAccounts.map(a => a.id === newRow.id ? newRow : a) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.chartOfAccounts.some(a => a.id === mappedNew.id)) return state;
+                                return { chartOfAccounts: [mappedNew, ...state.chartOfAccounts] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { chartOfAccounts: state.chartOfAccounts.map(a => a.id === mappedNew.id ? mappedNew : a) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { chartOfAccounts: state.chartOfAccounts.filter(a => a.id !== oldRow.id) };
                             }
                             return state;
@@ -3504,13 +3506,14 @@ export const useDataStore = create<DataState>()(
                         filter: `company_id=eq.${companyId}`
                     }, (payload: any) => {
                         const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('bank_transactions', newRow) : null;
                         set((state) => {
-                            if (eventType === 'INSERT') {
-                                if (state.bankTransactions.some(t => t.id === newRow.id)) return state;
-                                return { bankTransactions: [newRow, ...state.bankTransactions] };
-                            } else if (eventType === 'UPDATE') {
-                                return { bankTransactions: state.bankTransactions.map(t => t.id === newRow.id ? newRow : t) };
-                            } else if (eventType === 'DELETE') {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.bankTransactions.some(t => t.id === mappedNew.id)) return state;
+                                return { bankTransactions: [mappedNew, ...state.bankTransactions] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { bankTransactions: state.bankTransactions.map(t => t.id === mappedNew.id ? mappedNew : t) };
+                            } else if (eventType === 'DELETE' && oldRow) {
                                 return { bankTransactions: state.bankTransactions.filter(t => t.id !== oldRow.id) };
                             }
                             return state;
