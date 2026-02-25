@@ -126,7 +126,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                </div>
                <div className="space-y-6">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                     <h3 className="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tight">Requisition Ledger</h3>
+                     <h3 className="text-lg md:text-lg font-black text-slate-800 uppercase tracking-tight">Requisition Ledger</h3>
                      <button onClick={() => updateReq(requisitions.length, { type: 'Rental', category: 'Hardware', itemName: 'External Item', quantity: 1, pricePerUnitCents: 0, totalAmountCents: 0 })} className="w-full md:w-auto px-5 py-3.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"><Plus size={14} /> Add 3rd Party Rental</button>
                   </div>
                   <div className="space-y-4">
@@ -1220,7 +1220,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white shadow-lg"><Truck size={20} /></div>
                   <div>
-                     <h2 className="text-xl font-black text-orange-600 uppercase">Asset Dispatch</h2>
+                     <h2 className="text-lg font-black text-orange-600 uppercase">Asset Dispatch</h2>
                      <p className="text-[10px] text-slate-500 font-bold uppercase">Select items leaving the warehouse</p>
                   </div>
                </div>
@@ -1659,15 +1659,15 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Revenue</p>
-               <h4 className="text-lg md:text-xl font-black text-slate-900 tracking-tight truncate">₦{(revenue / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">₦{(revenue / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Est. Direct Costs</p>
-               <h4 className="text-lg md:text-xl font-black text-rose-600 tracking-tight truncate">₦{(estimatedCost / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">₦{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center">
                <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest mb-2">Projected Net</p>
-               <h4 className="text-lg md:text-xl font-black text-white tracking-tight truncate">₦{(estimatedNet / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">₦{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
 
@@ -2632,10 +2632,10 @@ export const Catering = () => {
                               }`}
                         >
                            <div className="flex justify-between items-start mb-4">
-                              <h3 className={`font-black text-lg uppercase line-clamp-1 tracking-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                              <h3 className={`font-black text-sm md:text-base uppercase line-clamp-2 tracking-tighter leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
                                  {ev.customerName || 'No Name'}
                               </h3>
-                              <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${ev.status === 'Confirmed'
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 whitespace-nowrap ${ev.status === 'Confirmed'
                                  ? (isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')
                                  : (isSelected ? 'bg-green-500/20 text-green-400' : 'bg-green-50 text-green-600')
                                  }`}>
@@ -2645,12 +2645,12 @@ export const Catering = () => {
 
                            <div className="flex justify-between items-end">
                               <div>
-                                 <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Guests</p>
-                                 <p className={`text-xl font-black ${isSelected ? 'text-white' : 'text-slate-800'}`}>{ev.guestCount || 0}</p>
+                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Guests</p>
+                                 <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'}`}>{ev.guestCount || 0}</p>
                               </div>
                               <div className="text-right">
-                                 <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Revenue</p>
-                                 <p className={`text-xl font-black ${displayRevenue > 0
+                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Revenue</p>
+                                 <p className={`text-lg font-black ${displayRevenue > 0
                                     ? 'text-emerald-500'
                                     : (isSelected ? 'text-slate-500' : 'text-rose-400')
                                     }`}>
