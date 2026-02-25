@@ -361,12 +361,12 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
       try {
         const { data: legacyData, error: legacyError } = await supabase.from(tableName).select('*').eq(col, LEGACY_ID);
         if (!legacyError && legacyData && legacyData.length > 0) {
-          return [...(uuidData || []), ...legacyData].map(item => mapItem(item, tableName));
+          return [...(uuidData || []), ...legacyData].map(item => mapItem(item));
         }
       } catch (e) {
         console.warn(`[Supabase] Skipping legacy ID for ${tableName} due to type mismatch.`);
       }
-      return (uuidData || []).map(item => mapItem(item, tableName));
+      return (uuidData || []).map(item => mapItem(item));
     } else if (effectiveId) {
       if (isUUID(effectiveId)) {
         query = query.eq(col, effectiveId);
@@ -379,7 +379,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(item => mapItem(item, tableName));
+  return (data || []).map(item => mapItem(item));
 };
 
 // --- RPC Helpers ---
