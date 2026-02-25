@@ -176,7 +176,7 @@ export const RequisitionsHub: React.FC = () => {
     const filteredRequisitions = requisitions.filter(r => {
         // Show Paid as well in Approved tab for overview
         if (r.status !== activeTab && !(activeTab === 'Approved' && r.status === 'Paid')) return false;
-        const matchesSearch = r.itemName.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (r.itemName || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = filterCategory === 'All' || r.category === filterCategory;
         return matchesSearch && matchesCategory;
     });
@@ -193,7 +193,7 @@ export const RequisitionsHub: React.FC = () => {
             refId,
             items,
             event: cateringEvents.find(e => e.id === refId),
-            totalAmount: items.reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
+            totalAmount: items.reduce((acc, curr) => acc + (Number(curr.totalAmountCents) || 0), 0) / 100
         })).sort((a, b) => b.totalAmount - a.totalAmount);
     }, [filteredRequisitions, cateringEvents]);
 
@@ -375,10 +375,10 @@ export const RequisitionsHub: React.FC = () => {
                                                             <Box size={16} />
                                                         </div>
                                                         <div>
-                                                            <h4 className="text-xs font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-all">{req.itemName}</h4>
+                                                            <h4 className="text-xs font-black text-white uppercase tracking-tight group-hover:text-indigo-400 transition-all">{req.itemName || 'Unnamed Item'}</h4>
                                                             <div className="flex items-center gap-2 mt-1">
                                                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                                                                    <Info size={10} /> {req.id.slice(0, 8)}
+                                                                    <Info size={10} /> {(req.id || '').slice(0, 8)}
                                                                 </span>
                                                                 <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                                                                 <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.category}</span>
@@ -390,8 +390,8 @@ export const RequisitionsHub: React.FC = () => {
 
                                                     <div className="flex items-center justify-between md:justify-end gap-10 mt-3 md:mt-0">
                                                         <div className="text-right">
-                                                            <p className="text-base font-black text-white leading-none mb-1">₦{(req.totalAmountCents / 100).toLocaleString()}</p>
-                                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{(req.pricePerUnitCents / 100).toLocaleString()} / unit</p>
+                                                            <p className="text-base font-black text-white leading-none mb-1">₦{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}</p>
+                                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit</p>
                                                         </div>
                                                         <ChevronRight size={16} className="text-slate-700 group-hover:text-indigo-400 transition-all" />
                                                     </div>
