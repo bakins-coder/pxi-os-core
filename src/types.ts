@@ -601,6 +601,17 @@ export interface Attachment {
   size: number;
 }
 
+export interface EntityMedia {
+  id: string;
+  organizationId: string;
+  entityType: string;
+  entityId: string;
+  storageObjectId: string;
+  isPrimary: boolean;
+  bucket: string;
+  objectPath: string;
+}
+
 export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas';
 export type CompanySize = 'Micro (1-10)' | 'Small (11-50)' | 'Medium (51-250)' | 'Large (250+)';
 export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR';

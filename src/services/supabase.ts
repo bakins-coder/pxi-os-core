@@ -511,3 +511,33 @@ export const saveEntityMedia = async (
 
   if (error) throw error;
 };
+
+export const uploadEntityDocument = async (
+  orgId: string,
+  entityType: 'contact' | 'product' | 'ingredient' | 'asset' | 'event',
+  entityId: string,
+  file: File
+) => {
+  if (!supabase) throw new Error("Supabase not initialized");
+
+  const filename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+  const bucketName = 'product_media'; // Using existing bucket
+  const objectPath = `${entityType}/${orgId}/${entityId}/${filename}`;
+
+  console.log('[Supabase] Uploading document:', objectPath);
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(objectPath, file, {
+      contentType: file.type,
+      upsert: true
+    });
+
+  if (error) {
+    console.error('[Supabase] Document Upload Error:', error);
+    throw error;
+  }
+
+  console.log('[Supabase] Document Upload Success:', data);
+  return { bucket: bucketName, path: data.path };
+};

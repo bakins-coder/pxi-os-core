@@ -6,7 +6,7 @@ import {
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview, PerformanceMetric,
-    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount
+    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount, EntityMedia
 } from '../types';
 
 import { supabase, syncTableToCloud, pullCloudState, mapIncomingRow, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
@@ -47,6 +47,7 @@ interface DataState {
     performanceReviews: PerformanceReview[];
     interactionLogs: InteractionLog[];
     messages: Message[];
+    entityMedia: EntityMedia[];
     cashAtHandCents: number;
     syncStatus: 'Synced' | 'Syncing' | 'Error' | 'Offline';
     lastSyncError: string | null;
@@ -198,6 +199,7 @@ export const useDataStore = create<DataState>()(
             performanceReviews: [],
             interactionLogs: [],
             messages: [],
+            entityMedia: [],
             cashAtHandCents: 0,
             syncStatus: 'Synced',
             lastSyncError: null,
@@ -214,7 +216,7 @@ export const useDataStore = create<DataState>()(
                     tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [], chartOfAccounts: [],
                     bankTransactions: [], bankStatementLines: [], bankAccounts: [], leaveRequests: [], calendarEvents: [],
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
-                    interactionLogs: [], messages: [], cashAtHandCents: 0,
+                    interactionLogs: [], messages: [], entityMedia: [], cashAtHandCents: 0,
                     syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected', isSyncPending: false
                 });
             },
@@ -2918,7 +2920,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages,
+                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages, entityMedia,
                         // Inventory Base Tables
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
@@ -2944,6 +2946,7 @@ export const useDataStore = create<DataState>()(
                         safePull('performance_reviews', companyId),
                         safePull('interaction_logs', companyId),
                         safePull('messages', companyId),
+                        safePull('entity_media', companyId),
 
 
                         safePull('reusable_items', companyId),
@@ -3179,6 +3182,7 @@ export const useDataStore = create<DataState>()(
                     if (chartOfAccounts !== null) newState.chartOfAccounts = chartOfAccounts;
                     if (bankTransactions !== null) newState.bankTransactions = bankTransactions;
                     if (messages !== null) newState.messages = messages;
+                    if (entityMedia !== null) newState.entityMedia = entityMedia;
 
                     if (leaveRequests !== null) {
                         newState.leaveRequests = (leaveRequests || []).map((lr: any) => ({
@@ -3456,7 +3460,28 @@ export const useDataStore = create<DataState>()(
                             return state;
                         });
                     })
-                    // 11. Bookkeeping (company_id)
+                    // 11. Entity Media (organization_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'entity_media',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('entity_media', newRow) : null;
+                        set((state) => {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.entityMedia.some(m => m.id === mappedNew.id)) return state;
+                                return { entityMedia: [...state.entityMedia, mappedNew] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { entityMedia: state.entityMedia.map(m => m.id === mappedNew.id ? mappedNew : m) };
+                            } else if (eventType === 'DELETE' && oldRow) {
+                                return { entityMedia: state.entityMedia.filter(m => m.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
+                    // 12. Bookkeeping (company_id)
                     .on('postgres_changes', {
                         event: '*',
                         schema: 'public',
