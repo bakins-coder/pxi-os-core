@@ -29,16 +29,20 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
 
    useEffect(() => {
       const initialReqs: Partial<Requisition>[] = [];
-      const staffNeeded = Math.ceil(event.guestCount / waiterRatio);
-      initialReqs.push({
-         type: 'Hiring',
-         category: 'Service',
-         itemName: `Wait Staff (${staffNeeded} heads)`,
-         quantity: staffNeeded,
-         pricePerUnitCents: waiterRate * 100,
-         totalAmountCents: staffNeeded * waiterRate * 100,
-         notes: `Target ratio 1:${waiterRatio} for ${event.guestCount} guests.`
-      });
+      const isCuisine = event.orderType === 'Cuisine' || event.banquetDetails?.eventType?.toUpperCase().includes('CUISINE');
+
+      if (!isCuisine) {
+         const staffNeeded = Math.ceil(event.guestCount / waiterRatio);
+         initialReqs.push({
+            type: 'Hiring',
+            category: 'Service',
+            itemName: `Wait Staff (${staffNeeded} heads)`,
+            quantity: staffNeeded,
+            pricePerUnitCents: waiterRate * 100,
+            totalAmountCents: staffNeeded * waiterRate * 100,
+            notes: `Target ratio 1:${waiterRatio} for ${event.guestCount} guests.`
+         });
+      }
       initialReqs.push({
          type: 'Rental',
          category: 'Hardware',
@@ -1640,7 +1644,9 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                   <h3 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words mb-4 line-clamp-2">{event.customerName}</h3>
                   <div className="flex flex-wrap items-center gap-3">
                      <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{event.status}</span>
-                     <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">{event.eventDate} • {event.location || 'Venue TBD'}</p>
+                     <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">
+                        {event.eventDate} • {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
+                     </p>
                   </div>
                </div>
             </div>
@@ -1668,7 +1674,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <section>
                <div className="flex items-center gap-4 mb-8">
-                  <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">Banquet Menu Roster</h4>
+                  <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">{event.orderType === 'Cuisine' ? 'Ordered Menu Items' : 'Banquet Menu Roster'}</h4>
                   <div className="h-px flex-1 bg-slate-100"></div>
                </div>
                <div className="grid grid-cols-1 gap-4">
@@ -1696,8 +1702,16 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                   <div className="h-px flex-1 bg-slate-100"></div>
                </div>
                <div className="space-y-4">
-                  {/* ... (Banquet Details) ... */}
-                  {event.banquetDetails?.eventPlanner && (
+                  {event.orderType === 'Cuisine' && event.cuisineDetails?.packaging && (
+                     <div className="p-5 md:p-6 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                        <div className="flex items-center gap-3 mb-2">
+                           <Box size={12} className="text-indigo-600" />
+                           <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Packaging Choice</p>
+                        </div>
+                        <p className="text-base font-black text-indigo-900 uppercase tracking-tight">{event.cuisineDetails.packaging}</p>
+                     </div>
+                  )}
+                  {event.banquetDetails?.eventPlanner && event.orderType !== 'Cuisine' && (
                      <div className="p-5 md:p-6 bg-slate-900 border border-[#00ff9d]/20 rounded-2xl shadow-xl">
                         <div className="flex items-center gap-3 mb-2">
                            <User size={12} className="text-[#00ff9d]" />
@@ -1706,13 +1720,13 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                         <p className="text-base md:text-lg font-black text-white uppercase tracking-tight">{event.banquetDetails.eventPlanner}</p>
                      </div>
                   )}
-                  {event.banquetDetails?.notes && (
+                  {(event.cuisineDetails?.notes || event.banquetDetails?.notes) && (
                      <div className="p-5 md:p-6 bg-white border-2 border-slate-100 rounded-2xl">
                         <div className="flex items-center gap-3 mb-2">
                            <FileText size={12} className="text-indigo-600" />
                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Operational Notes</p>
                         </div>
-                        <p className="text-xs md:text-sm font-medium text-slate-600 leading-relaxed italic line-clamp-4">"{event.banquetDetails.notes}"</p>
+                        <p className="text-xs md:text-sm font-medium text-slate-600 leading-relaxed italic line-clamp-4">"{event.cuisineDetails?.notes || event.banquetDetails?.notes}"</p>
                      </div>
                   )}
                </div>
@@ -1887,6 +1901,9 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    const [searchQuery, setSearchQuery] = useState('');
    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
    const dropdownRef = useRef<HTMLDivElement>(null);
+
+   const [deliveryLocation, setDeliveryLocation] = useState('');
+   const [packaging, setPackaging] = useState('Bulk Boxes');
 
    const [customProductName, setCustomProductName] = useState('');
    const [customProductPrice, setCustomProductPrice] = useState(0);
@@ -2063,7 +2080,9 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
          orderType: 'Cuisine',
          banquetDetails: {
             notes: 'Cuisine Order (Smaller portions)',
-            eventType: 'Cuisine Order'
+            eventType: 'Cuisine Order',
+            location: deliveryLocation,
+            contactPerson: packaging // Using contactPerson as proxy for packaging in legacy field
          }
       };
 
@@ -2150,6 +2169,33 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                     ))}
                                  </div>
                               )}
+                           </div>
+                        </div>
+
+                        {/* Delivery Details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Delivery Address</label>
+                              <input
+                                 type="text"
+                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
+                                 value={deliveryLocation}
+                                 onChange={e => setDeliveryLocation(e.target.value)}
+                                 placeholder="e.g. 123 Lagos St"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Packaging Info</label>
+                              <select
+                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
+                                 value={packaging}
+                                 onChange={e => setPackaging(e.target.value)}
+                              >
+                                 <option>Bulk Boxes</option>
+                                 <option>Individual Packs</option>
+                                 <option>Premium Platters</option>
+                                 <option>Custom Request</option>
+                              </select>
                            </div>
                         </div>
 
@@ -2449,6 +2495,7 @@ export const Catering = () => {
 
          const isCuisine = ev.orderType === 'Cuisine' ||
             matchingInvoice?.category === 'Cuisine' ||
+            (ev.cuisineDetails && Object.keys(ev.cuisineDetails).length > 0) ||
             ev.banquetDetails?.notes?.toUpperCase().includes('CUISINE') ||
             ev.banquetDetails?.eventType?.toUpperCase().includes('CUISINE');
 

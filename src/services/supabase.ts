@@ -49,7 +49,7 @@ export const checkCloudHealth = async () => {
 // --- Database Schema Whitelists ---
 // These MUST match the columns in src/types/supabase.ts to prevent sync failures.
 const SCHEMA_WHITELISTS: Record<string, string[]> = {
-  catering_events: ['id', 'company_id', 'organization_id', 'customer_name', 'deal_id', 'event_date', 'guest_count', 'status', 'financials'],
+  catering_events: ['id', 'company_id', 'organization_id', 'customer_name', 'deal_id', 'event_date', 'guest_count', 'status', 'financials', 'cuisine_details'],
   invoices: ['id', 'company_id', 'number', 'contact_id', 'date', 'due_date', 'status', 'type', 'total_cents', 'subtotal_cents', 'service_charge_cents', 'vat_cents', 'paid_amount_cents', 'manual_set_price_cents', 'discount_cents', 'standard_total_cents', 'lines'],
   requisitions: ['id', 'company_id', 'type', 'category', 'item_name', 'ingredient_id', 'quantity', 'price_per_unit_cents', 'total_amount_cents', 'requestor_id', 'status', 'reference_id', 'notes', 'source_account_id'],
   projects: ['id', 'company_id', 'name', 'client_contact_id', 'status', 'start_date', 'end_date', 'budget_cents', 'progress', 'reference_id', 'ai_alerts'],
@@ -135,7 +135,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
       const packedData: any = { ...newItem.financials };
 
       const fieldsToPack = [
-        'items', 'costingSheet', 'orderType', 'banquetDetails', 'currentPhase',
+        'items', 'costingSheet', 'orderType', 'banquetDetails', 'cuisineDetails', 'currentPhase',
         'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
         'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor',
         'customerName', 'guestCount'
@@ -225,6 +225,7 @@ export const mapItem = (item: any, tableName?: string) => {
     'current_phase': 'currentPhase',
     'readiness_score': 'readinessScore',
     'banquet_details': 'banquetDetails',
+    'cuisine_details': 'cuisineDetails',
     'hardware_checklist': 'hardwareChecklist',
     'reconciliation_status': 'reconciliationStatus',
     'costing_sheet': 'costingSheet',
@@ -268,7 +269,7 @@ export const mapItem = (item: any, tableName?: string) => {
   if (tableName === 'catering_events' && newItem.financials && typeof newItem.financials === 'object') {
     const financials = newItem.financials as any;
     const packedFields = [
-      'items', 'costingSheet', 'orderType', 'banquetDetails', 'currentPhase',
+      'items', 'costingSheet', 'orderType', 'banquetDetails', 'cuisineDetails', 'currentPhase',
       'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
       'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor',
       'customerName', 'guestCount'

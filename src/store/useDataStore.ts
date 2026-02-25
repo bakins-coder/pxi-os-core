@@ -2314,7 +2314,8 @@ export const useDataStore = create<DataState>()(
                     currentPhase: 'Procurement',
                     items: d.items,
                     orderType: d.orderType || 'Banquet',
-                    banquetDetails: d.banquetDetails,
+                    banquetDetails: isCuisine ? {} : d.banquetDetails,
+                    cuisineDetails: isCuisine ? d.banquetDetails : {}, // If coming from brochure, it might be in banquetDetails
                     readinessScore: 40,
                     hardwareChecklist: [],
                     tasks: [],

@@ -174,6 +174,13 @@ export interface BanquetDetails {
   productionConfirmed?: boolean;
 }
 
+export interface CuisineDetails {
+  deliveryLocation?: string;
+  deliveryTime?: string;
+  packaging?: string;
+  notes?: string;
+}
+
 export interface DispatchedAsset {
   itemId: string;
   name: string;
@@ -238,6 +245,7 @@ export interface CateringEvent {
     invoiceId?: string; // Link to the main sales invoice
   };
   banquetDetails?: BanquetDetails;
+  cuisineDetails?: CuisineDetails;
   portionMonitor?: PortionMonitor;
 }
 

@@ -35,18 +35,30 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
     // Form State
     const [customerName, setCustomerName] = useState(initialEvent?.customerName || '');
-    const [contactPerson, setContactPerson] = useState(initialEvent?.banquetDetails?.contactPerson || '');
-    const [contactEmail, setContactEmail] = useState(initialEvent?.banquetDetails?.contactEmail || user?.email || '');
+    const [contactPerson, setContactPerson] = useState(
+        initialEvent?.cuisineDetails?.packaging ||
+        initialEvent?.banquetDetails?.contactPerson ||
+        ''
+    );
+    const [contactEmail, setContactEmail] = useState(
+        initialEvent?.banquetDetails?.contactEmail ||
+        user?.email ||
+        ''
+    );
     const [contactPhone, setContactPhone] = useState(initialEvent?.banquetDetails?.contactPhone || '');
 
     const [eventType, setEventType] = useState(initialEvent?.banquetDetails?.eventType || 'Wedding');
     const [themeColor, setThemeColor] = useState(initialEvent?.banquetDetails?.themeColor || '#4f46e5');
     const [eventDate, setEventDate] = useState(initialEvent?.eventDate || '');
     const [guestCount, setGuestCount] = useState(initialEvent?.guestCount || 100);
-    const [eventLocation, setEventLocation] = useState(initialEvent?.banquetDetails?.location || '');
+    const [eventLocation, setEventLocation] = useState(
+        initialEvent?.cuisineDetails?.deliveryLocation ||
+        initialEvent?.banquetDetails?.location ||
+        ''
+    );
     const [eventPlannerName, setEventPlannerName] = useState(initialEvent?.banquetDetails?.eventPlanner?.split(' (')[0] || '');
     const [eventPlannerPhone, setEventPlannerPhone] = useState(initialEvent?.banquetDetails?.eventPlanner?.split(' (')[1]?.replace(')', '') || '');
-    const [notes, setNotes] = useState(initialEvent?.banquetDetails?.notes || '');
+    const [notes, setNotes] = useState(initialEvent?.cuisineDetails?.notes || initialEvent?.banquetDetails?.notes || '');
 
     // UI State
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -399,7 +411,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 <div className="flex justify-between items-center px-1">
                     <div className="flex items-center gap-2 md:gap-4 shrink-0">
                         <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} className="md:w-5 md:h-5" /></div>
-                        <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Banquet Creation</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">New Event Node Hub</p></div>
+                        <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">{isCuisine ? 'Cuisine Order' : 'Banquet Creation'}</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">{isCuisine ? 'New Direct Order Node' : 'New Event Node Hub'}</p></div>
                     </div>
                     <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} className="md:w-5 md:h-5" /></button>
                 </div>
@@ -458,19 +470,19 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     <section className="space-y-6">
                         <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2">
                             <Users size={16} className="text-indigo-600" />
-                            <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Client Identity</h3>
+                            <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Client Identity'}</h3>
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Host Entity *</label>
-                            <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder="Host Name" value={customerName} onChange={e => handleHostChange(e.target.value)} />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Customer Name *' : 'Host Entity *'}</label>
+                            <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder={isCuisine ? "Customer Name" : "Host Name"} value={customerName} onChange={e => handleHostChange(e.target.value)} />
                             <datalist id="contacts-list-b">
                                 {contacts.map(c => <option key={c.id} value={c.name} />)}
                             </datalist>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Contact Person</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Packaging Info' : 'Contact Person'}</label>
+                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder={isCuisine ? "e.g. Bulk Boxes" : ""} value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Phone *</label>
@@ -486,46 +498,50 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     <section className="space-y-6">
                         <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2">
                             <Palette size={16} className="text-indigo-600" />
-                            <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Atmosphere & Coordination</h3>
+                            <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Logistics & Timing' : 'Atmosphere & Coordination'}</h3>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Type</label>
-                                <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
-                                    <option>Wedding</option><option>Corporate</option><option>Funeral</option><option>Birthday</option><option>Anniversary</option><option>Cocktail</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Theme Colour</label>
-                                <div className="flex items-center gap-3 p-3 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
-                                    <input type="color" className="w-12 h-12 md:w-8 md:h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
-                                    <span className="font-mono text-xs font-black uppercase text-slate-950">{themeColor}</span>
+                        {!isCuisine && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Type</label>
+                                    <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
+                                        <option>Wedding</option><option>Corporate</option><option>Funeral</option><option>Birthday</option><option>Anniversary</option><option>Cocktail</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Theme Colour</label>
+                                    <div className="flex items-center gap-3 p-3 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
+                                        <input type="color" className="w-12 h-12 md:w-8 md:h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
+                                        <span className="font-mono text-xs font-black uppercase text-slate-950">{themeColor}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Date *</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Date *' : 'Event Date *'}</label>
                                 <input type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Guest Count *</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Total Portions *' : 'Guest Count *'}</label>
                                 <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Planner</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
+                        {!isCuisine && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Planner</label>
+                                    <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Planner Phone</label>
+                                    <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone (Optional)" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} />
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Planner Phone</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone (Optional)" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} />
-                            </div>
-                        </div>
+                        )}
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Venue Address *</label>
-                            <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder="Location Detail" value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Address *' : 'Venue Address *'}</label>
+                            <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder={isCuisine ? "Where should we deliver?" : "Location Detail"} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
                         </div>
                     </section>
 
