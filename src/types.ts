@@ -25,7 +25,8 @@ export enum Role {
   DRIVER = 'Driver',
   HEAD_WAITER = 'Head Waiter',
   FINANCE_OFFICER = 'Finance Officer',
-  CHAIRMAN = 'Chairman'
+  CHAIRMAN = 'Chairman',
+  CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager'
 }
 
 export enum AIAgentMode {

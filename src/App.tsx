@@ -229,15 +229,15 @@ function AppContent() {
 
         <Route path="/super-admin" element={<ProtectedRoute user={user} allowedRoles={[Role.SUPER_ADMIN]}><SuperAdmin /></ProtectedRoute>} />
         <Route path="/executive-hub" element={<ProtectedRoute user={user} requiredPermission="access:finance_all" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><AgentHub /></ProtectedRoute>} />
-        <Route path="/crm" element={<ProtectedRoute user={user} requiredPermission="access:crm" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES]}><CRM /></ProtectedRoute>} />
-        <Route path="/projects" element={<ProtectedRoute user={user} requiredPermission="access:projects" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS]}><ProjectManagement /></ProtectedRoute>} />
-        <Route path="/inventory" element={<ProtectedRoute user={user} requiredPermission="access:inventory" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><Inventory /></ProtectedRoute>} />
-        <Route path="/catering" element={<ProtectedRoute user={user} requiredPermission="access:catering" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><Catering /></ProtectedRoute>} />
-        <Route path="/portion-monitor" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.SUPERVISOR]}><PortionMonitor /></ProtectedRoute>} />
+        <Route path="/crm" element={<ProtectedRoute user={user} requiredPermission="access:crm" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><CRM /></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute user={user} requiredPermission="access:projects" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.CATERING_OPERATIONS_MANAGER]}><ProjectManagement /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute user={user} requiredPermission="access:inventory" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><Inventory /></ProtectedRoute>} />
+        <Route path="/catering" element={<ProtectedRoute user={user} requiredPermission="access:catering" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><Catering /></ProtectedRoute>} />
+        <Route path="/portion-monitor" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.SUPERVISOR, Role.CATERING_OPERATIONS_MANAGER]}><PortionMonitor /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute user={user} requiredPermission="access:finance" allowedRoles={[Role.ADMIN, Role.FINANCE, Role.MANAGER]}><Finance /></ProtectedRoute>} />
         <Route path="/hr" element={<ProtectedRoute user={user} requiredPermission="access:hr" allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><HR /></ProtectedRoute>} />
         <Route path="/requisitions" element={<ProtectedRoute user={user} allowedRoles={[Role.SUPER_ADMIN, Role.CEO, Role.ADMIN]}><RequisitionsHub /></ProtectedRoute>} />
-        <Route path="/automation" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER]}><Automation /></ProtectedRoute>} />
+        <Route path="/automation" element={<ProtectedRoute user={user} requiredPermission="access:automation" allowedRoles={[Role.ADMIN, Role.MANAGER]}><Automation /></ProtectedRoute>} />
         <Route path="/contact-center" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.AGENT, Role.SUPERVISOR]}><Agent /></ProtectedRoute>} />
         <Route path="/team" element={<TeamCommunication />} />
         <Route path="/docs" element={<KnowledgeBase />} />
@@ -246,7 +246,7 @@ function AppContent() {
         <Route path="/admin/settings" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.SUPER_ADMIN]}><ITPortal /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><Settings /></ProtectedRoute>} />
         <Route path="/customer-portal" element={<CustomerPortal />} />
-        <Route path="/procurement" element={<ProtectedRoute user={user} allowedRoles={[Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER]}><Procurement /></ProtectedRoute>} />
+        <Route path="/procurement" element={<ProtectedRoute user={user} allowedRoles={[Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER, Role.CATERING_OPERATIONS_MANAGER]}><Procurement /></ProtectedRoute>} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="/monitor/:token" element={<ExternalMonitor />} />

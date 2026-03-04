@@ -73,20 +73,20 @@ const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role) },
 
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
-  { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:catering', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
-  { label: 'CRM', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER] },
-  { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER] },
-  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER] },
+  { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:contact_center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
+  { label: 'CRM', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
 
   // Industry Specific
-  { label: 'Catering Ops', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER] },
+  { label: 'Catering Ops', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
-  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: [Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER] },
+  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: [Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
   { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
   { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
-  { label: 'Automation', icon: Bot, path: '/automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
+  { label: 'Automation', icon: Bot, path: '/automation', requiredPermission: 'access:automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
   { label: 'Analytics', icon: Activity, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE] },
   { label: 'Reporting', icon: BarChart2, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES] },
   { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
