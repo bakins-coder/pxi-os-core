@@ -82,7 +82,7 @@ const NAV_ITEMS = [
   { label: 'Catering Ops', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
-  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: [Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
   { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
   { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
   { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },

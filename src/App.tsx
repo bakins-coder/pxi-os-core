@@ -246,7 +246,7 @@ function AppContent() {
         <Route path="/admin/settings" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.SUPER_ADMIN]}><ITPortal /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><Settings /></ProtectedRoute>} />
         <Route path="/customer-portal" element={<CustomerPortal />} />
-        <Route path="/procurement" element={<ProtectedRoute user={user} allowedRoles={[Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER, Role.CATERING_OPERATIONS_MANAGER]}><Procurement /></ProtectedRoute>} />
+        <Route path="/procurement" element={<ProtectedRoute user={user} allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><Procurement /></ProtectedRoute>} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="/monitor/:token" element={<ExternalMonitor />} />
