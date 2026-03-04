@@ -55,7 +55,7 @@ const SCHEMA_WHITELISTS: Record<string, string[]> = {
   projects: ['id', 'company_id', 'name', 'client_contact_id', 'status', 'start_date', 'end_date', 'budget_cents', 'progress', 'reference_id', 'ai_alerts'],
   tasks: ['id', 'company_id', 'project_id', 'title', 'description', 'assignee_id', 'assignee_role', 'due_date', 'priority', 'status', 'created_at'],
   contacts: ['id', 'company_id', 'name', 'type', 'email', 'phone', 'address', 'customer_type'],
-  employees: ['id', 'organization_id', 'name', 'first_name', 'last_name', 'role', 'email', 'phone', 'phone_number', 'salary_cents', 'health_notes', 'gender', 'dob', 'date_of_employment', 'staff_id', 'user_id', 'avatar', 'id_card_issued_date', 'kpis'],
+  employees: ['id', 'organization_id', 'name', 'first_name', 'last_name', 'title', 'role', 'email', 'phone', 'phone_number', 'salary_cents', 'health_notes', 'gender', 'dob', 'date_of_employment', 'staff_id', 'user_id', 'avatar', 'id_card_issued_date', 'kpis'],
   ingredients: ['id', 'organization_id', 'name', 'category_id', 'unit_id', 'image_url', 'reorder_point', 'shelf_life_days', 'preferred_supplier_id'],
   products: ['id', 'organization_id', 'name', 'description', 'price_cents', 'category_id', 'product_category_id', 'cuisine', 'image_url', 'is_active', 'lead_time_minutes', 'normalized_name', 'created_at'],
   reusable_items: ['id', 'organization_id', 'name', 'description', 'price_cents', 'stock_quantity', 'stock_level', 'category', 'category_id', 'unit_id', 'image', 'image_url'],
@@ -262,6 +262,9 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'salary_cents': 'salaryCents',
     'health_notes': 'healthNotes',
     'date_of_employment': 'dateOfEmployment',
+    'staff_id': 'staffId',
+    'user_id': 'userId',
+    'id_card_issued_date': 'idCardIssuedDate',
     // Contact mappings
     'customer_type': 'customerType',
     'registration_number': 'registrationNumber',

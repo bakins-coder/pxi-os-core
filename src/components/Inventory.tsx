@@ -438,22 +438,35 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
    if (!isOpen) return null;
 
    const handleSubmit = () => {
-      if (!selectedIngId || qty <= 0) return;
-      const ing = ingredients.find(i => i.id === selectedIngId);
-
-      addRequisition({
-         type: 'Purchase',
-         category: 'Food',
-         itemName: ing?.name || 'Unknown Item',
-         ingredientId: selectedIngId,
-         quantity: qty,
-         pricePerUnitCents: (estimatedCost / qty) * 100, // Derived unit cost
-         totalAmountCents: estimatedCost * 100,
-         notes: notes || 'Stock replenishment request',
-         status: 'Pending',
-         requestorId: user?.id
-      });
-
+      if (isManualInput) {
+         if (!newItemName || qty <= 0) return;
+         addRequisition({
+            type: 'Purchase',
+            category: 'Food',
+            itemName: newItemName,
+            quantity: qty,
+            pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
+            totalAmountCents: estimatedCost * 100,
+            notes: notes || 'Stock replenishment request',
+            status: 'Pending',
+            requestorId: user?.id
+         });
+      } else {
+         if (!selectedIngId || qty <= 0) return;
+         const ing = ingredients.find(i => i.id === selectedIngId);
+         addRequisition({
+            type: 'Purchase',
+            category: 'Food',
+            itemName: ing?.name || 'Unknown Item',
+            ingredientId: selectedIngId,
+            quantity: qty,
+            pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
+            totalAmountCents: estimatedCost * 100,
+            notes: notes || 'Stock replenishment request',
+            status: 'Pending',
+            requestorId: user?.id
+         });
+      }
       onClose();
       alert("Purchase Request Submitted for Approval");
    };
@@ -481,15 +494,48 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
                </div>
 
                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Item</label>
-                  <select
-                     className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
-                     value={selectedIngId}
-                     onChange={e => setSelectedIngId(e.target.value)}
-                  >
-                     <option value="">Choose Raw Material...</option>
-                     {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Current: {i.stockLevel} {i.unit})</option>)}
-                  </select>
+                  <div className="flex items-center justify-between mb-2">
+                     <label className="text-[10px] font-black uppercase text-slate-400">{isManualInput ? 'Item Name' : 'Select Item'}</label>
+                     <button
+                        onClick={() => { setIsManualInput(!isManualInput); setSelectedIngId(''); setNewItemName(''); }}
+                        className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition-colors"
+                     >
+                        <span className={`w-8 h-4 rounded-full relative transition-all ${isManualInput ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                           <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${isManualInput ? 'left-4' : 'left-0.5'}`} />
+                        </span>
+                        {isManualInput ? 'Type Mode' : 'Select Mode'}
+                     </button>
+                  </div>
+                  {isManualInput ? (
+                     <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+                        <input
+                           type="text"
+                           className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                           value={newItemName}
+                           onChange={e => setNewItemName(e.target.value)}
+                           placeholder="e.g. Fresh Tomatoes, Palm Oil..."
+                        />
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit of Measure</label>
+                           <select
+                              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900"
+                              value={newItemUnit}
+                              onChange={e => setNewItemUnit(e.target.value)}
+                           >
+                              <option>kg</option><option>g</option><option>L</option><option>ml</option><option>pcs</option><option>pack</option><option>tin</option>
+                           </select>
+                        </div>
+                     </div>
+                  ) : (
+                     <select
+                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
+                        value={selectedIngId}
+                        onChange={e => setSelectedIngId(e.target.value)}
+                     >
+                        <option value="">Choose Raw Material...</option>
+                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Current: {i.stockLevel} {i.unit})</option>)}
+                     </select>
+                  )}
                </div>
 
                <div className="grid grid-cols-2 gap-4">
@@ -511,7 +557,11 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
-               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700">Submit Request</button>
+               <button
+                  onClick={handleSubmit}
+                  disabled={qty <= 0 || (isManualInput ? !newItemName : !selectedIngId)}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+               >Submit Request</button>
             </div>
          </div>
       </div>

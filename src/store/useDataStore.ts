@@ -1255,6 +1255,7 @@ export const useDataStore = create<DataState>()(
                     kpis: newEmp.kpis,
                     avatar: newEmp.avatar,
                     health_notes: newEmp.healthNotes,
+                    title: newEmp.title,
                     staff_id: (newEmp as any).staffId
                 };
 
