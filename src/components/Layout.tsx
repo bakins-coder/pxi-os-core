@@ -6,7 +6,7 @@ import {
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, Activity,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
-  ClipboardList, Plane, Fuel, Smartphone, Laptop
+  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -82,6 +82,7 @@ const NAV_ITEMS = [
   { label: 'Catering Ops', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
+  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: [Role.CHEF, Role.KITCHEN_MANAGER, Role.PROCUREMENT, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.LOGISTICS_OFFICER, Role.STOCK_KEEPER, Role.BANQUET_MANAGER, Role.ADMIN, Role.MANAGER] },
   { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
   { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
   { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
