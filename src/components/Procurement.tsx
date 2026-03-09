@@ -61,7 +61,7 @@ export const Procurement: React.FC = () => {
 
         const newReqs = draftRequests.map((draft, idx) => ({
             ...draft,
-            id: `REQ-${Date.now()}-${idx}`
+            id: crypto.randomUUID()
         }));
 
         setTimeout(() => {

@@ -1042,7 +1042,7 @@ const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, on
       if (!cents || !reason) return;
 
       addRequisition({
-         id: `req-${Date.now()}`,
+         id: crypto.randomUUID(),
          type: 'Loan',
          category: 'Financial',
          itemName: 'Salary Advance Request',
