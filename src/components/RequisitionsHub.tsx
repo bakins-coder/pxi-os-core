@@ -201,7 +201,7 @@ export const RequisitionsHub: React.FC = () => {
         pending: requisitions.filter(r => r.status === 'Pending').length,
         approved: requisitions.filter(r => r.status === 'Approved' || r.status === 'Paid').length,
         rejected: requisitions.filter(r => r.status === 'Rejected').length,
-        totalVolume: requisitions.reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
+        totalVolume: requisitions.filter(r => r.status !== 'Rejected').reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
     };
 
     return (

@@ -200,7 +200,7 @@ export const Procurement: React.FC = () => {
                             </div>
                             <div className="text-right">
                                 <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Batch Total</span>
-                                <span className="text-xl font-black text-[#00ff9d]">₦{batchTotalCents.toLocaleString()}</span>
+                                <span className="text-xl font-black text-[#00ff9d]">₦{(batchTotalCents / 100).toLocaleString()}</span>
                             </div>
                         </div>
 

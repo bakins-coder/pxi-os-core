@@ -2301,8 +2301,27 @@ export const useDataStore = create<DataState>()(
                 const totalRev = d.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0 as number);
 
                 const isCuisine = (d.orderType || 'Banquet') === 'Cuisine';
-                const serviceChargeCents = isCuisine ? 0 : Math.round(totalRev * 0.15);
-                const vatCents = isCuisine ? 0 : Math.round((totalRev + serviceChargeCents) * 0.075);
+
+                // Determine taxable revenue (food items only) by excluding logistics, rentals, menu cards, etc.
+                const isNonFoodItem = (desc: string) => {
+                    const ldesc = desc.toLowerCase();
+                    return ldesc.includes('transport') ||
+                        ldesc.includes('logistic') ||
+                        ldesc.includes('delivery') ||
+                        ldesc.includes('menu card') ||
+                        ldesc.includes('service') ||
+                        ldesc.includes('waiter') ||
+                        ldesc.includes('truck') ||
+                        ldesc.includes('rental');
+                };
+
+                const taxableRev = d.items.reduce((s: number, i: any) => {
+                    if (isNonFoodItem(i.name)) return s;
+                    return s + (i.priceCents * i.quantity);
+                }, 0 as number);
+
+                const serviceChargeCents = isCuisine ? 0 : Math.round(taxableRev * 0.15);
+                const vatCents = isCuisine ? 0 : Math.round(taxableRev * 0.075);
                 const totalCents = totalRev + serviceChargeCents + vatCents;
 
                 const event: CateringEvent = {
@@ -2656,12 +2675,31 @@ export const useDataStore = create<DataState>()(
                         currentInvoice?.vatCents === 0
                     );
 
+                    const isNonFoodItem = (desc: string) => {
+                        const ldesc = desc.toLowerCase();
+                        return ldesc.includes('transport') ||
+                            ldesc.includes('logistic') ||
+                            ldesc.includes('delivery') ||
+                            ldesc.includes('menu card') ||
+                            ldesc.includes('service') ||
+                            ldesc.includes('waiter') ||
+                            ldesc.includes('truck') ||
+                            ldesc.includes('rental');
+                    };
+
                     const standardSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = skipTaxes ? 0 : Math.round(standardSubtotal * 0.15);
-                    const standardVAT = skipTaxes ? 0 : Math.round((standardSubtotal + standardSC) * 0.075);
+
+                    const standardTaxableSubtotal = lines.reduce((acc, l) => {
+                        if ((isBanquet && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isNonFoodItem(l.description)) return acc;
+                        return acc + (l.quantity * l.unitPriceCents);
+                    }, 0);
+
+                    const standardSC = skipTaxes ? 0 : Math.round(standardTaxableSubtotal * 0.15);
+                    const standardVAT = skipTaxes ? 0 : Math.round(standardTaxableSubtotal * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     // 2. Calculate Effective Totals (Using manual prices if set)
@@ -2674,8 +2712,17 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = skipTaxes ? 0 : Math.round(effectiveSubtotal * 0.15);
-                    const effectiveVAT = skipTaxes ? 0 : Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                    const effectiveTaxableSubtotal = lines.reduce((acc, l) => {
+                        if ((isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isNonFoodItem(l.description)) return acc;
+                        const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                            ? l.manualPriceCents
+                            : l.unitPriceCents;
+                        return acc + (l.quantity * price);
+                    }, 0);
+
+                    const effectiveSC = skipTaxes ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
+                    const effectiveVAT = skipTaxes ? 0 : Math.round(effectiveTaxableSubtotal * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
 
                     // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost
@@ -2737,12 +2784,31 @@ export const useDataStore = create<DataState>()(
 
                     const isBanquet = (currentInv?.category === 'Banquet' && !effectiveIsCuisine) && lines.some(l => l.description.startsWith('[SECTION] '));
 
+                    const isNonFoodItem = (desc: string) => {
+                        const ldesc = desc.toLowerCase();
+                        return ldesc.includes('transport') ||
+                            ldesc.includes('logistic') ||
+                            ldesc.includes('delivery') ||
+                            ldesc.includes('menu card') ||
+                            ldesc.includes('service') ||
+                            ldesc.includes('waiter') ||
+                            ldesc.includes('truck') ||
+                            ldesc.includes('rental');
+                    };
+
                     const standardSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-                    const standardSC = effectiveIsCuisine ? 0 : Math.round(standardSubtotal * 0.15);
-                    const standardVAT = effectiveIsCuisine ? 0 : Math.round((standardSubtotal + standardSC) * 0.075);
+
+                    const standardTaxableSubtotal = lines.reduce((acc, l) => {
+                        if ((isBanquet && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isNonFoodItem(l.description)) return acc;
+                        return acc + (l.quantity * l.unitPriceCents);
+                    }, 0);
+
+                    const standardSC = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.15);
+                    const standardVAT = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     const hasSections = lines.some(l => l.description.startsWith('[SECTION] '));
@@ -2754,8 +2820,17 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveSubtotal * 0.15);
-                    const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                    const effectiveTaxableSubtotal = lines.reduce((acc, l) => {
+                        if ((isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isNonFoodItem(l.description)) return acc;
+                        const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                            ? l.manualPriceCents
+                            : l.unitPriceCents;
+                        return acc + (l.quantity * price);
+                    }, 0);
+
+                    const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
+                    const effectiveVAT = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                     const discount = Math.max(0, standardTotal - effectiveTotal);
 
