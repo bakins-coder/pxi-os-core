@@ -27,7 +27,8 @@ describe('useDataStore - updateInvoiceLines', () => {
                     ]
                 }
             ],
-            contacts: [{ id: 'con-1', name: 'Test Contact', email: '', phone: '', type: 'Individual' }]
+            contacts: [{ id: 'con-1', name: 'Test Contact', email: '', phone: '', type: 'Individual' }],
+            syncWithCloud: vi.fn() as any
         });
     });
 

@@ -969,6 +969,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      <div className="w-full md:w-1/3 space-y-2">
                         {(() => {
                            const isNonFoodItem = (desc: string) => {
+                              if (!desc) return false;
                               const ldesc = desc.toLowerCase();
                               return ldesc.includes('transport') ||
                                  ldesc.includes('logistic') ||
@@ -998,7 +999,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                            }, 0);
 
                            const standardSC = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.15);
-                           const standardVAT = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.075);
+                           const standardVAT = effectiveIsCuisine ? 0 : Math.round((standardTaxableSubtotal + standardSC) * 0.075);
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
@@ -1027,7 +1028,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                            }, 0);
 
                            const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
-                           const effectiveVAT = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.075);
+                           const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * 0.075);
                            const calculatedTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                            const finalTotal = manualTotalOverride ?? calculatedTotal;
 

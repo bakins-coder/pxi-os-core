@@ -2304,13 +2304,12 @@ export const useDataStore = create<DataState>()(
 
                 // Determine taxable revenue (food items only) by excluding logistics, rentals, menu cards, etc.
                 const isNonFoodItem = (desc: string) => {
+                    if (!desc) return false;
                     const ldesc = desc.toLowerCase();
                     return ldesc.includes('transport') ||
                         ldesc.includes('logistic') ||
                         ldesc.includes('delivery') ||
                         ldesc.includes('menu card') ||
-                        ldesc.includes('service') ||
-                        ldesc.includes('waiter') ||
                         ldesc.includes('truck') ||
                         ldesc.includes('rental');
                 };
@@ -2321,7 +2320,7 @@ export const useDataStore = create<DataState>()(
                 }, 0 as number);
 
                 const serviceChargeCents = isCuisine ? 0 : Math.round(taxableRev * 0.15);
-                const vatCents = isCuisine ? 0 : Math.round(taxableRev * 0.075);
+                const vatCents = isCuisine ? 0 : Math.round((taxableRev + serviceChargeCents) * 0.075);
                 const totalCents = totalRev + serviceChargeCents + vatCents;
 
                 const event: CateringEvent = {
@@ -2676,13 +2675,12 @@ export const useDataStore = create<DataState>()(
                     );
 
                     const isNonFoodItem = (desc: string) => {
+                        if (!desc) return false;
                         const ldesc = desc.toLowerCase();
                         return ldesc.includes('transport') ||
                             ldesc.includes('logistic') ||
                             ldesc.includes('delivery') ||
                             ldesc.includes('menu card') ||
-                            ldesc.includes('service') ||
-                            ldesc.includes('waiter') ||
                             ldesc.includes('truck') ||
                             ldesc.includes('rental');
                     };
@@ -2699,7 +2697,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const standardSC = skipTaxes ? 0 : Math.round(standardTaxableSubtotal * 0.15);
-                    const standardVAT = skipTaxes ? 0 : Math.round(standardTaxableSubtotal * 0.075);
+                    const standardVAT = skipTaxes ? 0 : Math.round((standardTaxableSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     // 2. Calculate Effective Totals (Using manual prices if set)
@@ -2722,7 +2720,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const effectiveSC = skipTaxes ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
-                    const effectiveVAT = skipTaxes ? 0 : Math.round(effectiveTaxableSubtotal * 0.075);
+                    const effectiveVAT = skipTaxes ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
 
                     // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost
@@ -2785,13 +2783,12 @@ export const useDataStore = create<DataState>()(
                     const isBanquet = (currentInv?.category === 'Banquet' && !effectiveIsCuisine) && lines.some(l => l.description.startsWith('[SECTION] '));
 
                     const isNonFoodItem = (desc: string) => {
+                        if (!desc) return false;
                         const ldesc = desc.toLowerCase();
                         return ldesc.includes('transport') ||
                             ldesc.includes('logistic') ||
                             ldesc.includes('delivery') ||
                             ldesc.includes('menu card') ||
-                            ldesc.includes('service') ||
-                            ldesc.includes('waiter') ||
                             ldesc.includes('truck') ||
                             ldesc.includes('rental');
                     };
@@ -2808,7 +2805,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const standardSC = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.15);
-                    const standardVAT = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.075);
+                    const standardVAT = effectiveIsCuisine ? 0 : Math.round((standardTaxableSubtotal + standardSC) * 0.075);
                     const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                     const hasSections = lines.some(l => l.description.startsWith('[SECTION] '));
@@ -2830,7 +2827,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
-                    const effectiveVAT = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.075);
+                    const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * 0.075);
                     const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                     const discount = Math.max(0, standardTotal - effectiveTotal);
 
