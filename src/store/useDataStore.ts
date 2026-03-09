@@ -453,7 +453,7 @@ export const useDataStore = create<DataState>()(
             addRequisition: (req) => {
                 const user = useAuthStore.getState().user;
                 set((state) => ({
-                    requisitions: [{ ...req, id: req.id || crypto.randomUUID(), companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: 'sys' } as Requisition, ...state.requisitions]
+                    requisitions: [{ ...req, id: req.id || crypto.randomUUID(), companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: req.requestorId || user?.id || 'sys' } as Requisition, ...state.requisitions]
                 }));
                 get().syncWithCloud();
             },
@@ -465,7 +465,7 @@ export const useDataStore = create<DataState>()(
                     id: r.id || crypto.randomUUID(),
                     companyId: companyId,
                     status: 'Pending',
-                    requestorId: 'sys'
+                    requestorId: r.requestorId || user?.id || 'sys'
                 } as Requisition));
 
                 set((state) => ({
