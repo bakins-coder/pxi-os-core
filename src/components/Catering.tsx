@@ -968,6 +968,18 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      {/* Right Side: Totals */}
                      <div className="w-full md:w-1/3 space-y-2">
                         {(() => {
+                           const isNonFoodItem = (desc: string) => {
+                              const ldesc = desc.toLowerCase();
+                              return ldesc.includes('transport') ||
+                                 ldesc.includes('logistic') ||
+                                 ldesc.includes('delivery') ||
+                                 ldesc.includes('menu card') ||
+                                 ldesc.includes('service') ||
+                                 ldesc.includes('waiter') ||
+                                 ldesc.includes('truck') ||
+                                 ldesc.includes('rental');
+                           };
+
                            // 1. Calculate Standard Totals
                            const standardSubtotal = editableLines.reduce((acc, l) => {
                               // Banquet Mode: ONLY lines marked as [SECTION] headers contribute to cost
@@ -976,8 +988,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                               }
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
-                           const standardSC = effectiveIsCuisine ? 0 : Math.round(standardSubtotal * 0.15);
-                           const standardVAT = effectiveIsCuisine ? 0 : Math.round((standardSubtotal + standardSC) * 0.075);
+
+                           const standardTaxableSubtotal = editableLines.reduce((acc, l) => {
+                              if (isBanquetMode) {
+                                 if (!l.description.startsWith('[SECTION] ')) return acc;
+                              }
+                              if (isNonFoodItem(l.description)) return acc;
+                              return acc + (l.quantity * l.unitPriceCents);
+                           }, 0);
+
+                           const standardSC = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.15);
+                           const standardVAT = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.075);
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
@@ -993,8 +1014,20 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveSubtotal * 0.15);
-                           const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveSubtotal + effectiveSC) * 0.075);
+                           const effectiveTaxableSubtotal = editableLines.reduce((acc, l, idx) => {
+                              if (isBanquetMode) {
+                                 if (!l.description.startsWith('[SECTION] ')) return acc;
+                              }
+                              if (isNonFoodItem(l.description)) return acc;
+
+                              const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                                 ? l.manualPriceCents
+                                 : l.unitPriceCents;
+                              return acc + (l.quantity * price);
+                           }, 0);
+
+                           const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
+                           const effectiveVAT = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.075);
                            const calculatedTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                            const finalTotal = manualTotalOverride ?? calculatedTotal;
 

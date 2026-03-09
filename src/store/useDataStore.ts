@@ -2693,7 +2693,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const standardTaxableSubtotal = lines.reduce((acc, l) => {
-                        if ((isBanquet && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         if (isNonFoodItem(l.description)) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
@@ -2713,7 +2713,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const effectiveTaxableSubtotal = lines.reduce((acc, l) => {
-                        if ((isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                         if (isNonFoodItem(l.description)) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
@@ -2802,7 +2802,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const standardTaxableSubtotal = lines.reduce((acc, l) => {
-                        if ((isBanquet && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
                         if (isNonFoodItem(l.description)) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
@@ -2821,7 +2821,7 @@ export const useDataStore = create<DataState>()(
                     }, 0);
 
                     const effectiveTaxableSubtotal = lines.reduce((acc, l) => {
-                        if ((isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) || l.description.startsWith('[SECTION] ')) return acc;
+                        if (isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                         if (isNonFoodItem(l.description)) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
