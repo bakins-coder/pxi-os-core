@@ -716,7 +716,7 @@ export const useDataStore = create<DataState>()(
                             orgId: companyId,
                             itemId: ingId,
                             delta: qty,
-                            unitId: 'u-default',
+                            unitId: 'ee88effb-8562-4b23-96a0-bb8db464ead4',
                             type: 'purchase',
                             refType: 'manual_receipt',
                             refId: userRef?.id || 'sys',
@@ -782,7 +782,7 @@ export const useDataStore = create<DataState>()(
                                 orgId: companyId,
                                 itemId: itemId,
                                 delta: -qty, // Issue is negative
-                                unitId: 'u-default', // TODO: Fetch real unit ID
+                                unitId: 'ee88effb-8562-4b23-96a0-bb8db464ead4', // TODO: Fetch real unit ID
                                 type: 'issue',
                                 refType: 'event',
                                 refId: eventId,
@@ -795,7 +795,7 @@ export const useDataStore = create<DataState>()(
                                 orgId: companyId,
                                 itemId: itemId,
                                 delta: -qty,
-                                unitId: 'u-default',
+                                unitId: 'ee88effb-8562-4b23-96a0-bb8db464ead4',
                                 type: 'issue',
                                 refType: 'event',
                                 refId: eventId,
@@ -847,7 +847,7 @@ export const useDataStore = create<DataState>()(
                                     orgId: companyId,
                                     itemId: item.id,
                                     delta: rental.quantity, // Return is positive
-                                    unitId: 'u-default', // TODO
+                                    unitId: 'ee88effb-8562-4b23-96a0-bb8db464ead4', // TODO
                                     type: 'return',
                                     refType: 'event',
                                     refId: rental.eventId,

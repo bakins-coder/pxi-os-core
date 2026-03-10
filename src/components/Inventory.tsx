@@ -600,7 +600,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
    const handleReceive = () => {
       if (isManualInput && mode === 'Direct') {
          if (!newItemName || qty <= 0) return;
-         const newIngId = `ing-manual-${Date.now()}`;
+         const newIngId = crypto.randomUUID();
          addIngredient({
             id: newIngId,
             name: newItemName,
