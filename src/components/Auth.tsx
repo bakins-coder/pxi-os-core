@@ -65,8 +65,9 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
       console.error(err);
       let msg = err.message || 'Authentication failed.';
       // Smart Error for Staff IDs
-      if (msg.includes('Invalid login credentials') && authIdentifier.endsWith('@xquisite.local')) {
-        msg = 'Login failed. First time? Switch to "Sign Up" mode to activate your Staff ID.';
+      const isStaffIdFormat = authIdentifier.endsWith('@xquisite.local') || /^XQ-\d+$/i.test(authIdentifier);
+      if (msg.includes('Invalid login credentials') && isStaffIdFormat) {
+        msg = 'Login failed. Account unactivated or invalid credentials. If first time, switch to "Join Team" mode to activate your Staff ID.';
       }
       setError(msg);
     } finally {
