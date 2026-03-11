@@ -570,16 +570,28 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
 
 const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
    const [mode, setMode] = useState<'Direct' | 'FromRequest'>('Direct');
+   const [inputStrategy, setInputStrategy] = useState<'Total' | 'Bulk'>('Total');
    const [selectedIngId, setSelectedIngId] = useState('');
    const [selectedReqId, setSelectedReqId] = useState('');
+
+   // Total strategy states
    const [qty, setQty] = useState(0);
    const [cost, setCost] = useState(0);
+
+   // Bulk strategy states
+   const [bulkPackCount, setBulkPackCount] = useState(0);
+   const [bulkPackSize, setBulkPackSize] = useState(0);
+   const [bulkPackCost, setBulkPackCost] = useState(0);
+
    const [isMaximized, setIsMaximized] = useState(false);
    const [isManualInput, setIsManualInput] = useState(false);
    const [newItemName, setNewItemName] = useState('');
    const [newItemUnit, setNewItemUnit] = useState('kg');
 
    const { receiveFoodStock, addIngredient, requisitions, updateRequisition } = useDataStore();
+
+   const effectiveQty = inputStrategy === 'Bulk' ? bulkPackCount * bulkPackSize : qty;
+   const effectiveCost = inputStrategy === 'Bulk' ? bulkPackCount * bulkPackCost : cost;
 
    // Filter for approved purchase requests
    const approvedRequests = useMemo(() => requisitions.filter(r => r.type === 'Purchase' && r.status === 'Approved'), [requisitions]);
@@ -591,6 +603,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
             setSelectedIngId(req.ingredientId || '');
             setQty(req.quantity);
             setCost(req.totalAmountCents / 100);
+            setInputStrategy('Total');
          }
       }
    }, [selectedReqId, mode, approvedRequests]);
@@ -599,20 +612,20 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
 
    const handleReceive = () => {
       if (isManualInput && mode === 'Direct') {
-         if (!newItemName || qty <= 0) return;
+         if (!newItemName || effectiveQty <= 0) return;
          const newIngId = crypto.randomUUID();
          addIngredient({
             id: newIngId,
             name: newItemName,
             unit: newItemUnit as any,
             stockLevel: 0,
-            currentCostCents: cost > 0 && qty > 0 ? (cost * 100) / qty : 0,
+            currentCostCents: effectiveCost > 0 && effectiveQty > 0 ? (effectiveCost * 100) / effectiveQty : 0,
             category: 'Dry Goods' // Default category
          });
-         receiveFoodStock(newIngId, qty, cost * 100);
+         receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100);
       } else {
-         if (!selectedIngId || qty <= 0) return;
-         receiveFoodStock(selectedIngId, qty, cost * 100);
+         if (!selectedIngId || effectiveQty <= 0) return;
+         receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100);
 
          if (mode === 'FromRequest' && selectedReqId) {
             updateRequisition(selectedReqId, { status: 'Paid' });
@@ -706,26 +719,62 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                            </select>
                         </div>
                      )}
+
+                     {/* Input Strategy Toggle */}
+                     <div className="flex gap-2">
+                        <button onClick={() => setInputStrategy('Total')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inputStrategy === 'Total' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>Total Entry</button>
+                        <button onClick={() => setInputStrategy('Bulk')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inputStrategy === 'Bulk' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>Bulk / Pack Entry</button>
+                     </div>
                   </>
                )}
 
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity {isManualInput && mode === 'Direct' ? `(${newItemUnit})` : ''}</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+               {inputStrategy === 'Total' ? (
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Quantity {isManualInput && mode === 'Direct' ? `(${newItemUnit})` : ''}</label>
+                        <input type="number" min="0" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Total Purchase Value (₦)</label>
+                        <input type="number" min="0" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
+                     </div>
                   </div>
-                  <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Purchase Value (₦)</label>
-                     <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
+               ) : (
+                  <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Pack/Bag Count</label>
+                           <input type="number" min="0" placeholder="e.g. 12" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={bulkPackCount || ''} onChange={e => setBulkPackCount(parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Weight per Pack {isManualInput && mode === 'Direct' ? `(${newItemUnit})` : ''}</label>
+                           <input type="number" min="0" placeholder="e.g. 5" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={bulkPackSize || ''} onChange={e => setBulkPackSize(parseFloat(e.target.value) || 0)} />
+                        </div>
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Cost per Pack (₦)</label>
+                        <input type="number" min="0" placeholder="e.g. 16000" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={bulkPackCost || ''} onChange={e => setBulkPackCost(parseFloat(e.target.value) || 0)} />
+                     </div>
+
+                     <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex justify-between items-center">
+                        <div>
+                           <p className="text-[9px] font-black uppercase text-indigo-400 block mb-1">Total Effective Stock</p>
+                           <p className="text-xl font-black text-indigo-900">{effectiveQty.toLocaleString()} {isManualInput && mode === 'Direct' ? newItemUnit : 'units'}</p>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-[9px] font-black uppercase text-indigo-400 block mb-1">Total Value</p>
+                           <p className="text-xl font-black text-indigo-900">₦{effectiveCost.toLocaleString()}</p>
+                        </div>
+                     </div>
                   </div>
-               </div>
+               )}
             </div>
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
                <button
                   onClick={handleReceive}
-                  disabled={(mode === 'FromRequest' && !selectedReqId) || (mode === 'Direct' && !isManualInput && !selectedIngId)}
+                  disabled={(mode === 'FromRequest' && !selectedReqId) || (mode === 'Direct' && !isManualInput && !selectedIngId) || effectiveQty <= 0}
                   className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all disabled:opacity-50"
                >
                   Commit to Stock
