@@ -34,12 +34,35 @@ import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
 import { Role, User } from './types';
-import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallPrompt, AppUpdateNotification } from './components/PWAComponents';
 import { Presentation } from './components/Presentation';
 
 const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], requiredPermission?: string, user: User | null }>> = ({ children, allowedRoles, requiredPermission, user }) => {
+  const [lastError, setLastError] = React.useState<any>(null);
+  const [checking, setChecking] = React.useState(false);
+
+  const handleCheck = async () => {
+    try {
+      setChecking(true);
+      const res = await useAuthStore.getState().refreshSession();
+      console.log('[App] Manual refresh result:', res);
+
+      if (res && !res.success) {
+        setLastError(res.error || 'Unknown fetch error');
+        setChecking(false);
+      } else {
+        setLastError('Permissions synced! Reloading...');
+        setTimeout(() => window.location.reload(), 500);
+      }
+    } catch (err: any) {
+      console.error('[App] Manual refresh crashed:', err);
+      setLastError(err?.message || 'Code Error');
+      setChecking(false);
+    }
+  };
+
   if (!user) return <Navigate to="/login" replace />;
   if (user.isSuperAdmin) return <>{children}</>; // Super Admin Bypass
 
@@ -52,63 +75,47 @@ const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], 
 
   // 2. Role Check (Legacy)
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Check if we failed BOTH checks (if both were present) or just the role check
-    const [lastError, setLastError] = React.useState<any>(null);
-    const [checking, setChecking] = React.useState(false);
-
-    const handleCheck = async () => {
-      try {
-        setChecking(true);
-        const res = await useAuthStore.getState().refreshSession();
-        console.log('[App] Manual refresh result:', res);
-
-        if (res && !res.success) {
-          setLastError(res.error || 'Unknown fetch error');
-          setChecking(false);
-        } else {
-          setLastError('Permissions synced! Reloading...');
-          setTimeout(() => window.location.reload(), 500);
-        }
-      } catch (err: any) {
-        console.error('[App] Manual refresh crashed:', err);
-        setLastError(err?.message || 'Code Error');
-        setChecking(false);
-      }
-    };
-
     return (
-      <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-[#020617]">
-        <AlertCircle size={48} className="text-rose-500 mb-4" />
-        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Access Denied</h2>
-        <p className="text-slate-500 mt-2 font-bold uppercase text-xs tracking-widest">Unauthorized Neural Handshake</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#020617] p-4">
+        <div className="max-w-md w-full text-center">
+          <AlertCircle size={48} className="text-rose-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Access Denied</h2>
+          <p className="text-slate-500 font-bold uppercase text-xs tracking-widest mb-6">Unauthorized Neural Handshake</p>
 
-        {/* DIAGNOSTIC DUMP: Remove after verification */}
-        <div className="mt-6 p-4 bg-slate-900 rounded-lg border border-white/5 text-left max-w-md mx-auto">
-          <p className="text-[10px] font-mono text-slate-500 mb-2">DIAGNOSTIC DATA:</p>
-          <pre className="text-[9px] text-emerald-400 font-mono overflow-auto whitespace-pre-wrap">
-            {JSON.stringify({
-              id: user.id || 'N/A',
-              name: user.name,
-              role: user.role,
-              permissionTags: user.permissionTags,
-              required: requiredPermission,
-              isSuperAdmin: user.isSuperAdmin,
-              companyId: user.companyId,
-              fetchError: lastError
-            }, null, 2)}
-          </pre>
+          <div className="mt-6 p-4 bg-slate-900 rounded-lg border border-white/5 text-left max-w-md mx-auto">
+            <p className="text-[10px] font-mono text-slate-500 mb-2">DIAGNOSTIC DATA:</p>
+            <pre className="text-[9px] text-emerald-400 font-mono overflow-auto whitespace-pre-wrap">
+              {JSON.stringify({
+                id: user.id || 'N/A',
+                name: user.name,
+                role: user.role,
+                permissionTags: user.permissionTags,
+                required: requiredPermission,
+                isSuperAdmin: user.isSuperAdmin,
+                companyId: user.companyId,
+                fetchError: lastError
+              }, null, 2)}
+            </pre>
+            <button
+              onClick={handleCheck}
+              disabled={checking}
+              className="mt-4 w-full bg-indigo-500/20 text-indigo-300 py-2 rounded text-[10px] font-bold uppercase hover:bg-indigo-500/30"
+            >
+              {checking ? 'Probing Database...' : 'Force Refresh Permissions'}
+            </button>
+          </div>
+
           <button
-            onClick={handleCheck}
-            disabled={checking}
-            className="mt-4 w-full bg-indigo-500/20 text-indigo-300 py-2 rounded text-[10px] font-bold uppercase hover:bg-indigo-500/30"
+            onClick={() => window.location.hash = '/'}
+            className="mt-8 bg-[#00ff9d] text-slate-900 px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_20px_rgba(0,255,157,0.3)]"
           >
-            {checking ? 'Probing Database...' : 'Force Refresh Permissions'}
+            Return to Base
           </button>
         </div>
-        <button onClick={() => window.location.hash = '/'} className="mt-8 bg-[#00ff9d] text-slate-900 px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_20px_rgba(0,255,157,0.3)]">Return to Base</button>
       </div>
     );
   }
+
   return <>{children}</>;
 };
 

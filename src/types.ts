@@ -120,6 +120,9 @@ export interface Ingredient {
     groundedSummary: string;
     sources?: { title: string; uri: string }[];
   };
+  lastPackCount?: number;
+  lastPackSize?: number;
+  lastPackType?: string;
   image?: string;
 }
 

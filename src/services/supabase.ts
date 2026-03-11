@@ -56,7 +56,7 @@ const SCHEMA_WHITELISTS: Record<string, string[]> = {
   tasks: ['id', 'company_id', 'project_id', 'title', 'description', 'assignee_id', 'assignee_role', 'due_date', 'priority', 'status', 'created_at'],
   contacts: ['id', 'company_id', 'name', 'type', 'email', 'phone', 'address', 'customer_type'],
   employees: ['id', 'organization_id', 'name', 'first_name', 'last_name', 'title', 'role', 'email', 'phone', 'phone_number', 'salary_cents', 'health_notes', 'gender', 'dob', 'date_of_employment', 'staff_id', 'user_id', 'avatar', 'id_card_issued_date', 'kpis'],
-  ingredients: ['id', 'organization_id', 'name', 'category_id', 'unit_id', 'image_url', 'reorder_point', 'shelf_life_days', 'preferred_supplier_id'],
+  ingredients: ['id', 'organization_id', 'name', 'category', 'unit', 'stock_level', 'current_cost_cents', 'image_url', 'reorder_point', 'shelf_life_days', 'preferred_supplier_id', 'last_pack_count', 'last_pack_size', 'last_pack_type'],
   products: ['id', 'organization_id', 'name', 'description', 'price_cents', 'category_id', 'product_category_id', 'cuisine', 'image_url', 'is_active', 'lead_time_minutes', 'normalized_name', 'created_at'],
   reusable_items: ['id', 'organization_id', 'name', 'description', 'price_cents', 'stock_quantity', 'stock_level', 'category', 'category_id', 'unit_id', 'image', 'image_url'],
   rental_items: ['id', 'organization_id', 'name', 'replacement_cost_cents', 'supplier_id', 'category_id', 'unit_id', 'image_url'],
@@ -64,7 +64,8 @@ const SCHEMA_WHITELISTS: Record<string, string[]> = {
   bank_transactions: ['id', 'company_id', 'date', 'description', 'amount_cents', 'type', 'category', 'contact_id', 'bank_account_id', 'reference_id', 'created_at'],
   chart_of_accounts: ['id', 'company_id', 'code', 'name', 'type', 'subtype', 'balance_cents', 'created_at'],
   messages: ['id', 'organization_id', 'sender_id', 'recipient_id', 'content', 'type', 'status', 'created_at', 'read_at'],
-  interaction_logs: ['id', 'contact_id', 'type', 'summary', 'content', 'created_by', 'created_at']
+  interaction_logs: ['id', 'contact_id', 'type', 'summary', 'content', 'created_by', 'created_at'],
+  locations: ['id', 'organization_id', 'name', 'type', 'is_active']
 };
 
 /**
@@ -100,7 +101,15 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
       }
     } else {
       if (newItem.companyId === 'org-xquisite') newItem.companyId = VALID_UUID;
-      if ('companyId' in newItem) { newItem.company_id = newItem.companyId; delete newItem.companyId; }
+      if ('companyId' in newItem) {
+        newItem.company_id = newItem.companyId;
+        // Some tables use organization_id instead of company_id
+        const whitelist = SCHEMA_WHITELISTS[tableName];
+        if (whitelist?.includes('organization_id') && !('organization_id' in newItem)) {
+          newItem.organization_id = newItem.companyId;
+        }
+        delete newItem.companyId;
+      }
     }
 
     // 2. Comprehensive Field Conversion (camelCase -> snake_case)
@@ -121,12 +130,18 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 
     // Inventory/Product
     if ('priceCents' in newItem) { newItem.price_cents = newItem.priceCents; delete newItem.priceCents; }
-    if ('stockQuantity' in newItem) {
-      newItem.stock_quantity = newItem.stockQuantity;
-      newItem.stock_level = newItem.stockQuantity;
+    if ('stockQuantity' in newItem || 'stockLevel' in newItem) {
+      const val = newItem.stockQuantity ?? newItem.stockLevel;
+      newItem.stock_quantity = val;
+      newItem.stock_level = val;
       delete newItem.stockQuantity;
+      delete newItem.stockLevel;
     }
     if ('imageUrl' in newItem) { newItem.image_url = newItem.imageUrl; delete newItem.imageUrl; }
+    if ('lastPackCount' in newItem) { newItem.last_pack_count = newItem.lastPackCount; delete newItem.lastPackCount; }
+    if ('lastPackSize' in newItem) { newItem.last_pack_size = newItem.lastPackSize; delete newItem.lastPackSize; }
+    if ('lastPackType' in newItem) { newItem.last_pack_type = newItem.lastPackType; delete newItem.lastPackType; }
+    if ('currentCostCents' in newItem) { newItem.current_cost_cents = newItem.currentCostCents; delete newItem.currentCostCents; }
 
     // Catering Special Packing Logic
     if (tableName === 'catering_events') {
@@ -240,7 +255,7 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'paid_amount_cents': 'paidAmountCents',
     'due_date': 'dueDate',
     'stock_quantity': 'stockQuantity',
-    'stock_level': 'stockQuantity',
+    'stock_level': 'stockLevel',
     'cost_price_cents': 'costPriceCents',
     'recipe_id': 'recipeId',
     'is_asset': 'isAsset',
@@ -270,7 +285,11 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'registration_number': 'registrationNumber',
     'job_title': 'jobTitle',
     // Misc
-    'rental_vendor': 'rentalVendor'
+    'rental_vendor': 'rentalVendor',
+    'last_pack_count': 'lastPackCount',
+    'last_pack_size': 'lastPackSize',
+    'last_pack_type': 'lastPackType',
+    'current_cost_cents': 'currentCostCents'
   };
 
   Object.entries(mappings).forEach(([snake, camel]) => {
@@ -281,6 +300,11 @@ export const mapIncomingRow = (tableName: string, item: any) => {
       delete newItem[snake];
     }
   });
+
+  if ('stock_level' in item) {
+    newItem.stockLevel = item.stock_level;
+    newItem.stockQuantity = item.stock_level;
+  }
 
   // Handle orgId to companyId mapping for consistency across all tables
   if ('organization_id' in item) {

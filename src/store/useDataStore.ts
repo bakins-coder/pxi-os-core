@@ -102,6 +102,7 @@ interface DataState {
     addMeetingTask: (task: Partial<Task>) => void;
     addIngredient: (ing: Partial<Ingredient>) => void;
     updateIngredient: (id: string, updates: Partial<Ingredient>) => void;
+    deleteIngredient: (id: string) => void;
     updateIngredientPrice: (id: string, marketPriceCents: number, insight: any) => void;
     addTask: (task: Partial<Task>) => void;
     updateTask: (id: string, updates: Partial<Task>) => void;
@@ -643,7 +644,7 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
-            receiveFoodStock: async (ingId, qty, cost) => {
+            receiveFoodStock: async (ingId, qty, cost, packCount?: number, packSize?: number, packType?: string) => {
                 const user = useAuthStore.getState().user;
                 if (!user || !user.companyId) {
                     // Fallback for tests if needed
@@ -664,7 +665,15 @@ export const useDataStore = create<DataState>()(
                         : cost / qty;
 
                     const updatedIngredients = state.ingredients.map(i =>
-                        i.id === ingId ? { ...i, stockLevel: newTotalQty, currentCostCents: newAvgCost, lastUpdated: new Date().toISOString() } : i
+                        i.id === ingId ? {
+                            ...i,
+                            stockLevel: newTotalQty,
+                            currentCostCents: newAvgCost,
+                            lastPackCount: packCount,
+                            lastPackSize: packSize,
+                            lastPackType: packType,
+                            lastUpdated: new Date().toISOString()
+                        } : i
                     );
                     const updatedInventory = state.inventory.map(i =>
                         i.id === ingId ? { ...i, stockQuantity: newTotalQty } : i
@@ -691,25 +700,35 @@ export const useDataStore = create<DataState>()(
                     // The view returns `location_id`. I can grab it from `v_ingredient_inventory` for that item.
 
                     // Logic: Find existing location for item, or default.
-
-                    /* 
-                       Note: In a real robust app we'd manage locations properly. 
-                       Here I'll try to find a valid location_id from the loaded stock views or use a fallback.
-                    */
-
-                    const state = get();
-                    // We don't have stock view data explicitly stored apart from inventory... 
-                    // I should have stored `locations` in the store?
-                    // Let's add pullCloudState for locations in next step if needed.
-                    // For now, I'll allow the action but it might fail if I send null location.
-                    // Wait, the prompt said: "Always pass the organization’s Main Warehouse location_id... explicitly."
-
-                    // I'll rely on the user having a location. 
-                    // Let's defer the RPC call slightly or fetch location on the fly.
                     const userRef = useAuthStore.getState().user;
                     const companyId = userRef?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                    let locationId: string | undefined;
+
                     const { data: locations } = await supabase!.from('locations').select('id').eq('organization_id', companyId).eq('name', 'Main Warehouse').limit(1);
-                    const locationId = locations?.[0]?.id;
+
+                    if (locations && locations.length > 0) {
+                        locationId = locations[0].id;
+                    } else {
+                        // Create it on the fly if missing
+                        console.log("Main Warehouse not found. Creating default...");
+                        const newLocId = crypto.randomUUID();
+                        const { data: newLoc, error: locError } = await supabase!.from('locations').insert({
+                            id: newLocId,
+                            organization_id: companyId,
+                            name: 'Main Warehouse',
+                            type: 'Warehouse',
+                            is_active: true
+                        }).select('id').single();
+
+                        if (!locError && newLoc) {
+                            locationId = newLoc.id;
+                        } else {
+                            console.error("Failed to create Main Warehouse:", locError);
+                        }
+                    }
+
+                    const effectiveUnitCostCents = qty > 0 ? Math.round(cost / qty) : 0;
 
                     if (locationId) {
                         await postIngredientMovement({
@@ -722,17 +741,20 @@ export const useDataStore = create<DataState>()(
                             refId: userRef?.id || 'sys',
                             locationId: locationId,
                             notes: 'Manual Receipt via Frontend',
-                            unitCostCents: cost,
+                            unitCostCents: effectiveUnitCostCents,
                             expiresAt: undefined
                         });
+                        console.log("Successfully posted inward movement.");
                     } else {
-                        console.error("Main Warehouse not found.");
+                        console.error("Could not resolve or create storage location.");
                     }
 
                 } catch (e) {
                     console.error("Failed to post movement", e);
-                    // Revert?
                 }
+
+                // CRITICAL: Push updated ingredient stock and costs to the 'ingredients' table
+                await get().syncWithCloud();
             },
             issueRental: async (eventId, itemId, qty, vendor) => {
                 const user = useAuthStore.getState().user;
@@ -1566,7 +1588,7 @@ export const useDataStore = create<DataState>()(
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
-                const newIngId = ing.id || `ing-${Date.now()}`;
+                const newIngId = ing.id || crypto.randomUUID();
                 const newIng = {
                     ...ing,
                     id: newIngId,
@@ -1593,6 +1615,7 @@ export const useDataStore = create<DataState>()(
                     ingredients: [newIng, ...state.ingredients],
                     inventory: [newInvItem, ...state.inventory]
                 }));
+
                 get().syncWithCloud();
             },
 
@@ -1647,6 +1670,23 @@ export const useDataStore = create<DataState>()(
                         current_cost_cents: updates.currentCostCents
                         // Add other fields if necessary
                     }).eq('id', id);
+                    if (error) console.error(error);
+                } catch (e) { }
+
+                get().syncWithCloud();
+            },
+
+            deleteIngredient: async (id) => {
+                const user = useAuthStore.getState().user;
+                if (!user || !user.companyId) return;
+
+                set((state) => ({
+                    ingredients: state.ingredients.filter(ing => ing.id !== id),
+                    inventory: state.inventory.filter(inv => inv.id !== id)
+                }));
+
+                try {
+                    const { error } = await supabase!.from('ingredients').delete().eq('id', id);
                     if (error) console.error(error);
                 } catch (e) { }
 
@@ -2932,7 +2972,8 @@ export const useDataStore = create<DataState>()(
                         safeSync('employees', freshState.employees),
                         safeSync('requisitions', freshState.requisitions),
                         safeSync('chart_of_accounts', freshState.chartOfAccounts),
-                        safeSync('bank_transactions', freshState.bankTransactions)
+                        safeSync('bank_transactions', freshState.bankTransactions),
+                        safeSync('ingredients', freshState.ingredients)
                     ]);
                     set({ isSyncing: false, syncStatus: 'Synced' });
 
@@ -3036,6 +3077,20 @@ export const useDataStore = create<DataState>()(
                         safePull('recipes', companyId),
                         safePull('recipe_ingredients', undefined), // No org filter - joins through recipes
                     ]); // End Promise.all
+
+                    if (contacts !== null) set({ contacts });
+                    if (invoices !== null) set({ invoices });
+                    if (cateringEvents !== null) set({ cateringEvents });
+                    if (projects !== null) set({ projects: projects as Project[] });
+                    if (tasks !== null) set({ tasks });
+                    if (employees !== null) set({ employees });
+                    if (requisitions !== null) set({ requisitions });
+                    if (chartOfAccounts !== null) set({ chartOfAccounts });
+                    if (bankTransactions !== null) set({ bankTransactions });
+                    if (leaveRequests !== null) set({ leaveRequests });
+                    if (performanceReviews !== null) set({ performanceReviews });
+                    if (interactionLogs !== null) set({ interactionLogs });
+                    if (messages !== null) set({ messages });
 
                     console.log(`[Hydration] Sync complete for ${companyId}`);
 
@@ -3180,27 +3235,40 @@ export const useDataStore = create<DataState>()(
                     }
 
                     // Ingredients
-                    if (ingredientItems) {
-                        ingredientItems.forEach((item: any) => {
-                            if (!item.id) return;
+                    if (ingredientItems !== null) {
+                        const processedIngredients: Ingredient[] = ingredientItems.map((item: any) => {
+                            if (!item.id) return null;
 
                             const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
-                            const stockCount = getStock(String(item.id), ingredientStock || [], true); // isBatch = true
+                            // FAVOR Table stock_level IF PRESENT - This solves the "Commit to Stock" persistence issue
+                            const batchSum = getStock(String(item.id), ingredientStock || [], true);
+                            const stockCount = (item.stockLevel !== undefined && item.stockLevel !== 0) ? item.stockLevel : batchSum;
+                            const unitCost = item.currentCostCents || item.priceCents || 0;
 
-                            combinedInventory.push({
+                            const ing = {
                                 ...item,
                                 id: item.id,
                                 companyId: item.organizationId || item.companyId,
                                 name: item.name,
                                 type: 'ingredient',
                                 category: cat ? cat.name : (item.category || 'Ingredient'),
+                                stockLevel: stockCount,
                                 stockQuantity: stockCount,
-                                priceCents: typeof (item.priceCents) === 'string' ? parseInt(item.priceCents) : (item.priceCents || 0),
+                                currentCostCents: typeof unitCost === 'string' ? parseInt(unitCost) : unitCost,
+                                priceCents: typeof unitCost === 'string' ? parseInt(unitCost) : unitCost,
                                 image: item.imageUrl || item.image || item.image_url,
-                                recipeId: item.recipeId || item.recipe_id
-                            });
-                        });
+                                recipeId: item.recipeId || item.recipe_id,
+                                lastUpdated: new Date().toISOString()
+                            };
+
+                            // Add to combined inventory for later derived processing
+                            combinedInventory.push(ing);
+                            return ing;
+                        }).filter(Boolean) as Ingredient[];
+
+                        // set({ ingredients: processedIngredients }); // Correctly set later in newState
                     }
+
 
                     // 2. Derive Ingredients State
                     const processedIngredients: Ingredient[] = combinedInventory

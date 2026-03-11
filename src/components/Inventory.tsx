@@ -582,6 +582,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
    const [bulkPackCount, setBulkPackCount] = useState(0);
    const [bulkPackSize, setBulkPackSize] = useState(0);
    const [bulkPackCost, setBulkPackCost] = useState(0);
+   const [bulkPackType, setBulkPackType] = useState('Packs');
 
    const [isMaximized, setIsMaximized] = useState(false);
    const [isManualInput, setIsManualInput] = useState(false);
@@ -619,13 +620,16 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
             name: newItemName,
             unit: newItemUnit as any,
             stockLevel: 0,
-            currentCostCents: effectiveCost > 0 && effectiveQty > 0 ? (effectiveCost * 100) / effectiveQty : 0,
-            category: 'Dry Goods' // Default category
+            currentCostCents: 0,
+            category: 'Dry Goods',
+            lastPackCount: inputStrategy === 'Bulk' ? bulkPackCount : undefined,
+            lastPackSize: inputStrategy === 'Bulk' ? bulkPackSize : undefined,
+            lastPackType: inputStrategy === 'Bulk' ? bulkPackType : undefined
          });
-         receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100);
+         receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100, inputStrategy === 'Bulk' ? bulkPackCount : undefined, inputStrategy === 'Bulk' ? bulkPackSize : undefined, inputStrategy === 'Bulk' ? bulkPackType : undefined);
       } else {
          if (!selectedIngId || effectiveQty <= 0) return;
-         receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100);
+         receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100, inputStrategy === 'Bulk' ? bulkPackCount : undefined, inputStrategy === 'Bulk' ? bulkPackSize : undefined, inputStrategy === 'Bulk' ? bulkPackType : undefined);
 
          if (mode === 'FromRequest' && selectedReqId) {
             updateRequisition(selectedReqId, { status: 'Paid' });
@@ -741,13 +745,19 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                   </div>
                ) : (
                   <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
-                     <div className="grid grid-cols-2 gap-4">
+                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Pack/Bag Count</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Pack Type</label>
+                           <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900 appearance-none" value={bulkPackType} onChange={e => setBulkPackType(e.target.value)}>
+                              <option>Bags</option><option>Packs</option><option>Cartons</option><option>Gallons</option><option>Pieces</option>
+                           </select>
+                        </div>
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Count</label>
                            <input type="number" min="0" placeholder="e.g. 12" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={bulkPackCount || ''} onChange={e => setBulkPackCount(parseFloat(e.target.value) || 0)} />
                         </div>
                         <div>
-                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Weight per Pack {isManualInput && mode === 'Direct' ? `(${newItemUnit})` : ''}</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Size ({isManualInput && mode === 'Direct' ? newItemUnit : 'unit'})</label>
                            <input type="number" min="0" placeholder="e.g. 5" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={bulkPackSize || ''} onChange={e => setBulkPackSize(parseFloat(e.target.value) || 0)} />
                         </div>
                      </div>
@@ -762,8 +772,9 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                            <p className="text-xl font-black text-indigo-900">{effectiveQty.toLocaleString()} {isManualInput && mode === 'Direct' ? newItemUnit : 'units'}</p>
                         </div>
                         <div className="text-right">
-                           <p className="text-[9px] font-black uppercase text-indigo-400 block mb-1">Total Value</p>
-                           <p className="text-xl font-black text-indigo-900">₦{effectiveCost.toLocaleString()}</p>
+                           <p className="text-[9px] font-black uppercase text-indigo-400 block mb-1">Unit Price Preview</p>
+                           <p className="text-xl font-black text-indigo-900">₦{(effectiveCost / (effectiveQty || 1)).toLocaleString()} / {isManualInput && mode === 'Direct' ? newItemUnit : 'unit'}</p>
+                           <p className="text-[8px] font-bold text-indigo-300 uppercase">Total: ₦{effectiveCost.toLocaleString()}</p>
                         </div>
                      </div>
                   </div>
@@ -950,6 +961,17 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
    const [uploadStatus, setUploadStatus] = useState('');
 
    const { addIngredient, updateIngredient } = useDataStore();
+
+   useEffect(() => {
+      if (isOpen) {
+         setName(editItem?.name || '');
+         setCategory(editItem?.category || 'Dry Goods');
+         setUnit(editItem?.unit || 'kg');
+         setStock(editItem?.stockLevel || 0);
+         setCost(editItem?.currentCostCents ? editItem.currentCostCents / 100 : 0);
+         setImage(editItem?.image || '');
+      }
+   }, [isOpen, editItem]);
 
    const handleSave = () => {
       if (!name) return;
@@ -1289,6 +1311,8 @@ export const Inventory = () => {
    const [selectedRental, setSelectedRental] = useState<RentalRecord | null>(null);
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
    const [selectedEditItem, setSelectedEditItem] = useState<InventoryItem | null>(null);
+   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+   const [selectedIngredientForEdit, setSelectedIngredientForEdit] = useState<Ingredient | null>(null);
    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
    // BoQ Specific States
@@ -1313,7 +1337,7 @@ export const Inventory = () => {
       }
    }, [isAviation, isCatering]);
 
-   const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents: events, recipes, approveRequisition, addIngredient, checkOverdueAssets, addRecipe, updateRecipe, deleteRecipe, deleteRecipeIngredient } = useDataStore();
+   const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents: events, recipes, approveRequisition, addIngredient, deleteIngredient, checkOverdueAssets, addRecipe, updateRecipe, deleteRecipe, deleteRecipeIngredient } = useDataStore();
 
    const rawMaterials = storeIngredients;
    const products = useMemo(() => inventory.filter(i => i.type === 'product'), [inventory]);
@@ -1520,7 +1544,7 @@ export const Inventory = () => {
                      <button onClick={() => setIsReceiveModalOpen(true)} className="px-6 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={16} className="text-[#00ff9d]" /> Inward Stock</button>
                   </div>
                </div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span><span className="text-[10px] font-bold text-slate-400 uppercase">Input</span></div></td><td className="p-8 font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></td></tr>))}</tbody></table></div></div>
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
             </div>
          )}
 
@@ -1686,6 +1710,7 @@ export const Inventory = () => {
          )}
 
          <AddEditInventoryModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editItem={selectedEditItem} />
+         <AddEditIngredientModal isOpen={isIngredientModalOpen} onClose={() => { setIsIngredientModalOpen(false); setSelectedIngredientForEdit(null); }} editItem={selectedIngredientForEdit} />
       </div>
    );
 };
