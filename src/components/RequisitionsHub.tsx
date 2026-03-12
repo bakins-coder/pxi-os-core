@@ -104,6 +104,16 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                         />
                     </div>
 
+                    <div className="flex justify-between items-center py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Requested By</span>
+                            <span className="text-xs font-black text-slate-700">{requisition.requestorName || 'System'}</span>
+                        </div>
+                        <div className="text-right flex flex-col">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date Requested</span>
+                            <span className="text-xs font-black text-slate-700">{requisition.createdAt ? new Date(requisition.createdAt).toLocaleDateString() : 'Historical Data'}</span>
+                        </div>
+                    </div>
                     {/* Approval Section */}
                     {requisition.status === 'Pending' && requisition.type !== 'Release' && (
                         <div className="pt-4 border-t border-slate-100 space-y-4">
@@ -175,7 +185,7 @@ export const RequisitionsHub: React.FC = () => {
 
     const filteredRequisitions = requisitions.filter(r => {
         // Show Paid as well in Approved tab for overview
-        if (r.status !== activeTab && !(activeTab === 'Approved' && r.status === 'Paid')) return false;
+        if (r.status !== activeTab && !(activeTab === 'Approved' && (r.status === 'Paid' || r.status === 'Issued'))) return false;
         const matchesSearch = (r.itemName || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = filterCategory === 'All' || r.category === filterCategory;
         return matchesSearch && matchesCategory;
@@ -199,7 +209,7 @@ export const RequisitionsHub: React.FC = () => {
 
     const stats = {
         pending: requisitions.filter(r => r.status === 'Pending').length,
-        approved: requisitions.filter(r => r.status === 'Approved' || r.status === 'Paid').length,
+        approved: requisitions.filter(r => ['Approved', 'Paid', 'Issued'].includes(r.status)).length,
         rejected: requisitions.filter(r => r.status === 'Rejected').length,
         totalVolume: requisitions.filter(r => r.status !== 'Rejected').reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
     };
@@ -332,11 +342,11 @@ export const RequisitionsHub: React.FC = () => {
                                                     </span>
                                                     {(() => {
                                                         const pCount = group.items.filter((r: Requisition) => r.status === 'Pending').length;
-                                                        const aCount = group.items.filter((r: Requisition) => r.status === 'Approved' || r.status === 'Paid').length;
+                                                        const aCount = group.items.filter((r: Requisition) => ['Approved', 'Paid', 'Issued'].includes(r.status)).length;
                                                         return (
                                                             <>
                                                                 {pCount > 0 && <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded">{pCount} Pending</span>}
-                                                                {aCount > 0 && <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded">{aCount} Approved</span>}
+                                                                {aCount > 0 && <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded">{aCount} Processed</span>}
                                                             </>
                                                         );
                                                     })()}
@@ -384,6 +394,12 @@ export const RequisitionsHub: React.FC = () => {
                                                                 <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.category}</span>
                                                                 <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                                                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Qty: {req.quantity}</span>
+                                                                <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                                <span className="text-[9px] font-black text-indigo-400/60 uppercase tracking-widest">{req.requestorName || 'System'}</span>
+                                                                <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                                                                    {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : ''}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     </div>

@@ -13,8 +13,9 @@ import { supabase, syncTableToCloud, pullCloudState, mapIncomingRow, pullInvento
 import { useAuthStore } from './useAuthStore';
 import { useSettingsStore } from './useSettingsStore';
 
-console.error('[DEBUG] useDataStore.ts LOADING...');
 import { calculateItemCosting as utilsCalculateCosting } from '../utils/costing';
+
+console.error('[DEBUG] useDataStore.ts LOADING...');
 
 interface DataState {
     inventory: InventoryItem[];
@@ -452,22 +453,61 @@ export const useDataStore = create<DataState>()(
                 }
             },
             addRequisition: (req) => {
+                const state = get();
                 const user = useAuthStore.getState().user;
+
+                const sanitizeUUID = (id: any) => {
+                    if (!id || id === 'sys' || id === '' || id === 'undefined') return null;
+                    return id;
+                };
+
+                const requestorId = sanitizeUUID(req.requestorId || user?.id);
+                const employee = state.employees.find(e => e.id === requestorId);
+                const requestorName = req.requestorName || (employee ? `${employee.firstName} ${employee.lastName}` : (user?.name || 'System'));
+
                 set((state) => ({
-                    requisitions: [{ ...req, id: req.id || crypto.randomUUID(), companyId: user?.companyId || (req as any).companyId, status: 'Pending', requestorId: req.requestorId || user?.id || 'sys' } as Requisition, ...state.requisitions]
+                    requisitions: [{
+                        ...req,
+                        id: req.id || crypto.randomUUID(),
+                        companyId: user?.companyId || (req as any).companyId,
+                        status: req.status || 'Pending',
+                        requestorId,
+                        requestorName,
+                        ingredientId: sanitizeUUID(req.ingredientId),
+                        referenceId: sanitizeUUID(req.referenceId),
+                        sourceAccountId: sanitizeUUID(req.sourceAccountId),
+                        createdAt: req.createdAt || new Date().toISOString()
+                    } as Requisition, ...state.requisitions]
                 }));
                 get().syncWithCloud();
             },
             addRequisitionsBulk: (reqs) => {
+                const state = get();
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-                const newReqs = reqs.map(r => ({
-                    ...r,
-                    id: r.id || crypto.randomUUID(),
-                    companyId: companyId,
-                    status: 'Pending',
-                    requestorId: r.requestorId || user?.id || 'sys'
-                } as Requisition));
+
+                const sanitizeUUID = (id: any) => {
+                    if (!id || id === 'sys' || id === '' || id === 'undefined') return null;
+                    return id;
+                };
+
+                const newReqs = reqs.map(r => {
+                    const rId = sanitizeUUID(r.requestorId || user?.id);
+                    const emp = state.employees.find(e => e.id === rId);
+                    const rName = r.requestorName || (emp ? `${emp.firstName} ${emp.lastName}` : (user?.name || 'System'));
+                    return {
+                        ...r,
+                        id: r.id || crypto.randomUUID(),
+                        companyId: companyId,
+                        status: r.status || 'Pending',
+                        requestorId: rId,
+                        requestorName: rName,
+                        ingredientId: sanitizeUUID(r.ingredientId),
+                        referenceId: sanitizeUUID(r.referenceId),
+                        sourceAccountId: sanitizeUUID(r.sourceAccountId),
+                        createdAt: r.createdAt || new Date().toISOString()
+                    } as Requisition;
+                });
 
                 set((state) => ({
                     requisitions: [...newReqs, ...state.requisitions]
@@ -1641,14 +1681,18 @@ export const useDataStore = create<DataState>()(
             },
 
             updateIngredient: async (id, updates) => {
+                const state = get();
                 const user = useAuthStore.getState().user;
                 if (!user || !user.companyId) return;
                 const companyId = user.companyId;
                 const userId = user.id;
 
+                const emp = state.employees.find(e => e.id === userId);
+                const userName = emp ? `${emp.firstName} ${emp.lastName}` : (user?.name || 'Unknown');
+
                 set((state) => ({
                     ingredients: state.ingredients.map((ing) =>
-                        ing.id === id ? { ...ing, ...updates, lastUpdated: new Date().toISOString() } : ing
+                        ing.id === id ? { ...ing, ...updates, lastUpdated: new Date().toISOString(), updatedBy: userId, updatedByName: userName } : ing
                     ),
                     // Also update inventory if matched
                     inventory: state.inventory.map(inv => inv.id === id ? { ...inv, ...updates } : inv)

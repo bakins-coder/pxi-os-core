@@ -114,6 +114,8 @@ export interface Ingredient {
   stockLevel: number;
   category: string;
   lastUpdated: string;
+  updatedBy?: string;
+  updatedByName?: string;
   priceSourceQuery?: string;
   marketInsight?: {
     marketPriceCents: number;
@@ -407,6 +409,8 @@ export interface Requisition {
   referenceId?: string;
   notes?: string;
   sourceAccountId?: string; // ID of the bank account used for payment
+  createdAt: string;
+  requestorName?: string;
 }
 
 export interface RentalRecord {

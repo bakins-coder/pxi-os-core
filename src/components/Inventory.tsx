@@ -233,13 +233,24 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                        <td className="px-8 py-4">
                                           <input
                                              placeholder="Ingredient Name..."
-                                             className="w-full bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
-                                             value={newIng.name}
-                                             onChange={e => setNewIng({ ...newIng, name: e.target.value })}
                                           />
                                        </td>
                                        <td className="px-8 py-4">
                                           <div className="flex gap-2">
+                                             {editItem && (
+                                                <div className="px-6 md:px-10 py-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                   <div className="flex items-center gap-2">
+                                                      <Clock size={12} />
+                                                      <span>Last Edit: {editItem.lastUpdated ? new Date(editItem.lastUpdated).toLocaleString() : 'N/A'}</span>
+                                                   </div>
+                                                   {editItem.updatedByName && (
+                                                      <div className="flex items-center gap-2">
+                                                         <Users size={12} />
+                                                         <span>By: {editItem.updatedByName}</span>
+                                                      </div>
+                                                   )}
+                                                </div>
+                                             )}
                                              <input
                                                 type="number"
                                                 placeholder="Qty..."
@@ -1544,7 +1555,18 @@ export const Inventory = () => {
                      <button onClick={() => setIsReceiveModalOpen(true)} className="px-6 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={16} className="text-[#00ff9d]" /> Inward Stock</button>
                   </div>
                </div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p></td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8">
+                  <p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p>
+                     {ing.updatedByName && (
+                        <>
+                           <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                           <p className="text-[8px] text-slate-300 font-black uppercase tracking-widest">Edited by {ing.updatedByName}</p>
+                        </>
+                     )}
+                  </div>
+               </td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
             </div>
          )}
 

@@ -76,7 +76,11 @@ export const RequisitionTracker: React.FC<RequisitionTrackerProps> = ({ eventId 
                                                 ₦{(req.totalAmountCents / 100).toLocaleString()}
                                             </span>
                                         )}
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">•</span>
+                                        {req.createdAt && (
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[150px]">
+                                                • {new Date(req.createdAt).toLocaleDateString()}
+                                            </span>
+                                        )}
                                         {req.notes && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">{req.notes}</span>}
                                     </div>
                                     {req.status === 'Rejected' && (
