@@ -105,7 +105,7 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                     </div>
 
                     {/* Approval Section */}
-                    {requisition.status === 'Pending' && (
+                    {requisition.status === 'Pending' && requisition.type !== 'Release' && (
                         <div className="pt-4 border-t border-slate-100 space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Source Bank Account (Required)</label>
@@ -135,10 +135,10 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                             <button onClick={handleSave} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-colors">Save Changes</button>
                             <button
                                 onClick={handleApprove}
-                                disabled={!selectedAccountId}
-                                className={`flex-[2] py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-lg ${!selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'}`}
+                                disabled={requisition.type !== 'Release' && !selectedAccountId}
+                                className={`flex-[2] py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-lg ${requisition.type !== 'Release' && !selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'}`}
                             >
-                                Pay & Approve
+                                {requisition.type === 'Release' ? 'Authorize Release' : 'Pay & Approve'}
                             </button>
                         </>
                     ) : requisition.status === 'Rejected' ? (
@@ -389,10 +389,12 @@ export const RequisitionsHub: React.FC = () => {
                                                     </div>
 
                                                     <div className="flex items-center justify-between md:justify-end gap-10 mt-3 md:mt-0">
-                                                        <div className="text-right">
-                                                            <p className="text-base font-black text-white leading-none mb-1">₦{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}</p>
-                                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit</p>
-                                                        </div>
+                                                        {req.type !== 'Release' && (
+                                                            <div className="text-right">
+                                                                <p className="text-base font-black text-white leading-none mb-1">₦{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}</p>
+                                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit</p>
+                                                            </div>
+                                                        )}
                                                         <ChevronRight size={16} className="text-slate-700 group-hover:text-indigo-400 transition-all" />
                                                     </div>
                                                 </div>

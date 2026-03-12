@@ -71,9 +71,11 @@ export const RequisitionTracker: React.FC<RequisitionTrackerProps> = ({ eventId 
                                 <div>
                                     <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-900 transition-colors">{req.itemName}</h4>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                            ₦{(req.totalAmountCents / 100).toLocaleString()}
-                                        </span>
+                                        {req.type !== 'Release' && (
+                                            <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                                ₦{(req.totalAmountCents / 100).toLocaleString()}
+                                            </span>
+                                        )}
                                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">•</span>
                                         {req.notes && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[150px]">{req.notes}</span>}
                                     </div>

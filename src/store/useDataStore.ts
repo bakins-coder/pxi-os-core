@@ -485,6 +485,27 @@ export const useDataStore = create<DataState>()(
                 const req = state.requisitions.find(r => r.id === id);
                 if (!req) return;
 
+                // Handle Release Type separately (Non-financial stock deduction)
+                if (req.type === 'Release' && req.ingredientId) {
+                    const ing = state.ingredients.find(i => i.id === req.ingredientId);
+                    if (ing) {
+                        const newStock = Math.max(0, ing.stockLevel - req.quantity);
+
+                        set((s) => ({
+                            ingredients: s.ingredients.map(i => i.id === req.ingredientId ? { ...i, stockLevel: newStock } : i),
+                            requisitions: s.requisitions.map(r => r.id === id ? { ...r, status: 'Issued' } : r)
+                        }));
+
+                        if (supabase) {
+                            supabase.from('ingredients').update({ stock_level: newStock }).eq('id', req.ingredientId).then(({ error }) => {
+                                if (error) console.error("Failed to update stock for release:", error);
+                            });
+                        }
+                        get().syncWithCloud();
+                        return;
+                    }
+                }
+
                 const isCash = sourceAccountId === 'cash';
                 const isBank = !!sourceAccountId && !isCash;
                 const newStatus = (isCash || isBank) ? 'Paid' : 'Approved';
