@@ -615,8 +615,13 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
             const result = await model.generateContent(`Determine current commercial wholesale price in NGN(Naira) for "${ing.name}" based on this specific query: "${ing.priceSourceQuery}".Focus on Lagos / Mile 12 or Major markets.Provide a brief 1 - sentence summary.Return the price as a number in NAIRA per UNIT specified in the query.`);
             const response = await result.response;
             const text = response.text() || "";
-            const priceMatch = text.match(/(\d+[,.]?\d*)/);
-            let extractedPrice = priceMatch ? parseFloat(priceMatch[0].replace(',', '')) : 0;
+            // Improved regex to find numbers that look like prices
+            const priceMatch = text.match(/(?:₦|Naira|NGN)\s?(\d{1,3}(?:,\d{3})*(?:\.\d+)?)|(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s?(?:₦|Naira|NGN)|\b(\d+(?:\.\d{2})?)\b/i);
+            let extractedPrice = 0;
+            if (priceMatch) {
+                const val = priceMatch[1] || priceMatch[2] || priceMatch[3];
+                extractedPrice = parseFloat(val.replace(/,/g, ''));
+            }
             const marketPriceCents = extractedPrice * 100;
             const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
                 ?.map((chunk: any) => chunk.web ? { title: chunk.web.title, uri: chunk.web.uri } : null)
@@ -635,21 +640,8 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
     try {
         const model = ai.getGenerativeModel({
             model: 'gemini-2.0-flash',
-            tools: [{ googleSearch: {} } as any],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: SchemaType.ARRAY,
-                    items: {
-                        type: SchemaType.OBJECT,
-                        properties: {
-                            name: { type: SchemaType.STRING, description: "The exact name of the ingredient from the provided list." },
-                            price: { type: SchemaType.NUMBER, description: "Wholesale market price in Naira." }
-                        },
-                        required: ["name", "price"]
-                    }
-                }
-            }
+            tools: [{ googleSearch: {} } as any]
+            // JSON mode removed here because it conflicts with Google Search Grounding
         });
 
         const result = await model.generateContent(`Search for current market prices in Lagos, Nigeria (2025 data) for the following food ingredients: ${ingredientList}. 
@@ -662,12 +654,21 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
 
         const response = await result.response;
         let cleanedText = response.text() || "[]";
-        cleanedText = cleanedText.replace(/```json | ```/g, '');
+
+        // Manual JSON extraction since we disabled JSON mode
+        const jsonMatch = cleanedText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (jsonMatch) {
+            cleanedText = jsonMatch[0];
+        } else {
+            cleanedText = cleanedText.replace(/```json | ```/g, '').trim();
+        }
 
         const dataArray = JSON.parse(cleanedText);
         const priceMap: Record<string, number> = {};
         dataArray.forEach((item: { name: string, price: number }) => {
-            priceMap[item.name.toLowerCase().trim()] = item.price;
+            if (item.name && typeof item.price === 'number') {
+                priceMap[item.name.toLowerCase().trim()] = item.price * 100; // Convert to cents for store consistency
+            }
         });
         return priceMap;
     } catch (e) {
@@ -687,8 +688,14 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     const result = await model.generateContent(`Determine current commercial wholesale price in NGN(Naira) for "${itemName}" in major Nigerian food markets(e.g.Mile 12, Lagos, or Abuja Wuse).Provide a brief summary of current trends.Return the market price(as a number representing Naira) and a summary.`);
     const response = await result.response;
     const text = response.text() || "";
-    const priceMatch = text.match(/(\d+[,.]?\d*)/);
-    const marketPriceCents = priceMatch ? parseFloat(priceMatch[0].replace(',', '')) * 100 : 0;
+    // Improved regex
+    const priceMatch = text.match(/(?:₦|Naira|NGN)\s?(\d{1,3}(?:,\d{3})*(?:\.\d+)?)|(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s?(?:₦|Naira|NGN)|\b(\d+(?:\.\d{2})?)\b/i);
+    let extractedPrice = 0;
+    if (priceMatch) {
+        const val = priceMatch[1] || priceMatch[2] || priceMatch[3];
+        extractedPrice = parseFloat(val.replace(/,/g, ''));
+    }
+    const marketPriceCents = extractedPrice * 100;
 
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
         ?.map((chunk: any) => chunk.web ? { title: chunk.web.title, uri: chunk.web.uri } : null)
