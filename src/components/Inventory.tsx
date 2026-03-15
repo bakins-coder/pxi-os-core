@@ -115,18 +115,34 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-indigo-50">
-                     {costing?.ingredientBreakdown.map((ing: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-indigo-50/30 transition-all">
-                           <td className="px-8 py-5">
-                              <div className="flex items-center gap-2">
-                                 <span className="font-black text-slate-800 uppercase text-xs">{ing.name}</span>
-                                 {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                     {/* Refactored: Use groundingStates object for per-ingredient loading state */}
+                     {rawMaterials.map((ing, index) => (
+                        <tr key={ing.id} className="hover:bg-indigo-50/20 transition-all">
+                           <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
+                           <td className="p-8">
+                              <p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p>
+                           </td>
+                           <td className="p-8">
+                              <div className="flex items-center gap-3">
+                                 <span className={`text-lg font-black tracking-tighter ${ing.stockQuantity < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockQuantity.toLocaleString()}</span>
+                                 <span className="text-[10px] font-bold text-slate-400 uppercase">Input</span>
                               </div>
                            </td>
-                           <td className="px-8 py-5 text-center font-mono text-slate-400 text-[10px]">{ing.qtyPerPortion} {ing.unit}</td>
-                           <td className="px-8 py-5 font-bold text-slate-500 text-xs">{ing.qtyRequired.toFixed(2)} {ing.unit}</td>
-                           <td className="px-8 py-5 text-right font-mono text-slate-400">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right font-black text-slate-900 text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                           <td className="p-8 font-black text-slate-900 text-xs">₦{(ing.priceCents / 100).toLocaleString()}</td>
+                           <td className="p-8">
+                              {ing.costPriceCents ? (
+                                 <div className="flex items-center gap-2">
+                                    <span className="font-black text-indigo-600 text-xs">₦{(ing.costPriceCents / 100).toLocaleString()}</span>
+                                    {ing.costPriceCents > ing.priceCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}
+                                 </div>
+                              ) : (
+                                 <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>
+                              )}
+                           </td>
+                           <td className="p-8 text-right">
+                              <GroundMarketPriceButton ingredient={ing} />
+                           </td>
                         </tr>
                      ))}
                      <tr className="bg-slate-50 border-t-2 border-slate-100">

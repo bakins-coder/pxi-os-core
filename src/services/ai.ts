@@ -428,7 +428,28 @@ export async function processAgentRequest(input: string, context: string, mode: 
 
             const result = await model.generateContent(contentParts);
             const response = await result.response;
-            return JSON.parse(response.text() || "{}");
+            let parsed;
+            try {
+                parsed = JSON.parse(response.text() || "{}");
+            } catch (e) {
+                parsed = { response: response.text(), intent: 'GENERAL_QUERY', payload: {} };
+            }
+
+            // Event Query Fix: If user asks about events and response is a string, try to fetch and format events
+            if (input.toLowerCase().includes('event') && typeof parsed.response === 'string' && parsed.response.trim().toLowerCase() === 'string') {
+                // Fetch events from dataStore
+                const dataStore = useDataStore.getState();
+                const events = dataStore.cateringEvents || [];
+                if (events.length > 0) {
+                    // Find the latest event
+                    const lastEvent = [...events].sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())[0];
+                    parsed.response = `| Customer | Date | Guests | Status | Location |\n|---|---|---|---|---|\n| ${lastEvent.customerName} | ${lastEvent.eventDate} | ${lastEvent.guestCount} | ${lastEvent.status} | ${lastEvent.location || 'N/A'} |`;
+                    parsed.intent = 'GENERAL_QUERY';
+                } else {
+                    parsed.response = 'No events found.';
+                }
+            }
+            return parsed;
         });
 
         return response;
