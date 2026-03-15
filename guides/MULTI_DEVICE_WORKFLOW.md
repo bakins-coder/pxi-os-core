@@ -76,3 +76,12 @@ If you want to code on your **PC** but verify the PWA on your **Phone** or **Lap
 If `git pull` fails because you have "uncommitted changes" on the current device:
 *   **If you want to keep your local changes**: `git stash`, then `git pull`, then `git stash pop`.
 *   **If you want to overwrite local changes**: `git reset --hard origin/main`.
+
+## 6. AI Assistant Setup (MCP Servers)
+
+If you use AI assistants with MCP (Model Context Protocol) servers (like the Supabase MCP server):
+
+*   **Config Locality**: MCP server configurations are **local** to your machine and are **not** synced via Git.
+*   **Setup on New Device**: When setting up a new device, you must manually add the MCP server configuration to the AI assistant's settings on that machine.
+*   **Consistency**: Ensure the credentials (API keys, URLs) match those used on your other devices for a consistent experience.
+

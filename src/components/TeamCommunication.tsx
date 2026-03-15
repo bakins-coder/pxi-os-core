@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
-import { User, Task, Role, Employee } from '../types';
+import { User, Task, Role, Employee, Message } from '../types';
 import { processMeetingAudio } from '../services/ai';
 import {
    Phone, Video, Search, Mic, MicOff,
@@ -10,12 +10,7 @@ import {
    Activity, X, Check, Bot, ListTodo, Sparkles, RefreshCw, ClipboardCheck, ArrowRight, ShieldCheck, Zap
 } from 'lucide-react';
 
-interface ChatMessage {
-   id: string;
-   senderId: string;
-   text: string;
-   timestamp: string;
-}
+
 
 const MeetingReportModal = ({ data, onSync, onClose }: { data: any, onSync: (tasks: any[]) => void, onClose: () => void }) => {
    const { settings } = useSettingsStore();
@@ -83,13 +78,14 @@ const MeetingReportModal = ({ data, onSync, onClose }: { data: any, onSync: (tas
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export const TeamCommunication = () => {
-   const { employees, addMeetingTask } = useDataStore();
+   const { employees, addMeetingTask, messages: storeMessages, addMessage, markMessageRead } = useDataStore();
    const { user: currentUser } = useAuthStore();
 
    // Map employees to User objects for the chat UI
-   const teamMembers = useMemo((): User[] => {
+   const teamMembers = useMemo((): (User & { hasAccount: boolean })[] => {
       return employees.map(emp => ({
-         id: emp.id,
+         id: emp.userId || emp.id, // Use User ID for messaging correlation, fallback to Employee ID (which may fail messaging but renders UI)
+         hasAccount: !!emp.userId,
          name: `${emp.firstName} ${emp.lastName}`,
          email: emp.email,
          role: emp.role,
@@ -98,9 +94,34 @@ export const TeamCommunication = () => {
       }));
    }, [employees]);
 
-   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
+   const [selectedUser, setSelectedUser] = useState<(User & { hasAccount: boolean }) | null>(null);
    const [inputText, setInputText] = useState('');
+
+   const currentMessages = useMemo(() => {
+      if (!selectedUser || !currentUser) return [];
+      // Match against either User ID (preferred) or Employee ID (legacy/fallback) to show historicals if any
+      return storeMessages
+         .filter(m =>
+            (m.senderId === currentUser.id && (m.recipientId === selectedUser.id || m.recipientId === selectedUser.id)) ||
+            ((m.senderId === selectedUser.id || m.senderId === selectedUser.id) && m.recipientId === currentUser.id)
+         )
+         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+   }, [storeMessages, selectedUser, currentUser]);
+
+   // Mark messages as read when viewing conversation
+   useEffect(() => {
+      if (selectedUser && currentUser && currentMessages.length > 0) {
+         const unread = currentMessages.filter(m => m.recipientId === currentUser.id && !m.readAt && m.status !== 'read');
+         if (unread.length > 0) {
+            unread.forEach(m => markMessageRead(m.id));
+         }
+      }
+   }, [selectedUser, currentMessages, currentUser, markMessageRead]);
+
+   const getUnreadCount = (senderId: string) => {
+      if (!currentUser) return 0;
+      return storeMessages.filter(m => m.senderId === senderId && m.recipientId === currentUser.id && !m.readAt && m.status !== 'read').length;
+   };
 
    const [isCallActive, setIsCallActive] = useState(false);
    const [isScribeActive, setIsScribeActive] = useState(false);
@@ -116,9 +137,21 @@ export const TeamCommunication = () => {
 
    const handleSendMessage = (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (!inputText.trim() || !selectedUser) return;
-      const newMsg: ChatMessage = { id: Date.now().toString(), senderId: currentUser?.id || 'u1', text: inputText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-      setMessages(prev => ({ ...prev, [selectedUser.id]: [...(prev[selectedUser.id] || []), newMsg] }));
+      // Block if no account
+      if (!inputText.trim() || !selectedUser || !currentUser || !selectedUser.hasAccount) return;
+
+      const newMsg: Message = {
+         id: crypto.randomUUID(),
+         senderId: currentUser.id,
+         recipientId: selectedUser.id,
+         content: inputText,
+         createdAt: new Date().toISOString(),
+         type: 'text',
+         status: 'sent',
+         organizationId: currentUser.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' // Fallback to Main Org UUID to prevent FK Violation
+      };
+
+      addMessage(newMsg);
       setInputText('');
    };
 
@@ -195,19 +228,28 @@ export const TeamCommunication = () => {
                      </div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                     {teamMembers.map(member => (
-                        <button
-                           key={member.id}
-                           onClick={() => setSelectedUser(member)}
-                           className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all ${selectedUser?.id === member.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg scale-[1.02]' : 'hover:bg-white/5 text-slate-400'}`}
-                        >
-                           <img src={member.avatar} className="w-10 h-10 rounded-xl bg-slate-800" alt="avatar" />
-                           <div className="text-left">
-                              <div className="text-xs font-black uppercase tracking-tight">{member.name}</div>
-                              <div className={`text-[9px] font-bold uppercase opacity-60`}>{member.role}</div>
-                           </div>
-                        </button>
-                     ))}
+                     {teamMembers.map(member => {
+                        const unread = getUnreadCount(member.id);
+                        return (
+                           <button
+                              key={member.id}
+                              onClick={() => setSelectedUser(member)}
+                              className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all relative ${selectedUser?.id === member.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg scale-[1.02]' : 'hover:bg-white/5 text-slate-400'} ${!member.hasAccount ? 'opacity-50 grayscale' : ''}`}
+                           >
+                              {unread > 0 && (
+                                 <div className="absolute top-4 right-4 w-3 h-3 bg-[#00ff9d] rounded-full animate-pulse shadow-[0_0_10px_#00ff9d]" />
+                              )}
+                              {!member.hasAccount && (
+                                 <div className="absolute bottom-2 right-4 text-[8px] font-black uppercase text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded">Inactive</div>
+                              )}
+                              <img src={member.avatar} className="w-10 h-10 rounded-xl bg-slate-800" alt="avatar" />
+                              <div className="text-left">
+                                 <div className="text-xs font-black uppercase tracking-tight">{member.name}</div>
+                                 <div className={`text-[9px] font-bold uppercase opacity-60`}>{member.role}</div>
+                              </div>
+                           </button>
+                        );
+                     })}
                   </div>
                </div>
 
@@ -216,30 +258,49 @@ export const TeamCommunication = () => {
                      <>
                         <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-[#00ff9d] flex items-center justify-center text-slate-950 shadow-lg animate-pulse"><Activity size={24} /></div>
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-slate-950 shadow-lg ${selectedUser.hasAccount ? 'bg-[#00ff9d] animate-pulse' : 'bg-slate-700'}`}>
+                                 <Activity size={24} />
+                              </div>
                               <div>
                                  <h3 className="text-lg font-black text-white uppercase tracking-tight">{selectedUser.name}</h3>
-                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Secure Connection</p>
+                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{selectedUser.hasAccount ? 'Secure Connection' : 'Account Not Active'}</p>
                               </div>
                            </div>
                            <div className="flex gap-2">
-                              <button onClick={() => startCall('audio')} className="p-4 bg-white/5 rounded-2xl text-slate-400 hover:bg-[#00ff9d] hover:text-slate-950 transition-all"><Phone size={20} /></button>
-                              <button onClick={() => startCall('video')} className="p-4 bg-[#00ff9d] rounded-2xl text-slate-950 shadow-xl active:scale-95 transition-all"><Video size={20} /></button>
+                              <button disabled={!selectedUser.hasAccount} onClick={() => startCall('audio')} className="p-4 bg-white/5 rounded-2xl text-slate-400 hover:bg-[#00ff9d] hover:text-slate-950 transition-all disabled:opacity-30 disabled:cursor-not-allowed"><Phone size={20} /></button>
+                              <button disabled={!selectedUser.hasAccount} onClick={() => startCall('video')} className="p-4 bg-[#00ff9d] rounded-2xl text-slate-950 shadow-xl active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"><Video size={20} /></button>
                            </div>
                         </div>
-                        <div className="flex-1 p-8 overflow-y-auto flex flex-col justify-center items-center text-slate-600 opacity-20">
-                           <MessageSquare size={64} className="mb-4" />
-                           <p className="font-black uppercase tracking-[0.3em] text-xs">Start Direct Message</p>
-                        </div>
+                        {currentMessages.length > 0 ? (
+                           <div className="flex-1 p-8 overflow-y-auto space-y-4">
+                              {currentMessages.map((msg) => {
+                                 const isMe = msg.senderId === (currentUser?.id || 'u1');
+                                 return (
+                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                       <div className={`max-w-[70%] p-4 rounded-2xl ${isMe ? 'bg-[#00ff9d] text-slate-950 rounded-tr-sm' : 'bg-white/10 text-white rounded-tl-sm'}`}>
+                                          <p className="text-sm font-bold">{msg.content}</p>
+                                          <p className={`text-[9px] font-black uppercase tracking-widest mt-2 ${isMe ? 'text-slate-800/60' : 'text-slate-500'}`}>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        ) : (
+                           <div className="flex-1 p-8 overflow-y-auto flex flex-col justify-center items-center text-slate-600 opacity-20">
+                              <MessageSquare size={64} className="mb-4" />
+                              <p className="font-black uppercase tracking-[0.3em] text-xs">Start Direct Message</p>
+                           </div>
+                        )}
                         <form onSubmit={handleSendMessage} className="p-8 border-t border-white/5 flex gap-4 bg-white/[0.01]">
-                           <button type="button" className="p-4 text-slate-500 hover:text-white transition-colors"><Paperclip size={20} /></button>
+                           <button type="button" disabled={!selectedUser.hasAccount} className="p-4 text-slate-500 hover:text-white transition-colors disabled:opacity-30"><Paperclip size={20} /></button>
                            <input
-                              className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none focus:border-[#00ff9d] transition-all"
-                              placeholder="Enter message..."
+                              className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none focus:border-[#00ff9d] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              placeholder={selectedUser.hasAccount ? "Enter message..." : "User has not activated their account"}
                               value={inputText}
                               onChange={(e) => setInputText(e.target.value)}
+                              disabled={!selectedUser.hasAccount}
                            />
-                           <button type="submit" className="p-4 bg-[#00ff9d] rounded-2xl text-slate-950 shadow-xl active:scale-95 transition-all"><Send size={20} /></button>
+                           <button type="submit" disabled={!selectedUser.hasAccount} className="p-4 bg-[#00ff9d] rounded-2xl text-slate-950 shadow-xl active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"><Send size={20} /></button>
                         </form>
                      </>
                   ) : (

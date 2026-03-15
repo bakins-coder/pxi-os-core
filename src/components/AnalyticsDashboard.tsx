@@ -6,8 +6,9 @@ import {
 } from 'recharts';
 import {
     TrendingUp, TrendingDown, DollarSign, Users, ShoppingCart, Package,
-    AlertCircle, Activity, ArrowUpRight, ArrowDownRight, Calendar, ShieldAlert, Clock, Filter
+    AlertCircle, Activity, ArrowDownRight, Calendar, ShieldAlert, Clock, Filter
 } from 'lucide-react';
+import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -28,7 +29,7 @@ const KPICard: React.FC<KPICardProps> = ({ title, value, change, trend, icon: Ic
             </div>
             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                 }`}>
-                {trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {trend === 'up' ? <LucideArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                 {change}
             </div>
         </div>

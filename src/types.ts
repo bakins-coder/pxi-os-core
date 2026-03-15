@@ -19,12 +19,14 @@ export enum Role {
   LOGISTICS_OFFICER = 'Logistics Officer',
   EVENT_MANAGER = 'Event Manager',
   EVENT_COORDINATOR = 'Event Coordinator',
+  BANQUET_MANAGER = 'Banquet Manager',
   STOCK_KEEPER = 'Stock Keeper',
   SALES = 'Sales',
   DRIVER = 'Driver',
   HEAD_WAITER = 'Head Waiter',
   FINANCE_OFFICER = 'Finance Officer',
-  CHAIRMAN = 'Chairman'
+  CHAIRMAN = 'Chairman',
+  CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager'
 }
 
 export enum AIAgentMode {
@@ -76,6 +78,7 @@ export interface DepartmentRole {
   band: number;
   salaryRange: SalaryRange;
   permissions?: string[];
+  kpis?: PerformanceMetric[];
 }
 
 export interface DepartmentMatrix {
@@ -89,6 +92,8 @@ export interface RecipeIngredient {
   qtyPerPortion: number;
   unit: string;
   priceSourceQuery: string;
+  scaling_tiers?: Record<string, number>;
+  subRecipeGroup?: string; // e.g. "Jollof Rice", "Special Fried Rice"
 }
 
 export interface Recipe {
@@ -109,12 +114,17 @@ export interface Ingredient {
   stockLevel: number;
   category: string;
   lastUpdated: string;
+  updatedBy?: string;
+  updatedByName?: string;
   priceSourceQuery?: string;
   marketInsight?: {
     marketPriceCents: number;
     groundedSummary: string;
     sources?: { title: string; uri: string }[];
   };
+  lastPackCount?: number;
+  lastPackSize?: number;
+  lastPackType?: string;
   image?: string;
 }
 
@@ -132,6 +142,8 @@ export interface ItemCosting {
     unit: string;
     unitCostCents: number;
     totalCostCents: number;
+    scalingTierUsed?: string;
+    subRecipeGroup?: string;
   }[];
 }
 
@@ -157,30 +169,71 @@ export interface EventTask {
 }
 
 export interface BanquetDetails {
-  location: string;
-  contactPerson: string;
-  contactEmail: string;
-  contactPhone: string;
-  eventType: string;
-  themeColor: string;
-  eventPlanner: string;
-  notes: string;
+  location?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  eventType?: string;
+  themeColor?: string;
+  eventPlanner?: string;
+  notes?: string;
+  productionConfirmed?: boolean;
+}
+
+export interface CuisineDetails {
+  deliveryLocation?: string;
+  deliveryTime?: string;
+  packaging?: string;
+  notes?: string;
+}
+
+export interface DispatchedAsset {
+  itemId: string;
+  name: string;
+  quantity: number;
+  dispatchedAt: string;
+}
+
+export interface LogisticsReturn {
+  itemId: string;
+  name: string;
+  dispatchedQty: number;
+  returnedQty: number;
+  missingQty: number;
+  brokenQty: number;
+  notes?: string;
+}
+
+export interface PortionMonitor {
+  eventId: string;
+  tables: ServingTable[];
+  leftovers: { itemId: string; name: string; quantity: number; reason: string; loggedAt: string }[];
+  handoverEvidence: { url: string; note: string; timestamp: string }[];
+  handoverNotes?: string;
+  handoverSignedBySupervisor?: string;
+  handoverSignedByHost?: string;
+  handoverDate?: string;
+  waiterAccessToken?: string;
 }
 
 export interface CateringEvent {
   id: string;
   companyId: string;
   customerName: string;
+  contactId?: string;
   eventDate: string;
   endDate?: string;
   location?: string;
   guestCount: number;
-  status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed';
+  status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed' | 'Archived' | 'Cancelled';
   currentPhase: CateringPhase;
   readinessScore: number;
   items: DealItem[];
+  orderType?: 'Banquet' | 'Cuisine';
   tasks: EventTask[];
   hardwareChecklist: HardwareCheckoutRecord[];
+  dispatchedAssets?: DispatchedAsset[];
+  logisticsReturns?: LogisticsReturn[];
   reconciliationStatus?: 'Pending' | 'Balanced' | 'Discrepancy' | 'Shortage';
   costingSheet?: {
     itemCostings: ItemCosting[];
@@ -198,7 +251,16 @@ export interface CateringEvent {
     invoiceId?: string; // Link to the main sales invoice
   };
   banquetDetails?: BanquetDetails;
+  cuisineDetails?: CuisineDetails;
   portionMonitor?: PortionMonitor;
+}
+
+export interface Seat {
+  id: string;
+  number: number;
+  servingCount: number;
+  status: 'Empty' | 'Occupied';
+  servedItems: { itemId: string; name: string; quantity: number }[];
 }
 
 export interface ServingTable {
@@ -209,6 +271,7 @@ export interface ServingTable {
   status: 'Waiting' | 'Served' | 'Partially Served';
   servedItems: { itemId: string; name: string; quantity: number; servedAt: string }[];
   isLocked: boolean;
+  seats: Seat[];
 }
 
 export interface PortionMonitor {
@@ -220,6 +283,7 @@ export interface PortionMonitor {
   handoverSignedBySupervisor?: string;
   handoverSignedByHost?: string;
   handoverDate?: string;
+  waiterAccessToken?: string;
 }
 
 // REFACTOR: New Taxonomy
@@ -249,6 +313,29 @@ export interface InventoryItem {
   rentalVendor?: string;
 }
 
+
+export interface InteractionLog {
+  id: string;
+  contactId: string;
+  type: 'Call' | 'Email' | 'Meeting' | 'Note';
+  summary: string;
+  content: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  createdAt: string;
+  readAt?: string;
+  organizationId: string;
+  type?: 'text' | 'image' | 'system';
+  status?: 'sent' | 'delivered' | 'read';
+}
+
 export interface InventoryViewItem {
   organization_id: string;
   item_id: string;
@@ -276,6 +363,14 @@ export interface MovementParams {
 export type CustomerType = 'Individual' | 'Corporate';
 export type ContactCategory = 'Customer' | 'Supplier' | 'Bank_Partner' | 'Vendor' | 'Employee';
 
+
+
+export interface DocumentLink {
+  name: string;
+  url: string;
+  date: string;
+}
+
 export interface Contact {
   id: string;
   name: string;
@@ -292,25 +387,30 @@ export interface Contact {
   contactPerson?: string;
   address?: string;
   jobTitle?: string;
+  preferences?: Record<string, any>;
+  documentLinks?: DocumentLink[];
 }
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
 export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; }
-export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId: string; isSuperAdmin?: boolean; permissionTags?: string[]; }
-export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; }
+export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId?: string; isSuperAdmin?: boolean; permissionTags?: string[]; staffId?: string; }
+export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; paymentMethod?: string; }
 
 export interface Requisition {
   id: string;
-  type: 'Purchase' | 'Release' | 'Rental' | 'Hiring';
-  category: 'Food' | 'Hardware' | 'Service';
+  type: 'Purchase' | 'Release' | 'Rental' | 'Hiring' | 'Loan';
+  category: 'Food' | 'Hardware' | 'Service' | 'Financial';
   itemName: string;
   ingredientId?: string;
   quantity: number;
   pricePerUnitCents: number;
   totalAmountCents: number;
   requestorId: string;
-  status: 'Pending' | 'Approved' | 'Paid';
+  status: 'Pending' | 'Approved' | 'Paid' | 'Rejected' | 'Issued';
   referenceId?: string;
   notes?: string;
+  sourceAccountId?: string; // ID of the bank account used for payment
+  createdAt: string;
+  requestorName?: string;
 }
 
 export interface RentalRecord {
@@ -339,6 +439,7 @@ export interface Task {
   dueDate: string;
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   status: 'Todo' | 'In Progress' | 'Review' | 'Done' | 'Pending' | 'Completed';
+  projectId?: string;
   createdDate?: string;
 }
 
@@ -363,16 +464,31 @@ export interface MarketingPost { id: string; companyId: string; type: string; ti
 export interface SocialInteraction { id: string; platform: string; user: string; handle: string; timestamp: string; sentiment: string; content: string; aiAnalysis: string; suggestedResponse: string; status: string; }
 export interface SocialPost { id: string; platform: string; title: string; content: string; scheduledDate: string; status: string; generatedByAI: boolean; }
 export interface Workflow { id: string; name: string; trigger: string; status: 'Active' | 'Inactive'; lastRun?: string; logs: string[]; agentName: string; agentRole: string; }
-export interface BankTransaction { id: string; companyId: string; date: string; description: string; amountCents: number; type: string; category: string; contactId?: string; }
+export interface BankTransaction { id: string; companyId: string; date: string; description: string; amountCents: number; type: string; category: string; contactId?: string; bankAccountId?: string; referenceId?: string; }
 export interface ChartOfAccount { id: string; companyId: string; code: string; name: string; type: string; subtype: string; balanceCents: number; currency: 'NGN' | 'USD'; }
 export interface BankStatementLine { id: string; date: string; description: string; amountCents: number; type: 'Credit' | 'Debit'; isMatched: boolean; suggestedAccountId?: string; }
-export enum InvoiceStatus { PAID = 'Paid', UNPAID = 'Unpaid', OVERDUE = 'Overdue' }
+
+export interface BankAccount {
+  id: string;
+  companyId: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  currency: 'NGN' | 'USD' | 'GBP' | 'EUR';
+  balanceCents: number;
+  isActive: boolean;
+  lastUpdated: string;
+}
+
+export enum InvoiceStatus { PAID = 'Paid', UNPAID = 'Unpaid', OVERDUE = 'Overdue', PROFORMA = 'Pro-forma' }
 
 export interface InvoiceLine {
   id: string;
   description: string;
   quantity: number;
   unitPriceCents: number;
+  manualPriceCents?: number; // Optional override for line-item discount
+  category?: string; // Preserve category for auto-structuring
 }
 
 export interface Invoice {
@@ -380,13 +496,21 @@ export interface Invoice {
   number: string;
   companyId: string;
   contactId?: string;
+  customerName?: string;
   date: string;
   dueDate: string;
   status: InvoiceStatus;
   type: 'Sales' | 'Purchase';
+  category?: string;
   lines: InvoiceLine[];
   totalCents: number;
+  subtotalCents?: number;
+  serviceChargeCents?: number;
+  vatCents?: number;
   paidAmountCents: number;
+  manualSetPriceCents?: number;
+  discountCents?: number;
+  standardTotalCents?: number;
 }
 
 export interface InventoryMovement {
@@ -400,7 +524,7 @@ export interface InventoryMovement {
 }
 
 export interface Supplier { id: string; companyId: string; name: string; email: string; phone: string; address: string; }
-export interface PayrollItem { id: string; employeeId: string; employeeName: string; grossCents: number; basicCents: number; housingCents: number; transportCents: number; pensionEmployeeCents: number; pensionEmployerCents: number; taxCents: number; nhfCents: number; netCents: number; anomalies: string[]; }
+export interface PayrollItem { id: string; employeeId: string; employeeName: string; grossCents: number; basicCents: number; housingCents: number; transportCents: number; pensionEmployeeCents: number; pensionEmployerCents: number; taxCents: number; nhfCents: number; punishmentDeductionCents: number; netCents: number; anomalies: string[]; }
 export interface Deal { id: string; companyId: string; name: string; contactId: string; valueCents: number; stage: string; items: DealItem[]; expectedCloseDate: string; }
 export enum EmployeeStatus { ACTIVE = 'Active', INACTIVE = 'Inactive', TERMINATED = 'Terminated' }
 export interface Employee {
@@ -423,6 +547,7 @@ export interface Employee {
   staffId?: string; // Unique Login Identifier (e.g. XQ-8821)
   idCardIssuedDate?: string;
   healthNotes?: string;
+  userId?: string;
 }
 
 export interface JournalEntry {
@@ -484,6 +609,17 @@ export interface Attachment {
   size: number;
 }
 
+export interface EntityMedia {
+  id: string;
+  organizationId: string;
+  entityType: string;
+  entityId: string;
+  storageObjectId: string;
+  isPrimary: boolean;
+  bucket: string;
+  objectPath: string;
+}
+
 export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas';
 export type CompanySize = 'Micro (1-10)' | 'Small (11-50)' | 'Medium (51-250)' | 'Large (250+)';
 export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR';
@@ -507,6 +643,7 @@ export interface PerformanceMetric {
   name: string;
   type: 'KPI' | 'KPA';
   description?: string;
+  isSupervisorOnly?: boolean;
   weight: number; // Percentage 0-100
   target: string;
   actual: string;

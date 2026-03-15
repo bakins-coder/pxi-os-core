@@ -14,6 +14,7 @@ interface SettingsState {
     updatePartialSetup: (data: any) => void;
     toggleStrictMode: () => void;
     reset: () => void;
+    fetchSettings: (orgId: string) => Promise<void>;
 }
 
 const DEFAULT_SETTINGS: OrganizationSettings = {
@@ -45,6 +46,8 @@ const INITIAL_SYSTEM_FLAGS = {
     partialSetupData: null
 };
 
+import { supabase } from '../services/supabase';
+
 export const useSettingsStore = create<SettingsState>()(
     persist(
         (set) => ({
@@ -65,6 +68,31 @@ export const useSettingsStore = create<SettingsState>()(
                 })),
             toggleStrictMode: () => set((state) => ({ strictMode: !state.strictMode })),
             reset: () => set({ settings: DEFAULT_SETTINGS, ...INITIAL_SYSTEM_FLAGS }),
+            fetchSettings: async (orgId: string) => {
+                try {
+                    console.log('[Settings] Fetching settings for:', orgId);
+                    if (!supabase) return;
+                    const { data, error } = await supabase.from('organizations').select('*').eq('id', orgId).single();
+                    if (data) {
+                        console.log('[Settings] Fetched:', data.name);
+                        set((state) => ({
+                            settings: {
+                                ...state.settings,
+                                id: data.id,
+                                name: data.name,
+                                brandColor: data.brand_color || state.settings.brandColor,
+                                // FIX: DB column is 'logo', not 'logo_url'
+                                logo: data.logo || state.settings.logo,
+                                setupComplete: true
+                            }
+                        }));
+                    } else if (error) {
+                        console.error('[Settings] Fetch error:', error);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch settings:', err);
+                }
+            }
         }),
         {
             name: 'settings-storage',

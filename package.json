@@ -10,17 +10,20 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "gen:types": "supabase gen types typescript --project-id qbfhntvjqciardkjpfpy > src/types/supabase.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@supabase/supabase-js": "^2.89.0",
+    "@supabase/supabase-js": "^2.91.1",
+    "@types/pg": "^8.18.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "mammoth": "^1.11.0",
+    "pg": "^8.19.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-is": "^19.2.3",
@@ -28,9 +31,9 @@
     "react-router-dom": "^7.1.0",
     "react-webcam": "^7.2.0",
     "recharts": "^3.6.0",
+    "remark-gfm": "^4.0.0",
     "tailwind-merge": "^3.4.0",
     "tailwind-scrollbar": "^4.0.2",
-    "xlsx": "^0.18.5",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
@@ -45,9 +48,10 @@
     "@vitest/ui": "^4.0.16",
     "happy-dom": "^20.1.0",
     "jsdom": "^27.0.1",
-    "supabase": "^2.72.4",
+    "supabase": "^2.72.8",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "xlsx": "^0.18.5"
   }
 }

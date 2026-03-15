@@ -1,6 +1,10 @@
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
+
+(globalThis as any).VITEST = true;
+(globalThis as any).vitest = true;
+(globalThis as any).alert = (msg: string) => console.log('[Headless Alert]', msg);
 
 // Clean up after each test
 afterEach(() => {

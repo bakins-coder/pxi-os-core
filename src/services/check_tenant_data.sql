@@ -9,7 +9,7 @@ SELECT
     o.name as organization_name 
 FROM employees e
 LEFT JOIN organizations o ON e.company_id = o.id
-WHERE e.company_id = 'org-xquisite'; -- Check for Default/Mock bucket
+WHERE e.company_id = '10959119-72e4-4e57-ba54-923e36bba6a6'; -- Check for Default/Mock bucket
 
 -- 2. Check for Mariam or Olaboye specifically across ALL organizations
 SELECT * FROM employees 

@@ -6,8 +6,9 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import {
     Users, TrendingUp, Building2, User, Search, Filter,
     Plus, Mail, Phone, MapPin, MoreHorizontal, FileText,
-    PieChart, ArrowUpRight, ArrowDownRight, Download, Share2
+    PieChart, ArrowDownRight, Download, Share2
 } from 'lucide-react';
+import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';

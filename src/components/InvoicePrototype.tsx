@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, Download, Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, Loader2, Share2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { Invoice, Contact } from '../types';
+import { Invoice, Contact, InvoiceStatus } from '../types';
+import { useAuthStore } from '../store/useAuthStore';
+import { generateInvoicePDF } from '../utils/exportUtils';
+
+
+// Brand Colors
+// const BRAND_COLOR = '#D32F2F'; // Old Red
+const BRAND_COLOR = '#F47C20'; // Xquisite Orange
+const ACCENT_COLOR = '#FFB74D'; // Lighter Orange
 
 export const InvoicePrototype = () => {
     const navigate = useNavigate();
@@ -40,55 +48,120 @@ export const InvoicePrototype = () => {
             <div className="min-h-screen p-8 bg-slate-100 flex flex-col items-center justify-center text-center">
                 <h2 className="text-2xl font-black text-slate-800 mb-2">Invoice Not Found</h2>
                 <p className="text-slate-500 mb-6">The requested invoice ID could not be located.</p>
-                <button
-                    onClick={() => navigate('/finance')}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
-                >
-                    <ArrowLeft size={16} /> Return to Finance
-                </button>
+                {useAuthStore.getState().user && (
+                    <button
+                        onClick={() => navigate('/finance')}
+                        className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
+                    >
+                        <ArrowLeft size={16} /> Return to Finance
+                    </button>
+                )}
             </div>
         );
     }
 
     // Calculations
-    const totalAmount = invoice.totalCents / 100;
+    const standardSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0) / 100;
+
+    // Effective subtotal (using manual prices where set)
+    const effectiveSubtotal = invoice.lines.reduce((acc, l) => {
+        const price = l.manualPriceCents !== undefined ? l.manualPriceCents : l.unitPriceCents;
+        return acc + (l.quantity * price);
+    }, 0) / 100;
+
+    let subtotal = invoice.subtotalCents !== undefined ? invoice.subtotalCents / 100 : effectiveSubtotal;
+    let serviceCharge = invoice.serviceChargeCents !== undefined ? invoice.serviceChargeCents / 100 : subtotal * 0.15;
+    let vat = invoice.vatCents !== undefined ? invoice.vatCents / 100 : (subtotal + serviceCharge) * 0.075;
+    let totalAmount = invoice.totalCents !== undefined ? invoice.totalCents / 100 : subtotal + serviceCharge + vat;
+
     const paidAmount = invoice.paidAmountCents / 100;
     const balanceDue = totalAmount - paidAmount;
+
+    // Calculate discount
+    const impliedStandardTotal = (standardSubtotal * 1.15 * 1.075);
+    const discountAmount = Math.max(0, impliedStandardTotal - totalAmount);
+    const hasDiscount = discountAmount > 1; // Tolerance for float math
 
     // Fallback Customer Data
     const customerName = customer?.name || 'Valued Customer';
     const customerEmail = customer?.email || '';
 
     // Organization Data
-    const orgName = settings.name || 'Xquisite Celebrations Ltd';
+    // Determine organization name based on invoice category
+    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Cuisine' : 'Banquet');
+    const orgName = inferredCategory === 'Cuisine' ? 'Xquisite Cuisine Limited' : (settings.name || 'Xquisite Celebrations Limited');
     const orgAddress = settings.address || '';
     const orgPhone = settings.contactPhone;
     const orgTin = settings.firs_tin;
-    const logo = settings.logo; // In real app, might want a default logo fallback
+    const orgLogo = settings.logo || "/xquisite-logo.png";
+    const activeBrandColor = settings.brandColor || BRAND_COLOR;
+
     // Use bank settings if available, otherwise fallback (or hide)
     const bankName = settings.bankInfo?.bankName;
     const accName = settings.bankInfo?.accountName;
     const accNum = settings.bankInfo?.accountNumber;
 
+    const handleDownloadPDF = async () => {
+        if (!invoice) return;
+        const pdfInvoice = { ...invoice, category: inferredCategory };
+        await generateInvoicePDF(pdfInvoice, customer || undefined, settings, { save: true });
+    };
+
+    const handleSharePDF = async () => {
+        if (!invoice) return;
+        try {
+            const pdfInvoice = { ...invoice, category: inferredCategory };
+            const doc = await generateInvoicePDF(pdfInvoice, customer || undefined, settings, { save: false, returnDoc: true }) as any;
+            const pdfBlob = doc.output('blob');
+            const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Invoice ${invoice.number}`,
+                    text: `Please find attached invoice ${invoice.number}.`
+                });
+            } else {
+                doc.save(`Invoice-${invoice.number}.pdf`);
+                alert("Direct PDF sharing not supported on this browser. PDF downloaded instead.");
+            }
+        } catch (err) {
+            console.error("PDF Share failed", err);
+            if ((err as Error).name !== 'AbortError') {
+                handleDownloadPDF();
+            }
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white">
+        <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white text-slate-900">
             {/* Control Bar */}
             <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center print:hidden">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                    <ArrowLeft size={20} />
-                    <span className="font-bold">Back</span>
-                </button>
+                {useAuthStore.getState().user && (
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft size={20} />
+                        <span className="font-bold">Back</span>
+                    </button>
+                )}
                 <div className="flex gap-4">
                     <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all">
                         <Printer size={18} /> Print
                     </button>
-                    {/* Placeholder for PDF Download - browser print to PDF is usually sufficient or requires library */}
-                    {/* <button className="flex items-center gap-2 px-6 py-2 bg-[#ff6b6b] text-white rounded-full shadow-md font-bold hover:bg-[#ff5252] transition-all">
-                        <Download size={18} /> Download PDF
-                    </button> */}
+                    <button
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all"
+                    >
+                        <Download size={18} /> PDF
+                    </button>
+                    <button
+                        onClick={handleSharePDF}
+                        className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all"
+                    >
+                        <Share2 size={18} /> Share
+                    </button>
                 </div>
             </div>
 
@@ -100,13 +173,7 @@ export const InvoicePrototype = () => {
                     <div className="flex justify-between items-start">
                         {/* Logo / Brand Area */}
                         <div>
-                            {logo ? (
-                                <img src={logo} alt={orgName} className="h-24 object-contain mb-2" />
-                            ) : (
-                                <div className="h-24 flex items-center mb-2">
-                                    <h1 className="text-3xl font-black text-[#ff6b6b] uppercase tracking-tighter">{orgName}</h1>
-                                </div>
-                            )}
+                            <img src={orgLogo} alt={orgName} className="h-24 object-contain mb-2" />
                         </div>
 
                         {/* Company Address */}
@@ -121,8 +188,8 @@ export const InvoicePrototype = () => {
                 </div>
 
                 <div className="px-12">
-                    <div className="border-t-2 border-[#ff6b6b] mb-1"></div>
-                    <div className="border-t border-[#ff6b6b]"></div>
+                    <div className="w-full h-0.5" style={{ backgroundColor: ACCENT_COLOR }}></div>
+                    <div className="w-full h-px" style={{ backgroundColor: ACCENT_COLOR }}></div>
                 </div>
 
                 {/* Bill To & Invoice Details */}
@@ -130,15 +197,16 @@ export const InvoicePrototype = () => {
                     <div>
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Bill To</h3>
                         <p className="font-bold text-slate-800 text-lg">{customerName}</p>
-                        <p className="text-slate-600">{customerName}</p> {/* Contact Person? */}
+
                         <p className="text-slate-500 text-sm mt-1">{customerEmail}</p>
                         {customer?.address && <p className="text-slate-500 text-sm mt-1">{customer.address}</p>}
                     </div>
 
                     <div className="flex flex-col items-end">
-                        {/* Stamp-like border for "Invoice" */}
-                        <div className="border-2 border-[#D32F2F] px-8 py-2 rounded-lg mb-6 transform rotate-[-2deg]">
-                            <h2 className="text-3xl font-serif text-[#D32F2F] uppercase tracking-widest">Invoice</h2>
+                        <div className="border-2 px-8 py-2 rounded-lg mb-6 transform rotate-[-2deg]" style={{ borderColor: activeBrandColor }}>
+                            <h2 className="text-3xl font-serif uppercase tracking-widest" style={{ color: activeBrandColor }}>
+                                {invoice.status === InvoiceStatus.PROFORMA ? 'Pro-forma Invoice' : 'Invoice'}
+                            </h2>
                         </div>
 
                         <div className="w-full max-w-xs space-y-2">
@@ -154,10 +222,7 @@ export const InvoicePrototype = () => {
                                 <span className="font-bold text-slate-600">Payment Due:</span>
                                 <span className="font-medium text-slate-900">{new Date(invoice.dueDate).toLocaleDateString()}</span>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 p-2 rounded print:bg-transparent">
-                                <span className="font-bold text-slate-600">Balance Due (NGN):</span>
-                                <span className="font-black text-xl text-slate-900">₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
-                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -168,15 +233,18 @@ export const InvoicePrototype = () => {
                         <thead>
                             <tr className="border-b-2 border-slate-100">
                                 <th className="text-left py-4 text-sm font-bold text-slate-600 uppercase w-3/5">Items</th>
-                                <th className="text-center py-4 text-sm font-bold text-slate-600 uppercase w-[10%]">Qty</th>
+                                <th className="text-center py-4 text-sm font-bold text-slate-600 uppercase w-[10%] whitespace-nowrap">Qty</th>
                                 <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase w-[15%]">Price</th>
                                 <th className="text-right py-4 text-sm font-bold text-slate-600 uppercase w-[15%]">Amount</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                             {invoice.lines.map((item, index) => {
-                                const linePrice = item.unitPriceCents / 100;
-                                const lineTotal = (item.quantity * item.unitPriceCents) / 100;
+                                const originalPrice = item.unitPriceCents / 100;
+                                const effectivePrice = item.manualPriceCents !== undefined ? item.manualPriceCents / 100 : originalPrice;
+                                const isDiscounted = item.manualPriceCents !== undefined && item.manualPriceCents !== item.unitPriceCents;
+                                const lineTotal = (item.quantity * effectivePrice);
+
                                 return (
                                     <tr key={item.id} className="group hover:bg-slate-50/50">
                                         <td className="py-6 pr-8 align-top break-words">
@@ -184,39 +252,77 @@ export const InvoicePrototype = () => {
                                         </td>
                                         <td className="py-6 text-center align-top text-sm font-medium text-slate-600">{item.quantity}</td>
                                         <td className="py-6 text-right align-top text-sm font-medium text-slate-600">
-                                            {linePrice ? `₦${linePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
+                                            {isDiscounted ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-xs text-slate-400 line-through decoration-slate-300">₦{originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                                    <span className="text-orange-500 font-bold">₦{effectivePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                                </div>
+                                            ) : (
+                                                `₦${originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+                                            )}
                                         </td>
                                         <td className="py-6 text-right align-top text-sm font-bold text-slate-800">
-                                            {lineTotal ? `₦${lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : ''}
+                                            ₦{lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 )
                             })}
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-8 text-right font-bold text-slate-600 text-sm">Subtotal:</td>
-                                <td className="pt-8 text-right font-bold text-slate-800 text-sm">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                            {/* Service Charge logic can be re-added if stored in Invoice model. Currently standard Invoice doesn't have it explicitly separate from total usually unless calculated. */}
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">Total:</td>
-                                <td className="pt-4 pb-4 border-b border-slate-200 text-right font-black text-slate-800 text-base">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-4 text-right font-medium text-slate-500 text-xs">Amount Paid:</td>
-                                <td className="pt-4 text-right font-medium text-slate-800 text-xs">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                            <tr>
-                                <td colSpan={2}></td>
-                                <td className="pt-4 text-right font-black text-slate-900 text-lg uppercase">Balance Due:</td>
-                                <td className="pt-4 text-right font-black text-slate-900 text-lg">₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                        </tfoot>
+
                     </table>
+                </div>
+
+                {/* Summary Section - Outside table to avoid column width constraints */}
+                {/* Summary Section - Outside table to avoid column width constraints */}
+                <div className="px-12 pb-8 flex flex-col items-end">
+                    <div className="w-1/2 max-w-sm space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="font-bold text-slate-600 uppercase">Subtotal:</span>
+                            <span className="font-medium text-slate-900">₦{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        {serviceCharge > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-600 uppercase">Service Charge (15%):</span>
+                                <span className="font-medium text-slate-900">₦{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        {vat > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-600 uppercase">VAT ({invoice.category === 'Cuisine' ? '0%' : '7.5%'}):</span>
+                                <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        <div className="w-full h-px bg-slate-200 my-2"></div>
+
+                        {hasDiscount && (
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-400 uppercase">Standard Total:</span>
+                                <span className="font-medium text-slate-400 line-through decoration-slate-300">₦{impliedStandardTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="font-bold text-slate-600 uppercase">Total Amount:</span>
+                            <span className="font-bold text-slate-900 text-lg">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+
+                        {hasDiscount && (
+                            <div className="flex justify-between items-center text-xs bg-green-50 p-2 rounded text-green-700">
+                                <span className="font-bold uppercase">You Save:</span>
+                                <span className="font-bold">₦{discountAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="font-medium text-slate-500">Amount Paid:</span>
+                            <span className="font-medium text-slate-800">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="pt-4 border-t border-slate-200 flex justify-between items-end">
+                            <div className="px-4 py-1 bg-slate-100 rounded text-xs font-bold text-slate-500 uppercase tracking-wider">Balance Due</div>
+                            <div className="text-3xl font-black text-slate-900 border-b-2 border-slate-900 pb-1">
+                                ₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer Section: Notes & Terms */}
@@ -227,19 +333,37 @@ export const InvoicePrototype = () => {
                             <p className="mb-4">Thank you for your patronage. Please make all payment transfers to:<br />
                                 <span className="font-bold text-slate-800 uppercase">{accName || orgName}</span></p>
 
-                            {bankName && accNum ? (
-                                <>
-                                    <p className="font-bold underline mb-1">Bank Details:-</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-6">
-                                        <div className="p-3 bg-slate-50 border border-slate-100 rounded">
-                                            <span className="font-bold block text-slate-700">{bankName}</span>
-                                            <span className="font-mono">{accNum}</span>
-                                        </div>
+                            <p className="font-bold underline mb-2">Bank Details:</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Cuisine</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">GT Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">0210736266</span>
                                     </div>
-                                </>
-                            ) : (
-                                <p className="italic text-slate-400">Please contact us for bank payment details.</p>
-                            )}
+                                </div>
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Celebrations</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">GT Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">0396426845</span>
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Celebrations</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">Zenith Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">1010951007</span>
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Cuisine</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 text-xs font-medium">First Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">2022655945</span>
+                                    </div>
+                                </div>
+                            </div>
 
                             <p className="font-bold mb-1">Terms and Conditions:</p>
                             <p className="mb-4">Initial deposit of 70% is to be paid before the event and balance payable immediately after the event. Cancellation of order will result to only a 70% refund of initial deposit made.</p>
@@ -251,11 +375,11 @@ export const InvoicePrototype = () => {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="p-4 bg-[#D32F2F] text-white text-center print:hidden">
+                <div className="p-4 text-white text-center print:hidden" style={{ backgroundColor: activeBrandColor }}>
                     <p className="font-serif italic font-bold text-lg">Bon Apetit. We look forward to serving you again soon.</p>
                 </div>
                 {/* Print-only footer to ensure color bar appears if background graphics enabled */}
-                <div className="hidden print:block p-2 bg-[#D32F2F] text-white text-center text-xs mt-4 -mx-12 -mb-12">
+                <div className="hidden print:block p-2 text-white text-center text-xs mt-4 -mx-12 -mb-12" style={{ backgroundColor: activeBrandColor }}>
                     {orgName}
                 </div>
 

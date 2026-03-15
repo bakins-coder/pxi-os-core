@@ -1,8 +1,0 @@
-{
-  "name": "pxi-os-core",
-  "description": "PXI UNIFIED OS - Comprehensive Business Intelligence & Operations",
-  "requestFramePermissions": [
-    "microphone",
-    "camera"
-  ]
-}

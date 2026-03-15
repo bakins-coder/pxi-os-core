@@ -6,9 +6,10 @@ import { Ticket, Attachment, BankTransaction, InvoiceStatus } from '../types';
 import ReactMarkdown from 'react-markdown';
 import {
    MessageSquare, Send, X,
-   Paperclip, ArrowUpRight, ArrowDownLeft, Receipt,
+   Paperclip, ArrowDownLeft, Receipt,
    MoreHorizontal, Mic, ShieldCheck, ChevronRight, Image as ImageIcon, Film, UploadCloud, CalendarDays
 } from 'lucide-react';
+import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { runBankingChat } from '../services/ai';
 
 export const CustomerPortal = () => {
@@ -89,7 +90,7 @@ export const CustomerPortal = () => {
 
                <div className="flex justify-between px-4 pb-2">
                   <div className="text-center">
-                     <div className="bg-indigo-500/30 p-3 rounded-full mb-2 mx-auto w-12 h-12 flex items-center justify-center backdrop-blur-sm border border-white/10"><ArrowUpRight size={20} /></div>
+                     <div className="bg-indigo-500/30 p-3 rounded-full mb-2 mx-auto w-12 h-12 flex items-center justify-center backdrop-blur-sm border border-white/10"><LucideArrowUpRight size={20} /></div>
                      <span className="text-xs text-indigo-100">Send</span>
                   </div>
                   <div className="text-center">

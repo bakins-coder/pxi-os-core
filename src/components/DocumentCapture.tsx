@@ -29,19 +29,27 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
     }, [webcamRef]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        console.log('[DocumentCapture] handleFileUpload triggered');
+        console.log('[DocumentCapture] e.target.files:', e.target.files);
         const file = e.target.files?.[0];
         if (file) {
+            console.log('[DocumentCapture] File selected:', file.name, file.type, file.size);
             const reader = new FileReader();
+            reader.onerror = (err) => {
+                console.error('[DocumentCapture] FileReader error:', err);
+            };
             reader.onloadend = () => {
+                console.log('[DocumentCapture] FileReader complete, result length:', (reader.result as string)?.length);
                 setPreview(reader.result as string);
             };
             reader.readAsDataURL(file);
+        } else {
+            console.warn('[DocumentCapture] No file selected or file is undefined');
         }
     };
 
     const handleConfirm = () => {
         if (preview) {
-            console.log('DocumentCapture handleConfirm called with preview:', preview.substring(0, 50));
             onCapture(preview);
         }
     };
@@ -52,7 +60,7 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200 max-h-[90vh]">
                 {/* Header */}
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -68,7 +76,8 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
                         </div>
                     </div>
                     <button
-                        onClick={onCancel}
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCancel(); }}
                         className="p-2.5 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 rounded-xl transition-all"
                     >
                         <X size={18} />
@@ -86,7 +95,8 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
 
                             <div className="grid grid-cols-2 gap-4">
                                 <button
-                                    onClick={() => setCapturing(true)}
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCapturing(true); }}
                                     className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all group"
                                 >
                                     <div className="p-4 bg-indigo-50 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
@@ -96,16 +106,22 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
                                     <span className="text-xs text-slate-400 mt-1">Take a photo</span>
                                 </button>
 
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all group"
+                                <label
+                                    onClick={() => console.log('[DocumentCapture] Upload label clicked')}
+                                    className="flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all group cursor-pointer relative"
                                 >
-                                    <div className="p-4 bg-emerald-50 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                                    <input
+                                        type="file"
+                                        onChange={handleFileUpload}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        accept="image/*"
+                                    />
+                                    <div className="p-4 bg-emerald-50 rounded-2xl mb-4 group-hover:scale-110 transition-transform pointer-events-none">
                                         <Upload size={32} className="text-emerald-600" />
                                     </div>
-                                    <span className="font-bold text-slate-700">Upload File</span>
-                                    <span className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP</span>
-                                </button>
+                                    <span className="font-bold text-slate-700 pointer-events-none">Upload File</span>
+                                    <span className="text-xs text-slate-400 mt-1 pointer-events-none">JPG, PNG, WEBP</span>
+                                </label>
                             </div>
 
                             <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto leading-relaxed">
@@ -122,9 +138,15 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
                                 screenshotFormat="image/jpeg"
                                 className="w-full h-full object-cover"
                                 videoConstraints={{ facingMode: "environment" }}
+                                onUserMediaError={(err) => {
+                                    console.error("Camera Error:", err);
+                                    alert(`Camera failed to load: ${err}`);
+                                    setCapturing(false);
+                                }}
                             />
                             <button
-                                onClick={capture}
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); capture(); }}
                                 className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-indigo-500 flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
                             >
                                 <div className="w-12 h-12 bg-indigo-600 rounded-full"></div>
@@ -137,7 +159,7 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
                             <div className="relative flex-1 bg-slate-900 rounded-2xl overflow-hidden mb-6 shadow-xl border border-white/10 group">
                                 <img src={preview} alt="Preview" className="w-full h-full object-contain" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <button onClick={handleRetake} className="px-6 py-2 bg-white/20 backdrop-blur text-white rounded-full font-bold hover:bg-white/30 transition-colors">
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRetake(); }} className="px-6 py-2 bg-white/20 backdrop-blur text-white rounded-full font-bold hover:bg-white/30 transition-colors">
                                         Click to Retake
                                     </button>
                                 </div>
@@ -145,13 +167,15 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
 
                             <div className="flex gap-4">
                                 <button
-                                    onClick={handleRetake}
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRetake(); }}
                                     className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all"
                                 >
                                     Retake Photo
                                 </button>
                                 <button
-                                    onClick={handleConfirm}
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirm(); }}
                                     className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
                                 >
                                     <Check size={16} /> Process Document
@@ -163,6 +187,7 @@ export const DocumentCapture: React.FC<DocumentCaptureProps> = ({
             </div>
 
             <input
+                id="document-capture-file-input"
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileUpload}

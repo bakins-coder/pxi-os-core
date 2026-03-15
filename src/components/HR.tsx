@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { Employee, Department, EmployeeStatus, PayrollItem, DepartmentMatrix, Role, DepartmentRole, LeaveRequest, LeaveStatus, LeaveType } from '../types';
+import { Employee, Department, EmployeeStatus, PayrollItem, DepartmentMatrix, Role, DepartmentRole, LeaveRequest, LeaveStatus, LeaveType, PerformanceReview, PerformanceMetric } from '../types';
 import { calculatePayrollForEmployee, formatSalary } from '../services/hrUtils';
 import { extractInfoFromCV } from '../services/ai';
 import {
@@ -10,14 +10,20 @@ import {
    Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2, Maximize2, Minimize2, Lock
 } from 'lucide-react';
 
+const generatePayslip = (item: PayrollItem, employee: Employee) => {
+   // Placeholder for PDF generation
+   alert(`Generating payslip for ${employee?.firstName || 'Employee'}`);
+   console.log('Generating Payslip:', item, employee);
+};
+
 const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
    const { settings: org } = useSettingsStore();
    const handlePrint = () => { window.print(); };
 
    return (
       <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
-         <div className="flex flex-col items-center gap-8 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-            <div id="printable-id-card" className="w-full max-w-[340px] h-[540px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0">
+         <div className="flex flex-col items-center gap-6 md:gap-8 max-w-sm w-full scale-[0.85] md:scale-100" onClick={(e) => e.stopPropagation()}>
+            <div id="printable-id-card" className="w-full max-w-[340px] min-h-[580px] bg-white rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col border border-slate-100 relative print:shadow-none print:border-none print:m-0 shrink-0">
                <div className="absolute top-0 left-0 w-full h-40 bg-slate-900 overflow-hidden">
                   <div className="absolute top-[-50%] left-[-20%] w-[150%] h-[150%] bg-gradient-to-br from-indigo-500/20 to-transparent rotate-12"></div>
                </div>
@@ -32,7 +38,7 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
                      <img src={employee.avatar} className="w-full h-full object-cover" alt="profile" />
                   </div>
                </div>
-               <div className="flex-1 mt-6 text-center px-8 flex flex-col justify-between pb-10">
+               <div className="flex-1 mt-4 text-center px-8 flex flex-col justify-between pb-6">
                   <div>
                      <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">{employee.title ? `${employee.title} ` : ''}{employee.firstName}<br />{employee.lastName}</h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 mb-6">{employee.role}</p>
@@ -62,7 +68,7 @@ const DigitalIDCard = ({ employee, onClose }: { employee: Employee, onClose: () 
                   <p className="text-[8px] font-black uppercase tracking-[0.4em] text-[#00ff9d]">Verified Personnel</p>
                </div>
             </div>
-            <div className="flex gap-4 w-full px-4">
+            <div className="flex gap-4 w-full px-4 max-w-[340px]">
                <button onClick={onClose} className="flex-1 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">Dismiss</button>
                <button onClick={handlePrint} className="flex-1 py-4 bg-[#00ff9d] text-slate-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all">
                   <Printer size={18} /> Print
@@ -111,8 +117,22 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
 
    // 4. Helper Functions
    const generateCredentials = () => {
-      const randomTab = Math.floor(1000 + Math.random() * 9000);
-      const newId = `XQ-${randomTab}`;
+      // Sequential Generation proposed: Search for the first available XQ-XXXX slot
+      let counter = 1;
+      let candidateId = '';
+      while (true) {
+         candidateId = `XQ-${counter.toString().padStart(4, '0')}`;
+         // Check if this ID exists in the loaded employees list (checking both camelCase and snake_case properties)
+         const exists = employees.some(e =>
+            (e as any).staffId === candidateId ||
+            (e as any).staff_id === candidateId ||
+            (e.email && e.email.toUpperCase().startsWith(candidateId)) // Extra safety: collision with email prefix
+         );
+         if (!exists) break;
+         counter++;
+      }
+
+      const newId = candidateId;
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       let pass = "";
       for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -156,21 +176,61 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          setStaffId(editingEmployee.staffId || ''); // Load existing if present
          setDefaultPassword('Managed by User'); // Don't show real password for edit
       } else if (isOpen) {
-         // ... (Draft logic) ...
+         // Check for draft on modal open
+         const savedDraft = localStorage.getItem(DRAFT_KEY);
+         if (savedDraft) {
+            try {
+               const draft = JSON.parse(savedDraft);
+               if (window.confirm("Found an unfinished Staff Hiring draft. Restore it?")) {
+                  setFirstName(draft.firstName || '');
+                  setLastName(draft.lastName || '');
+                  setEmail(draft.email || '');
+                  setPhoneNumber(draft.phoneNumber || '');
+                  setAddress(draft.address || '');
+                  setDob(draft.dob || '');
+                  setGender(draft.gender || 'Male');
+                  setDateOfEmployment(draft.dateOfEmployment || new Date().toISOString().split('T')[0]);
+                  setSelectedRoleTitle(draft.selectedRoleTitle || '');
+                  setSalaryNGN(draft.salaryNGN || 0);
+                  setAvatar(draft.avatar || '');
+                  setHealthNotes(draft.healthNotes || '');
+                  setHasDraft(true);
+                  console.log("[HireStaffModal] Draft restored.");
+               } else {
+                  localStorage.removeItem(DRAFT_KEY);
+               }
+            } catch (e) {
+               console.error("Failed to parse draft", e);
+            }
+         }
          if (!staffId) generateCredentials(); // Generate if new
       }
    }, [editingEmployee, isOpen]);
 
-   // Auto-Save Draft
+   // Auto-Save Draft (Debounced)
    useEffect(() => {
       if (!isOpen || editingEmployee || isSubmitting) return;
-      const formData = { firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes };
-      const isEmpty = !firstName && !lastName && !email && !selectedRoleTitle;
-      if (!isEmpty) {
-         localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-         setHasDraft(true);
-      }
-   }, [firstName, lastName, email, phoneNumber, address, dob, gender, dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes, isOpen, editingEmployee, isSubmitting]);
+
+      const timer = setTimeout(() => {
+         const formData = {
+            firstName, lastName, email, phoneNumber, address, dob, gender,
+            dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes
+         };
+         const isEmpty = !firstName && !lastName && !email && !selectedRoleTitle;
+
+         if (!isEmpty) {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+            setHasDraft(true);
+            console.log("[HireStaffModal] Draft auto-saved.");
+         }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+   }, [
+      firstName, lastName, email, phoneNumber, address, dob, gender,
+      dateOfEmployment, selectedRoleTitle, salaryNGN, avatar, healthNotes,
+      isOpen, editingEmployee, isSubmitting
+   ]);
 
 
 
@@ -182,7 +242,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
 
    const handleHire = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!firstName || !lastName || !email || !selectedRoleTitle) return;
+      if (!firstName || !lastName || !selectedRoleTitle) return;
       setIsSubmitting(true);
 
       // Gender-aware avatar generation
@@ -194,8 +254,14 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${firstName}-${lastName}${genderParams}`;
       }
 
+      // If no email provided, generate a system email from Staff ID so they can still log in
+      let finalEmail = email;
+      if (!finalEmail && staffId) {
+         finalEmail = `${staffId.toLowerCase()}@xquisite.local`;
+      }
+
       const employeeData = {
-         firstName, lastName, title, email, phoneNumber, address, dob, gender, dateOfEmployment,
+         firstName, lastName, title, email: finalEmail, phoneNumber, address, dob, gender, dateOfEmployment,
          role: selectedRoleTitle as any, salaryCents: salaryNGN * 100, avatar: avatarUrl, healthNotes,
          staffId: staffId // Save the ID
       };
@@ -206,13 +272,19 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
          onClose();
       }
       else {
-         const addedEmployee = await addEmployee(employeeData);
-         const created = { ...addedEmployee, _tempPassword: defaultPassword }; // Hack to pass password to ID card
-         setIsSubmitting(false);
-         setIdGenerated(created);
-         // Clear form inputs immediately so they don't persist on next open
-         localStorage.removeItem(DRAFT_KEY);
-         clearInputs();
+         try {
+            const addedEmployee = await addEmployee(employeeData);
+            const created = { ...addedEmployee, _tempPassword: defaultPassword }; // Hack to pass password to ID card
+            setIsSubmitting(false);
+            setIdGenerated(created);
+            // Clear form inputs immediately so they don't persist on next open
+            localStorage.removeItem(DRAFT_KEY);
+            clearInputs();
+         } catch (err: any) {
+            console.error("Hiring Failed:", err);
+            alert(`Failed to hire staff: ${err.message || err}`);
+            setIsSubmitting(false);
+         }
       }
    };
 
@@ -255,14 +327,14 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                   <h3 className="text-2xl font-black uppercase tracking-tighter">Extracting CV Data...</h3>
                </div>
             )}
-            <div className="p-6 md:p-10 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+            <div className="p-5 md:p-10 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
                <div className="flex items-center gap-3 md:gap-6 min-w-0">
                   <div className="hidden sm:block"><GripHorizontal className="text-slate-300" /></div>
                   <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg shrink-0">{editingEmployee ? <UserIcon size={24} /> : <UserPlus size={24} />}</div>
                   <div className="min-w-0">
-                     <h2 className="text-xl md:text-3xl font-black text-slate-800 uppercase tracking-tighter truncate">{editingEmployee ? 'Update Profile' : 'Hire Staff'}</h2>
+                     <h2 className="text-lg md:text-3xl font-black text-slate-800 uppercase tracking-tighter truncate">{editingEmployee ? 'Refine Profile' : 'Onboard Talent'}</h2>
                      <div className="flex items-center gap-2">
-                        <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 truncate">Organizational Registry</p>
+                        <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1 truncate">Personnel Node Registry</p>
                         {hasDraft && !editingEmployee && <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 flex items-center gap-1"><RefreshCw size={10} className="animate-spin" /> Draft Restored</span>}
                      </div>
                   </div>
@@ -275,12 +347,12 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                         <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={handleCVUpload} />
                      </>
                   )}
-                  <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 md:p-4 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} /></button>
                </div>
             </div>
-            <form id="hire-staff-form" onSubmit={handleHire} className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 overflow-y-auto flex-1 scrollbar-thin">
-               <div className="space-y-8 md:space-y-10">
-                  <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3"><h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Profile Identity</h3><div className="h-px flex-1 bg-indigo-50"></div></div>
+            <form id="hire-staff-form" onSubmit={handleHire} className="p-5 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 overflow-y-auto flex-1 scrollbar-thin pb-32 md:pb-10">
+               <div className="space-y-6 md:space-y-10">
+                  <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3"><h3 className="text-[10px] md:text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Profile Identity</h3><div className="h-px flex-1 bg-indigo-50"></div></div>
                   <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8 p-6 md:p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-200 border-dashed group hover:border-indigo-200 transition-all">
                      <div className="w-24 h-24 rounded-2xl bg-white border-2 border-slate-200 overflow-hidden shadow-sm shrink-0">{avatar ? <img src={avatar} className="w-full h-full object-cover" alt="preview" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><UserIcon size={40} /></div>}</div>
                      <div className="space-y-3 w-full">
@@ -308,7 +380,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                   <div className="space-y-3"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-1 block">Address</label><textarea required rows={2} className="w-full p-5 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Primary residence..." value={address} onChange={e => setAddress(e.target.value)} /></div>
                   <div className="space-y-3"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-1 block">Email & Phone</label>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input required type="email" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-900 font-black outline-none focus:border-indigo-500 transition-all" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+                        <input type="email" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-900 font-black outline-none focus:border-indigo-500 transition-all" placeholder="Email (Optional)" value={email} onChange={e => setEmail(e.target.value)} />
                         <input required type="tel" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" placeholder="Phone" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
                      </div>
                   </div>
@@ -351,7 +423,7 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                </div>
             </form>
             <div className="p-6 md:p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-4 md:gap-6 shrink-0">
-               <button type="button" onClick={onClose} className="flex-1 py-4 md:py-6 rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-500 hover:bg-white hover:text-slate-800 border-2 border-transparent hover:border-slate-200 transition-all bg-white shadow-sm">Abort</button>
+               <button type="button" onClick={onClose} className="flex-1 py-4 md:py-6 rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-400 hover:bg-white hover:text-slate-600 border-2 border-transparent hover:border-slate-200 transition-all bg-white shadow-sm">Cancel</button>
                <button type="submit" form="hire-staff-form" disabled={isSubmitting} className="flex-2 py-4 md:py-6 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] md:text-[11px] shadow-2xl flex items-center justify-center gap-3 transition-all hover:brightness-110 active:scale-95 group shrink-0 min-w-[160px] md:min-w-[240px]">{isSubmitting ? <Activity className="animate-spin" size={20} /> : <ShieldCheck size={20} className="text-[#00ff9d] group-hover:scale-110 transition-transform" />}{isSubmitting ? 'Onboarding...' : editingEmployee ? 'Update' : 'Hire Staff'}</button>
             </div>
          </div>
@@ -366,13 +438,23 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
    const [reason, setReason] = useState('');
    const [isMaximized, setIsMaximized] = useState(false);
 
+   const currentUser = useAuthStore(state => state.user);
    const applyForLeave = useDataStore(state => state.applyForLeave);
 
    if (!isOpen) return null;
 
    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      applyForLeave({ type, startDate, endDate, reason });
+      if (!currentUser) return;
+
+      applyForLeave({
+         type,
+         startDate,
+         endDate,
+         reason,
+         employeeId: currentUser.id,
+         employeeName: currentUser.name || 'Unknown Staff'
+      });
       onClose();
       setType(LeaveType.ANNUAL); setStartDate(''); setEndDate(''); setReason('');
    };
@@ -381,31 +463,144 @@ const LeaveModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
       <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
             onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[3.5rem] max-h-[90vh]'}`}
+            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 transition-all duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-[2rem] md:rounded-[3.5rem] max-h-[90vh]'}`}
          >
-            <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80">
+            <div className="p-6 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/80 sticky top-0 z-20">
                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg"><Plane size={24} /></div>
-                  <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">Request Absence</h2><p className="text-[10px] text-slate-500 font-black uppercase mt-1">Personnel Node Registry</p></div>
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg shrink-0"><Plane size={20} className="md:w-6 md:h-6" /></div>
+                  <div><h2 className="text-lg md:text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">Request Absence</h2><p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-1">Personnel Node Registry</p></div>
                </div>
                <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-2xl transition-all shadow-sm">
-                     {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 md:p-3 bg-white border border-slate-100 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
+                     {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                   </button>
-                  <button onClick={onClose} className="p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={18} /></button>
                </div>
             </div>
-            <form onSubmit={handleSubmit} className="p-10 space-y-8 flex-1 overflow-y-auto">
-               <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Leave Classification</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={type} onChange={e => setType(e.target.value as LeaveType)}>{Object.values(LeaveType).map(t => <option key={t} value={t}>{t} Leave</option>)}</select></div>
-               <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Commencement</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-                  <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Resumption</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+            <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto pb-32 md:pb-10">
+               <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Leave Classification</label>                     <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value as any)}>{Object.values(LeaveType).map(t => <option key={t} value={t}>{t} Leave</option>)}</select></div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Commencement</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                  <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Resumption</label><input type="date" required className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
                </div>
-               <div><label className="text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Justification</label><textarea required rows={3} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Context..." value={reason} onChange={e => setReason(e.target.value)} /></div>
+               <div><label className="text-[9px] md:text-[11px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Justification</label><textarea required rows={3} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500 transition-all resize-none placeholder:text-slate-300" placeholder="Context..." value={reason} onChange={e => setReason(e.target.value)} /></div>
             </form>
-            <div className="p-10 border-t-2 border-slate-100 bg-slate-50 flex gap-4">
-               <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-800 transition-all">Abort</button>
-               <button type="submit" onClick={handleSubmit} className="flex-2 py-5 bg-slate-950 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-2xl active:scale-95 transition-all">Submit Application</button>
+            <div className="p-6 md:p-10 border-t-2 border-slate-100 bg-slate-50 flex flex-col md:flex-row gap-3 md:gap-4 sticky bottom-0 z-20">
+               <button type="button" onClick={onClose} className="py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-[11px] text-slate-400 hover:text-slate-600 transition-all order-2 md:order-1">Cancel</button>
+               <button type="submit" onClick={handleSubmit} className="py-4 md:py-5 bg-slate-950 text-white rounded-xl md:rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-[11px] shadow-2xl active:scale-95 transition-all order-1 md:order-2">Submit Application</button>
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const SetupRoleKPIsModal = ({ isOpen, onClose, roleTitle, currentKPIs }: { isOpen: boolean, onClose: () => void, roleTitle: string, currentKPIs?: PerformanceMetric[] }) => {
+   const [kpis, setKpis] = useState<Partial<PerformanceMetric>[]>(currentKPIs || []);
+   const updateRoleKPIs = useDataStore(s => s.updateRoleKPIs);
+   const [isSaving, setIsSaving] = useState(false);
+
+   const addKPI = () => {
+      setKpis([...kpis, { name: '', weight: 10, description: '', type: 'KPI', target: 'Exceeding Expectations' }]);
+   };
+
+   const removeKPI = (idx: number) => {
+      setKpis(kpis.filter((_, i) => i !== idx));
+   };
+
+   const handleSave = async () => {
+      setIsSaving(true);
+      try {
+         await updateRoleKPIs(roleTitle, kpis as PerformanceMetric[]);
+         onClose();
+      } catch (err) {
+         console.error(err);
+         alert("Failed to save KPIs");
+      } finally {
+         setIsSaving(false);
+      }
+   };
+
+   if (!isOpen) return null;
+
+   const totalWeight = kpis.reduce((sum, k) => sum + (k.weight || 0), 0);
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-8 shrink-0">
+               <div>
+                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">KPI Matrix: {roleTitle}</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Define default performance indicators</p>
+               </div>
+               <button onClick={onClose} className="p-3 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
+               {kpis.map((kpi, idx) => (
+                  <div key={idx} className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 space-y-4 relative group">
+                     <button onClick={() => removeKPI(idx)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-3">
+                           <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-1 block">Indicator Name</label>
+                           <input
+                              className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl font-bold text-sm outline-none focus:border-indigo-500"
+                              value={kpi.name}
+                              onChange={e => setKpis(kpis.map((k, i) => i === idx ? { ...k, name: e.target.value } : k))}
+                              placeholder="e.g. Service Execution"
+                           />
+                        </div>
+                        <div>
+                           <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-1 block">Weight (%)</label>
+                           <input
+                              type="number"
+                              className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl font-black text-sm outline-none focus:border-indigo-500 text-center"
+                              value={kpi.weight}
+                              onChange={e => setKpis(kpis.map((k, i) => i === idx ? { ...k, weight: parseInt(e.target.value) || 0 } : k))}
+                           />
+                        </div>
+                     </div>
+                     <div>
+                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-1 block">Expected Target / Requirement</label>
+                        <textarea
+                           rows={2}
+                           className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl font-bold text-xs outline-none focus:border-indigo-500 resize-none"
+                           value={kpi.description}
+                           onChange={e => setKpis(kpis.map((k, i) => i === idx ? { ...k, description: e.target.value } : k))}
+                           placeholder="Describe the standard for 'Exceeding Expectations'..."
+                        />
+                     </div>
+                  </div>
+               ))}
+
+               {kpis.length === 0 && (
+                  <div className="py-20 text-center border-4 border-dashed border-slate-100 rounded-[3rem]">
+                     <p className="font-black uppercase text-slate-300 tracking-widest text-xs">No KPIs Defined Yet</p>
+                  </div>
+               )}
+            </div>
+
+            <div className="pt-8 mt-4 border-t border-slate-100 shrink-0 space-y-6">
+               <div className="flex justify-between items-center px-4">
+                  <div className="flex items-center gap-2">
+                     <div className={`w-3 h-3 rounded-full ${totalWeight === 100 ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
+                     <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Total Weight: {totalWeight}%</span>
+                  </div>
+                  <button onClick={addKPI} className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-widest hover:text-indigo-800 transition-colors">
+                     <Plus size={16} /> Add Indicator
+                  </button>
+               </div>
+
+               <div className="flex gap-4">
+                  <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+                  <button
+                     onClick={handleSave}
+                     disabled={isSaving || totalWeight !== 100}
+                     className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px] disabled:opacity-50 disabled:scale-100"
+                  >
+                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                     Save KPI Matrix
+                  </button>
+               </div>
             </div>
          </div>
       </div>
@@ -416,7 +611,11 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
    const adjustBandSalary = useDataStore(state => state.adjustBandSalary);
    const [adjustingBand, setAdjustingBand] = useState<number | null>(null);
    const [percentChange, setPercentChange] = useState<number>(0);
+   const [setupRoleTitle, setSetupRoleTitle] = useState<string | null>(null);
+   const [currentKPIs, setCurrentKPIs] = useState<PerformanceMetric[]>([]);
+
    const handleAdjust = () => { if (adjustingBand !== null) { adjustBandSalary(adjustingBand, percentChange); setAdjustingBand(null); setPercentChange(0); } };
+
    return (
       <div className="space-y-8 animate-in slide-in-from-bottom-4 w-full">
          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6 bg-white/5 p-6 md:p-8 rounded-[2.5rem] border border-white/5">
@@ -430,7 +629,22 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
                   <div className="p-8 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto">
                      {dept.roles.sort((a, b) => b.band - a.band).map((role, idx) => (
                         <div key={idx} className="relative pl-10 group/role"><div className="absolute left-0 top-0 bottom-0 w-px bg-white/10"></div><div className="absolute left-[-5px] top-2 w-2.5 h-2.5 rounded-full bg-slate-800 border-2 border-slate-900 group-hover/role:bg-[#00ff9d] shadow-lg"></div>
-                           <div className="flex justify-between items-start mb-2 gap-2"><div><h4 className="text-[13px] font-black text-slate-200 uppercase tracking-tight leading-none mb-1">{role.title}</h4><p className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">Career Path Unit</p></div><span className="bg-slate-950 px-2.5 py-1 rounded text-[8px] md:text-[9px] font-black text-[#00ff9d] border border-[#00ff9d]/20 uppercase shrink-0">Band {role.band}</span></div>
+                           <div className="flex justify-between items-start mb-2 gap-2">
+                              <div>
+                                 <h4 className="text-[13px] font-black text-slate-200 uppercase tracking-tight leading-none mb-1">{role.title}</h4>
+                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">Career Path Unit</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                 <span className="bg-slate-950 px-2.5 py-1 rounded text-[8px] md:text-[9px] font-black text-[#00ff9d] border border-[#00ff9d]/20 uppercase shrink-0">Band {role.band}</span>
+                                 <button
+                                    onClick={() => { setSetupRoleTitle(role.title); setCurrentKPIs(role.kpis || []); }}
+                                    className="p-2 bg-white/5 hover:bg-[#00ff9d]/20 text-slate-500 hover:text-[#00ff9d] rounded-lg border border-white/5 transition-all shadow-sm flex items-center gap-1.5"
+                                 >
+                                    <Sparkles size={12} />
+                                    <span className="text-[8px] font-black uppercase tracking-wider">KPIs</span>
+                                 </button>
+                              </div>
+                           </div>
                            <div className="space-y-2"><div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-indigo-600 opacity-50 shadow-[0_0_10px_rgba(79,70,229,0.5)]" style={{ width: `${(role.band / 6) * 100}%` }}></div></div><div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter gap-1"><span>₦{formatSalary(role.salaryRange.low)}</span><span className="text-indigo-400/80 truncate">₦{formatSalary(role.salaryRange.mid)} Mid</span><span>₦{formatSalary(role.salaryRange.high)}</span></div></div>
                         </div>
                      ))}
@@ -441,14 +655,432 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
          {adjustingBand && (
             <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl animate-in zoom-in duration-300">
                <div className="bg-white rounded-[3.5rem] p-10 md:p-12 max-w-sm w-full shadow-2xl border border-slate-100">
-                  <div className="flex justify-between items-start mb-8"><div><h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Adjust Band {adjustingBand}</h3></div><button onClick={() => setAdjustingBand(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X size={20} /></button></div>
+                  <div className="flex justify-between items-start mb-8"><div><h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Adjust Band {adjustingBand}</h3></div><button onClick={() => setAdjustingBand(null)} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button></div>
                   <div className="space-y-8"><div><label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-3 block">Percentage Multiplier (%)</label><div className="relative"><input type="number" className="w-full p-6 bg-slate-50 border-2 border-slate-200 rounded-[2rem] font-black text-4xl text-slate-900 outline-none text-center" value={percentChange} onChange={e => setPercentChange(parseFloat(e.target.value) || 0)} /><span className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-300 font-black text-2xl">%</span></div></div>
                      <div className="p-6 bg-amber-50 rounded-2xl flex items-start gap-4 border border-amber-100 shadow-sm"><Info className="text-amber-600 shrink-0 mt-1" size={20} /><p className="text-[10px] font-bold text-amber-900 leading-relaxed uppercase">Strategic Impact: Updating all roles in this tier.</p></div>
-                     <div className="grid grid-cols-1 gap-4"><button onClick={handleAdjust} className="w-full py-5 md:py-6 bg-slate-950 text-[#00ff9d] rounded-[2rem] font-black uppercase text-[10px] md:text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"><ShieldCheck size={20} /> Authorize Sync</button></div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <button onClick={() => setAdjustingBand(null)} className="py-5 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-50 rounded-[2rem] transition-all">Cancel</button>
+                        <button onClick={handleAdjust} className="w-full py-5 md:py-6 bg-slate-950 text-[#00ff9d] rounded-[2rem] font-black uppercase text-[10px] md:text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"><ShieldCheck size={20} /> Authorize Sync</button>
+                     </div>
                   </div>
                </div>
             </div>
          )}
+         <SetupRoleKPIsModal
+            isOpen={!!setupRoleTitle}
+            onClose={() => setSetupRoleTitle(null)}
+            roleTitle={setupRoleTitle || ''}
+            currentKPIs={currentKPIs}
+         />
+      </div>
+   );
+};
+
+const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+   const [year, setYear] = useState(new Date().getFullYear());
+   const [quarter, setQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4'>('Q1');
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
+   const employees = useDataStore(s => s.employees);
+   const departmentMatrix = useDataStore(s => s.departmentMatrix);
+   const addPerformanceReview = useDataStore(s => s.addPerformanceReview);
+
+   if (!isOpen) return null;
+
+   const getDefaultKPIs = (role: Role): PerformanceMetric[] => {
+      // 1. Try to find custom KPIs in Department Matrix first
+      const roleStr = String(role).toLowerCase();
+      let templateKPIs: PerformanceMetric[] = [];
+
+      for (const dept of departmentMatrix) {
+         const foundRole = dept.roles.find(r => r.title.toLowerCase() === roleStr);
+         if (foundRole && foundRole.kpis && foundRole.kpis.length > 0) {
+            templateKPIs = foundRole.kpis;
+            break;
+         }
+      }
+
+      if (templateKPIs.length > 0) {
+         return templateKPIs.map(kpi => ({
+            ...kpi,
+            type: 'KPI',
+            target: kpi.target || 'Exceeding Expectations',
+            actual: '',
+            employeeScore: 0,
+            supervisorScore: 0,
+            finalScore: 0,
+            comments: ''
+         }));
+      }
+
+      // 2. Fallback to hardcoded defaults
+      const baseKPIs = [
+         { name: 'Professionalism & Conduct', weight: 20, description: 'Adherence to company culture and behavioral standards.' },
+         { name: 'Attendance & Reliability', weight: 10, description: 'Consistency in meeting work hours and scheduled shifts.' },
+         { name: 'Integrity & Trust', weight: 10, description: 'Supervisor-only metric for character assessment.', isSupervisorOnly: true }
+      ];
+
+      let roleSpecific: { name: string, weight: number, description: string, isSupervisorOnly?: boolean }[] = [];
+
+      if (roleStr.includes('chef') || roleStr.includes('kitchen') || roleStr.includes('cook')) {
+         roleSpecific = [
+            { name: 'Cooking Quality & Taste', weight: 30, description: 'Ensuring consistent flavor profiles and presentation.' },
+            { name: 'Food Safety & Hygiene', weight: 30, description: 'Maintaining station cleanliness and food storage standards.' }
+         ];
+      } else if (roleStr.includes('finance') || roleStr.includes('cfo')) {
+         roleSpecific = [
+            { name: 'Data Accuracy', weight: 30, description: 'Precision in record keeping and financial entries.' },
+            { name: 'Audit Compliance', weight: 30, description: 'Ensuring all transactions match organizational protocols.', isSupervisorOnly: true }
+         ];
+      } else if (roleStr.includes('sales') || roleStr.includes('marketing') || roleStr.includes('deal')) {
+         roleSpecific = [
+            { name: 'Lead Conversion Rate', weight: 30, description: 'Efficiency in turning inquiries into confirmed orders.' },
+            { name: 'Client Retention', weight: 30, description: 'Ability to maintain long-term relationships with marquee accounts.', isSupervisorOnly: true }
+         ];
+      } else if (roleStr.includes('logistics') || roleStr.includes('driver')) {
+         roleSpecific = [
+            { name: 'Delivery Timeliness', weight: 30, description: 'Meeting delivery windows for event setups and ingredient pickups.' },
+            { name: 'Vehicle Maintenance', weight: 30, description: 'Proactive scheduling and reporting of vehicle service needs.', isSupervisorOnly: true }
+         ];
+      } else {
+         roleSpecific = [
+            { name: 'Task Completion Rate', weight: 30, description: 'General efficiency in completing assigned responsibilities.' },
+            { name: 'Self-Improvement Dir', weight: 30, description: 'Managerial assessment of professional growth trajectory.', isSupervisorOnly: true }
+         ];
+      }
+
+      return [...baseKPIs, ...roleSpecific].map(kpi => ({
+         ...kpi,
+         type: 'KPI',
+         target: 'Exceeding Expectations',
+         actual: '',
+         employeeScore: 0,
+         supervisorScore: 0,
+         finalScore: 0,
+         comments: ''
+      }));
+   };
+
+   const handleInitializeCycle = async () => {
+      setIsSubmitting(true);
+      const activeEmployees = employees.filter(e => e.status === EmployeeStatus.ACTIVE);
+
+      try {
+         for (const emp of activeEmployees) {
+            await addPerformanceReview({
+               employeeId: emp.id,
+               year,
+               quarter,
+               metrics: getDefaultKPIs(emp.role),
+               status: 'Draft',
+               totalScore: 0
+            });
+         }
+         alert(`Success: Performance cycle for ${quarter} ${year} initiated for ${activeEmployees.length} employees.`);
+         onClose();
+      } catch (error) {
+         console.error("Cycle Init failed:", error);
+         alert("Failed to initialize performance cycle. Check logs.");
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-8">
+            <div className="flex justify-between items-center">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-amber-400 shadow-lg">
+                     <Sparkles size={24} />
+                  </div>
+                  <div>
+                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">New Assessment Cycle</h3>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">HR Performance Node</p>
+                  </div>
+               </div>
+               <button onClick={onClose} className="p-3 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-6">
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 block">Cycle Year</label>
+                     <select
+                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500"
+                        value={year}
+                        onChange={e => setYear(parseInt(e.target.value))}
+                     >
+                        {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                     </select>
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 block">Quarter</label>
+                     <select
+                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:border-indigo-500"
+                        value={quarter}
+                        onChange={e => setQuarter(e.target.value as any)}
+                     >
+                        <option value="Q1">Q1 (Jan-Mar)</option>
+                        <option value="Q2">Q2 (Apr-Jun)</option>
+                        <option value="Q3">Q3 (Jul-Sep)</option>
+                        <option value="Q4">Q4 (Oct-Dec)</option>
+                     </select>
+                  </div>
+               </div>
+
+               <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-100 space-y-2 shadow-sm">
+                  <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-1">
+                     <Info size={16} /> Automated KPI Assignment
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 leading-relaxed uppercase">
+                     Total personnel in roster: <span className="text-indigo-600">{employees.filter(e => e.status === EmployeeStatus.ACTIVE).length}</span>. Each will be assigned 4 custom KPIs based on their career path unit.
+                  </p>
+               </div>
+            </div>
+
+            <div className="flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+               <button
+                  onClick={handleInitializeCycle}
+                  disabled={isSubmitting}
+                  className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px]"
+               >
+                  {isSubmitting ? <Activity className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                  {isSubmitting ? 'Initializing...' : 'Authorize Cycle'}
+               </button>
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const PerformanceReviewAssessmentModal = ({ isOpen, onClose, reviewId }: { isOpen: boolean, onClose: () => void, reviewId: string | null }) => {
+   const review = useDataStore(s => s.performanceReviews.find(r => r.id === reviewId));
+   const employee = useDataStore(s => s.employees.find(e => e.id === review?.employeeId));
+   const submitSelfAssessment = useDataStore(s => s.submitSelfAssessment);
+   const submitSupervisorReview = useDataStore(s => s.submitSupervisorReview);
+   const currentUser = useAuthStore(s => s.user);
+   const [scores, setScores] = useState<{ [key: number]: number }>({});
+   const [overrideReason, setOverrideReason] = useState('');
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
+   const isHRManagerial = useMemo(() => {
+      const role = String(currentUser?.role || '').toLowerCase();
+      const perms = currentUser?.permissionTags || [];
+      const hasHRAuth = perms.includes('*') || perms.includes('access:hr') || perms.includes('access:performance') || perms.includes('admin');
+
+      const isFin = role.includes('finance') || role.includes('cfo');
+      const isExec = role.includes('ceo') || role.includes('chairman') || role.includes('managing director') || role.includes('md') || role.includes('director');
+      const isAdminOrHR = role.includes('admin') || role === 'hr' || role.includes('hr manager');
+
+      return isExec || isFin || isAdminOrHR || !!currentUser?.isSuperAdmin || hasHRAuth;
+   }, [currentUser]);
+
+   const isOwnReview = currentUser?.id === review?.employeeId;
+
+   useEffect(() => {
+      if (review) {
+         const initialScores: { [key: number]: number } = {};
+         review.metrics.forEach((m, idx) => {
+            if (review.status === 'Draft' || review.status === 'Employee_Review') {
+               initialScores[idx] = m.employeeScore;
+            } else {
+               initialScores[idx] = m.supervisorScore;
+            }
+         });
+         setScores(initialScores);
+      }
+   }, [review]);
+
+   if (!isOpen || !review || !employee) return null;
+
+   const handleSubmit = async () => {
+      setIsSubmitting(true);
+      try {
+         const isManagerialFinalize = isHRManagerial && !isOwnReview;
+
+         if (isManagerialFinalize) {
+            // Managers can finalize at any stage (Draft, Employee_Review, Supervisor_Review, or even Finalized for edits)
+            await submitSupervisorReview(review.id, scores, overrideReason);
+            alert('Appraisal finalized successfully by management.');
+         } else if (review.status === 'Draft' || review.status === 'Employee_Review') {
+            await submitSelfAssessment(review.id, scores);
+            alert('Self-assessment submitted successfully.');
+         } else if (review.status === 'Supervisor_Review') {
+            await submitSupervisorReview(review.id, scores, overrideReason);
+            alert('Supervisor review finalized successfully.');
+         }
+         onClose();
+      } catch (err) {
+         console.error(err);
+         alert('Submission failed.');
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[3rem] p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col gap-8">
+            <div className="flex justify-between items-start">
+               <div className="flex items-center gap-5">
+                  <div className="relative">
+                     <img src={employee.avatar} className="w-16 h-16 rounded-[1.5rem] bg-slate-100 object-cover border-2 border-slate-50 shadow-md" alt="avatar" />
+                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></div>
+                  </div>
+                  <div>
+                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">{employee.firstName} {employee.lastName}</h3>
+                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{review.quarter} {review.year} Assessment</p>
+                  </div>
+               </div>
+               <button onClick={onClose} className="p-4 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-6">
+               <div className="p-6 bg-slate-950 rounded-[2rem] text-white flex justify-between items-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                  <div>
+                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">Current Protocol</p>
+                     <h4 className="text-lg font-black uppercase tracking-tight text-[#00ff9d]">
+                        {review.status === 'Draft' ? 'Employee Self-Assessment' : review.status === 'Supervisor_Review' ? 'Supervisor Final Review' : 'Finalized Protocol'}
+                     </h4>
+                  </div>
+                  <div className="px-5 py-2.5 bg-white/10 rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest text-[#00ff9d]">
+                     {review.status.replace('_', ' ')}
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  {review.metrics.map((metric, idx) => {
+                     const canEdit = (isOwnReview && (review.status === 'Draft' || review.status === 'Employee_Review') && !metric.isSupervisorOnly) ||
+                        (isHRManagerial && !isOwnReview && (review.status !== 'Finalized' || review.status === 'Finalized')); // Managers can always edit if it's not their own review
+
+                     if (metric.isSupervisorOnly && isOwnReview && !isHRManagerial) return null;
+
+                     return (
+                        <div key={idx} className={`p-6 bg-slate-50 rounded-[2rem] border-2 transition-all ${canEdit ? 'border-indigo-100 bg-white shadow-md' : 'border-transparent'}`}>
+                           <div className="flex justify-between items-start mb-4">
+                              <div className="flex-1 pr-4">
+                                 <div className="flex items-center gap-3 mb-1">
+                                    <h5 className="font-black text-slate-900 uppercase text-xs">{metric.name}</h5>
+                                    {metric.isSupervisorOnly && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md text-[8px] font-black uppercase border border-amber-100">Supervisor Only</span>}
+                                 </div>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">{metric.description}</p>
+                              </div>
+                              <div className="text-right">
+                                 <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Weight</p>
+                                 <p className="text-sm font-black text-slate-900">{metric.weight}%</p>
+                              </div>
+                           </div>
+
+                           <div className="flex items-center gap-4">
+                              {[1, 2, 3, 4].map(score => (
+                                 <button
+                                    key={score}
+                                    disabled={!canEdit}
+                                    onClick={() => setScores(p => ({ ...p, [idx]: score }))}
+                                    className={`flex-1 h-12 rounded-xl font-black transition-all flex items-center justify-center border-2 ${scores[idx] === score
+                                       ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg scale-105'
+                                       : canEdit
+                                          ? 'bg-white border-slate-100 text-slate-400 hover:border-indigo-300'
+                                          : 'bg-slate-50 border-transparent text-slate-200 cursor-not-allowed'
+                                       }`}
+                                 >
+                                    {score}
+                                 </button>
+                              ))}
+                           </div>
+                           <div className="flex justify-between mt-3 px-1">
+                              <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Ineffective</span>
+                              <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Exemplary</span>
+                           </div>
+                        </div>
+                     );
+                  })}
+               </div>
+
+               {review.status !== 'Finalized' && isHRManagerial && !isOwnReview && (
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-4 block">Managerial Overrides & Notes</label>
+                     <textarea
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] p-5 font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 transition-all min-h-[120px]"
+                        placeholder="Context for final scoring adjustments..."
+                        value={overrideReason}
+                        onChange={e => setOverrideReason(e.target.value)}
+                     />
+                  </div>
+               )}
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 pt-4 mt-auto border-t border-slate-100">
+               <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-2xl transition-all order-2 md:order-1">Discard</button>
+               {(review.status === 'Draft' || review.status === 'Employee_Review' || review.status === 'Supervisor_Review' || (isHRManagerial && !isOwnReview)) && (
+                  <button
+                     onClick={handleSubmit}
+                     disabled={isSubmitting}
+                     className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px] order-1 md:order-2"
+                  >
+                     {isSubmitting ? <Activity className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
+                     {isSubmitting ? 'Finalizing...' : (isHRManagerial && !isOwnReview) ? 'Finalize Appraisal' : review.status === 'Supervisor_Review' ? 'Finalize Appraisal' : 'Submit My Appraisal'}
+                  </button>
+               )}
+            </div>
+         </div>
+      </div>
+   );
+};
+
+const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, onClose: () => void, employeeId: string }) => {
+   const [amount, setAmount] = useState('');
+   const [reason, setReason] = useState('');
+   const addRequisition = useDataStore(s => s.addRequisition);
+   const user = useAuthStore(s => s.user);
+
+   const handleSubmit = () => {
+      const cents = parseFloat(amount) * 100;
+      if (!cents || !reason) return;
+
+      addRequisition({
+         id: crypto.randomUUID(),
+         type: 'Loan',
+         category: 'Financial',
+         itemName: 'Salary Advance Request',
+         quantity: 1,
+         pricePerUnitCents: cents,
+         totalAmountCents: cents,
+         requestorId: employeeId || user?.id || 'unknown',
+         status: 'Pending',
+         notes: reason
+      });
+      onClose();
+      alert('Loan request submitted for approval.');
+   };
+
+   if (!isOpen) return null;
+
+   return (
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={onClose}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 w-full max-w-md shadow-2xl space-y-6">
+            <div className="flex justify-between items-center bg-slate-50/50 -mx-6 -mt-6 p-6 md:mx-0 md:mt-0 md:p-0 md:bg-transparent rounded-t-[2rem]">
+               <h3 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight">Request Advance</h3>
+               <button onClick={onClose} className="p-2 md:p-2 bg-white md:bg-slate-50 border border-slate-100 md:border-transparent hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+            <div className="space-y-4">
+               <div>
+                  <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required (₦)</label>
+                  <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-xl md:text-2xl text-slate-900 outline-none focus:border-indigo-500" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+               </div>
+               <div>
+                  <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Reason / Context</label>
+                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none focus:border-indigo-500 min-h-[100px]" placeholder="Briefly explain the need..." value={reason} onChange={e => setReason(e.target.value)}></textarea>
+               </div>
+            </div>
+            <div className="flex flex-col md:flex-row gap-3">
+               <button onClick={onClose} className="py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 rounded-xl transition-all order-2 md:order-1">Cancel</button>
+               <button onClick={handleSubmit} className="flex-1 py-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl order-1 md:order-2">Submit Request</button>
+            </div>
+         </div>
       </div>
    );
 };
@@ -457,48 +1089,111 @@ export const HR = () => {
    const employees = useDataStore(state => state.employees);
    const departmentMatrix = useDataStore(state => state.departmentMatrix);
    const leaveRequests = useDataStore(state => state.leaveRequests);
+   const requisitions = useDataStore(state => state.requisitions);
    const approveLeave = useDataStore(state => state.approveLeave);
    const rejectLeave = useDataStore(state => state.rejectLeave);
+   const performanceReviews = useDataStore(state => state.performanceReviews);
    const currentUser = useAuthStore(state => state.user);
+   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
+
+   // Enrich leave requests with up-to-date employee names
+   const enrichedLeaveRequests = useMemo(() => {
+      return leaveRequests.map(req => {
+         // 1. Priority: If it's the current user, use their fresh session name
+         if (currentUser && req.employeeId === currentUser.id && currentUser.name) {
+            return { ...req, employeeName: currentUser.name };
+         }
+
+         // 2. Lookup from Employee List
+         const emp = employees.find(e => e.id === req.employeeId);
+         let displayName = req.employeeName || '';
+
+         if (emp) {
+            // Check for valid names (not null, not undefined, not string "undefined")
+            const validFirst = emp.firstName && emp.firstName.toLowerCase() !== 'undefined' ? emp.firstName : '';
+            const validLast = emp.lastName && emp.lastName.toLowerCase() !== 'undefined' ? emp.lastName : '';
+
+            if (validFirst && validLast) {
+               displayName = `${validFirst} ${validLast}`;
+            } else if (validFirst) {
+               displayName = validFirst;
+            } else if ((emp as any).name && (emp as any).name.toLowerCase() !== 'undefined') {
+               displayName = (emp as any).name;
+            }
+         }
+
+         // 3. Cleanup Legacy Bad Data
+         if (!displayName || displayName.toLowerCase().includes('undefined')) {
+            displayName = 'Unknown Staff';
+         }
+
+         return { ...req, employeeName: displayName };
+      });
+   }, [leaveRequests, employees, currentUser]);
 
    const [activeTab, setActiveTab] = useState<'dashboard' | 'people' | 'payroll' | 'matrix' | 'leave' | 'performance'>('dashboard');
    const [searchQuery, setSearchQuery] = useState('');
    const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
    const [isHireModalOpen, setIsHireModalOpen] = useState(false);
    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+   const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
+   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+   const [performanceFilter, setPerformanceFilter] = useState<string | null>(null);
    const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined);
 
-   const isAdmin = [Role.ADMIN, Role.HR_MANAGER, Role.SUPER_ADMIN, Role.CEO].includes(currentUser?.role as any);
-   const canViewSensitiveInfo = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.HR, Role.FINANCE, Role.MANAGER, Role.CEO].includes(currentUser?.role as any);
-   const canViewPayroll = [Role.ADMIN, Role.SUPER_ADMIN, Role.HR_MANAGER, Role.FINANCE, Role.CEO].includes(currentUser?.role as any);
+   const isHRManagerial = useMemo(() => {
+      const role = String(currentUser?.role || '').toLowerCase();
+      const perms = currentUser?.permissionTags || [];
+      const hasHRAuth = perms.includes('*') || perms.includes('access:hr') || perms.includes('access:performance') || perms.includes('admin');
+
+      const isFin = role.includes('finance') || role.includes('cfo');
+      const isExec = role.includes('ceo') || role.includes('chairman') || role.includes('managing director') || role.includes('md') || role.includes('director');
+      const isAdminOrHR = role.includes('admin') || role === 'hr' || role.includes('hr manager');
+
+      return isExec || isFin || isAdminOrHR || !!currentUser?.isSuperAdmin || hasHRAuth;
+   }, [currentUser]);
+
+   const isAdmin = isHRManagerial; // Alias for backward compatibility in components
 
    useEffect(() => {
-      // Refund to dashboard if on forbidden tab
-      if (!canViewSensitiveInfo && ['people', 'matrix', 'payroll', 'performance'].includes(activeTab)) {
+      // If NOT HR Managerial, restrict available tabs to personal views
+      if (!isHRManagerial && ['dashboard', 'people', 'matrix'].includes(activeTab)) {
          setActiveTab('leave');
-      } else if (activeTab === 'payroll' && !canViewPayroll) {
-         setActiveTab('dashboard');
       }
-   }, [canViewSensitiveInfo, canViewPayroll, activeTab]);
+   }, [isHRManagerial, activeTab]);
 
    useEffect(() => {
       if (activeTab === 'payroll') {
-         setPayrollItems(employees.map(e => calculatePayrollForEmployee(e)));
+         let items = employees.map(e => calculatePayrollForEmployee(e));
+         // Filter for non-admins to only see their own
+         if (!isAdmin) {
+            items = items.filter(i => i.employeeId === currentUser?.id);
+         }
+         setPayrollItems(items);
       }
-   }, [activeTab, employees]);
+   }, [activeTab, employees, isAdmin, currentUser]);
 
    const filteredEmployees = useMemo(() => {
-      // ... existing code ...
       const query = searchQuery.toLowerCase().trim();
-      if (!query) return employees;
-      return employees.filter(e => {
+      let roster = employees;
+
+      // Filter roster for non-admins (maybe they can view all, or only themselves?)
+      // Requirement said "personal kpis", implies restricted view.
+      // Let's restrict People tab to only yourself if not admin/manager
+      const isManagerial = isHRManagerial;
+      if (!isManagerial) {
+         roster = roster.filter(e => e.id === currentUser?.id);
+      }
+
+      if (!query) return roster;
+      return roster.filter(e => {
          const matchName = `${e.firstName} ${e.lastName}`.toLowerCase().includes(query);
          const matchEmail = e.email.toLowerCase().includes(query);
          const matchRole = e.role.toLowerCase().includes(query);
          const matchHealth = (e.healthNotes || '').toLowerCase().includes(query);
          return matchName || matchEmail || matchRole || matchHealth;
       });
-   }, [employees, searchQuery]);
+   }, [employees, searchQuery, currentUser]);
 
    const handleEditEmployee = (emp: Employee) => { setEditingEmployee(emp); setIsHireModalOpen(true); };
    const closeHireModal = () => { setIsHireModalOpen(false); setEditingEmployee(undefined); };
@@ -508,21 +1203,27 @@ export const HR = () => {
 
    return (
       <div className="space-y-6 md:space-y-10 animate-in fade-in pb-24 w-full">
+         {isPerformanceModalOpen && (
+            <PerformanceCycleModal
+               isOpen={isPerformanceModalOpen}
+               onClose={() => setIsPerformanceModalOpen(false)}
+            />
+         )}
          <div className="bg-slate-950 p-6 md:p-10 rounded-[3rem] md:rounded-[4rem] text-white relative overflow-hidden shadow-2xl border border-white/5 w-full">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-60 -mt-60 pointer-events-none"></div>
-            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 md:gap-10 w-full">
-               <div className="flex items-center gap-6 md:gap-8 min-w-0">
+            <div className="relative z-10 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 w-full">
+               <div className="flex items-center gap-6 md:gap-8 min-w-0 max-w-full">
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.4)] animate-float shrink-0"><Briefcase size={32} className="text-white md:w-10 md:h-10" /></div>
-                  <div className="min-w-0"><h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 truncate">Human Resources</h1><div className="flex items-center gap-3 md:gap-4 overflow-x-auto no-scrollbar"><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5 whitespace-nowrap"><ShieldCheck size={12} /> Verified</div><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-500 border border-white/5 whitespace-nowrap"><Users size={12} /> {employees.length} Staff</div></div></div>
+                  <div className="min-w-0 flex-1"><h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 truncate">Human Resources</h1><div className="flex items-center gap-3 md:gap-4 overflow-x-auto no-scrollbar"><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5 whitespace-nowrap"><ShieldCheck size={12} /> Verified</div><div className="flex items-center gap-2 bg-white/5 px-3 md:px-4 py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-500 border border-white/5 whitespace-nowrap"><Users size={12} /> {employees.length} Staff</div></div></div>
                </div>
-               <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0">
+               <div className="flex bg-white/5 p-1.5 rounded-[1.8rem] md:rounded-[2rem] border border-white/10 backdrop-blur-xl overflow-x-auto max-w-full hide-scrollbar shrink-0 self-start xl:self-auto">
                   {[
-                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: true },
-                     { id: 'people', label: 'People', icon: Users, visible: canViewSensitiveInfo },
+                     { id: 'dashboard', label: 'Briefing', icon: LayoutGrid, visible: isHRManagerial },
+                     { id: 'people', label: 'People', icon: Users, visible: isHRManagerial },
                      { id: 'leave', label: 'Absence Node', icon: Plane, visible: true },
-                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: canViewPayroll },
-                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: canViewSensitiveInfo },
-                     { id: 'performance', label: 'Performance', icon: Sparkles, visible: canViewSensitiveInfo }
+                     { id: 'payroll', label: 'Payroll', icon: Banknote, visible: true }, // Filtered for self if not managerial
+                     { id: 'matrix', label: 'Role Matrix', icon: Layers, visible: isHRManagerial },
+                     { id: 'performance', label: 'Performance', icon: Sparkles, visible: true }
                   ].filter(t => t.visible).map(tab => (
                      <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 md:px-8 py-3 rounded-[1.2rem] md:rounded-[1.5rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-2xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
                         <tab.icon size={14} className="shrink-0" /> <span className="hidden sm:inline">{tab.label}</span>
@@ -533,16 +1234,16 @@ export const HR = () => {
             </div>
          </div>
 
-         {activeTab === 'dashboard' && (
+         {activeTab === 'dashboard' && isAdmin && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 w-full">
                <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Total Headcount</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{employees.length}</h3><div className="mt-6 flex items-center gap-2 text-emerald-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><TrendingUp size={14} /> Stable Growth</div></div>
                <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Departments</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{departmentMatrix.length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><LayoutGrid size={14} /> Matrix Sync</div></div>
-               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Active Leave</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{leaveRequests.filter(l => l.status === LeaveStatus.APPROVED).length}</h3><div className="mt-6 flex items-center gap-2 text-amber-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><Plane size={14} /> Scheduled</div></div>
-               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Pending</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{leaveRequests.filter(l => l.status === LeaveStatus.PENDING).length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><CheckCircle2 size={14} /> Operational</div></div>
+               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Active Leave</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{enrichedLeaveRequests.filter(l => l.status === LeaveStatus.APPROVED).length}</h3><div className="mt-6 flex items-center gap-2 text-amber-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><Plane size={14} /> Scheduled</div></div>
+               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 group hover:scale-[1.02] transition-all"><p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Pending</p><h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-none">{enrichedLeaveRequests.filter(l => l.status === LeaveStatus.PENDING).length}</h3><div className="mt-6 flex items-center gap-2 text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><CheckCircle2 size={14} /> Operational</div></div>
             </div>
          )}
 
-         {activeTab === 'people' && (
+         {activeTab === 'people' && isAdmin && (
             <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-4 w-full overflow-hidden">
                <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl">
                   <div className="flex-1 w-full relative max-w-md">
@@ -606,20 +1307,98 @@ export const HR = () => {
          )}
          {activeTab === 'performance' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4 w-full">
-               <div className="bg-slate-950 p-8 md:p-10 rounded-[3rem] text-white flex justify-between items-center shadow-2xl relative overflow-hidden border border-white/10">
+               <div className="bg-slate-950 p-8 md:p-10 rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-center shadow-2xl relative overflow-hidden border border-white/10 gap-8">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
                   <div className="relative z-10">
-                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">Performance</h2>
+                     <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">{isHRManagerial ? 'Performance Hub' : 'My Performance'}</h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2"><Sparkles size={14} className="text-amber-400" /> Quarterly Assessment Cycle</p>
                   </div>
-                  <button className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>
+
+                  {isHRManagerial && (
+                     <div className="relative z-10 flex flex-wrap gap-6 md:gap-10">
+                        <div className="space-y-1">
+                           <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Avg. Score</p>
+                           <h4 className="text-2xl font-black text-[#00ff9d]">
+                              {(performanceReviews.reduce((sum, r) => sum + (r.totalScore || 0), 0) / (performanceReviews.length || 1)).toFixed(1)}
+                           </h4>
+                        </div>
+                        <div className="space-y-1">
+                           <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Completion</p>
+                           <h4 className="text-2xl font-black text-white">
+                              {Math.round((performanceReviews.filter(r => r.status === 'Finalized').length / (performanceReviews.length || 1)) * 100)}%
+                           </h4>
+                        </div>
+                        <button onClick={() => setIsPerformanceModalOpen(true)} className="bg-white text-slate-950 px-8 py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl">New Cycle</button>
+                     </div>
+                  )}
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Placeholder for Review Cards - To be connected to store.performanceReviews */}
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl opacity-60">
-                     <p className="font-black text-slate-300 uppercase tracking-widest text-xs text-center">No Active Reviews</p>
+               {isHRManagerial && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                     {['Draft', 'Employee_Review', 'Supervisor_Review', 'Finalized'].map(status => (
+                        <button
+                           key={status}
+                           onClick={() => setPerformanceFilter(performanceFilter === status ? null : status)}
+                           className={`p-6 rounded-[2rem] border-2 transition-all text-left ${performanceFilter === status ? 'bg-indigo-600 border-indigo-600 shadow-lg' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
+                        >
+                           <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${performanceFilter === status ? 'text-indigo-200' : 'text-slate-400'}`}>{status.replace('_', ' ')}</p>
+                           <h3 className={`text-xl font-black ${performanceFilter === status ? 'text-white' : 'text-slate-900'}`}>{performanceReviews.filter(r => r.status === status).length}</h3>
+                        </button>
+                     ))}
                   </div>
+               )}
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {performanceReviews
+                     .filter(r => isHRManagerial || r.employeeId === currentUser?.id)
+                     .filter(r => !performanceFilter || r.status === performanceFilter)
+                     .map(review => {
+                        const employee = employees.find(e => e.id === review.employeeId);
+                        return (
+                           <div key={review.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden">
+                              <div className="flex justify-between items-start mb-6">
+                                 <div className="flex items-center gap-4">
+                                    <img src={employee?.avatar || 'https://ui-avatars.com/api/?name=' + (employee?.firstName || 'User')} className="w-12 h-12 rounded-2xl bg-slate-100 object-cover" alt="avatar" />
+                                    <div>
+                                       <h4 className="font-black text-slate-900 uppercase text-xs tracking-tight">{employee?.firstName} {employee?.lastName}</h4>
+                                       <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">{review.quarter} {review.year}</p>
+                                    </div>
+                                 </div>
+                                 <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${review.status === 'Finalized' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                    review.status === 'Draft' ? 'bg-slate-50 text-slate-400 border-slate-100' :
+                                       'bg-amber-50 text-amber-600 border-amber-100'
+                                    }`}>
+                                    {review.status.replace('_', ' ')}
+                                 </div>
+                              </div>
+
+                              <div className="space-y-4">
+                                 <div className="flex justify-between items-end">
+                                    <div className="space-y-1">
+                                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Score Index</p>
+                                       <h3 className="text-2xl font-black text-slate-900 leading-none">{review.totalScore || 0.0}<span className="text-[10px] text-slate-300 ml-1">/ 4.0</span></h3>
+                                    </div>
+                                    <button onClick={() => setSelectedReviewId(review.id)} className="p-3 bg-slate-950 text-white rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95 group-hover:px-6 flex items-center gap-2 overflow-hidden max-w-[120px]">
+                                       <ChevronRight size={18} />
+                                       <span className="text-[9px] font-black uppercase tracking-widest hidden group-hover:inline opacity-0 group-hover:opacity-100 transition-all">Review</span>
+                                    </button>
+                                 </div>
+                                 <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                       className={`h-full transition-all duration-700 ${review.totalScore >= 3 ? 'bg-emerald-500' : review.totalScore >= 2 ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                                       style={{ width: `${(review.totalScore / 4) * 100}%` }}
+                                    ></div>
+                                 </div>
+                              </div>
+                           </div>
+                        );
+                     })}
+                  {performanceReviews.length === 0 && (
+                     <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-300 space-y-4">
+                        <Sparkles size={48} className="opacity-20 translate-y-2 animate-bounce" />
+                        <p className="font-black uppercase tracking-[0.4em] text-xs">Awaiting Cycle Activation</p>
+                     </div>
+                  )}
                </div>
             </div>
          )}
@@ -639,7 +1418,7 @@ export const HR = () => {
                   <div className="lg:col-span-2 space-y-6 w-full">
                      <div className="px-4"><h3 className="text-xs font-black uppercase text-slate-400 tracking-[0.4em]">{isAdmin ? 'Request Feed' : 'My History'}</h3></div>
                      <div className="space-y-5 md:space-y-6">
-                        {leaveRequests.filter(l => isAdmin || l.employeeId === currentUser?.id).map(req => (
+                        {enrichedLeaveRequests.filter(l => isAdmin || l.employeeId === currentUser?.id).map(req => (
                            <div key={req.id} className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl flex flex-col sm:flex-row items-center justify-between group hover:border-indigo-100 transition-all gap-6">
                               <div className="flex items-center gap-5 md:gap-6 flex-1 min-w-0">
                                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shadow-lg shrink-0 ${req.status === LeaveStatus.APPROVED ? 'bg-emerald-50 text-emerald-600' :
@@ -678,7 +1457,7 @@ export const HR = () => {
                               </div>
                            </div>
                         ))}
-                        {leaveRequests.length === 0 && (
+                        {enrichedLeaveRequests.length === 0 && (
                            <div className="text-center py-20 text-slate-200">
                               <Plane size={64} className="mx-auto mb-4 opacity-10 animate-float" />
                               <p className="font-black uppercase tracking-[0.4em] text-xs">No Absence Entries</p>
@@ -711,29 +1490,183 @@ export const HR = () => {
 
          {activeTab === 'payroll' && (
             <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-4 w-full">
-               <div className="bg-slate-950 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white flex flex-col md:flex-row justify-between items-center gap-8 md:gap-10 shadow-2xl border border-white/5 w-full">
-                  <div className="flex items-center gap-6 md:gap-8 relative z-10 w-full md:w-auto min-w-0"><div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center backdrop-blur-xl shadow-inner shrink-0"><Wallet size={30} className="text-[#00ff9d] md:w-9 md:h-9" /></div><div className="min-w-0"><h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-1 truncate">Compliance Core</h2><p className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2 truncate"><ShieldCheck size={14} className="text-emerald-500 shrink-0" /> NGN ACT 2024 Baseline</p></div></div>
-                  <button className="w-full md:w-auto bg-[#00ff9d] text-slate-950 px-8 md:px-12 py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-xs active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0">Trigger Disbursement <ArrowRight size={18} /></button>
-               </div>
-               <div className="bg-white rounded-[3rem] md:rounded-[4rem] border border-slate-100 shadow-2xl overflow-hidden w-full">
-                  <div className="overflow-x-auto w-full">
-                     <table className="w-full text-left text-sm min-w-[900px]">
-                        <thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] border-b border-slate-100">
-                           <tr><th className="px-8 md:px-10 py-6 md:py-8">Personnel</th><th className="px-8 md:px-10 py-6 md:py-8">Gross</th><th className="px-8 md:px-10 py-6 md:py-8">PAYE Deductions</th><th className="px-8 md:px-10 py-6 md:py-8">Net Pay</th><th className="px-8 md:px-10 py-6 md:py-8 text-right">Audit</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                           {payrollItems.map(item => (
-                              <tr key={item.id} className="hover:bg-indigo-50/20 transition-all group"><td className="px-8 md:px-10 py-6 md:py-8"><div className="font-black text-slate-900 uppercase text-xs md:text-sm tracking-tight truncate">{item.employeeName}</div><p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mt-1">Ref: {item.employeeId.slice(-4)}</p></td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-slate-700 whitespace-nowrap">₦{(item.grossCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-rose-500 whitespace-nowrap">₦{(item.taxCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-emerald-600 text-base md:text-lg tracking-tighter whitespace-nowrap">₦{(item.netCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 text-right whitespace-nowrap">{item.anomalies.length > 0 ? (<div className="flex items-center gap-2 text-rose-500 justify-end group/tip relative cursor-help bg-rose-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-rose-100 inline-flex"><AlertTriangle size={16} /><span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">Anomaly</span></div>) : (<div className="p-2 md:p-3 bg-emerald-50 text-emerald-600 rounded-xl inline-flex shadow-sm"><CheckCircle2 size={18} /></div>)}</td></tr>
-                           ))}
-                        </tbody>
-                     </table>
+               {isAdmin ? (
+                  <>
+                     {/* Loan Approvals Section */}
+                     <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-slate-100 shadow-xl mb-8">
+                        <div className="flex items-center gap-4 mb-6">
+                           <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><AlertTriangle size={24} /></div>
+                           <div>
+                              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Pending Advances</h3>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Requires Approval</p>
+                           </div>
+                        </div>
+                        {requisitions.filter(r => r.category === 'Financial' && r.status === 'Pending').length > 0 ? (
+                           <div className="space-y-4">
+                              {requisitions.filter(r => r.category === 'Financial' && r.status === 'Pending').map(req => (
+                                 <div key={req.id} className="flex flex-col md:flex-row justify-between items-center bg-slate-50 p-6 rounded-[2rem] border border-slate-100 gap-4">
+                                    <div className="flex items-center gap-4 w-full">
+                                       <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center font-black text-slate-300 text-xs">IMG</div>
+                                       <div>
+                                          <p className="font-black text-slate-900 text-sm">{req.itemName}</p>
+                                          <p className="text-xs text-slate-500 mt-1">{req.notes}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{new Date().toLocaleDateString()}</p>
+                                       </div>
+                                    </div>
+                                    <div className="flex items-center gap-6 w-full md:w-auto shrink-0">
+                                       <div className="font-black text-2xl text-slate-900">₦{(req.totalAmountCents / 100).toLocaleString()}</div>
+                                       <div className="flex gap-2">
+                                          <button onClick={() => useDataStore.getState().approveRequisition(req.id)} className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200">Approve</button>
+                                          <button onClick={() => {/* Reject logic could be added */ }} className="px-6 py-3 bg-slate-200 text-slate-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-300 transition-colors">Reject</button>
+                                       </div>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        ) : (
+                           <div className="p-8 text-center bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200">
+                              <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">No pending salary advances</p>
+                           </div>
+                        )}
+                     </div>
+
+                     <div className="bg-slate-950 p-8 md:p-12 rounded-[3rem] md:rounded-[4rem] text-white flex flex-col md:flex-row justify-between items-center gap-8 md:gap-10 shadow-2xl border border-white/5 w-full">
+                        <div className="flex items-center gap-6 md:gap-8 relative z-10 w-full md:w-auto min-w-0"><div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center backdrop-blur-xl shadow-inner shrink-0"><Wallet size={30} className="text-[#00ff9d] md:w-9 md:h-9" /></div><div className="min-w-0"><h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-1">Salary Management</h2><p className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-500 shrink-0" /> NGN ACT 2024 Baseline</p></div></div>
+                        <button className="w-full md:w-auto bg-[#00ff9d] text-slate-950 px-8 md:px-12 py-4 md:py-5 rounded-2xl md:rounded-[2rem] font-black uppercase tracking-widest text-[10px] md:text-xs active:scale-95 transition-all flex items-center justify-center gap-3 shrink-0">Trigger Disbursement <ArrowRight size={18} /></button>
+                     </div>
+                     <div className="bg-white rounded-[3rem] md:rounded-[4rem] border border-slate-100 shadow-2xl overflow-hidden w-full">
+                        <div className="overflow-x-auto w-full">
+                           <table className="w-full text-left text-sm min-w-[950px]">
+                              <thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] border-b border-slate-100">
+                                 <tr><th className="px-8 md:px-10 py-6 md:py-8">Personnel</th><th className="px-8 md:px-10 py-6 md:py-8">Gross</th><th className="px-8 md:px-10 py-6 md:py-8">PAYE Deductions</th><th className="px-8 md:px-10 py-6 md:py-8">Net Pay</th><th className="px-8 md:px-10 py-6 md:py-8">Sanctions</th><th className="px-8 md:px-10 py-6 md:py-8 text-right">Audit</th></tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                 {payrollItems.map(item => (
+                                    <tr key={item.id} className="hover:bg-indigo-50/20 transition-all group">
+                                       <td className="px-8 md:px-10 py-6 md:py-8"><div className="font-black text-slate-900 uppercase text-xs md:text-sm tracking-tight truncate">{item.employeeName}</div><p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mt-1">Ref: {item.employeeId.slice(-4)}</p></td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-slate-700 whitespace-nowrap">₦{(item.grossCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-rose-500 whitespace-nowrap">₦{(item.taxCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-emerald-600 text-base md:text-lg tracking-tighter whitespace-nowrap">₦{(item.netCents / 100).toLocaleString()}</td>
+
+                                       {/* Sanction Control Column */}
+                                       <td className="px-8 md:px-10 py-6 md:py-8">
+                                          {item.punishmentDeductionCents > 0 ? (
+                                             <div className="flex items-center gap-3">
+                                                <span className="font-black text-rose-500">₦{(item.punishmentDeductionCents / 100).toLocaleString()}</span>
+                                                <button onClick={() => {
+                                                   const emp = employees.find(e => e.id === item.employeeId);
+                                                   if (emp) {
+                                                      const newNotes = (emp.healthNotes || '').replace(/sanction/gi, '').trim();
+                                                      useDataStore.getState().updateEmployee(emp.id, { healthNotes: newNotes });
+                                                   }
+                                                }} className="p-2 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 hover:scale-110 transition-all"><X size={14} /></button>
+                                             </div>
+                                          ) : (
+                                             <button onClick={() => {
+                                                const emp = employees.find(e => e.id === item.employeeId);
+                                                if (emp) {
+                                                   const newNotes = (emp.healthNotes ? emp.healthNotes + ' ' : '') + 'sanction';
+                                                   useDataStore.getState().updateEmployee(emp.id, { healthNotes: newNotes });
+                                                }
+                                             }} className="px-3 py-1 bg-slate-50 text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-colors">
+                                                Apply Sanction
+                                             </button>
+                                          )}
+                                       </td>
+
+                                       <td className="px-8 md:px-10 py-6 md:py-8 text-right whitespace-nowrap">{item.anomalies.length > 0 ? (<div className="flex items-center gap-2 text-rose-500 justify-end group/tip relative cursor-help bg-rose-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-rose-100 inline-flex"><AlertTriangle size={16} /><span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">Anomaly</span></div>) : (<div className="p-2 md:p-3 bg-emerald-50 text-emerald-600 rounded-xl inline-flex shadow-sm"><CheckCircle2 size={18} /></div>)}</td></tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                  </>
+               ) : (
+                  <div className="w-full max-w-2xl mx-auto space-y-6">
+                     <div className="bg-slate-950 p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden text-center border border-white/5">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+                        <div className="relative z-10 flex flex-col items-center">
+                           <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-inner mb-6 backdrop-blur-sm border border-white/10"><Banknote size={32} /></div>
+                           <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px] mb-2">Monthly Net Pay</p>
+                           <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-6">
+                              {payrollItems[0] ? `₦${(payrollItems[0].netCents / 100).toLocaleString()}` : '---'}
+                           </h2>
+
+                           {/* Download Payslip Button */}
+                           <button onClick={() => generatePayslip(payrollItems[0], employees.find(e => e.id === payrollItems[0]?.employeeId)!)} className="mb-8 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/5 transition-all text-white/90 hover:text-white text-[10px] uppercase font-bold tracking-widest backdrop-blur-md">
+                              <Download size={14} /> Download Payslip
+                           </button>
+
+                           <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                                 <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Gross</p>
+                                 <p className="text-lg font-black">{payrollItems[0] ? `₦${(payrollItems[0].grossCents / 100).toLocaleString()}` : '-'}</p>
+                              </div>
+                              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                                 <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Tax</p>
+                                 <p className="text-lg font-black text-rose-400">{payrollItems[0] ? `₦${(payrollItems[0].taxCents / 100).toLocaleString()}` : '-'}</p>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Sparkles size={18} /></div>
+                           <div>
+                              <p className="font-black text-slate-800 uppercase text-xs">Payroll Status</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Cycle</p>
+                           </div>
+                        </div>
+                        <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase border border-emerald-100">
+                           Active
+                        </div>
+                     </div>
+
+                     {/* Deductions Breakdown */}
+                     <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Deductions Breakdown</h3>
+                        <div className="space-y-4">
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="font-bold text-slate-600">Pension (8%)</span>
+                              <span className="font-black text-slate-900">₦{(payrollItems[0]?.pensionEmployeeCents / 100 || 0).toLocaleString()}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="font-bold text-slate-600">NHF (2.5%)</span>
+                              <span className="font-black text-slate-900">₦{(payrollItems[0]?.nhfCents / 100 || 0).toLocaleString()}</span>
+                           </div>
+
+                           {/* Conditional Punishment Deduction */}
+                           {payrollItems[0]?.punishmentDeductionCents > 0 && (
+                              <div className="flex justify-between items-center text-sm bg-rose-50 p-3 rounded-xl border border-rose-100 mt-2">
+                                 <div className="flex items-center gap-2 text-rose-600">
+                                    <AlertTriangle size={14} />
+                                    <span className="font-black uppercase text-[10px] tracking-widest">Disciplinary Deduction</span>
+                                 </div>
+                                 <span className="font-black text-rose-700">-₦{(payrollItems[0]?.punishmentDeductionCents / 100).toLocaleString()}</span>
+                              </div>
+                           )}
+
+                           <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                              <span className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Total Deductions</span>
+                              <span className="font-black text-rose-500 text-lg">
+                                 -₦{(((payrollItems[0]?.pensionEmployeeCents || 0) + (payrollItems[0]?.nhfCents || 0) + (payrollItems[0]?.taxCents || 0) + (payrollItems[0]?.punishmentDeductionCents || 0)) / 100).toLocaleString()}
+                              </span>
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* Loan / Advance Request */}
+                     <button onClick={() => setIsLoanModalOpen(true)} className="w-full bg-slate-900 text-white p-6 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white"><Plus size={16} /></div>
+                        Request Salary Advance / Loan
+                     </button>
                   </div>
-               </div>
+               )}
             </div>
          )}
          {activeTab === 'matrix' && <MatrixTab matrix={departmentMatrix} />}
          <HireStaffModal isOpen={isHireModalOpen} onClose={closeHireModal} editingEmployee={editingEmployee} />
          <LeaveModal isOpen={isLeaveModalOpen} onClose={() => setIsLeaveModalOpen(false)} />
+         <LoanRequestModal isOpen={isLoanModalOpen} onClose={() => setIsLoanModalOpen(false)} employeeId={payrollItems[0]?.employeeId} />
+         <PerformanceCycleModal isOpen={isPerformanceModalOpen} onClose={() => setIsPerformanceModalOpen(false)} />
+         <PerformanceReviewAssessmentModal isOpen={!!selectedReviewId} onClose={() => setSelectedReviewId(null)} reviewId={selectedReviewId} />
       </div>
    );
 };
