@@ -30,6 +30,9 @@ import { PublicBrochure } from './components/PublicBrochure';
 import { ExternalMonitor } from './components/ExternalMonitor';
 import { RequisitionsHub } from './components/RequisitionsHub';
 import { Procurement } from './components/Procurement';
+import { CustomerAgentStandalone } from './components/CustomerAgentStandalone';
+import { ProspectingHub } from './components/ProspectingHub';
+import { MockupPreview } from './components/MockupPreview';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -210,6 +213,8 @@ function AppContent() {
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="/monitor/:token" element={<ExternalMonitor />} />
+        <Route path="/omni-agent" element={<CustomerAgentStandalone />} />
+        <Route path="/mockup/:leadId" element={<MockupPreview />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -257,6 +262,9 @@ function AppContent() {
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="/monitor/:token" element={<ExternalMonitor />} />
+        <Route path="/omni-agent" element={<CustomerAgentStandalone />} />
+        <Route path="/prospecting" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><ProspectingHub /></ProtectedRoute>} />
+        <Route path="/mockup/:leadId" element={<MockupPreview />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

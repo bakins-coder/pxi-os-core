@@ -332,6 +332,60 @@ const SYSTEM_TOOLS = {
         };
         dataStore.addTask(task);
         return { success: true, task_id: task.id };
+    },
+    capture_lead: (args: { name: string; email?: string; phone?: string; company?: string; interest_level?: 'Low' | 'Medium' | 'High'; notes?: string; conversation_id?: string }) => {
+        const { name, email, phone, company, interest_level = 'Medium', notes, conversation_id } = args;
+        const dataStore = useDataStore.getState();
+        const user = useAuthStore.getState().user;
+        
+        const isUUID = (str?: string) => str && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+        
+        const lead = {
+            id: `lead-${Date.now()}`,
+            organizationId: user?.companyId || 'sys',
+            name,
+            email,
+            phone,
+            company,
+            source: 'OmniAgent Chat',
+            status: 'New' as any,
+            interestLevel: interest_level,
+            notes,
+            conversationId: isUUID(conversation_id) ? conversation_id : undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        dataStore.addLead(lead);
+        return { success: true, lead_id: lead.id, lead_name: lead.name };
+    },
+    scrape_leads: async (args: { niche: string, location: string }) => {
+        const { niche, location } = args;
+        const dataStore = useDataStore.getState();
+        await dataStore.scrapeLeads(niche, location);
+        return { success: true, message: `Scraped leads for ${niche} in ${location}. Check the Prospecting Hub.` };
+    },
+    crawl_website_for_kb: async (args: { agent_id: string, url: string, title?: string }) => {
+        const { agent_id, url, title } = args;
+        const dataStore = useDataStore.getState();
+        
+        // Simulate web crawling content extraction
+        const content = `This is simulated expert knowledge extracted from ${url}. It covers the core services, mission, and FAQs found on the prospect's site.`;
+        
+        await dataStore.addKnowledgeSource(agent_id, {
+            type: 'website',
+            title: title || `Crawl: ${url}`,
+            content,
+            url
+        });
+        
+        return { success: true, message: `Knowledge source built from ${url} for agent ${agent_id}.` };
+    },
+    generate_prospecting_email: async (args: { lead_id: string }) => {
+        const { lead_id } = args;
+        const dataStore = useDataStore.getState();
+        await dataStore.sendDemoEmail(lead_id);
+        return { success: true, message: `Prospecting email with demo link triggered for lead ${lead_id}.` };
     }
 };
 
@@ -427,6 +481,42 @@ const SYSTEM_TOOL_DECLARATIONS = [
         }
     },
     {
+        name: "scrape_leads",
+        description: "Scrape the web (Google Maps/Directories) to find specific types of organizations in a given location. Use this to find new business prospects.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                niche: { type: SchemaType.STRING, description: "Type of organization (e.g. 'Plumbers', 'Lawyers')" },
+                location: { type: SchemaType.STRING, description: "City or area to search in" }
+            },
+            required: ["niche", "location"]
+        }
+    },
+    {
+        name: "crawl_website_for_kb",
+        description: "Scrape a prospect's website to build a Knowledge Base for their custom AI agent. This extracts FAQs and services.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                agent_id: { type: SchemaType.STRING, description: "The ID of the agent to train" },
+                url: { type: SchemaType.STRING, description: "The URL of the website to crawl" },
+                title: { type: SchemaType.STRING, description: "Optional title for this knowledge source" }
+            },
+            required: ["agent_id", "url"]
+        }
+    },
+    {
+        name: "generate_prospecting_email",
+        description: "Trigger a personalized outreach email to a prospect containing a link to their AI demo mockup.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                lead_id: { type: SchemaType.STRING, description: "The ID of the lead to email" }
+            },
+            required: ["lead_id"]
+        }
+    },
+    {
         name: "get_catering_events",
         description: "Fetch a list of catering events, orders, or banquets. Use this for 'when is the next event', 'list my upcoming events', or event status checks.",
         parameters: {
@@ -472,6 +562,23 @@ const SYSTEM_TOOL_DECLARATIONS = [
                 projectId: { type: SchemaType.STRING, description: "Optional project ID" }
             },
             required: ["title"]
+        }
+    },
+    {
+        name: "capture_lead",
+        description: "Capture a prospective customer's details (Lead). Use this when a user expresses interest in products, services, or pricing.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                name: { type: SchemaType.STRING, description: "Lead's full name" },
+                email: { type: SchemaType.STRING, description: "Email address" },
+                phone: { type: SchemaType.STRING, description: "Phone number" },
+                company: { type: SchemaType.STRING, description: "Company name" },
+                interest_level: { type: SchemaType.STRING, enum: ["Low", "Medium", "High"], description: "Perceived interest" },
+                notes: { type: SchemaType.STRING, description: "Context from the conversation" },
+                conversation_id: { type: SchemaType.STRING, description: "ID of the current chat session" }
+            },
+            required: ["name"]
         }
     }
 ];
@@ -894,11 +1001,14 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 5. NAMES: Use human-readable names.
                 6. JSON WRAPPER: Always return final answer in the JSON structure.
                 7. PERFORM ACTIONS: If a user asks to "Add", "Create", "Set up", or "Record" something, identify the intent and provide the necessary payload. Do not just say you've done it—the UI will handle the actual creation based on your intent response.
+                8. PROACTIVE LEAD CAPTURE: If a user (Customer) expresses interest, ask for their name/contact and use 'capture_lead'.
+                9. CUSTOMER SUPPORT: Use 'search_knowledge_base' to answer technical or support queries before giving a final answer.
+                10. CHAT CONTEXT: ALWAYS include 'conversationId' in the payload for lead captures if available.
                 
                 Return JSON:
                 {
-                    "response": "Detailed answer confirming the data or action...",
-                    "intent": "GENERAL_QUERY | ADD_EMPLOYEE | ADD_INVENTORY | ADD_CUSTOMER | ADD_SUPPLIER | ADD_PROJECT | CREATE_EVENT",
+                    "response": "Answer to user...",
+                    "intent": "GENERAL_QUERY | ADD_EMPLOYEE | ADD_INVENTORY | ADD_CUSTOMER | ADD_SUPPLIER | ADD_PROJECT | CREATE_EVENT | LEAD_GENERATION | CUSTOMER_SUPPORT",
                     "payload": { ... }
                 }
             `;
@@ -926,7 +1036,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
                     type: SchemaType.OBJECT,
                     properties: {
                         response: { type: SchemaType.STRING },
-                        intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT'] } as any,
+                        intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT', 'LEAD_GENERATION', 'CUSTOMER_SUPPORT'] } as any,
                         payload: {
                             type: SchemaType.OBJECT,
                             properties: {
@@ -959,7 +1069,13 @@ export async function processAgentRequest(input: string, context: string, mode: 
                                 clientContactId: { type: SchemaType.STRING },
 
                                 // Common/Other
-                                unit: { type: SchemaType.STRING }
+                                unit: { type: SchemaType.STRING },
+                                
+                                // Lead Fields
+                                company: { type: SchemaType.STRING },
+                                interestLevel: { type: SchemaType.STRING },
+                                notes: { type: SchemaType.STRING },
+                                conversationId: { type: SchemaType.STRING }
                             }
                         }
                     },

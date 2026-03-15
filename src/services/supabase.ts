@@ -65,7 +65,8 @@ const SCHEMA_WHITELISTS: Record<string, string[]> = {
   chart_of_accounts: ['id', 'company_id', 'code', 'name', 'type', 'subtype', 'balance_cents', 'created_at'],
   messages: ['id', 'organization_id', 'sender_id', 'recipient_id', 'content', 'type', 'status', 'created_at', 'read_at'],
   interaction_logs: ['id', 'contact_id', 'type', 'summary', 'content', 'created_by', 'created_at'],
-  locations: ['id', 'organization_id', 'name', 'type', 'is_active']
+  locations: ['id', 'organization_id', 'name', 'type', 'is_active'],
+  leads: ['id', 'organization_id', 'name', 'email', 'phone', 'company', 'source', 'status', 'interest_level', 'notes', 'conversation_id', 'created_at', 'updated_at']
 };
 
 /**
@@ -78,7 +79,7 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
   const useOrgId = [
     'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
     'employees', 'catering_events', 'leave_requests', 'categories',
-    'rental_stock', 'ingredient_stock_batches', 'performance_reviews'
+    'rental_stock', 'ingredient_stock_batches', 'performance_reviews', 'leads'
   ].includes(tableName);
 
   const sanitizedData = data.filter(item => {
@@ -289,7 +290,10 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'last_pack_count': 'lastPackCount',
     'last_pack_size': 'lastPackSize',
     'last_pack_type': 'lastPackType',
-    'current_cost_cents': 'currentCostCents'
+    'current_cost_cents': 'currentCostCents',
+    'interest_level': 'interestLevel',
+    'conversation_id': 'conversationId',
+    'updated_at': 'updatedAt'
   };
 
   Object.entries(mappings).forEach(([snake, camel]) => {
@@ -359,7 +363,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
     'employees', 'catering_events', 'job_roles', 'departments',
     'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches',
-    'performance_reviews', 'recipes', 'messages'
+    'performance_reviews', 'recipes', 'messages', 'leads'
   ].includes(tableName);
 
   const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';

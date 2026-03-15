@@ -32,7 +32,9 @@ export enum Role {
 export enum AIAgentMode {
   HUMAN_FIRST = 'Human-First',
   AI_AGENTIC = 'AI-Agentic (Autonomous)',
-  HYBRID = 'Hybrid-Assisted'
+  HYBRID = 'Hybrid-Assisted',
+  CUSTOMER_SUPPORT = 'Customer Support',
+  LEAD_GENERATION = 'Lead Generation'
 }
 
 export type CateringPhase = 'Planning' | 'Procurement' | 'Execution' | 'PostEvent';
@@ -664,4 +666,44 @@ export interface PerformanceReview {
   status: 'Draft' | 'Employee_Review' | 'Supervisor_Review' | 'Finalized';
   submittedDate?: string;
   finalizedDate?: string;
+}
+
+export interface Lead {
+  id: string;
+  organizationId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  industry?: string;
+  websiteUrl?: string;
+  source: string; // e.g. "Omni Agent", "Google Maps Scraper"
+  status: 'New' | 'Qualified' | 'Converted' | 'Lost';
+  interestLevel: 'High' | 'Medium' | 'Low';
+  demoStatus?: 'Not Started' | 'Generating' | 'Ready' | 'Sent';
+  demoUrl?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  conversationId?: string; // Link back to the chat logs
+}
+
+export type KnowledgeSourceType = 'website' | 'document' | 'faq' | 'notion';
+
+export interface KnowledgeSource {
+  id: string;
+  type: KnowledgeSourceType;
+  title: string;
+  content: string; // Extracted text or summary
+  url?: string;
+  lastCrawled?: string;
+  status: 'active' | 'syncing' | 'error';
+}
+
+export interface KnowledgeBase {
+  id: string;
+  organizationId: string;
+  agentId: string;
+  sources: KnowledgeSource[];
+  lastUpdated: string;
 }

@@ -6,7 +6,7 @@ import {
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, Activity,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
-  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart
+  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -73,6 +73,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role) },
 
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
+  { label: 'Prospecting', icon: Target, path: '/prospecting', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:contact_center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
   { label: 'CRM', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },

@@ -6,7 +6,8 @@ import { AIAgent, OrganizationType } from '../types';
 import { generateAIResponse } from '../services/ai';
 import {
    Bot, Sparkles, ChevronRight, Phone, Mic, ShieldAlert, Zap, Globe,
-   Settings, Play, Plus, Sliders, X, ArrowRight, Activity, Speaker, Brain, GripHorizontal
+   Settings, Play, Plus, Sliders, X, ArrowRight, Activity, Speaker, Brain, GripHorizontal,
+   Copy, ExternalLink, Code, Layout
 } from 'lucide-react';
 
 export const AgentHub = () => {
@@ -20,6 +21,11 @@ export const AgentHub = () => {
       telephony: { phoneNumber: '', areaCode: '01', liveTransferNumber: '', callbackEnabled: true },
       intelligence: { kycQuestions: [], guardrails: [], script: '' }
    });
+   const [showEmbed, setShowEmbed] = useState(false);
+   const [selectedAgentForEmbed, setSelectedAgentForEmbed] = useState<AIAgent | null>(null);
+
+   const embedCode = `<script src="https://agent.pxi.com/v1/widget.js" data-agent-id="${selectedAgentForEmbed?.id}"></script>
+<div id="pxi-agent-container"></div>`;
 
    return (
       <div className="space-y-8 animate-in fade-in pb-20">
@@ -69,6 +75,12 @@ export const AgentHub = () => {
                         <span className="text-slate-400">Status</span>
                         <span className="text-green-600">{agent.status === 'Deployed' ? 'Active' : agent.status}</span>
                      </div>
+                     <button
+                        onClick={() => { setSelectedAgentForEmbed(agent); setShowEmbed(true); }}
+                        className="w-full flex items-center justify-center gap-2 p-4 border border-slate-100 rounded-2xl text-[10px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all"
+                     >
+                        <Code size={14} /> Deployment Script
+                     </button>
                   </div>
                   <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">Configure Settings</button>
                </div>
@@ -80,6 +92,73 @@ export const AgentHub = () => {
                </div>
             )}
          </div>
+
+         {showEmbed && (
+            <div className="fixed inset-0 z-[70] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in">
+               <div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl border border-white/20">
+                  <div className="p-8 border-b-2 border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d]">
+                           <Layout size={24} />
+                        </div>
+                        <div>
+                           <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight leading-none">Standalone Deploy</h2>
+                           <p className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">White-Label Integration Protocol</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setShowEmbed(false)} className="p-3 hover:bg-slate-100 rounded-2xl transition-all"><X size={20} /></button>
+                  </div>
+
+                  <div className="p-10 space-y-8">
+                     <div className="bg-slate-900 p-8 rounded-[2rem] relative group">
+                        <div className="flex justify-between items-center mb-4">
+                           <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Cdn Link / Embed Code</span>
+                           <button
+                              onClick={() => navigator.clipboard.writeText(embedCode)}
+                              className="flex items-center gap-2 text-[10px] font-black text-white/50 hover:text-[#00ff9d] transition-all uppercase"
+                           >
+                              <Copy size={14} /> Copy Script
+                           </button>
+                        </div>
+                        <pre className="text-white font-mono text-xs overflow-x-auto p-4 bg-black/30 rounded-xl leading-relaxed">
+                           {embedCode}
+                        </pre>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <Sparkles size={14} className="text-[#00ff9d]" /> Visual Style
+                           </h4>
+                           <div className="flex gap-2">
+                              <div className="w-8 h-8 rounded-full bg-slate-950 border-2 border-slate-200 cursor-pointer"></div>
+                              <div className="w-8 h-8 rounded-full bg-indigo-600 border-2 border-transparent cursor-pointer"></div>
+                              <div className="w-8 h-8 rounded-full bg-emerald-500 border-2 border-transparent cursor-pointer"></div>
+                           </div>
+                        </div>
+                        <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <Settings size={14} className="text-indigo-600" /> Options
+                           </h4>
+                           <div className="flex items-center gap-2">
+                              <div className="w-10 h-5 bg-indigo-600 rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div></div>
+                              <span className="text-[9px] font-black uppercase text-slate-600">Proactive Logic</span>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-10 border-t-2 border-slate-100 bg-white flex gap-6">
+                     <button className="flex-1 py-5 bg-slate-100 text-slate-900 rounded-[2rem] font-black uppercase text-[11px] tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all">
+                        <ExternalLink size={18} /> Preview Live
+                     </button>
+                     <button onClick={() => setShowEmbed(false)} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all">
+                        Finalize Setup
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
 
          {isCreating && (
             <div className="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">

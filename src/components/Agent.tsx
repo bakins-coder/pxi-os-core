@@ -5,17 +5,18 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { AIAgentMode, AgenticLog } from '../types';
 import {
    Bot, Shield, Zap, Activity, Radio,
-   ShieldCheck, Check, X, MessageCircle, Send, Paperclip, Mic, Globe, Smartphone, FileText
+   ShieldCheck, Check, X, MessageCircle, Send, Paperclip, Mic, Globe, Smartphone, FileText, Brain, Sparkles, Target, BookOpen
 } from 'lucide-react';
-import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, XAxis } from 'recharts';
+import { AreaChart, Area, Tooltip, ResponsiveContainer, CartesianGrid, XAxis, BarChart, Bar } from 'recharts';
 
 export const Agent = () => {
    const settings = useSettingsStore(s => s.settings);
    const updateSettings = useSettingsStore(s => s.updateSettings);
-   const { agenticLogs: logs } = useDataStore();
+   const { agenticLogs: logs, knowledgeBases } = useDataStore();
 
    const mode = settings.agentMode;
-   const [activeView, setActiveView] = useState<'monitor' | 'approvals' | 'channels'>('monitor');
+   const [activeView, setActiveView] = useState<'monitor' | 'approvals' | 'channels' | 'skills' | 'knowledge'>('monitor');
+   const [previewSkill, setPreviewSkill] = useState<'Support' | 'Sales'>('Support');
 
    const pendingApprovals = useMemo(() =>
       logs.filter(l => l.outcome === 'Escalated' || l.outcome === 'Pending Approval')
@@ -62,6 +63,8 @@ export const Agent = () => {
          <div className="flex gap-4 border-b border-slate-200">
             {[
                { id: 'monitor', label: 'Telemetry', icon: Activity },
+               { id: 'skills', label: 'Omni Skills', icon: Brain },
+               { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
                { id: 'channels', label: 'Live Channels', icon: Globe },
                { id: 'approvals', label: 'Guardrail Hits', icon: ShieldCheck, count: pendingApprovals.length }
             ].map(tab => (
@@ -180,7 +183,157 @@ export const Agent = () => {
                </div>
             </div>
          )}
+         
+         {activeView === 'knowledge' && (
+            <div className="space-y-8 animate-in slide-in-from-bottom-4">
+               <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl">
+                  <div className="flex justify-between items-center mb-10">
+                     <div>
+                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight leading-none mb-2">Neural Knowledge Repository</h3>
+                        <p className="text-slate-500 font-medium italic">Agents learn from these verified data sources</p>
+                     </div>
+                     <button className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-[#00ff9d] rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all">
+                        <Globe size={16} /> Crawl New Website
+                     </button>
+                  </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {knowledgeBases?.map((kb) => (
+                         kb.sources.map(source => (
+                           <div key={source.id} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] hover:border-indigo-200 transition-all group">
+                              <div className="flex justify-between items-start mb-4">
+                                 <div className={`p-3 rounded-xl ${source.type === 'website' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+                                    {source.type === 'website' ? <Globe size={20} /> : <FileText size={20} />}
+                                 </div>
+                                 <div className="flex items-center gap-1 text-[8px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
+                                    <Check size={8} /> Active
+                                 </div>
+                              </div>
+                              <h4 className="font-bold text-slate-800 mb-1 truncate">{source.title}</h4>
+                              <p className="text-[10px] text-slate-400 mb-4 truncate italic">{source.url || 'Internal Document'}</p>
+                              <div className="flex justify-between items-center">
+                                 <span className="text-[9px] font-black uppercase text-slate-400">Synced {source.lastCrawled ? new Date(source.lastCrawled).toLocaleDateString() : 'Never'}</span>
+                                 <button className="text-indigo-600 text-[10px] font-black uppercase tracking-widest group-hover:underline">Re-Sync</button>
+                              </div>
+                           </div>
+                        ))
+                     ))}
+                     
+                     <div className="p-6 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center text-slate-400 hover:border-indigo-300 hover:text-indigo-300 transition-all cursor-pointer min-h-[180px]">
+                        <Bot size={32} className="mb-2 opacity-20" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Connect CRM Source</span>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+         
+         {activeView === 'skills' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-in slide-in-from-bottom-4">
+               {/* Skill Selection & Config */}
+               <div className="space-y-6">
+                  <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
+                     <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-8">Active Intelligence Matrix</h3>
+                     <div className="space-y-4">
+                        {[
+                           { id: 'Support', label: 'Autonomous Customer Support', icon: MessageCircle, color: 'emerald', desc: 'Handles technical queries & knowledge lookups.' },
+                           { id: 'Sales', label: 'Proactive Lead Generation', icon: Target, color: 'indigo', desc: 'Identifies prospects & captures contact data.' }
+                        ].map(skill => (
+                           <button 
+                              key={skill.id}
+                              onClick={() => setPreviewSkill(skill.id as any)}
+                              className={`w-full p-6 rounded-[2rem] border-2 transition-all text-left flex items-start gap-4 ${previewSkill === skill.id ? `border-${skill.color}-500 bg-${skill.color}-50/50 shadow-lg` : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+                           >
+                              <div className={`p-4 bg-${skill.color}-500 rounded-2xl text-white shadow-lg shadow-${skill.color}-500/20`}>
+                                 <skill.icon size={24} />
+                              </div>
+                              <div className="flex-1">
+                                 <h4 className="font-black text-slate-800 uppercase text-xs tracking-wider mb-1">{skill.label}</h4>
+                                 <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{skill.desc}</p>
+                              </div>
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl overflow-hidden relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                     <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-8">Skill Performance</h3>
+                     <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                           <BarChart data={[{ n: 'M', v: 40 }, { n: 'T', v: 70 }, { n: 'W', v: 55 }, { n: 'T', v: 90 }, { n: 'F', v: 65 }]}>
+                              <Bar dataKey="v" fill="#6366f1" radius={[10, 10, 0, 0]} />
+                           </BarChart>
+                        </ResponsiveContainer>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Live Skill Preview */}
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col h-[700px] relative">
+                  <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                     <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-[#00ff9d] shadow-lg animate-pulse-slow">
+                           <Sparkles size={20} />
+                        </div>
+                        <div>
+                           <h3 className="font-black text-slate-800 uppercase tracking-tight">Live Skill Preview</h3>
+                           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Interactive Sandbox Mode</p>
+                        </div>
+                     </div>
+                     <span className="px-3 py-1 bg-white border border-slate-200 text-slate-400 text-[9px] font-black uppercase rounded-full tracking-widest">Neural Link v4.2</span>
+                  </div>
+
+                  <div className="flex-1 p-8 overflow-y-auto space-y-6">
+                     {/* Preview Chat Bubbles */}
+                     {previewSkill === 'Support' ? (
+                        <>
+                           <div className="flex gap-4">
+                              <div className="w-10 h-10 bg-slate-200 rounded-xl shrink-0"></div>
+                              <div className="bg-white p-5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 max-w-[80%]">
+                                 <p className="text-xs font-medium text-slate-700">"How do I set up the automated inventory reorder system?"</p>
+                              </div>
+                           </div>
+                           <div className="flex gap-4 justify-end">
+                              <div className="bg-slate-900 p-5 rounded-2xl rounded-tr-none shadow-xl max-w-[80%]">
+                                 <p className="text-xs font-medium text-white italic mb-3">Thinking... referencing Knowledge Base / Logistics Protocol</p>
+                                 <p className="text-xs font-medium text-[#00ff9d]">"I've found the relevant guide in Chapter 4. You need to enable the 'Auto-Supply' flag in the Requisitions module. Shall I guide you through the toggle?"</p>
+                              </div>
+                              <div className="w-10 h-10 bg-slate-900 rounded-xl shrink-0 flex items-center justify-center text-[#00ff9d]"><Bot size={20} /></div>
+                           </div>
+                        </>
+                     ) : (
+                        <>
+                           <div className="flex gap-4">
+                              <div className="w-10 h-10 bg-slate-200 rounded-xl shrink-0"></div>
+                              <div className="bg-white p-5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 max-w-[80%]">
+                                 <p className="text-xs font-medium text-slate-700">"What are your pricing packages for the Enterprise tier?"</p>
+                              </div>
+                           </div>
+                           <div className="flex gap-4 justify-end">
+                              <div className="bg-slate-900 p-5 rounded-2xl rounded-tr-none shadow-xl max-w-[80%]">
+                                 <div className="flex items-center gap-2 mb-3 bg-[#00ff9d]/10 px-3 py-2 rounded-xl border border-[#00ff9d]/20">
+                                    <Target size={14} className="text-[#00ff9d]" />
+                                    <span className="text-[10px] font-black uppercase text-[#00ff9d]">Intent Detected: Lead Generation</span>
+                                 </div>
+                                 <p className="text-xs font-medium text-white mb-2">"Our Enterprise packages start with a tailored concierge audit. To give you an accurate quote, could you share your company name and approximate monthly volume?"</p>
+                                 <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-xl">
+                                    <p className="text-[9px] font-black uppercase text-indigo-400">Proactive Capture Logic Engaged</p>
+                                 </div>
+                              </div>
+                              <div className="w-10 h-10 bg-slate-900 rounded-xl shrink-0 flex items-center justify-center text-[#00ff9d]"><Bot size={20} /></div>
+                           </div>
+                        </>
+                     )}
+                  </div>
+
+                  <div className="p-8 border-t border-slate-100 bg-white">
+                     <p className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Preview logic only • Real-time interaction requires Deployment</p>
+                  </div>
+               </div>
+            </div>
+         )}
+         
          {activeView === 'approvals' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                {pendingApprovals.map(log => (

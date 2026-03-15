@@ -6,7 +6,8 @@ import {
     MarketingPost, Workflow, Ticket, BankTransaction, Employee,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview, PerformanceMetric,
-    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount, EntityMedia
+    RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount, EntityMedia, Lead,
+    KnowledgeBase, KnowledgeSource
 } from '../types';
 
 import { supabase, syncTableToCloud, pullCloudState, mapIncomingRow, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
@@ -49,6 +50,8 @@ interface DataState {
     interactionLogs: InteractionLog[];
     messages: Message[];
     entityMedia: EntityMedia[];
+    leads: Lead[];
+    knowledgeBases: KnowledgeBase[];
     cashAtHandCents: number;
     syncStatus: 'Synced' | 'Syncing' | 'Error' | 'Offline';
     lastSyncError: string | null;
@@ -110,6 +113,8 @@ interface DataState {
     addMarketingPost: (post: Partial<MarketingPost>) => MarketingPost;
     addAIAgent: (a: AIAgent) => void;
     addWorkflow: (wf: Workflow) => void;
+    addLead: (lead: Partial<Lead>) => Promise<void>;
+    updateLead: (id: string, updates: Partial<Lead>) => Promise<void>;
     addAgenticLog: (log: AgenticLog) => void;
     reverseRequisition: (id: string) => void;
     reapplyRequisitions: (eventId: string) => void;
@@ -121,6 +126,12 @@ interface DataState {
     deleteRecipe: (id: string) => void;
     addRecipeIngredient: (recipeId: string, ingredient: RecipeIngredient) => void;
     deleteRecipeIngredient: (recipeId: string, ingredientName: string) => void;
+
+    // Prospecting & Knowledge Base Actions
+    scrapeLeads: (niche: string, location: string) => Promise<void>;
+    addKnowledgeSource: (agentId: string, source: Partial<KnowledgeSource>) => Promise<void>;
+    generateMockup: (leadId: string) => Promise<void>;
+    sendDemoEmail: (leadId: string) => Promise<void>;
 
     // Catering Actions
     createCateringOrder: (data: any) => Promise<{ event: CateringEvent, invoice: Invoice }>;
@@ -202,6 +213,8 @@ export const useDataStore = create<DataState>()(
             interactionLogs: [],
             messages: [],
             entityMedia: [],
+            leads: [],
+            knowledgeBases: [],
             cashAtHandCents: 0,
             syncStatus: 'Synced',
             lastSyncError: null,
@@ -218,7 +231,7 @@ export const useDataStore = create<DataState>()(
                     tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [], chartOfAccounts: [],
                     bankTransactions: [], bankStatementLines: [], bankAccounts: [], leaveRequests: [], calendarEvents: [],
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
-                    interactionLogs: [], messages: [], entityMedia: [], cashAtHandCents: 0,
+                    interactionLogs: [], messages: [], entityMedia: [], leads: [], knowledgeBases: [], cashAtHandCents: 0,
                     syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected', isSyncPending: false
                 });
             },
@@ -1791,6 +1804,81 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({ workflows: [workflow, ...state.workflows] }));
                 get().syncWithCloud();
             },
+            addLead: async (lead) => {
+                const user = useAuthStore.getState().user;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const newLeadId = lead.id || crypto.randomUUID();
+                const now = new Date().toISOString();
+
+                const newLead = {
+                    ...lead,
+                    id: newLeadId,
+                    organizationId: companyId,
+                    status: lead.status || 'New',
+                    source: lead.source || 'Omni Agent',
+                    interestLevel: lead.interestLevel || 'Medium',
+                    createdAt: now,
+                    updatedAt: now
+                } as Lead;
+
+                // Optimistic
+                set((state) => ({ leads: [newLead, ...state.leads] }));
+
+                if (supabase) {
+                    try {
+                        const payload = {
+                            id: newLeadId,
+                            organization_id: companyId,
+                            name: newLead.name,
+                            email: newLead.email,
+                            phone: newLead.phone,
+                            company: newLead.company,
+                            source: newLead.source,
+                            status: newLead.status,
+                            interest_level: newLead.interestLevel,
+                            notes: newLead.notes,
+                            conversation_id: newLead.conversationId,
+                            created_at: now,
+                            updated_at: now
+                        };
+                        const { error } = await supabase.from('leads').insert(payload);
+                        if (error) console.error("Failed to persist lead:", error);
+                    } catch (e) {
+                        console.error("Lead Persistence Error:", e);
+                    }
+                }
+            },
+            updateLead: async (id, updates) => {
+                const now = new Date().toISOString();
+                set((state) => ({
+                    leads: state.leads.map(l => l.id === id ? { ...l, ...updates, updatedAt: now } : l)
+                }));
+
+                if (supabase) {
+                    try {
+                        const payload = {
+                            ...updates,
+                            updated_at: now
+                        };
+                        // Map camelCase to snake_case if needed, but our payload might already be snake_case or we use mapIncomingRow logic?
+                        // Actually let's manually map for safety or use a helper. 
+                        // The leads table uses snake_case.
+                        const dbPayload: any = { updated_at: now };
+                        if (updates.name) dbPayload.name = updates.name;
+                        if (updates.email) dbPayload.email = updates.email;
+                        if (updates.phone) dbPayload.phone = updates.phone;
+                        if (updates.company) dbPayload.company = updates.company;
+                        if (updates.status) dbPayload.status = updates.status;
+                        if (updates.interestLevel) dbPayload.interest_level = updates.interestLevel;
+                        if (updates.notes) dbPayload.notes = updates.notes;
+
+                        const { error } = await supabase.from('leads').update(dbPayload).eq('id', id);
+                        if (error) console.error("Failed to update lead:", error);
+                    } catch (e) {
+                        console.error("Lead Update Error:", e);
+                    }
+                }
+            },
             addAgenticLog: (log) => {
                 const newLog = {
                     ...log,
@@ -3038,7 +3126,8 @@ export const useDataStore = create<DataState>()(
                         safeSync('requisitions', freshState.requisitions),
                         safeSync('chart_of_accounts', freshState.chartOfAccounts),
                         safeSync('bank_transactions', freshState.bankTransactions),
-                        safeSync('ingredients', freshState.ingredients)
+                        safeSync('ingredients', freshState.ingredients),
+                        safeSync('leads', freshState.leads)
                     ]);
                     set({ isSyncing: false, syncStatus: 'Synced' });
 
@@ -3099,7 +3188,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages, entityMedia,
+                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages, entityMedia, leads,
                         // Inventory Base Tables
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
@@ -3126,6 +3215,7 @@ export const useDataStore = create<DataState>()(
                         safePull('interaction_logs', companyId),
                         safePull('messages', companyId),
                         safePull('entity_media', companyId),
+                        safePull('leads', companyId),
 
 
                         safePull('reusable_items', companyId),
@@ -3156,6 +3246,7 @@ export const useDataStore = create<DataState>()(
                     if (performanceReviews !== null) set({ performanceReviews });
                     if (interactionLogs !== null) set({ interactionLogs });
                     if (messages !== null) set({ messages });
+                    if (leads !== null) set({ leads });
 
                     console.log(`[Hydration] Sync complete for ${companyId}`);
 
@@ -3389,6 +3480,7 @@ export const useDataStore = create<DataState>()(
                     if (bankTransactions !== null) newState.bankTransactions = bankTransactions;
                     if (messages !== null) newState.messages = messages;
                     if (entityMedia !== null) newState.entityMedia = entityMedia;
+                    if (leads !== null) newState.leads = leads;
 
                     if (leaveRequests !== null) {
                         newState.leaveRequests = (leaveRequests || []).map((lr: any) => ({
@@ -3750,6 +3842,27 @@ export const useDataStore = create<DataState>()(
                             return state;
                         });
                     })
+                    // 14. Leads (organization_id)
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'leads',
+                        filter: `organization_id=eq.${companyId}`
+                    }, (payload: any) => {
+                        const { eventType, new: newRow, old: oldRow } = payload;
+                        const mappedNew = newRow ? mapIncomingRow('leads', newRow) : null;
+                        set((state) => {
+                            if (eventType === 'INSERT' && mappedNew) {
+                                if (state.leads.some(l => l.id === mappedNew.id)) return state;
+                                return { leads: [mappedNew, ...state.leads] };
+                            } else if (eventType === 'UPDATE' && mappedNew) {
+                                return { leads: state.leads.map(l => l.id === mappedNew.id ? mappedNew : l) };
+                            } else if (eventType === 'DELETE' && oldRow) {
+                                return { leads: state.leads.filter(l => l.id !== oldRow.id) };
+                            }
+                            return state;
+                        });
+                    })
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
                             set({ realtimeStatus: 'Connected' });
@@ -3770,6 +3883,93 @@ export const useDataStore = create<DataState>()(
                     set({ realtimeChannel: null, realtimeStatus: 'Disconnected' });
                     console.log('Real-time subscriptions stopped');
                 }
+            },
+
+            scrapeLeads: async (niche, location) => {
+                // Simulated lead scraping logic (as per HighLevel-style demo)
+                const mockLeads: Partial<Lead>[] = [
+                    {
+                        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-a000-${Date.now().toString().slice(-12)}`,
+                        name: `${niche} Pro Nigeria`,
+                        company: `${niche} Solutions Ltd`,
+                        websiteUrl: `https://example-${niche.toLowerCase()}.com.ng`,
+                        industry: niche,
+                        source: 'Google Maps Scraper',
+                        status: 'New',
+                        interestLevel: 'Medium'
+                    },
+                    {
+                        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-a000-${Date.now().toString().slice(-12)}`,
+                        name: `Global ${niche} Hub`,
+                        company: `Global ${niche} Dynamics`,
+                        websiteUrl: `https://global-${niche.toLowerCase()}.net`,
+                        industry: niche,
+                        source: 'Google Maps Scraper',
+                        status: 'New',
+                        interestLevel: 'High'
+                    }
+                ];
+
+                for (const lead of mockLeads) {
+                    await get().addLead(lead);
+                }
+            },
+
+            addKnowledgeSource: async (agentId, source) => {
+                const newSource: KnowledgeSource = {
+                    id: crypto.randomUUID(),
+                    type: source.type || 'website',
+                    title: source.title || 'Untitled Source',
+                    content: source.content || '',
+                    url: source.url,
+                    lastCrawled: new Date().toISOString(),
+                    status: 'active'
+                };
+
+                set((state) => {
+                    const existingKB = state.knowledgeBases.find(kb => kb.agentId === agentId);
+                    if (existingKB) {
+                        return {
+                            knowledgeBases: state.knowledgeBases.map(kb => 
+                                kb.agentId === agentId 
+                                ? { ...kb, sources: [...kb.sources, newSource], lastUpdated: new Date().toISOString() } 
+                                : kb
+                            )
+                        };
+                    } else {
+                        const newKB: KnowledgeBase = {
+                            id: crypto.randomUUID(),
+                            organizationId: useAuthStore.getState().user?.companyId || 'sys',
+                            agentId,
+                            sources: [newSource],
+                            lastUpdated: new Date().toISOString()
+                        };
+                        return { knowledgeBases: [...state.knowledgeBases, newKB] };
+                    }
+                });
+            },
+
+            generateMockup: async (leadId) => {
+                const lead = get().leads.find(l => l.id === leadId);
+                if (!lead) return;
+
+                get().updateLead(leadId, { demoStatus: 'Generating' });
+                
+                // Simulate mockup background process
+                await new Promise(r => setTimeout(r, 2000));
+                
+                const demoUrl = `${window.location.host}/#/mockup/${leadId}`;
+                get().updateLead(leadId, { demoStatus: 'Ready', demoUrl });
+            },
+
+            sendDemoEmail: async (leadId) => {
+                const lead = get().leads.find(l => l.id === leadId);
+                if (!lead || !lead.demoUrl) return;
+
+                // Simulate email trigger through AI outreach skill
+                console.log(`[AI Outreach] Sending demo link ${lead.demoUrl} to prospect ${lead.name}`);
+                
+                get().updateLead(leadId, { demoStatus: 'Sent' });
             }
         }),
         {
