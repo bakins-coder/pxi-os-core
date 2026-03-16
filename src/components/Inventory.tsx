@@ -127,54 +127,22 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-               <table className="w-full text-left text-[11px]">
-                  <thead className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest">
-                     <tr>
-                        <th className="px-8 py-5">Ingredient Component</th>
-                        <th className="px-8 py-5 text-center">Std. Portion</th>
-                        <th className="px-8 py-5">Net Requirement</th>
-                        <th className="px-8 py-5 text-right">Unit Rate</th>
-                        <th className="px-8 py-5 text-right">Ext. Value (₦)</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-indigo-50">
-                     {/* Refactored: Use groundingStates object for per-ingredient loading state */}
-                     {rawMaterials.map((ing, index) => (
-                        <tr key={ing.id} className="hover:bg-indigo-50/20 transition-all">
-                           <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
-                           <td className="p-8">
-                              <p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p>
-                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p>
-                           </td>
-                           <td className="p-8">
-                              <div className="flex items-center gap-3">
-                                 <span className={`text-lg font-black tracking-tighter ${ing.stockQuantity < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockQuantity.toLocaleString()}</span>
-                                 <span className="text-[10px] font-bold text-slate-400 uppercase">Input</span>
-                              </div>
-                           </td>
-                           <td className="p-8 font-black text-slate-900 text-xs">₦{(ing.priceCents / 100).toLocaleString()}</td>
-                           <td className="p-8">
-                              {ing.costPriceCents ? (
-                                 <div className="flex items-center gap-2">
-                                    <span className="font-black text-indigo-600 text-xs">₦{(ing.costPriceCents / 100).toLocaleString()}</span>
-                                    {ing.costPriceCents > ing.priceCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}
-                                 </div>
-                              ) : (
-                                 <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>
-                              )}
-                           </td>
-                           <td className="p-8 text-right">
-                              <GroundMarketPriceButton ingredient={ing} />
-                           </td>
-                        </tr>
-                     ))}
+            <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-6 md:space-y-10 no-scrollbar">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 sticky top-0 z-10">
+                  <div className="p-6 md:p-8 bg-indigo-50 rounded-[2rem] border-2 border-indigo-100 shadow-sm flex flex-col justify-center">
+                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Analysis Coverage</p>
+                     <div className="flex items-center gap-4">
+                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={16} /></button>
+                        <input
+                           type="number"
+                           className="flex-1 bg-white border-4 border-white rounded-2xl py-3 text-center text-xl font-black text-slate-900 outline-none shadow-xl focus:border-indigo-200 transition-all"
                            value={portions}
                            onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
                         />
                         <button onClick={() => onPortionChange(portions + 50)} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={16} /></button>
                      </div>
                   </div>
+
                   <div className="flex items-end">
                      <button
                         onClick={handleGroundPrices}
