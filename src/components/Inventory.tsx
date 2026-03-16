@@ -270,20 +270,6 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                        </td>
                                        <td className="px-8 py-4">
                                           <div className="flex gap-2">
-                                             {editItem && (
-                                                <div className="px-6 md:px-10 py-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                   <div className="flex items-center gap-2">
-                                                      <Clock size={12} />
-                                                      <span>Last Edit: {editItem.lastUpdated ? new Date(editItem.lastUpdated).toLocaleString() : 'N/A'}</span>
-                                                   </div>
-                                                   {editItem.updatedByName && (
-                                                      <div className="flex items-center gap-2">
-                                                         <Users size={12} />
-                                                         <span>By: {editItem.updatedByName}</span>
-                                                      </div>
-                                                   )}
-                                                </div>
-                                             )}
                                              <input
                                                 type="number"
                                                 placeholder="Qty..."
@@ -670,10 +656,10 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
             lastPackSize: inputStrategy === 'Bulk' ? bulkPackSize : undefined,
             lastPackType: inputStrategy === 'Bulk' ? bulkPackType : undefined
          });
-         receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100, inputStrategy === 'Bulk' ? bulkPackCount : undefined, inputStrategy === 'Bulk' ? bulkPackSize : undefined, inputStrategy === 'Bulk' ? bulkPackType : undefined);
+         receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100);
       } else {
          if (!selectedIngId || effectiveQty <= 0) return;
-         receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100, inputStrategy === 'Bulk' ? bulkPackCount : undefined, inputStrategy === 'Bulk' ? bulkPackSize : undefined, inputStrategy === 'Bulk' ? bulkPackType : undefined);
+         receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100);
 
          if (mode === 'FromRequest' && selectedReqId) {
             updateRequisition(selectedReqId, { status: 'Paid' });

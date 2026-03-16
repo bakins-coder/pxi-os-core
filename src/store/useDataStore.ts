@@ -67,7 +67,7 @@ interface DataState {
     updateRequisition: (id: string, updates: Partial<Requisition>) => void;
     approveRequisition: (id: string, sourceAccountId?: string) => void;
     rejectRequisition: (id: string) => void;
-    receiveFoodStock: (ingId: string, qty: number, cost: number) => void;
+    receiveFoodStock: (ingId: string, qty: number, cost: number, packCount?: number, packSize?: number, packType?: string) => Promise<void>;
     issueRental: (eventId: string, itemId: string, qty: number, vendor?: string) => void;
     returnRental: (id: string, status: any, notes?: string) => void;
     checkOverdueAssets: () => void;
