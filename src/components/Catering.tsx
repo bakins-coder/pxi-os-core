@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import React from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -36,7 +38,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
          initialReqs.push({
             type: 'Hiring',
             category: 'Service',
-            itemName: `Wait Staff (${staffNeeded} heads)`,
+            itemName: `Wait Staff(${staffNeeded} heads)`,
             quantity: staffNeeded,
             pricePerUnitCents: waiterRate * 100,
             totalAmountCents: staffNeeded * waiterRate * 100,
@@ -367,7 +369,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   </div>
                   <div className="p-8 bg-white border-2 border-slate-100 rounded-[2rem]">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Margin</p>
-                     <h5 className={`text-2xl font-black ${(costing?.grossMarginPercentage ?? 0) > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                     <h5 className={`text-2xl font-black ${(costing?.grossMarginPercentage ?? 0) > 50 ? 'text-emerald-600' : 'text-amber-600'} `}>
                         {(costing?.grossMarginPercentage || 0).toFixed(1)}%
                      </h5>
                   </div>
@@ -407,7 +409,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const [manualTotalOverride, setManualTotalOverride] = useState<number | undefined>(invoice.manualSetPriceCents);
 
    // Helper for currency formatting
-   const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+   const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} `;
 
    const handlePrint = (capturedContent?: string) => {
       const win = window.open('', '_blank');
@@ -416,7 +418,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const content = capturedContent || document.querySelector('.WaveInvoiceContent')?.innerHTML || '';
 
       win?.document.write(`
-         <html>
+   < html >
             <head>
                <title>Invoice ${invoice.number}</title>
                <base href="${window.location.origin}/" />
@@ -433,8 +435,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
             <body>
                ${content}
             </body>
-         </html>
-      `);
+         </html >
+   `);
       setTimeout(() => {
          win?.print();
          // Small delay before closure to allow print spooling on some browsers
@@ -458,7 +460,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    }, [isShareMenuOpen]);
 
    const handleShareLink = async () => {
-      const url = `${window.location.origin}/#/invoice/${invoice.id}`;
+      const url = `${window.location.origin} /#/invoice / ${invoice.id} `;
       await navigator.clipboard.writeText(url);
       alert("Invoice link copied to clipboard!");
       setIsShareMenuOpen(false);
@@ -483,17 +485,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Banquet') };
          const doc = await generateInvoicePDF(pdfInvoice, customer, settings, { save: false, returnDoc: true }) as any;
          const pdfBlob = doc.output('blob');
-         const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
+         const file = new File([pdfBlob], `Invoice - ${invoice.number}.pdf`, { type: 'application/pdf' });
 
          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
                files: [file],
-               title: `Invoice ${invoice.number}`,
+               title: `Invoice ${invoice.number} `,
                text: `Please find attached invoice ${invoice.number}.`
             });
          } else {
             // Fallback to download if sharing file is not supported
-            doc.save(`Invoice-${invoice.number}.pdf`);
+            doc.save(`Invoice - ${invoice.number}.pdf`);
             alert("Direct PDF sharing not supported on this browser. PDF downloaded instead.");
          }
       } catch (err) {
@@ -510,7 +512,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const newLines = [...editableLines];
       // Preserve SECTION marker if editing description of a header
       if (field === 'description' && newLines[idx].description.startsWith('[SECTION] ')) {
-         newLines[idx] = { ...newLines[idx], [field]: `[SECTION] ${value}` };
+         newLines[idx] = { ...newLines[idx], [field]: `[SECTION] ${value} ` };
       } else {
          newLines[idx] = { ...newLines[idx], [field]: value };
       }
@@ -523,7 +525,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
       setEditableLines([
          ...editableLines,
-         { id: `line-${Date.now()}`, description: desc, quantity: 1, unitPriceCents: 0 }
+         { id: `line - ${Date.now()} `, description: desc, quantity: 1, unitPriceCents: 0 }
       ]);
    };
 
@@ -533,7 +535,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       if (current.startsWith('[SECTION] ')) {
          newLines[idx].description = current.replace('[SECTION] ', '');
       } else {
-         newLines[idx].description = `[SECTION] ${current}`;
+         newLines[idx].description = `[SECTION] ${current} `;
       }
       setEditableLines(newLines);
    };
@@ -583,8 +585,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
             // Add Header
             newLines.push({
-               id: `header-${category}-${Date.now()}`,
-               description: `[SECTION] ${category}`,
+               id: `header - ${category} -${Date.now()} `,
+               description: `[SECTION] ${category} `,
                quantity: headerQty,
                unitPriceCents: 0 // User fills this
             });
@@ -612,7 +614,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                   const hasSupplyHeader = newLines.length > 0 && newLines[0].description.toLowerCase().includes('supply');
                   if (!hasSupplyHeader) {
                      newLines = [{
-                        id: `line-${Date.now()}`,
+                        id: `line - ${Date.now()} `,
                         description: '[SECTION] Supply of various menu items listed below:',
                         quantity: guestCount,
                         unitPriceCents: 0
@@ -731,7 +733,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
                {/* 3. Items Table */}
                <div className="mb-12">
-                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} gap-10 border-b-2 border-slate-100 pb-2 mb-4`}>
+                  <div className={`hidden md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} gap-10 border-b-2 border-slate-200 pb-2 mb-4`}>
                      <span className="text-[10px] font-black text-slate-400 uppercase">ITEMS</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-center">QTY</span>
                      <span className="text-[10px] font-black text-slate-400 uppercase text-right">UNIT PRICE</span>
@@ -756,7 +758,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                            const showPricing = !isBanquetMode || isHeader;
 
                            return (
-                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-b border-slate-50 md:border-none pb-4 md:pb-0 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''}`}>
+                              <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-slate-50 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''} `}>
                                  {isProformaMode ? (
                                     <>
                                        {/* Description (Top on Mobile, First Col on Desktop) */}
@@ -770,14 +772,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                           {isBanquetMode && (
                                              <button
                                                 onClick={() => toggleSection(idx)}
-                                                className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'}`}
+                                                className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
                                                 title={isHeader ? "Currently Section Header" : "Currently Itemized (No Price)"}
                                              >
                                                 {isHeader ? 'Section' : 'Itemized'}
                                              </button>
                                           )}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''}`}
+                                             className={`w-full bg-slate-50 border-none focus: ring - 1 focus: ring - orange - 400 rounded px - 2 py - 1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''} `}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -790,7 +792,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">{isHeader ? 'Qty/Guests' : 'Quantity'}</label>
                                              <input
                                                 type="number"
-                                                className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center ${isHeader ? 'font-black text-slate-900' : ''}`}
+                                                className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center ${isHeader ? 'font-black text-slate-900' : ''}"
                                                 value={line.quantity}
                                                 onFocus={e => e.target.select()}
                                                 onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
@@ -804,7 +806,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                                    <span className="text-[10px] text-slate-400 mr-1">₦</span>
                                                    <input
                                                       type="number"
-                                                      className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}`}
+                                                      className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}"
                                                       value={line.unitPriceCents / 100}
                                                       onFocus={e => e.target.select()}
                                                       onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
@@ -837,7 +839,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                           <div className="flex flex-col md:block items-end md:items-stretch">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
                                              {showPricing && (
-                                                <span className={`text-slate-900 font-bold text-right py-1 block ${isHeader ? 'text-lg text-emerald-600' : ''}`}>
+                                                <span className={`text-slate-900 font-bold text-right py - 1 block ${isHeader ? 'text-lg text-emerald-600' : ''} `}>
                                                    {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
                                                 </span>
                                              )}
@@ -849,17 +851,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                        {/* View Mode (Non-Editable) */}
                                        <div className="w-full md:pr-4">
                                           {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-400 text-white rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1 shadow-sm">Section</span>}
-                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isBanquetMode ? 'text-xs md:ml-12 text-slate-600' : ''}`}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
+                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isBanquetMode ? 'text-xs md:ml-12 text-slate-600' : ''} `}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
                                        </div>
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase whitespace-nowrap">Qty</label>
-                                             <span className={`text-slate-600 md:text-center block ${isHeader ? 'font-black' : ''}`}>{line.quantity}</span>
+                                             <span className={`text-slate-600 md:text-center block ${isHeader ? 'font-black' : ''} `}>{line.quantity}</span>
                                           </div>
                                           <div className="flex flex-col md:block">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
                                              {showPricing && (
-                                                <span className={`block md:text-right text-xs ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'}`}>
+                                                <span className={`block md: text-right text-xs ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} `}>
                                                    {formatCurrency(line.unitPriceCents)}
                                                 </span>
                                              )}
@@ -1088,7 +1090,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
                                  <div className="bg-slate-50 p-6 rounded-xl flex flex-col gap-2 items-end text-right border border-slate-100 mt-2">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount Due</p>
-                                    <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-slate-900'}`}>
+                                    <p className={`text-3xl font-black ${isPurchase ? 'text-rose-600' : 'text-slate-900'} `}>
                                        {formatCurrency(finalTotal)}
                                     </p>
                                     {hasDiscount && (
@@ -1120,14 +1122,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                   <div className="flex gap-2 items-center">
                      <button
                         onClick={() => toggleBanquetMode()}
-                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'} `}
                      >
                         {isBanquetMode ? 'Banquet Mode ON' : 'Banquet Mode OFF'}
                      </button>
                      {isBanquetMode && (
                         <button
                            onClick={() => setShowDiscountCol(!showDiscountCol)}
-                           className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                           className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'} `}
                         >
                            {showDiscountCol ? 'Discount ON' : 'Discount OFF'}
                         </button>
@@ -1146,7 +1148,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      <div className="relative flex-1 md:flex-none md:min-w-[100px]" ref={shareMenuRef}>
                         <button
                            onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
-                           className={`w-full py-3 border rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${isShareMenuOpen ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                           className={`w-full py-3 border rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${isShareMenuOpen ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'} `}
                         >
                            <Share2 size={16} /> Share
                         </button>
@@ -1240,7 +1242,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
       const dispatchedAt = new Date().toISOString();
       const assets = cart.map(c => ({ ...c, dispatchedAt }));
 
-      if (confirm(`Dispatcher Confirmation:\n\nYou are about to move ${cart.reduce((a, b) => a + b.quantity, 0)} items from Main Inventory to Event Location.\n\nProceed?`)) {
+      if (confirm(`Dispatcher Confirmation: \n\nYou are about to move ${cart.reduce((a, b) => a + b.quantity, 0)} items from Main Inventory to Event Location.\n\nProceed ? `)) {
          dispatchAssets(event.id, assets);
          alert("Assets Dispatched Successfully.");
          onClose();
@@ -1490,7 +1492,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
    let evInvoice: Invoice | undefined;
    if (evName.includes('ANELE')) {
       evInvoice = invoices.find(inv => Number(inv.totalCents) === 5150000 || Number(inv.totalCents) === 51500);
-      if (evInvoice) console.log(`[REV RECOVERY] Found Anele invoice by total/name: ${evInvoice.id}`);
+      if (evInvoice) console.log(`[REV RECOVERY] Found Anele invoice by total / name: ${evInvoice.id} `);
    }
 
    // 2. Try direct ID link if not found or if the linked one is empty
@@ -1499,7 +1501,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
       const linked = invoices.find(inv => inv.id === evInvoiceId);
       if (linked && Number(linked.totalCents) > 0) {
          evInvoice = linked;
-         console.log(`[REV RECOVERY] Found non-zero linked invoice: ${evInvoice.id}`);
+         console.log(`[REV RECOVERY] Found non - zero linked invoice: ${evInvoice.id} `);
       }
    }
 
@@ -1554,7 +1556,16 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
    };
 };
 
-const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: CateringEvent, onAmend: (ev: CateringEvent) => void, onViewInvoice: (inv: Invoice) => void, onClose?: () => void }) => {
+const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispatch, onOpenLogistics, onOpenRequisitions, onOpenMonitor }: {
+   event: CateringEvent,
+   onAmend: (ev: CateringEvent) => void,
+   onViewInvoice: (inv: Invoice) => void,
+   onClose?: () => void,
+   onOpenDispatch: (event: CateringEvent) => void,
+   onOpenLogistics: (event: CateringEvent) => void,
+   onOpenRequisitions: (event: CateringEvent) => void,
+   onOpenMonitor: (eventId: string) => void
+}) => {
    const invoices = useDataStore(state => state.invoices);
    const financials = useMemo(() => getEventFinancials(event, invoices), [event, invoices]);
    const { revenue, salesInvoice, estimatedCost, estimatedNet } = financials;
@@ -1609,20 +1620,6 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
       alert("Purchase Order Generated. Event moved to Execution.");
    };
 
-
-   const [showMonitor, setShowMonitor] = useState(false);
-   const [showDispatch, setShowDispatch] = useState(false);
-   const [showLogistics, setShowLogistics] = useState(false);
-   const [showRequisitions, setShowRequisitions] = useState(false);
-
-   if (showMonitor) {
-      return (
-         <div className="fixed inset-0 z-[200] bg-white animate-in slide-in-from-right">
-            <PortionMonitor initialEventId={event.id} onClose={() => setShowMonitor(false)} />
-         </div>
-      );
-   }
-
    return (
       <div className="bg-white p-6 md:p-12 pb-24 md:pb-12 rounded-[2rem] md:rounded-[3.5rem] shadow-xl border border-slate-100 animate-in slide-in-from-bottom-4 space-y-8 md:space-y-12 relative overflow-x-hidden">
          {onClose && (
@@ -1635,24 +1632,6 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
             </button>
          )}
 
-         {/* LOGISTICS MODALS */}
-         {showDispatch && <AssetDispatchModal event={event} onClose={() => setShowDispatch(false)} />}
-         {showLogistics && <LogisticsReturnModal event={event} onClose={() => setShowLogistics(false)} onComplete={onClose} />}
-
-         {showRequisitions && (
-            <div className="fixed inset-0 z-[250] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-               <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
-                  <div className="flex justify-between items-center mb-6">
-                     <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Procurement Status</h3>
-                     <button onClick={() => setShowRequisitions(false)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
-                        <X size={20} className="text-slate-500" />
-                     </button>
-                  </div>
-                  <RequisitionTracker eventId={event.id} />
-               </div>
-            </div>
-         )}
-
          <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-slate-100 pb-8">
             <div className="space-y-6 w-full max-w-2xl">
                <div className="flex flex-wrap gap-3">
@@ -1660,7 +1639,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
 
                      <FileText size={12} /> <span className="hidden sm:inline">Amend Record</span><span className="sm:hidden">Amend</span>
                   </button>
-                  <button onClick={() => setShowRequisitions(true)} className="px-4 md:px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-100 transition-all flex items-center gap-2">
+                  <button onClick={() => onOpenRequisitions(event)} className="px-4 md:px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-100 transition-all flex items-center gap-2">
                      <FileText size={12} /> <span className="hidden sm:inline">Track Requisitions</span><span className="sm:hidden">Reqs</span>
                   </button>
                   {salesInvoice && (
@@ -1669,7 +1648,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                      </button>
                   )}
                   {event.currentPhase === 'Execution' && (
-                     <button onClick={() => setShowDispatch(true)} className="px-5 py-2.5 bg-orange-50 text-orange-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-orange-100 transition-all flex items-center gap-2">
+                     <button onClick={() => onOpenDispatch(event)} className="px-5 py-2.5 bg-orange-50 text-orange-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-orange-100 transition-all flex items-center gap-2">
                         <Truck size={14} /> <span className="hidden sm:inline">Dispatch Assets</span><span className="sm:hidden">Dispatch</span>
                      </button>
                   )}
@@ -1677,7 +1656,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                <div>
                   <h3 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words mb-4 line-clamp-2">{event.customerName}</h3>
                   <div className="flex flex-wrap items-center gap-3">
-                     <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{event.status}</span>
+                     <span className={`px - 2 py - 1 rounded-lg text - [9px] font-black uppercase border transform - translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} `}>{event.status}</span>
                      <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">
                         {event.eventDate} • {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
                      </p>
@@ -1791,13 +1770,13 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                      <div className="flex items-center justify-center gap-3 px-8 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-rose-100">
                         <AlertCircle size={18} className="animate-pulse" /> Needs Attention
                      </div>
-                     <button onClick={() => setShowRequisitions(true)} className="bg-rose-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all w-full md:w-auto">
+                     <button onClick={() => onOpenRequisitions(event)} className="bg-rose-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all w-full md:w-auto">
                         <ClipboardList size={18} /> Manage Requisitions
                      </button>
                   </div>
                )}
                {event.currentPhase === 'Procurement' && (procurementStatus === 'Pending' || procurementStatus === 'Approved') && (
-                  <button onClick={() => setShowRequisitions(true)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+                  <button onClick={() => onOpenRequisitions(event)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                      <ClipboardList size={18} /> Track Requisitions
                   </button>
                )}
@@ -1808,7 +1787,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                )}
                {event.currentPhase === 'Execution' && event.status !== 'Completed' && (
                   <>
-                     <button onClick={() => setShowMonitor(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+                     <button onClick={() => onOpenMonitor(event.id)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                         <Activity size={18} /> Launch Live Monitor
                      </button>
                      {event.banquetDetails?.productionConfirmed ? (
@@ -1832,7 +1811,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose }: { event: C
                      </button>
                      {event.status !== 'Archived' && (
                         <button
-                           onClick={() => setShowLogistics(true)}
+                           onClick={() => onOpenLogistics(event)}
                            className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all"
                         >
                            <Truck size={18} /> Logistics Return
@@ -1910,7 +1889,7 @@ const CostingMatrix = () => {
                            <td className="px-8 py-5">
                               <div className="flex flex-col items-center gap-1">
                                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-indigo-600" style={{ width: `${c.grossMarginPercentage}%` }}></div>
+                                    <div className="h-full bg-indigo-600" style={{ width: `${c.grossMarginPercentage}% ` }}></div>
                                  </div>
                                  <span className="text-[9px] font-black text-slate-500">{c.grossMarginPercentage.toFixed(1)}%</span>
                               </div>
@@ -2022,7 +2001,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
          setItems(items.map(i => i.name === p.name ? { ...i, quantity: i.quantity + 1 } : i));
       } else {
          setItems([...items, {
-            id: `cuisine-${Date.now()}`,
+            id: `cuisine - ${Date.now()} `,
             name: p.name,
             quantity: minQty,
             priceCents: Math.round(p.price * 100),
@@ -2035,7 +2014,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    const addCustomItem = () => {
       if (!customProductName || customProductPrice <= 0 || customProductQuantity <= 0) return;
       setItems([...items, {
-         id: `custom-${Date.now()}`,
+         id: `custom - ${Date.now()} `,
          name: customProductName,
          quantity: customProductQuantity,
          priceCents: Math.round(customProductPrice * 100),
@@ -2081,7 +2060,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
    const addNewLineItem = () => {
       setItems([...items, {
-         id: `manual-${Date.now()}`,
+         id: `manual - ${Date.now()} `,
          name: '',
          quantity: 1,
          priceCents: 0,
@@ -2250,7 +2229,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
                               >
-                                 <ChevronDown size={18} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                 <ChevronDown size={18} className={`transition - transform duration - 300 ${isDropdownOpen ? 'rotate-180' : ''} `} />
                               </button>
                            </div>
 
@@ -2493,6 +2472,15 @@ export const Catering = () => {
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
    const [searchParams] = useSearchParams();
 
+   // New states for portalized modals
+   const [portionMonitorEventId, setPortionMonitorEventId] = useState<string | null>(null);
+   const [assetDispatchEvent, setAssetDispatchEvent] = useState<CateringEvent | null>(null);
+   const [logisticsReturnEvent, setLogisticsReturnEvent] = useState<CateringEvent | null>(null);
+   const [requisitionTrackerEvent, setRequisitionTrackerEvent] = useState<CateringEvent | null>(null);
+   const [procurementWizardEvent, setProcurementWizardEvent] = useState<CateringEvent | null>(null);
+   const [orderBrochureEvent, setOrderBrochureEvent] = useState<CateringEvent | null>(null);
+
+
    useEffect(() => {
       const id = searchParams.get('id');
       if (id) {
@@ -2555,11 +2543,14 @@ export const Catering = () => {
 
 
    useEffect(() => {
-      const handleProcOpen = () => setShowProcurement(true);
-      window.addEventListener('open-procurement', handleProcOpen);
+      const handleProcOpen = (e: CustomEvent<CateringEvent>) => {
+         setProcurementWizardEvent(e.detail);
+      };
+      // Listen for custom event to open procurement wizard from EventNodeSummary
+      window.addEventListener('open-procurement', handleProcOpen as EventListener);
 
       return () => {
-         window.removeEventListener('open-procurement', handleProcOpen);
+         window.removeEventListener('open-procurement', handleProcOpen as EventListener);
       };
    }, []);
 
@@ -2588,7 +2579,7 @@ export const Catering = () => {
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
                      onClick={() => {
-                        const url = `${window.location.origin}/#/brochure`;
+                        const url = `${window.location.origin} /#/brochure`;
                         navigator.clipboard.writeText(url);
                         alert('Brochure Link Copied to Clipboard!');
                      }}
@@ -2601,7 +2592,7 @@ export const Catering = () => {
                      <button
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id as any); setSelectedEventId(null); }}
-                        className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
+                        className={`whitespace - nowrap px - 4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'} `}
                      >
                         <tab.icon size={14} /> {tab.label}
                      </button>
@@ -2613,15 +2604,15 @@ export const Catering = () => {
          {(activeTab === 'orders' || activeTab === 'cuisine') && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
 
-               <div className={`${selectedEvent ? 'lg:col-span-1 grid grid-cols-1 md:grid-cols-2 gap-4 h-auto max-h-none overflow-visible lg:block lg:space-y-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'}`}>
-                  <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'}`}>
+               <div className={`${selectedEvent ? 'lg:col-span-1 grid grid-cols-1 md:grid-cols-2 gap-4 h-auto max-h-none overflow-visible lg:block lg:space-y-3 lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:pr-1' : 'lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'} `}>
+                  <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'} `}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
                         <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">
                            {viewMode} {activeTab === 'orders' ? 'Banquets' : 'Cuisine Orders'} ({filteredEvents.length})
                         </h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                            {activeTab === 'orders' ? (
-                              <button onClick={() => setShowBrochure(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
                            ) : (
                               <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create New Cuisine Order</button>
                            )}
@@ -2635,7 +2626,7 @@ export const Catering = () => {
                                  setViewMode(mode as any);
                                  setSelectedEventId(null);
                               }}
-                              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === mode ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === mode ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'} `}
                            >
                               {mode}
                            </button>
@@ -2644,7 +2635,7 @@ export const Catering = () => {
                   </div>
 
                   {filteredEvents.length === 0 && (
-                     <div className={`p-8 text-center border-2 border-dashed border-slate-100 rounded-[3rem] ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}>
+                     <div className={`p-8 text-center border-2 border-dashed border-slate-100 rounded-[2rem] ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'} `}>
                         <p className="text-xs font-black uppercase text-slate-300 tracking-widest">No {viewMode} records found</p>
                      </div>
                   )}
@@ -2660,34 +2651,34 @@ export const Catering = () => {
                               console.log('CLICKED CARD:', ev.id);
                               setSelectedEventId(ev.id);
                            }}
-                           className={`rounded-3xl p-6 border-2 transition-all cursor-pointer shadow-sm hover:shadow-md h-full flex flex-col justify-between ${isSelected
+                           className={`rounded-[3rem] p-6 border-2 transition-all cursor - pointer shadow-sm hover: shadow-md h-full flex flex-col justify-between ${isSelected
                               ? 'bg-slate-900 border-blue-600 ring-4 ring-blue-500/20 text-white'
                               : 'bg-white border-slate-100 hover:border-blue-400 text-slate-800'
-                              }`}
+                              } `}
                         >
                            <div className="flex justify-between items-start mb-4">
-                              <h3 className={`font-black text-sm md:text-base uppercase line-clamp-2 tracking-tighter leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                              <h3 className={`font-black text-sm md:text-base uppercase line-clamp-2 tracking-tighter leading-tight ${isSelected ? 'text-white' : 'text-slate-900'} `}>
                                  {ev.customerName || 'No Name'}
                               </h3>
-                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 whitespace-nowrap ${ev.status === 'Confirmed'
+                              <span className={`text - [9px] font-black px - 2 py-0.5 rounded-lg uppercase tracking-wider shrink - 0 whitespace - nowrap ${ev.status === 'Confirmed'
                                  ? (isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')
                                  : (isSelected ? 'bg-green-500/20 text-green-400' : 'bg-green-50 text-green-600')
-                                 }`}>
+                                 } `}>
                                  {ev.status}
                               </span>
                            </div>
 
                            <div className="flex justify-between items-end">
                               <div>
-                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Guests</p>
-                                 <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'}`}>{ev.guestCount || 0}</p>
+                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'} `}>Guests</p>
+                                 <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'} `}>{ev.guestCount || 0}</p>
                               </div>
                               <div className="text-right">
-                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Revenue</p>
+                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'} `}>Revenue</p>
                                  <p className={`text-lg font-black ${displayRevenue > 0
                                     ? 'text-emerald-500'
                                     : (isSelected ? 'text-slate-500' : 'text-rose-400')
-                                    }`}>
+                                    } `}>
                                     ₦{(displayRevenue / 100).toLocaleString()}
                                  </p>
                               </div>
@@ -2704,10 +2695,14 @@ export const Catering = () => {
                            event={selectedEvent}
                            onAmend={(ev) => {
                               setAmendEventId(ev.id);
-                              setShowBrochure(true);
+                              setOrderBrochureEvent(ev);
                            }}
                            onViewInvoice={(inv) => setViewingInvoice(inv)}
                            onClose={() => setSelectedEventId(null)}
+                           onOpenDispatch={(ev) => setAssetDispatchEvent(ev)}
+                           onOpenLogistics={(ev) => setLogisticsReturnEvent(ev)}
+                           onOpenRequisitions={(ev) => setRequisitionTrackerEvent(ev)}
+                           onOpenMonitor={(eventId) => setPortionMonitorEventId(eventId)}
                         />
                      </div>
                   )
@@ -2719,70 +2714,119 @@ export const Catering = () => {
 
          {/* UI Overlays */}
          {
-            showBrochure && (
-               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
-                  <OrderBrochure
-                     initialEvent={amendEvent || undefined}
-                     onComplete={() => {
-                        setShowBrochure(false);
-                        setAmendEventId(null);
-                     }}
-                     onFinalize={(inv) => {
-                        setShowBrochure(false);
-                        setAmendEventId(null);
-                        handleFinalizePush(inv);
-                     }}
-                  />
-               </div>
+            orderBrochureEvent && createPortal(
+               <OrderBrochure
+                  initialEvent={orderBrochureEvent || undefined}
+                  onComplete={() => {
+                     setOrderBrochureEvent(null);
+                     setAmendEventId(null);
+                  }}
+                  onFinalize={(inv) => {
+                     setOrderBrochureEvent(null);
+                     setAmendEventId(null);
+                     handleFinalizePush(inv);
+                  }}
+               />,
+               document.body
             )
          }
 
          {
-            showCuisineOrder && (
+            showCuisineOrder && createPortal(
                <CuisineOrderModal
                   onClose={() => setShowCuisineOrder(false)}
                   onFinalize={handleFinalizePush}
-               />
+               />,
+               document.body
             )
          }
 
-
-
-         {
-            (generatedInvoice || viewingInvoice) && (
-               <WaveInvoiceModal
-                  invoice={generatedInvoice || viewingInvoice!}
-                  onSave={(inv) => {
-                     if (generatedInvoice) handleCommitInvoice(inv);
-                     setViewingInvoice(null);
-                  }}
-                  onClose={() => {
-                     setGeneratedInvoice(null);
-                     setViewingInvoice(null);
-                  }}
-                  guestCount={selectedEvent?.guestCount}
-                  isCuisine={activeTab === 'cuisine'}
-                  eventId={selectedEvent?.id}
-               />
-            )
-         }
+         {(generatedInvoice || viewingInvoice) && createPortal(
+            <WaveInvoiceModal
+               invoice={generatedInvoice || viewingInvoice!}
+               onSave={(inv) => {
+                  if (generatedInvoice) handleCommitInvoice(inv);
+                  setViewingInvoice(null);
+               }}
+               onClose={() => {
+                  setGeneratedInvoice(null);
+                  setViewingInvoice(null);
+               }}
+               guestCount={selectedEvent?.guestCount}
+               isCuisine={activeTab === 'cuisine'}
+               eventId={selectedEvent?.id}
+            />,
+            document.body
+         )}
 
          {
-            showProcurement && selectedEvent && (
+            procurementWizardEvent && createPortal(
                <ProcurementWizard
-                  event={selectedEvent}
-                  onClose={() => setShowProcurement(false)}
+                  event={procurementWizardEvent}
+                  onClose={() => setProcurementWizardEvent(null)}
                   onFinalize={handleFinalizePush}
-               />
+               />,
+               document.body
             )
          }
 
          {
-            isManualInvoiceModalOpen && (
+            assetDispatchEvent && createPortal(
+               <AssetDispatchModal
+                  event={assetDispatchEvent}
+                  onClose={() => setAssetDispatchEvent(null)}
+               />,
+               document.body
+            )
+         }
+
+         {
+            logisticsReturnEvent && createPortal(
+               <LogisticsReturnModal
+                  event={logisticsReturnEvent}
+                  onClose={() => setLogisticsReturnEvent(null)}
+                  onComplete={() => {
+                     setLogisticsReturnEvent(null);
+                     setSelectedEventId(null); // Close event summary after logistics complete
+                  }}
+               />,
+               document.body
+            )
+         }
+
+         {
+            requisitionTrackerEvent && createPortal(
+               <div className="fixed inset-0 z-[250] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                  <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+                     <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Procurement Status</h3>
+                        <button onClick={() => setRequisitionTrackerEvent(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+                           <X size={20} className="text-slate-500" />
+                        </button>
+                     </div>
+                     <RequisitionTracker eventId={requisitionTrackerEvent.id} />
+                  </div>
+               </div>,
+               document.body
+            )
+         }
+
+         {
+            portionMonitorEventId && createPortal(
+               <div className="fixed inset-0 z-[200] bg-white">
+                  <PortionMonitor initialEventId={portionMonitorEventId} onClose={() => setPortionMonitorEventId(null)} />
+               </div>,
+               document.body
+            )
+         }
+
+         {
+            isManualInvoiceModalOpen && createPortal(
                <ManualInvoiceModal
                   isOpen={isManualInvoiceModalOpen}
                   onClose={() => setIsManualInvoiceModalOpen(false)}
-               />
+               />,
+               document.body
             )
          }
 

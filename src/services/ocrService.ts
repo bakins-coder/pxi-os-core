@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useDataStore } from "../store/useDataStore";
 
 // Initialize AI instance
@@ -81,19 +81,19 @@ export async function parseInventoryList(base64Image: string): Promise<Extracted
   `;
 
     const schema = {
-        type: SchemaType.ARRAY,
+        type: "array",
         items: {
-            type: SchemaType.OBJECT,
+            type: "object",
             properties: {
-                name: { type: SchemaType.STRING },
-                quantity: { type: SchemaType.NUMBER },
-                unit: { type: SchemaType.STRING },
-                category: { type: SchemaType.STRING },
-                confidence: { type: SchemaType.NUMBER },
+                name: { type: "string" },
+                quantity: { type: "number" },
+                unit: { type: "string" },
+                category: { type: "string" },
+                confidence: { type: "number" },
             },
             required: ["name", "quantity", "unit", "category", "confidence"],
         },
-    };
+    } as any;
 
     return processDocument<ExtractedInventoryItem[]>(base64Image, prompt, schema);
 }
@@ -109,25 +109,25 @@ export async function parseReceipt(base64Image: string): Promise<ExtractedReceip
   `;
 
     const schema = {
-        type: SchemaType.OBJECT,
+        type: "object",
         properties: {
-            merchantName: { type: SchemaType.STRING },
-            date: { type: SchemaType.STRING },
-            totalAmount: { type: SchemaType.NUMBER },
-            currency: { type: SchemaType.STRING },
+            merchantName: { type: "string" },
+            date: { type: "string" },
+            totalAmount: { type: "number" },
+            currency: { type: "string" },
             items: {
-                type: SchemaType.ARRAY,
+                type: "array",
                 items: {
-                    type: SchemaType.OBJECT,
+                    type: "object",
                     properties: {
-                        description: { type: SchemaType.STRING },
-                        amount: { type: SchemaType.NUMBER }
+                        description: { type: "string" },
+                        amount: { type: "number" }
                     }
                 }
             }
         },
         required: ["merchantName", "date", "totalAmount", "currency", "items"],
-    };
+    } as any;
 
     return processDocument<ExtractedReceipt>(base64Image, prompt, schema);
 }
