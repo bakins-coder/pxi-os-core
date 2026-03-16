@@ -337,9 +337,9 @@ const SYSTEM_TOOLS = {
         const { name, email, phone, company, interest_level = 'Medium', notes, conversation_id } = args;
         const dataStore = useDataStore.getState();
         const user = useAuthStore.getState().user;
-        
+
         const isUUID = (str?: string) => str && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
-        
+
         const lead = {
             id: `lead-${Date.now()}`,
             organizationId: user?.companyId || 'sys',
@@ -355,7 +355,7 @@ const SYSTEM_TOOLS = {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        
+
         dataStore.addLead(lead);
         return { success: true, lead_id: lead.id, lead_name: lead.name };
     },
@@ -368,17 +368,17 @@ const SYSTEM_TOOLS = {
     crawl_website_for_kb: async (args: { agent_id: string, url: string, title?: string }) => {
         const { agent_id, url, title } = args;
         const dataStore = useDataStore.getState();
-        
+
         // Simulate web crawling content extraction
         const content = `This is simulated expert knowledge extracted from ${url}. It covers the core services, mission, and FAQs found on the prospect's site.`;
-        
+
         await dataStore.addKnowledgeSource(agent_id, {
             type: 'website',
             title: title || `Crawl: ${url}`,
             content,
             url
         });
-        
+
         return { success: true, message: `Knowledge source built from ${url} for agent ${agent_id}.` };
     },
     generate_prospecting_email: async (args: { lead_id: string }) => {
@@ -1070,7 +1070,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
 
                                 // Common/Other
                                 unit: { type: SchemaType.STRING },
-                                
+
                                 // Lead Fields
                                 company: { type: SchemaType.STRING },
                                 interestLevel: { type: SchemaType.STRING },
@@ -1082,6 +1082,11 @@ export async function processAgentRequest(input: string, context: string, mode: 
                     required: ["response", "intent"]
                 }
             };
+
+            const model = ai.getGenerativeModel({
+                model: 'gemini-2.0-flash',
+                generationConfig
+            });
 
             const result = await model.generateContent(contentParts);
             const response = await result.response;

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { performAgenticMarketResearch } from '../services/ai';
 import { Loader2, Globe } from 'lucide-react';
+import { Ingredient } from '../types';
 
-export const GroundMarketPriceButton = ({ ingredient }) => {
+export const GroundMarketPriceButton = ({ ingredient }: { ingredient: Ingredient }) => {
   const [isGrounding, setIsGrounding] = useState(false);
   const { updateIngredientPrice } = useDataStore();
 
-  const handleGroundPrice = async (e) => {
+  const handleGroundPrice = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setIsGrounding(true);
     try {
