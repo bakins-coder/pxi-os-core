@@ -14,6 +14,7 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
 
     const [editedReq, setEditedReq] = useState<Partial<Requisition>>({});
     const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (requisition) {
@@ -22,29 +23,49 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
         }
     }, [requisition]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!requisition) return;
-        updateRequisition(requisition.id, editedReq);
-        onClose();
+        setIsLoading(true);
+        try {
+            updateRequisition(requisition.id, editedReq);
+        } finally {
+            setIsLoading(false);
+            onClose();
+        }
     };
 
-    const handleApprove = () => {
+    const handleApprove = async () => {
         if (!requisition) return;
-        approveRequisition(requisition.id, selectedAccountId || undefined);
-        onClose();
+        setIsLoading(true);
+        try {
+            await approveRequisition(requisition.id, selectedAccountId || undefined);
+        } finally {
+            setIsLoading(false);
+            onClose();
+        }
     };
 
-    const handleReject = () => {
+    const handleReject = async () => {
         if (!requisition) return;
-        rejectRequisition(requisition.id);
-        onClose();
+        setIsLoading(true);
+        try {
+            rejectRequisition(requisition.id);
+        } finally {
+            setIsLoading(false);
+            onClose();
+        }
     };
 
-    const handleReverse = () => {
+    const handleReverse = async () => {
         if (!requisition) return;
         if (confirm("Are you sure you want to reverse this requisition? If it was paid, funds will be restored.")) {
-            reverseRequisition(requisition.id);
-            onClose();
+            setIsLoading(true);
+            try {
+                reverseRequisition(requisition.id);
+            } finally {
+                setIsLoading(false);
+                onClose();
+            }
         }
     };
 
@@ -141,28 +162,31 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                 <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
                     {requisition.status === 'Pending' ? (
                         <>
-                            <button onClick={handleReject} className="flex-1 py-3 bg-rose-100 text-rose-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-rose-200 transition-colors">Reject</button>
-                            <button onClick={handleSave} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-colors">Save Changes</button>
+                            <button onClick={handleReject} disabled={isLoading} className="flex-1 py-3 bg-rose-100 text-rose-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-rose-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
+                            <button onClick={handleSave} disabled={isLoading} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Save Changes</button>
                             <button
                                 onClick={handleApprove}
-                                disabled={requisition.type !== 'Release' && !selectedAccountId}
-                                className={`flex-[2] py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-lg ${requisition.type !== 'Release' && !selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'}`}
+                                disabled={isLoading || (requisition.type !== 'Release' && !selectedAccountId)}
+                                className={`flex-[2] py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-lg ${isLoading ? 'bg-emerald-400 text-white cursor-wait shadow-emerald-200 opacity-80'
+                                        : requisition.type !== 'Release' && !selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                            : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'
+                                    }`}
                             >
-                                {requisition.type === 'Release' ? 'Authorize Release' : 'Pay & Approve'}
+                                {isLoading ? 'Processing...' : requisition.type === 'Release' ? 'Authorize Release' : 'Pay & Approve'}
                             </button>
                         </>
                     ) : requisition.status === 'Rejected' ? (
                         <>
-                            <button onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">Save & Re-submit</button>
+                            <button onClick={handleSave} disabled={isLoading} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50">Save & Re-submit</button>
                         </>
                     ) : (
                         <>
                             {(requisition.status === 'Approved' || requisition.status === 'Paid') && (
-                                <button onClick={handleReverse} className="flex-1 py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-rose-100 transition-colors">
-                                    Reverse to Pending
+                                <button onClick={handleReverse} disabled={isLoading} className="flex-1 py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-rose-100 transition-colors disabled:opacity-50">
+                                    {isLoading ? 'Reversing...' : 'Reverse to Pending'}
                                 </button>
                             )}
-                            <button onClick={onClose} className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-colors">Close</button>
+                            <button onClick={onClose} disabled={isLoading} className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-colors disabled:opacity-50">Close</button>
                         </>
                     )}
                 </div>

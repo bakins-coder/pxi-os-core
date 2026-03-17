@@ -128,6 +128,7 @@ export interface Ingredient {
   lastPackSize?: number;
   lastPackType?: string;
   image?: string;
+  unitId?: string;
 }
 
 export interface ItemCosting {
@@ -413,6 +414,10 @@ export interface Requisition {
   sourceAccountId?: string; // ID of the bank account used for payment
   createdAt: string;
   requestorName?: string;
+  unit?: string; // Unit of measure (kg, g, L, ml, pcs, pack, tin, bags)
+  packCount?: number; // Number of packs/bags
+  packSize?: number; // Size per pack/bag in the given unit
+  packType?: string; // Type of packaging (Bags, Packs, Cartons, etc.)
 }
 
 export interface RentalRecord {

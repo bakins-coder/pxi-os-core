@@ -377,12 +377,24 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
    const [notes, setNotes] = useState('');
    const [isMaximized, setIsMaximized] = useState(false);
    const addRequisition = useDataStore(state => state.addRequisition);
+   const { user } = useAuthStore();
 
    if (!isOpen) return null;
    const handleReleaseRequest = () => {
       if (!selectedIngId || qty <= 0) return;
       const ing = ingredients.find(i => i.id === selectedIngId);
-      addRequisition({ type: 'Release', category: 'Food', itemName: `Release: ${ing?.name}`, ingredientId: selectedIngId, quantity: qty, pricePerUnitCents: 0, totalAmountCents: 0, referenceId: selectedEventId, notes: notes || `Standard release to kitchen` });
+      addRequisition({
+         type: 'Release',
+         category: 'Food',
+         itemName: `Release: ${ing?.name}`,
+         ingredientId: selectedIngId,
+         quantity: qty,
+         pricePerUnitCents: 0,
+         totalAmountCents: 0,
+         referenceId: selectedEventId,
+         notes: notes || `Standard release to kitchen`,
+         requestorId: user?.id
+      });
       onClose();
       alert("Release requisition logged for approval.");
    };

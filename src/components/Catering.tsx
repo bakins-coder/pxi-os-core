@@ -525,7 +525,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
       setEditableLines([
          ...editableLines,
-         { id: `line - ${Date.now()} `, description: desc, quantity: 1, unitPriceCents: 0 }
+         { id: `line-${Date.now()}`, description: desc, quantity: 1, unitPriceCents: 0 }
       ]);
    };
 
@@ -585,7 +585,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
             // Add Header
             newLines.push({
-               id: `header - ${category} -${Date.now()} `,
+               id: `header-${category}-${Date.now()}`,
                description: `[SECTION] ${category} `,
                quantity: headerQty,
                unitPriceCents: 0 // User fills this
@@ -614,7 +614,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                   const hasSupplyHeader = newLines.length > 0 && newLines[0].description.toLowerCase().includes('supply');
                   if (!hasSupplyHeader) {
                      newLines = [{
-                        id: `line - ${Date.now()} `,
+                        id: `line-${Date.now()}`,
                         description: '[SECTION] Supply of various menu items listed below:',
                         quantity: guestCount,
                         unitPriceCents: 0
@@ -779,7 +779,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                              </button>
                                           )}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus: ring - 1 focus: ring - orange - 400 rounded px - 2 py - 1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''} `}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''} `}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -839,7 +839,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                           <div className="flex flex-col md:block items-end md:items-stretch">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Total</label>
                                              {showPricing && (
-                                                <span className={`text-slate-900 font-bold text-right py - 1 block ${isHeader ? 'text-lg text-emerald-600' : ''} `}>
+                                                <span className={`text-slate-900 font-bold text-right py-1 block ${isHeader ? 'text-lg text-emerald-600' : ''} `}>
                                                    {formatCurrency(line.quantity * (line.manualPriceCents ?? line.unitPriceCents))}
                                                 </span>
                                              )}
@@ -1501,7 +1501,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
       const linked = invoices.find(inv => inv.id === evInvoiceId);
       if (linked && Number(linked.totalCents) > 0) {
          evInvoice = linked;
-         console.log(`[REV RECOVERY] Found non - zero linked invoice: ${evInvoice.id} `);
+         console.log(`[REV RECOVERY] Found non-zero linked invoice: ${evInvoice.id}`);
       }
    }
 
@@ -1656,30 +1656,30 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                <div>
                   <h3 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 uppercase tracking-tighter leading-tight break-words mb-4 line-clamp-2">{event.customerName}</h3>
                   <div className="flex flex-wrap items-center gap-3">
-                     <span className={`px - 2 py - 1 rounded-lg text - [9px] font-black uppercase border transform - translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} `}>{event.status}</span>
+                     <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} `}>{event.status}</span>
                      <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">
                         {event.eventDate} • {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
                      </p>
                   </div>
                </div>
             </div>
-            <div className="text-right shrink-0 bg-slate-50 px-5 flex flex-col justify-center min-w-[120px] h-20 md:h-24 rounded-xl border border-slate-100">
-               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions Booked</p>
+            <div className="text-right shrink-0 bg-slate-50 px-5 flex flex-col justify-center gap-1 min-w-[120px] h-20 md:h-24 rounded-xl border border-slate-100">
+               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Portions Booked</p>
                <p className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter leading-none">{event.guestCount}</p>
             </div>
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center">
-               <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Revenue</p>
+            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
+               <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Revenue</p>
                <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">₦{(revenue / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center">
-               <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Est. Direct Costs</p>
+            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
+               <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Est. Direct Costs</p>
                <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">₦{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center">
-               <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest mb-2">Projected Net</p>
+            <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center gap-1">
+               <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest">Projected Net</p>
                <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">₦{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
@@ -2001,7 +2001,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
          setItems(items.map(i => i.name === p.name ? { ...i, quantity: i.quantity + 1 } : i));
       } else {
          setItems([...items, {
-            id: `cuisine - ${Date.now()} `,
+            id: `cuisine-${Date.now()}`,
             name: p.name,
             quantity: minQty,
             priceCents: Math.round(p.price * 100),
@@ -2014,7 +2014,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    const addCustomItem = () => {
       if (!customProductName || customProductPrice <= 0 || customProductQuantity <= 0) return;
       setItems([...items, {
-         id: `custom - ${Date.now()} `,
+         id: `custom-${Date.now()}`,
          name: customProductName,
          quantity: customProductQuantity,
          priceCents: Math.round(customProductPrice * 100),
@@ -2060,7 +2060,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
    const addNewLineItem = () => {
       setItems([...items, {
-         id: `manual - ${Date.now()} `,
+         id: `manual-${Date.now()}`,
          name: '',
          quantity: 1,
          priceCents: 0,
@@ -2229,7 +2229,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
                               >
-                                 <ChevronDown size={18} className={`transition - transform duration - 300 ${isDropdownOpen ? 'rotate-180' : ''} `} />
+                                 <ChevronDown size={18} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''} `} />
                               </button>
                            </div>
 
@@ -2592,7 +2592,7 @@ export const Catering = () => {
                      <button
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id as any); setSelectedEventId(null); }}
-                        className={`whitespace - nowrap px - 4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'} `}
+                        className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'} `}
                      >
                         <tab.icon size={14} /> {tab.label}
                      </button>
@@ -2651,16 +2651,16 @@ export const Catering = () => {
                               console.log('CLICKED CARD:', ev.id);
                               setSelectedEventId(ev.id);
                            }}
-                           className={`rounded-[3rem] p-6 border-2 transition-all cursor - pointer shadow-sm hover: shadow-md h-full flex flex-col justify-between ${isSelected
+                           className={`rounded-[3rem] p-6 border-2 transition-all cursor-pointer shadow-sm hover:shadow-md h-full flex flex-col justify-between overflow-hidden ${isSelected
                               ? 'bg-slate-900 border-blue-600 ring-4 ring-blue-500/20 text-white'
                               : 'bg-white border-slate-100 hover:border-blue-400 text-slate-800'
                               } `}
                         >
                            <div className="flex justify-between items-start mb-4">
-                              <h3 className={`font-black text-sm md:text-base uppercase line-clamp-2 tracking-tighter leading-tight ${isSelected ? 'text-white' : 'text-slate-900'} `}>
+                              <h3 className={`font-black text-sm md:text-base uppercase line-clamp-2 tracking-tighter leading-tight flex-1 mr-4 ${isSelected ? 'text-white' : 'text-slate-900'} `}>
                                  {ev.customerName || 'No Name'}
                               </h3>
-                              <span className={`text - [9px] font-black px - 2 py-0.5 rounded-lg uppercase tracking-wider shrink - 0 whitespace - nowrap ${ev.status === 'Confirmed'
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 whitespace-nowrap ${ev.status === 'Confirmed'
                                  ? (isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')
                                  : (isSelected ? 'bg-green-500/20 text-green-400' : 'bg-green-50 text-green-600')
                                  } `}>
@@ -2669,12 +2669,12 @@ export const Catering = () => {
                            </div>
 
                            <div className="flex justify-between items-end">
-                              <div>
-                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'} `}>Guests</p>
+                              <div className="flex flex-col gap-1">
+                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Guests</p>
                                  <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'} `}>{ev.guestCount || 0}</p>
                               </div>
-                              <div className="text-right">
-                                 <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-slate-400' : 'text-slate-400'} `}>Revenue</p>
+                              <div className="text-right flex flex-col gap-1">
+                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Revenue</p>
                                  <p className={`text-lg font-black ${displayRevenue > 0
                                     ? 'text-emerald-500'
                                     : (isSelected ? 'text-slate-500' : 'text-rose-400')

@@ -65,7 +65,7 @@ interface DataState {
     addRequisition: (req: Partial<Requisition>) => void;
     addRequisitionsBulk: (reqs: Partial<Requisition>[]) => void;
     updateRequisition: (id: string, updates: Partial<Requisition>) => void;
-    approveRequisition: (id: string, sourceAccountId?: string) => void;
+    approveRequisition: (id: string, sourceAccountId?: string) => Promise<void>;
     rejectRequisition: (id: string) => void;
     receiveFoodStock: (ingId: string, qty: number, cost: number, packCount?: number, packSize?: number, packType?: string) => Promise<void>;
     issueRental: (eventId: string, itemId: string, qty: number, vendor?: string) => void;
@@ -475,7 +475,7 @@ export const useDataStore = create<DataState>()(
                 };
 
                 const requestorId = sanitizeUUID(req.requestorId || user?.id);
-                const employee = state.employees.find(e => e.id === requestorId);
+                const employee = state.employees.find(e => e.id === requestorId || e.userId === requestorId);
                 const requestorName = req.requestorName || (employee ? `${employee.firstName} ${employee.lastName}` : (user?.name || 'System'));
 
                 set((state) => ({
@@ -533,7 +533,7 @@ export const useDataStore = create<DataState>()(
                 }));
                 get().syncWithCloud();
             },
-            approveRequisition: (id, sourceAccountId) => {
+            approveRequisition: async (id, sourceAccountId) => {
                 const state = get();
                 const req = state.requisitions.find(r => r.id === id);
                 if (!req) return;
@@ -549,12 +549,60 @@ export const useDataStore = create<DataState>()(
                             requisitions: s.requisitions.map(r => r.id === id ? { ...r, status: 'Issued' } : r)
                         }));
 
-                        if (supabase) {
-                            supabase.from('ingredients').update({ stock_level: newStock }).eq('id', req.ingredientId).then(({ error }) => {
-                                if (error) console.error("Failed to update stock for release:", error);
-                            });
+                        // Post movement to ensure views update correctly
+                        try {
+                            const userRef = useAuthStore.getState().user;
+                            const companyId = userRef?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                            let locationId: string | undefined;
+
+                            // Try to find 'Main Warehouse' first, then fall back to any org location
+                            const { data: mainWh } = await supabase!.from('locations')
+                                .select('id')
+                                .eq('organization_id', companyId)
+                                .ilike('name', '%warehouse%')
+                                .limit(1);
+
+                            if (mainWh && mainWh.length > 0) {
+                                locationId = mainWh[0].id;
+                            } else {
+                                // Fallback: any location for this org
+                                const { data: anyLoc } = await supabase!.from('locations')
+                                    .select('id')
+                                    .eq('organization_id', companyId)
+                                    .limit(1);
+                                if (anyLoc && anyLoc.length > 0) {
+                                    locationId = anyLoc[0].id;
+                                }
+                            }
+
+                            if (locationId) {
+                                await postIngredientMovement({
+                                    orgId: companyId,
+                                    itemId: req.ingredientId,
+                                    delta: -req.quantity, // Deduction
+                                    unitId: ing.unitId || 'ee88effb-8562-4b23-96a0-bb8db464ead4',
+                                    type: 'release',
+                                    refType: 'requisition',
+                                    refId: req.id,
+                                    locationId: locationId,
+                                    notes: `Release Approved: ${req.notes || req.itemName || 'No notes'}`
+                                });
+                                console.log("[Stock] Released movement posted successfully. New stock:", newStock);
+                            } else {
+                                console.warn("[Stock] No location found for org, skipping movement. Falling back to direct DB update.");
+                            }
+                        } catch (e) {
+                            console.error("Failed to post release movement:", e);
                         }
-                        get().syncWithCloud();
+
+                        // Always update ingredients table directly as a guaranteed fallback
+                        if (supabase) {
+                            const { error: updateErr } = await supabase.from('ingredients').update({ stock_level: newStock }).eq('id', req.ingredientId);
+                            if (updateErr) console.error('[Stock] Direct DB update failed:', updateErr);
+                            else console.log('[Stock] Direct DB update succeeded. stock_level =', newStock);
+                        }
+                        await get().syncWithCloud();
                         return;
                     }
                 }
@@ -3930,10 +3978,10 @@ export const useDataStore = create<DataState>()(
                     const existingKB = state.knowledgeBases.find(kb => kb.agentId === agentId);
                     if (existingKB) {
                         return {
-                            knowledgeBases: state.knowledgeBases.map(kb => 
-                                kb.agentId === agentId 
-                                ? { ...kb, sources: [...kb.sources, newSource], lastUpdated: new Date().toISOString() } 
-                                : kb
+                            knowledgeBases: state.knowledgeBases.map(kb =>
+                                kb.agentId === agentId
+                                    ? { ...kb, sources: [...kb.sources, newSource], lastUpdated: new Date().toISOString() }
+                                    : kb
                             )
                         };
                     } else {
@@ -3954,10 +4002,10 @@ export const useDataStore = create<DataState>()(
                 if (!lead) return;
 
                 get().updateLead(leadId, { demoStatus: 'Generating' });
-                
+
                 // Simulate mockup background process
                 await new Promise(r => setTimeout(r, 2000));
-                
+
                 const demoUrl = `${window.location.host}/#/mockup/${leadId}`;
                 get().updateLead(leadId, { demoStatus: 'Ready', demoUrl });
             },
@@ -3968,7 +4016,7 @@ export const useDataStore = create<DataState>()(
 
                 // Simulate email trigger through AI outreach skill
                 console.log(`[AI Outreach] Sending demo link ${lead.demoUrl} to prospect ${lead.name}`);
-                
+
                 get().updateLead(leadId, { demoStatus: 'Sent' });
             }
         }),

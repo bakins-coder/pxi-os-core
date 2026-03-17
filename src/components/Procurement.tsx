@@ -15,10 +15,21 @@ export const Procurement: React.FC = () => {
     const [formData, setFormData] = useState({
         itemName: '',
         category: 'Food' as 'Food' | 'Hardware' | 'Service' | 'Financial',
-        quantity: 1,
+        quantity: 0,
         pricePerUnit: 0,
-        notes: ''
+        notes: '',
+        unit: 'pcs' as string
     });
+
+    const [inputStrategy, setInputStrategy] = useState<'Total' | 'Bulk'>('Total');
+    const [bulkPackCount, setBulkPackCount] = useState(0);
+    const [bulkPackSize, setBulkPackSize] = useState(0);
+    const [bulkPackCost, setBulkPackCost] = useState(0);
+    const [bulkPackType, setBulkPackType] = useState('Bags');
+
+    const effectiveQty = inputStrategy === 'Bulk' ? bulkPackCount * bulkPackSize : formData.quantity;
+    const effectiveTotalCost = inputStrategy === 'Bulk' ? bulkPackCount * bulkPackCost : formData.quantity * formData.pricePerUnit;
+    const effectiveUnitPrice = effectiveQty > 0 ? effectiveTotalCost / effectiveQty : 0;
 
     const myRequisitions = requisitions
         .filter(r => r.requestorId === user?.id)
@@ -26,29 +37,39 @@ export const Procurement: React.FC = () => {
 
     const handleAddToList = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !formData.itemName || formData.quantity <= 0) return;
+        if (!user || !formData.itemName || effectiveQty <= 0) return;
 
         const newDraft: Partial<Requisition> = {
             id: `draft-${Date.now()}`,
             type: 'Purchase',
             category: formData.category,
             itemName: formData.itemName,
-            quantity: formData.quantity,
-            pricePerUnitCents: formData.pricePerUnit * 100,
-            totalAmountCents: formData.quantity * (formData.pricePerUnit * 100),
+            quantity: effectiveQty,
+            pricePerUnitCents: Math.round(effectiveUnitPrice * 100),
+            totalAmountCents: Math.round(effectiveTotalCost * 100),
             requestorId: user.id,
             status: 'Pending',
             notes: formData.notes,
+            unit: formData.unit,
+            ...(inputStrategy === 'Bulk' ? {
+                packCount: bulkPackCount,
+                packSize: bulkPackSize,
+                packType: bulkPackType
+            } : {})
         };
 
         setDraftRequests([...draftRequests, newDraft]);
         setFormData({
             itemName: '',
-            category: formData.category, // preserve category context
-            quantity: 1,
+            category: formData.category,
+            quantity: 0,
             pricePerUnit: 0,
-            notes: ''
+            notes: '',
+            unit: formData.unit
         });
+        setBulkPackCount(0);
+        setBulkPackSize(0);
+        setBulkPackCost(0);
     };
 
     const handleRemoveFromList = (id: string) => {
@@ -144,14 +165,135 @@ export const Procurement: React.FC = () => {
 
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity Required</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    required
-                                    value={formData.quantity || ''}
-                                    onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                                />
+
+                                {/* Input Strategy Toggle */}
+                                <div className="flex gap-2 mb-3">
+                                    <button type="button" onClick={() => setInputStrategy('Total')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${inputStrategy === 'Total' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-white/5 text-slate-500 border border-white/5 hover:border-white/10'}`}>Total Entry</button>
+                                    <button type="button" onClick={() => setInputStrategy('Bulk')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${inputStrategy === 'Bulk' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-white/5 text-slate-500 border border-white/5 hover:border-white/10'}`}>Bulk / Pack</button>
+                                </div>
+
+                                {inputStrategy === 'Total' ? (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-bold uppercase text-slate-500">Amount</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                required
+                                                value={formData.quantity || ''}
+                                                onChange={e => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
+                                                placeholder="e.g. 5.5"
+                                                className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-bold uppercase text-slate-500">Unit</label>
+                                            <select
+                                                value={formData.unit}
+                                                onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                                                className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                            >
+                                                <option value="pcs">Pieces</option>
+                                                <option value="kg">Kilograms (kg)</option>
+                                                <option value="g">Grams (g)</option>
+                                                <option value="L">Litres (L)</option>
+                                                <option value="ml">Millilitres (ml)</option>
+                                                <option value="pack">Packs</option>
+                                                <option value="tin">Tins</option>
+                                                <option value="bags">Bags</option>
+                                                <option value="cartons">Cartons</option>
+                                                <option value="gallons">Gallons</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-bold uppercase text-slate-500">Pack Type</label>
+                                                <select
+                                                    className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                                    value={bulkPackType}
+                                                    onChange={e => setBulkPackType(e.target.value)}
+                                                >
+                                                    <option>Bags</option><option>Packs</option><option>Cartons</option><option>Gallons</option><option>Pieces</option><option>Tins</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-bold uppercase text-slate-500">Count</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="e.g. 12"
+                                                    className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                                    value={bulkPackCount || ''}
+                                                    onChange={e => setBulkPackCount(parseFloat(e.target.value) || 0)}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-bold uppercase text-slate-500">Size ({formData.unit})</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    placeholder="e.g. 5"
+                                                    className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                                    value={bulkPackSize || ''}
+                                                    onChange={e => setBulkPackSize(parseFloat(e.target.value) || 0)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-bold uppercase text-slate-500">Unit</label>
+                                                <select
+                                                    value={formData.unit}
+                                                    onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                                                    className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                                >
+                                                    <option value="kg">Kilograms (kg)</option>
+                                                    <option value="g">Grams (g)</option>
+                                                    <option value="L">Litres (L)</option>
+                                                    <option value="ml">Millilitres (ml)</option>
+                                                    <option value="pcs">Pieces</option>
+                                                    <option value="pack">Packs</option>
+                                                    <option value="tin">Tins</option>
+                                                    <option value="bags">Bags</option>
+                                                    <option value="gallons">Gallons</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-bold uppercase text-slate-500">Cost / {bulkPackType.slice(0, -1) || 'Pack'} (₦)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    placeholder="e.g. 16000"
+                                                    className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                                    value={bulkPackCost || ''}
+                                                    onChange={e => setBulkPackCost(parseFloat(e.target.value) || 0)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Computed Summary */}
+                                        {effectiveQty > 0 && (
+                                            <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex justify-between items-center animate-in fade-in duration-200">
+                                                <div>
+                                                    <p className="text-[9px] font-black uppercase text-indigo-400 mb-0.5">Total Quantity</p>
+                                                    <p className="text-base font-black text-white">{effectiveQty.toLocaleString()} {formData.unit}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] font-black uppercase text-indigo-400 mb-0.5">Unit Price</p>
+                                                    <p className="text-base font-black text-white">₦{effectiveUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                    <p className="text-[8px] font-bold text-indigo-300 uppercase">Total: ₦{effectiveTotalCost.toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-1.5">
@@ -167,14 +309,14 @@ export const Procurement: React.FC = () => {
                             <div className="pt-4 mt-6 border-t border-white/5">
                                 <div className="flex justify-between items-center mb-6">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Item Est. Total</span>
-                                    <span className="text-lg font-black text-white">₦{(formData.quantity * formData.pricePerUnit).toLocaleString()}</span>
+                                    <span className="text-lg font-black text-white">₦{effectiveTotalCost.toLocaleString()}</span>
                                 </div>
 
                                 <button
                                     type="submit"
-                                    disabled={!formData.itemName || formData.quantity <= 0}
+                                    disabled={!formData.itemName || effectiveQty <= 0}
                                     className={`w-full py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-2
-                                        ${!formData.itemName || formData.quantity <= 0
+                                        ${!formData.itemName || effectiveQty <= 0
                                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                                             : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                                         }`}
@@ -234,7 +376,13 @@ export const Procurement: React.FC = () => {
                                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                                     <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.category}</span>
                                                     <span className="w-1 h-1 rounded-full bg-slate-700"></span>
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Qty: {req.quantity}</span>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Qty: {req.quantity} {req.unit || 'pcs'}</span>
+                                                    {req.packCount && req.packType && (
+                                                        <>
+                                                            <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                            <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.packCount} {req.packType}</span>
+                                                        </>
+                                                    )}
                                                     <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                                         ₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} ea
@@ -310,7 +458,7 @@ export const Procurement: React.FC = () => {
                                         className="group flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl bg-[#020617]/50 border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all relative overflow-hidden"
                                     >
                                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${req.status === 'Pending' ? 'bg-amber-500' :
-                                            (req.status === 'Approved' || req.status === 'Paid') ? 'bg-emerald-500' :
+                                            (req.status === 'Approved' || req.status === 'Paid' || req.status === 'Issued') ? 'bg-emerald-500' :
                                                 'bg-rose-500'}`}
                                         />
 
@@ -326,7 +474,7 @@ export const Procurement: React.FC = () => {
                                                 <div className="flex items-center gap-3">
                                                     <h4 className="text-sm font-black text-white uppercase tracking-tight">{req.itemName}</h4>
                                                     <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${req.status === 'Pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                                        (req.status === 'Approved' || req.status === 'Paid') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                                        (req.status === 'Approved' || req.status === 'Paid' || req.status === 'Issued') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                                                             'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                                         }`}>
                                                         {req.status}
@@ -337,7 +485,13 @@ export const Procurement: React.FC = () => {
                                                     <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                                                     <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.category}</span>
                                                     <span className="w-1 h-1 rounded-full bg-slate-700"></span>
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Qty: {req.quantity}</span>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Qty: {req.quantity} {req.unit || 'pcs'}</span>
+                                                    {req.packCount && req.packType && (
+                                                        <>
+                                                            <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                                                            <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">{req.packCount} {req.packType}</span>
+                                                        </>
+                                                    )}
                                                     {req.notes && (
                                                         <>
                                                             <span className="w-1 h-1 rounded-full bg-slate-700"></span>

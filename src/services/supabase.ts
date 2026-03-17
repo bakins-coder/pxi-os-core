@@ -51,7 +51,7 @@ export const checkCloudHealth = async () => {
 const SCHEMA_WHITELISTS: Record<string, string[]> = {
   catering_events: ['id', 'company_id', 'organization_id', 'customer_name', 'deal_id', 'event_date', 'guest_count', 'status', 'financials', 'cuisine_details'],
   invoices: ['id', 'company_id', 'number', 'contact_id', 'date', 'due_date', 'status', 'type', 'total_cents', 'subtotal_cents', 'service_charge_cents', 'vat_cents', 'paid_amount_cents', 'manual_set_price_cents', 'discount_cents', 'standard_total_cents', 'lines'],
-  requisitions: ['id', 'company_id', 'type', 'category', 'item_name', 'ingredient_id', 'quantity', 'price_per_unit_cents', 'total_amount_cents', 'requestor_id', 'requestor_name', 'status', 'reference_id', 'notes', 'source_account_id'],
+  requisitions: ['id', 'company_id', 'type', 'category', 'item_name', 'ingredient_id', 'quantity', 'price_per_unit_cents', 'total_amount_cents', 'requestor_id', 'requestor_name', 'status', 'reference_id', 'notes', 'source_account_id', 'unit', 'pack_count', 'pack_size', 'pack_type'],
   projects: ['id', 'company_id', 'name', 'client_contact_id', 'status', 'start_date', 'end_date', 'budget_cents', 'progress', 'reference_id', 'ai_alerts'],
   tasks: ['id', 'company_id', 'project_id', 'title', 'description', 'assignee_id', 'assignee_role', 'due_date', 'priority', 'status', 'created_at'],
   contacts: ['id', 'company_id', 'name', 'type', 'email', 'phone', 'address', 'customer_type'],
@@ -128,6 +128,9 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     if ('sourceAccountId' in newItem) { newItem.source_account_id = newItem.sourceAccountId; delete newItem.sourceAccountId; }
     if ('referenceId' in newItem) { newItem.reference_id = newItem.referenceId; delete newItem.referenceId; }
     if ('ingredientId' in newItem) { newItem.ingredient_id = newItem.ingredientId; delete newItem.ingredientId; }
+    if ('packCount' in newItem) { newItem.pack_count = newItem.packCount; delete newItem.packCount; }
+    if ('packSize' in newItem) { newItem.pack_size = newItem.packSize; delete newItem.packSize; }
+    if ('packType' in newItem) { newItem.pack_type = newItem.packType; delete newItem.packType; }
 
     // Inventory/Product
     if ('priceCents' in newItem) { newItem.price_cents = newItem.priceCents; delete newItem.priceCents; }
@@ -293,7 +296,11 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'current_cost_cents': 'currentCostCents',
     'interest_level': 'interestLevel',
     'conversation_id': 'conversationId',
-    'updated_at': 'updatedAt'
+    'updated_at': 'updatedAt',
+    'pack_count': 'packCount',
+    'pack_size': 'packSize',
+    'pack_type': 'packType',
+    'requestor_name': 'requestorName'
   };
 
   Object.entries(mappings).forEach(([snake, camel]) => {
