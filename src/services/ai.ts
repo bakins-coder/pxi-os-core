@@ -1,3 +1,4 @@
+import { SchemaType } from '@google/generative-ai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -394,9 +395,9 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "get_outstanding_invoices",
         description: "Fetch a list of unpaid invoices ordered by balance. Use this to identify debtors and money owed.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                limit: { type: "number", description: "Maximum number of records to return (default 25)" }
+                limit: { type: SchemaType.NUMBER, description: "Maximum number of records to return (default 25)" }
             }
         }
     },
@@ -404,11 +405,11 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "search_contacts",
         description: "Search for contacts in the CRM (Customers or Suppliers). Use this to find email addresses, phone numbers, or company details.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                query: { type: "string", description: "Name, email, or phone number to search" },
-                category: { type: "string", description: "Filter by 'Customer' or 'Supplier'" },
-                limit: { type: "number", description: "Maximum number of records to return (default 10)" }
+                query: { type: SchemaType.STRING, description: "Name, email, or phone number to search" },
+                category: { type: SchemaType.STRING, description: "Filter by 'Customer' or 'Supplier'" },
+                limit: { type: SchemaType.NUMBER, description: "Maximum number of records to return (default 10)" }
             },
             required: ["query"]
         }
@@ -417,54 +418,54 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "get_inventory_status",
         description: "Fetch status of inventory items. Use this to check stock levels, prices, and categories for products, reusables, or assets.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                query: { type: "string", description: "Search term for item name" },
-                type: { type: "string", description: "Filter by type: 'product', 'asset', 'reusable', 'rental', 'raw_material'" },
-                category: { type: "string", description: "Filter by category" },
-                limit: { type: "number", description: "Max results" }
+                query: { type: SchemaType.STRING, description: "Search term for item name" },
+                type: { type: SchemaType.STRING, description: "Filter by type: 'product', 'asset', 'reusable', 'rental', 'raw_material'" },
+                category: { type: SchemaType.STRING, description: "Filter by category" },
+                limit: { type: SchemaType.NUMBER, description: "Max results" }
             }
         }
     },
     {
         name: "get_staff_directory",
         description: "Get a list of all current employees, their roles, and contact status.",
-        parameters: { type: "object", properties: {} }
+        parameters: { type: SchemaType.OBJECT, properties: {} }
     },
     {
         name: "get_ingredient_list",
         description: "Fetch a list of raw ingredients/materials. Use this for 'how many unique ingredients' or stock level queries for raw goods.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                query: { type: "string", description: "Optional name filter" },
-                category: { type: "string", description: "Optional category filter" },
-                limit: { type: "number", description: "Max records (default 50)" }
+                query: { type: SchemaType.STRING, description: "Optional name filter" },
+                category: { type: SchemaType.STRING, description: "Optional category filter" },
+                limit: { type: SchemaType.NUMBER, description: "Max records (default 50)" }
             }
         }
     },
     {
         name: "get_project_summary",
         description: "Get a high-level overview of all projects and their task completion progress.",
-        parameters: { type: "object", properties: {} }
+        parameters: { type: SchemaType.OBJECT, properties: {} }
     },
     {
         name: "get_system_overview",
         description: "Get a high-level overview of the entire system including counts for employees, projects, invoices, and inventory (products vs assets).",
-        parameters: { type: "object", properties: {} }
+        parameters: { type: SchemaType.OBJECT, properties: {} }
     },
     {
         name: "get_financial_summary",
         description: "Get a summary of revenue, expenses, and pending payments.",
-        parameters: { type: "object", properties: {} }
+        parameters: { type: SchemaType.OBJECT, properties: {} }
     },
     {
         name: "get_recipe_analysis",
         description: "Get the ingredient list and costs for a specific menu item recipe.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                recipe_name: { type: "string", description: "Name of the recipe/menu item" }
+                recipe_name: { type: SchemaType.STRING, description: "Name of the recipe/menu item" }
             },
             required: ["recipe_name"]
         }
@@ -473,9 +474,9 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "search_knowledge_base",
         description: "Search the system documentation and guides. Use this to answer 'how-to' questions, technical queries about system architecture, or operational procedures.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                query: { type: "string", description: "The specific question or topic to search for" }
+                query: { type: SchemaType.STRING, description: "The specific question or topic to search for" }
             },
             required: ["query"]
         }
@@ -484,10 +485,10 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "scrape_leads",
         description: "Scrape the web (Google Maps/Directories) to find specific types of organizations in a given location. Use this to find new business prospects.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                niche: { type: "string", description: "Type of organization (e.g. 'Plumbers', 'Lawyers')" },
-                location: { type: "string", description: "City or area to search in" }
+                niche: { type: SchemaType.STRING, description: "Type of organization (e.g. 'Plumbers', 'Lawyers')" },
+                location: { type: SchemaType.STRING, description: "City or area to search in" }
             },
             required: ["niche", "location"]
         }
@@ -496,11 +497,11 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "crawl_website_for_kb",
         description: "Scrape a prospect's website to build a Knowledge Base for their custom AI agent. This extracts FAQs and services.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                agent_id: { type: "string", description: "The ID of the agent to train" },
-                url: { type: "string", description: "The URL of the website to crawl" },
-                title: { type: "string", description: "Optional title for this knowledge source" }
+                agent_id: { type: SchemaType.STRING, description: "The ID of the agent to train" },
+                url: { type: SchemaType.STRING, description: "The URL of the website to crawl" },
+                title: { type: SchemaType.STRING, description: "Optional title for this knowledge source" }
             },
             required: ["agent_id", "url"]
         }
@@ -509,9 +510,9 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "generate_prospecting_email",
         description: "Trigger a personalized outreach email to a prospect containing a link to their AI demo mockup.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                lead_id: { type: "string", description: "The ID of the lead to email" }
+                lead_id: { type: SchemaType.STRING, description: "The ID of the lead to email" }
             },
             required: ["lead_id"]
         }
@@ -520,10 +521,10 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "get_catering_events",
         description: "Fetch a list of catering events, orders, or banquets. Use this for 'when is the next event', 'list my upcoming events', or event status checks.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                status: { type: "string", description: "Filter by status: 'Draft', 'Confirmed', 'Completed', etc." },
-                limit: { type: "number", description: "Maximum number of events to return" }
+                status: { type: SchemaType.STRING, description: "Filter by status: 'Draft', 'Confirmed', 'Completed', etc." },
+                limit: { type: SchemaType.NUMBER, description: "Maximum number of events to return" }
             }
         }
     },
@@ -531,10 +532,10 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "get_all_invoices",
         description: "Get all invoices regardless of status. Use this to see history or specific invoice details.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                contact_id: { type: "string", description: "Optional contact ID filter" },
-                limit: { type: "number", description: "Max count" }
+                contact_id: { type: SchemaType.STRING, description: "Optional contact ID filter" },
+                limit: { type: SchemaType.NUMBER, description: "Max count" }
             }
         }
     },
@@ -542,9 +543,9 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "get_project_details",
         description: "Get detailed information about a specific project including its tasks.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                project_id: { type: "string", description: "The ID of the project" }
+                project_id: { type: SchemaType.STRING, description: "The ID of the project" }
             },
             required: ["project_id"]
         }
@@ -553,13 +554,13 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "add_task",
         description: "Add a new task to the system. Use this when the user asks to 'remind me', 'create a task', or 'add a todo'.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                title: { type: "string", description: "Task title" },
-                description: { type: "string", description: "Task details" },
-                priority: { type: "string", enum: ["Low", "Medium", "High", "Critical"] },
-                dueDate: { type: "string", description: "ISO date string" },
-                projectId: { type: "string", description: "Optional project ID" }
+                title: { type: SchemaType.STRING, description: "Task title" },
+                description: { type: SchemaType.STRING, description: "Task details" },
+                priority: { type: SchemaType.STRING, enum: ["Low", "Medium", "High", "Critical"] },
+                dueDate: { type: SchemaType.STRING, description: "ISO date string" },
+                projectId: { type: SchemaType.STRING, description: "Optional project ID" }
             },
             required: ["title"]
         }
@@ -568,15 +569,15 @@ const SYSTEM_TOOL_DECLARATIONS = [
         name: "capture_lead",
         description: "Capture a prospective customer's details (Lead). Use this when a user expresses interest in products, services, or pricing.",
         parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
-                name: { type: "string", description: "Lead's full name" },
-                email: { type: "string", description: "Email address" },
-                phone: { type: "string", description: "Phone number" },
-                company: { type: "string", description: "Company name" },
-                interest_level: { type: "string", enum: ["Low", "Medium", "High"], description: "Perceived interest" },
-                notes: { type: "string", description: "Context from the conversation" },
-                conversation_id: { type: "string", description: "ID of the current chat session" }
+                name: { type: SchemaType.STRING, description: "Lead's full name" },
+                email: { type: SchemaType.STRING, description: "Email address" },
+                phone: { type: SchemaType.STRING, description: "Phone number" },
+                company: { type: SchemaType.STRING, description: "Company name" },
+                interest_level: { type: SchemaType.STRING, enum: ["Low", "Medium", "High"], description: "Perceived interest" },
+                notes: { type: SchemaType.STRING, description: "Context from the conversation" },
+                conversation_id: { type: SchemaType.STRING, description: "ID of the current chat session" }
             },
             required: ["name"]
         }
@@ -821,11 +822,11 @@ export async function runInventoryReconciliation(event: CateringEvent): Promise<
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    status: { type: "string" },
-                    totalLossCents: { type: "number" },
-                    summary: { type: "string" }
+                    status: { type: SchemaType.STRING },
+                    totalLossCents: { type: SchemaType.NUMBER },
+                    summary: { type: SchemaType.STRING }
                 },
                 required: ["status", "totalLossCents", "summary"]
             }
@@ -855,15 +856,15 @@ export async function extractInfoFromCV(base64Data: string, mimeType: string): P
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    firstName: { type: "string" },
-                    lastName: { type: "string" },
-                    email: { type: "string" },
-                    phoneNumber: { type: "string" },
-                    dob: { type: "string" },
-                    gender: { type: "string" },
-                    address: { type: "string" }
+                    firstName: { type: SchemaType.STRING },
+                    lastName: { type: SchemaType.STRING },
+                    email: { type: SchemaType.STRING },
+                    phoneNumber: { type: SchemaType.STRING },
+                    dob: { type: SchemaType.STRING },
+                    gender: { type: SchemaType.STRING },
+                    address: { type: SchemaType.STRING }
                 }
             }
         } as any
@@ -885,15 +886,15 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    firstName: { type: "string" },
-                    lastName: { type: "string" },
-                    email: { type: "string" },
-                    phoneNumber: { type: "string" },
-                    address: { type: "string" },
-                    gender: { type: "string" },
-                    dob: { type: "string" }
+                    firstName: { type: SchemaType.STRING },
+                    lastName: { type: SchemaType.STRING },
+                    email: { type: SchemaType.STRING },
+                    phoneNumber: { type: SchemaType.STRING },
+                    address: { type: SchemaType.STRING },
+                    gender: { type: SchemaType.STRING },
+                    dob: { type: SchemaType.STRING }
                 }
             }
         } as any
@@ -1033,49 +1034,49 @@ export async function processAgentRequest(input: string, context: string, mode: 
             const generationConfig = {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: "object",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        response: { type: "string" },
-                        intent: { type: "string", enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT', 'LEAD_GENERATION', 'CUSTOMER_SUPPORT'] } as any,
+                        response: { type: SchemaType.STRING },
+                        intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT', 'LEAD_GENERATION', 'CUSTOMER_SUPPORT'] } as any,
                         payload: {
-                            type: "object",
+                            type: SchemaType.OBJECT,
                             properties: {
                                 // Employee Fields
-                                firstName: { type: "string" },
-                                lastName: { type: "string" },
-                                role: { type: "string" },
-                                email: { type: "string" },
-                                phone: { type: "string" },
-                                dob: { type: "string" },
-                                gender: { type: "string" },
-                                address: { type: "string" },
-                                dateOfEmployment: { type: "string" },
-                                healthNotes: { type: "string" },
-                                stats: { type: "string" },
+                                firstName: { type: SchemaType.STRING },
+                                lastName: { type: SchemaType.STRING },
+                                role: { type: SchemaType.STRING },
+                                email: { type: SchemaType.STRING },
+                                phone: { type: SchemaType.STRING },
+                                dob: { type: SchemaType.STRING },
+                                gender: { type: SchemaType.STRING },
+                                address: { type: SchemaType.STRING },
+                                dateOfEmployment: { type: SchemaType.STRING },
+                                healthNotes: { type: SchemaType.STRING },
+                                stats: { type: SchemaType.STRING },
 
                                 // Inventory Fields
-                                itemName: { type: "string" },
-                                quantity: { type: "number" },
-                                category: { type: "string" },
+                                itemName: { type: SchemaType.STRING },
+                                quantity: { type: SchemaType.NUMBER },
+                                category: { type: SchemaType.STRING },
 
                                 // CRM / Event Fields
-                                name: { type: "string" },
-                                customerName: { type: "string" },
-                                date: { type: "string" },
-                                guestCount: { type: "number" },
-                                location: { type: "string" },
-                                eventType: { type: "string" },
-                                budget: { type: "string" },
-                                clientContactId: { type: "string" },
+                                name: { type: SchemaType.STRING },
+                                customerName: { type: SchemaType.STRING },
+                                date: { type: SchemaType.STRING },
+                                guestCount: { type: SchemaType.NUMBER },
+                                location: { type: SchemaType.STRING },
+                                eventType: { type: SchemaType.STRING },
+                                budget: { type: SchemaType.STRING },
+                                clientContactId: { type: SchemaType.STRING },
 
                                 // Common/Other
-                                unit: { type: "string" },
+                                unit: { type: SchemaType.STRING },
 
                                 // Lead Fields
-                                company: { type: "string" },
-                                interestLevel: { type: "string" },
-                                notes: { type: "string" },
-                                conversationId: { type: "string" }
+                                company: { type: SchemaType.STRING },
+                                interestLevel: { type: SchemaType.STRING },
+                                notes: { type: SchemaType.STRING },
+                                conversationId: { type: SchemaType.STRING }
                             }
                         }
                     },
@@ -1203,10 +1204,10 @@ export async function getCFOAdvice(): Promise<any> {
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    summary: { type: "string" },
-                    sentiment: { type: "string" }
+                    summary: { type: SchemaType.STRING },
+                    sentiment: { type: SchemaType.STRING }
                 },
                 required: ["summary", "sentiment"]
             }
@@ -1241,12 +1242,12 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
-                        type: "object",
+                        type: SchemaType.OBJECT,
                         properties: {
-                            intent: { type: "string" },
-                            transcription: { type: "string" },
-                            feedback: { type: "string" },
-                            data: { type: "object", properties: { path: { type: "string" } } }
+                            intent: { type: SchemaType.STRING },
+                            transcription: { type: SchemaType.STRING },
+                            feedback: { type: SchemaType.STRING },
+                            data: { type: SchemaType.OBJECT, properties: { path: { type: SchemaType.STRING } } }
                         }
                     }
                 } as any
@@ -1319,10 +1320,10 @@ export async function getFormGuidance(formName: string, fieldName: string, value
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    tip: { type: "string" },
-                    status: { type: "string" }
+                    tip: { type: SchemaType.STRING },
+                    status: { type: SchemaType.STRING }
                 }
             }
         } as any
@@ -1374,11 +1375,11 @@ export async function suggestCOAForTransaction(description: string, coa: any[]):
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    accountId: { type: "string" },
-                    confidence: { type: "number" },
-                    reason: { type: "string" }
+                    accountId: { type: SchemaType.STRING },
+                    confidence: { type: SchemaType.NUMBER },
+                    reason: { type: SchemaType.STRING }
                 },
                 required: ["accountId", "confidence", "reason"]
             }
@@ -1403,18 +1404,18 @@ export async function processMeetingAudio(base64Audio: string, mimeType: string)
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    summary: { type: "string" },
-                    decisions: { type: "array", items: { type: "string" } },
+                    summary: { type: SchemaType.STRING },
+                    decisions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
                     tasks: {
-                        type: "array",
+                        type: SchemaType.ARRAY,
                         items: {
-                            type: "object",
+                            type: SchemaType.OBJECT,
                             properties: {
-                                title: { type: "string" },
-                                assignee: { type: "string" },
-                                priority: { type: "string" }
+                                title: { type: SchemaType.STRING },
+                                assignee: { type: SchemaType.STRING },
+                                priority: { type: SchemaType.STRING }
                             }
                         }
                     }
@@ -1474,13 +1475,13 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                type: "object",
+                type: SchemaType.OBJECT,
                 properties: {
-                    type: { type: "string", enum: ['Inflow', 'Outflow'] } as any,
-                    amountCents: { type: "number" },
-                    description: { type: "string" },
-                    date: { type: "string" },
-                    merchant: { type: "string" }
+                    type: { type: SchemaType.STRING, enum: ['Inflow', 'Outflow'] } as any,
+                    amountCents: { type: SchemaType.NUMBER },
+                    description: { type: SchemaType.STRING },
+                    date: { type: SchemaType.STRING },
+                    merchant: { type: SchemaType.STRING }
                 },
                 required: ["type", "amountCents", "description", "date"]
             }
