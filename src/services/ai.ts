@@ -1484,7 +1484,7 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
                 },
                 required: ["type", "amountCents", "description", "date"]
             }
-        }
+        } as any
     });
 
     const result = await model.generateContent([
