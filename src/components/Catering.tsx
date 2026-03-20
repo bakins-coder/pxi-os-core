@@ -2536,9 +2536,9 @@ export const Catering = () => {
       });
    }, [cateringEvents, invoices, viewMode, activeTab]);
 
-   const selectedEvent = useMemo(() => cateringEvents.find(e => e.id === selectedEventId) || null, [cateringEvents, selectedEventId]);
+   const selectedEvent = useMemo(() => selectedEventId ? (cateringEvents.find(e => e.id === selectedEventId) || null) : null, [cateringEvents, selectedEventId]);
 
-   const amendEvent = useMemo(() => cateringEvents.find(e => e.id === amendEventId) || null, [cateringEvents, amendEventId]);
+   const amendEvent = useMemo(() => amendEventId ? (cateringEvents.find(e => e.id === amendEventId) || null) : null, [cateringEvents, amendEventId]);
 
 
 

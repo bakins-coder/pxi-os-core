@@ -16,7 +16,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
     const [selected, setSelected] = useState<Record<string, number>>(() => {
         if (initialEvent) {
             const initial: Record<string, number> = {};
-            initialEvent.items.forEach(it => {
+            initialEvent.items?.forEach(it => {
                 initial[it.inventoryItemId] = it.quantity;
             });
             return initial;
