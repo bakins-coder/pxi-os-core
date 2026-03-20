@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { Role } from '../types';
 
 // Mock supabase and services
 vi.mock('../services/supabase', () => {
@@ -8,6 +9,7 @@ vi.mock('../services/supabase', () => {
         from: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
         update: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         single: vi.fn(),
@@ -36,10 +38,22 @@ describe('approveRequisition Release Logic', () => {
         // Setup initial state
         useDataStore.setState({
             ingredients: [
-                { id: 'ing-1', name: 'Spaghetti', stockLevel: 10, unit: 'pkts', companyId: 'org-1', currentCostCents: 100, lastUpdated: '', unitId: 'unit-1' }
+                { id: 'ing-1', name: 'Spaghetti', stockLevel: 10, unit: 'pkts', companyId: 'org-1', currentCostCents: 100, lastUpdated: '', unitId: 'unit-1', category: 'Food' }
             ],
             requisitions: [
-                { id: 'req-1', type: 'Release', ingredientId: 'ing-1', quantity: 2, status: 'Pending', requestorId: 'user-1', itemName: 'Release: Spaghetti' }
+                { 
+                    id: 'req-1', 
+                    type: 'Release', 
+                    ingredientId: 'ing-1', 
+                    quantity: 2, 
+                    status: 'Pending', 
+                    requestorId: 'user-1', 
+                    itemName: 'Release: Spaghetti',
+                    category: 'Food',
+                    pricePerUnitCents: 100,
+                    totalAmountCents: 200,
+                    createdAt: new Date().toISOString()
+                }
             ],
             bankAccounts: [],
             bankTransactions: [],
@@ -47,7 +61,7 @@ describe('approveRequisition Release Logic', () => {
         });
 
         useAuthStore.setState({
-            user: { id: 'user-1', name: 'Test User', companyId: 'org-1', role: 'Admin', avatar: '' }
+            user: { id: 'user-1', name: 'Test User', email: 'test@example.com', companyId: 'org-1', role: Role.ADMIN, avatar: '' }
         });
     });
 
