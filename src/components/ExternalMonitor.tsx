@@ -20,7 +20,7 @@ export const ExternalMonitor: React.FC = () => {
     const itemCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         if (!selectedEvent?.portionMonitor?.tables) return counts;
-        selectedEvent.portionMonitor.tables.forEach((t: any) => {
+        selectedEvent.portionMonitor?.tables?.forEach((t: any) => {
             t.seats?.forEach((s: any) => {
                 s.servedItems?.forEach((i: any) => {
                     counts[i.itemId] = (counts[i.itemId] || 0) + i.quantity;
@@ -140,7 +140,7 @@ export const ExternalMonitor: React.FC = () => {
 
                 {/* Item Selector Toolbar */}
                 <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                    {selectedEvent.items.map(item => {
+                    {selectedEvent.items?.map(item => {
                         const servedCount = itemCounts[item.inventoryItemId] || 0;
                         const remaining = item.quantity - servedCount;
                         const isLowStock = remaining < item.quantity * 0.2;
@@ -169,7 +169,7 @@ export const ExternalMonitor: React.FC = () => {
             <div className="flex-1 flex overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20 md:pb-4">
-                        {selectedEvent.portionMonitor?.tables.map((table: any) => (
+                        {selectedEvent.portionMonitor?.tables?.map((table: any) => (
                             <div key={table.id} className={`bg-white rounded-xl shadow-sm border-2 transition-all p-4 flex flex-col gap-3 ${table.status === 'Served' ? 'border-green-500 bg-green-50' : 'border-transparent hover:border-gray-300'}`}>
                                 <div className="flex justify-between items-start">
                                     <h3 className="font-bold text-lg text-gray-900">{table.name}</h3>
@@ -240,7 +240,7 @@ export const ExternalMonitor: React.FC = () => {
 
                         <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 pt-4"><AlertTriangle size={18} className="text-orange-500" /> Leftover Log</h3>
                         <div className="space-y-3 mb-6 flex-1 overflow-y-auto min-h-[100px]">
-                            {selectedEvent.portionMonitor?.leftovers.map((l: any, idx: number) => (
+                            {selectedEvent.portionMonitor?.leftovers?.map((l: any, idx: number) => (
                                 <div key={idx} className="p-3 bg-orange-50 rounded border border-orange-100 text-sm">
                                     <div className="font-bold text-gray-800">{l.name}</div>
                                     <div className="flex justify-between mt-1 text-gray-600">
@@ -258,7 +258,7 @@ export const ExternalMonitor: React.FC = () => {
                         <div className="mt-auto border-t pt-4">
                             <h4 className="font-bold text-gray-800 mb-2">Handover Evidence</h4>
                             <div className="grid grid-cols-2 gap-2 mb-4 max-h-40 overflow-y-auto text-gray-900">
-                                {selectedEvent.portionMonitor?.handoverEvidence.map((e: any, idx: number) => (
+                                {selectedEvent.portionMonitor?.handoverEvidence?.map((e: any, idx: number) => (
                                     <div key={idx} className="relative group aspect-square bg-gray-100 rounded overflow-hidden">
                                         <img src={e.url} alt="Evidence" className="w-full h-full object-cover" />
                                     </div>
@@ -282,7 +282,7 @@ export const ExternalMonitor: React.FC = () => {
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Item Name</label>
                                 <select value={leftoverItem} onChange={e => setLeftoverItem(e.target.value)} className="w-full p-2 border rounded text-gray-900">
                                     <option value="">Select Item</option>
-                                    {selectedEvent.items.map(i => <option key={i.inventoryItemId} value={i.inventoryItemId}>{i.name}</option>)}
+                                    {selectedEvent.items?.map(i => <option key={i.inventoryItemId} value={i.inventoryItemId}>{i.name}</option>)}
                                 </select>
                             </div>
                             <div>

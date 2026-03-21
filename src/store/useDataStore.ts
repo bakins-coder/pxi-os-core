@@ -3346,7 +3346,7 @@ export const useDataStore = create<DataState>()(
 
                     // Reusable Items (Master List)
                     if (reusableItems) {
-                        reusableItems.forEach((item: any) => {
+                        (reusableItems || []).forEach((item: any) => {
                             // Data Integrity: Skip if no ID
                             if (!item.id) return;
 
@@ -3417,7 +3417,7 @@ export const useDataStore = create<DataState>()(
 
                     // Rental Items
                     if (rentalItems) {
-                        rentalItems.forEach((item: any) => {
+                        (rentalItems || []).forEach((item: any) => {
                             if (!item.id) return;
 
                             const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
@@ -3446,7 +3446,7 @@ export const useDataStore = create<DataState>()(
                             const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
                             // FAVOR Table stock_level IF PRESENT - This solves the "Commit to Stock" persistence issue
                             const batchSum = getStock(String(item.id), ingredientStock || [], true);
-                            const stockCount = (item.stockLevel !== undefined && item.stockLevel !== 0) ? item.stockLevel : batchSum;
+                            const stockCount = (item.stockLevel !== undefined && item.stockLevel !== null) ? item.stockLevel : batchSum;
                             const unitCost = item.currentCostCents || item.priceCents || 0;
 
                             const ing = {

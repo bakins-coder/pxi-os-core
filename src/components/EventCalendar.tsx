@@ -33,7 +33,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
   const itemsByDate = useMemo(() => {
     const map: Record<number, { type: 'task' | 'event', data: any }[]> = {};
 
-    tasks.forEach(task => {
+    tasks?.forEach(task => {
       const taskDate = new Date(task.dueDate);
       if (taskDate.getMonth() === currentDate.getMonth() && taskDate.getFullYear() === currentDate.getFullYear()) {
         const day = taskDate.getDate();
@@ -42,7 +42,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
       }
     });
 
-    events.forEach(event => {
+    events?.forEach(event => {
       const eventDate = new Date(event.eventDate);
       if (eventDate.getMonth() === currentDate.getMonth() && eventDate.getFullYear() === currentDate.getFullYear()) {
         const day = eventDate.getDate();

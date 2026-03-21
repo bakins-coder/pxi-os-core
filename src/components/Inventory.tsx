@@ -1331,6 +1331,7 @@ export const Inventory = () => {
 
    // Scan Feature State
    const [showScanModal, setShowScanModal] = useState(false);
+   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
    const [isProcessingScan, setIsProcessingScan] = useState(false);
 
    const { settings } = useSettingsStore();
@@ -1413,7 +1414,18 @@ export const Inventory = () => {
       })).sort((a, b) => a.customerName.localeCompare(b.customerName));
    }, [requisitions, events]);
 
-   const handleApproveRelease = (id: string) => approveRequisition(id);
+   const handleApproveRelease = async (id: string) => {
+      setProcessingIds(prev => new Set(prev).add(id));
+      try {
+         await approveRequisition(id);
+      } finally {
+         setProcessingIds(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+         });
+      }
+   };
    const totalLiability = rentalLedger.filter(r => r.status === 'Issued').reduce((sum, r) => sum + r.estimatedReplacementValueCents, 0);
 
    const updatePortions = (id: string, val: number) => {
@@ -1633,8 +1645,16 @@ export const Inventory = () => {
                                                 <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{req.status}</span>
                                              </div>
                                              {req.status === 'Pending' && (
-                                                <button onClick={() => handleApproveRelease(req.id)} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all">
-                                                   <Check size={18} strokeWidth={3} />
+                                                <button
+                                                   onClick={() => handleApproveRelease(req.id)}
+                                                   disabled={processingIds.has(req.id)}
+                                                   className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
+                                                >
+                                                   {processingIds.has(req.id) ? (
+                                                      <RefreshCw size={18} className="animate-spin" />
+                                                   ) : (
+                                                      <Check size={18} strokeWidth={3} />
+                                                   )}
                                                 </button>
                                              )}
                                           </div>

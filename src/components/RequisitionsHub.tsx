@@ -168,8 +168,8 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                                 onClick={handleApprove}
                                 disabled={isLoading || (requisition.type !== 'Release' && !selectedAccountId)}
                                 className={`flex-[2] py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 shadow-lg ${isLoading ? 'bg-emerald-400 text-white cursor-wait shadow-emerald-200 opacity-80'
-                                        : requisition.type !== 'Release' && !selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                            : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'
+                                    : requisition.type !== 'Release' && !selectedAccountId ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                        : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'
                                     }`}
                             >
                                 {isLoading ? 'Processing...' : requisition.type === 'Release' ? 'Authorize Release' : 'Pay & Approve'}
@@ -217,7 +217,7 @@ export const RequisitionsHub: React.FC = () => {
 
     const groupedRequisitions = useMemo(() => {
         const groups: Record<string, Requisition[]> = {};
-        filteredRequisitions.forEach(req => {
+        filteredRequisitions?.forEach(req => {
             const refId = req.referenceId || 'general';
             if (!groups[refId]) groups[refId] = [];
             groups[refId].push(req);
@@ -227,15 +227,15 @@ export const RequisitionsHub: React.FC = () => {
             refId,
             items,
             event: cateringEvents.find(e => e.id === refId),
-            totalAmount: items.reduce((acc, curr) => acc + (Number(curr.totalAmountCents) || 0), 0) / 100
+            totalAmount: (items || []).reduce((acc, curr) => acc + (Number(curr.totalAmountCents) || 0), 0) / 100
         })).sort((a, b) => b.totalAmount - a.totalAmount);
     }, [filteredRequisitions, cateringEvents]);
 
     const stats = {
-        pending: requisitions.filter(r => r.status === 'Pending').length,
-        approved: requisitions.filter(r => ['Approved', 'Paid', 'Issued'].includes(r.status)).length,
-        rejected: requisitions.filter(r => r.status === 'Rejected').length,
-        totalVolume: requisitions.filter(r => r.status !== 'Rejected').reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
+        pending: (requisitions || []).filter(r => r.status === 'Pending').length,
+        approved: (requisitions || []).filter(r => ['Approved', 'Paid', 'Issued'].includes(r.status)).length,
+        rejected: (requisitions || []).filter(r => r.status === 'Rejected').length,
+        totalVolume: (requisitions || []).filter(r => r.status !== 'Rejected').reduce((acc, curr) => acc + (curr.totalAmountCents || 0), 0) / 100
     };
 
     return (
@@ -389,7 +389,7 @@ export const RequisitionsHub: React.FC = () => {
                                     {/* Group Items */}
                                     {isExpanded && (
                                         <div className="pl-12 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            {group.items.map((req: Requisition) => (
+                                            {group.items?.map((req: Requisition) => (
                                                 <div
                                                     key={req.id}
                                                     onClick={() => setSelectedReq(req)}

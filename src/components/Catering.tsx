@@ -53,7 +53,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
          pricePerUnitCents: vanRate * 100,
          totalAmountCents: vanCount * vanRate * 100,
       });
-      event.items.forEach(item => {
+      event.items?.forEach(item => {
          initialReqs.push({
             type: 'Purchase',
             category: 'Food',
@@ -198,7 +198,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    const groupedBreakdown = useMemo(() => {
       if (!costing) return {};
       const groups: Record<string, any[]> = {};
-      costing.ingredientBreakdown.forEach(ing => {
+      (costing.ingredientBreakdown || []).forEach(ing => {
          const groupName = ing.subRecipeGroup || item.name;
          if (!groups[groupName]) groups[groupName] = [];
          groups[groupName].push(ing);
@@ -209,7 +209,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    const aggregates = useMemo(() => {
       if (!costing) return [];
       const aggs: Record<string, { name: string, qty: number, unit: string, cost: number }> = {};
-      costing.ingredientBreakdown.forEach(ing => {
+      (costing.ingredientBreakdown || []).forEach(ing => {
          const key = `${ing.name}-${ing.unit}`;
          if (!aggs[key]) aggs[key] = { name: ing.name, qty: 0, unit: ing.unit, cost: 0 };
          aggs[key].qty += ing.qtyRequired;
@@ -226,7 +226,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
          const groundedPriceMap = await getLiveRecipeIngredientPrices(recipe);
 
          // Update store with new findings
-         Object.entries(groundedPriceMap).forEach(([ingName, price]) => {
+         Object.entries(groundedPriceMap || {}).forEach(([ingName, price]) => {
             const ing = ingredients.find(i => i.name.toLowerCase().trim() === ingName.toLowerCase().trim());
             if (ing) {
                updateIngredientPrice(ing.id, price, {
@@ -552,7 +552,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       };
 
       // 1. Bucketize existing items
-      editableLines.forEach(line => {
+      (editableLines || []).forEach(line => {
          if (line.description.startsWith('[SECTION] ')) return; // Skip existing headers
 
          const desc = line.description.toLowerCase();
@@ -592,7 +592,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
             });
 
             // Add Items
-            items.forEach(item => newLines.push(item));
+            (items || []).forEach(item => newLines.push(item));
          }
       });
 
@@ -1386,8 +1386,8 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
                      </div>
                      <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-6">
                         <p className="text-[10px] font-black uppercase text-orange-400 mb-4 tracking-widest">Confirm Return to Vendor</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {rentals.map(req => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           {rentals?.map(req => (
                               <label key={req.id} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-orange-100 cursor-pointer hover:border-orange-300 transition-all select-none">
                                  <input
                                     type="checkbox"
@@ -1691,7 +1691,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                   <div className="h-px flex-1 bg-slate-100"></div>
                </div>
                <div className="grid grid-cols-1 gap-4">
-                  {event.items.map((item, idx) => (
+                  {event.items?.map((item, idx) => (
                      <div key={idx} className="p-4 md:p-5 bg-white border-2 border-slate-50 rounded-2xl flex justify-between items-center group hover:border-indigo-100 transition-all">
                         <div className="flex items-center gap-4">
                            <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><UtensilsCrossed size={16} /></div>
@@ -2640,7 +2640,7 @@ export const Catering = () => {
                      </div>
                   )}
 
-                  {filteredEvents.map(ev => {
+                  {filteredEvents?.map(ev => {
                      const { revenue: displayRevenue } = getEventFinancials(ev, invoices);
                      const isSelected = selectedEventId === ev.id;
 

@@ -29,8 +29,8 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
         return counts;
     }, [selectedEvent]);
 
-    const totalGuests = selectedEvent?.portionMonitor?.tables.reduce((sum: number, t: any) => sum + t.assignedGuests, 0) || 0;
-    const servedGuests = selectedEvent?.portionMonitor?.tables.reduce((sum: number, t: any) => {
+    const totalGuests = selectedEvent?.portionMonitor?.tables?.reduce((sum: number, t: any) => sum + t.assignedGuests, 0) || 0;
+    const servedGuests = selectedEvent?.portionMonitor?.tables?.reduce((sum: number, t: any) => {
         const tableServedCount = t.seats?.filter((s: any) => s.servingCount > 0).length || 0;
         return sum + tableServedCount;
     }, 0) || 0;
@@ -80,7 +80,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
     // 6. Handlers
     const handleServe = (tableId: string) => {
         if (!selectedEvent) return;
-        const itemIds = selectedEvent.items.map(i => i.inventoryItemId);
+        const itemIds = selectedEvent.items?.map(i => i.inventoryItemId) || [];
         markTableServed(selectedEvent.id, tableId, itemIds);
     };
 
@@ -241,7 +241,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
 
                 {/* Item Selector Toolbar */}
                 <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                    {selectedEvent?.items.map(item => {
+                    {selectedEvent?.items?.map(item => {
                         const servedCount = itemCounts[item.inventoryItemId] || 0;
                         const remaining = item.quantity - servedCount;
                         const isLowStock = remaining < item.quantity * 0.2; // 20%
@@ -270,7 +270,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
             <div className="flex-1 flex overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20 lg:pb-4">
-                        {selectedEvent?.portionMonitor?.tables.map((table: any) => (
+                        {selectedEvent?.portionMonitor?.tables?.map((table: any) => (
                             <div key={table.id} className={`bg-white rounded-xl shadow-sm border-2 transition-all p-4 flex flex-col gap-3 ${table.status === 'Served' ? 'border-green-500 bg-green-50' : 'border-transparent hover:border-gray-300'}`}>
                                 <div className="flex justify-between items-start">
                                     <h3 className="font-bold text-lg text-gray-900">{table.name}</h3>
@@ -385,7 +385,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
                         </div>
                         <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 pt-4 border-t"><AlertTriangle size={18} className="text-orange-500" /> Leftover Log</h3>
                         <div className="space-y-3 mb-6 flex-1 overflow-y-auto min-h-[100px]">
-                            {selectedEvent?.portionMonitor?.leftovers.map((l: any, idx: number) => (
+                            {selectedEvent?.portionMonitor?.leftovers?.map((l: any, idx: number) => (
                                 <div key={idx} className="p-3 bg-orange-50 rounded border border-orange-100 text-sm">
                                     <div className="font-bold text-gray-800">{l.name}</div>
                                     <div className="flex justify-between mt-1 text-gray-600">
@@ -402,7 +402,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
                         <div className="mt-auto border-t pt-4">
                             <h4 className="font-bold text-gray-800 mb-2">Handover Evidence</h4>
                             <div className="grid grid-cols-2 gap-2 mb-4 max-h-40 overflow-y-auto">
-                                {selectedEvent?.portionMonitor?.handoverEvidence.map((e: any, idx: number) => (
+                                {selectedEvent?.portionMonitor?.handoverEvidence?.map((e: any, idx: number) => (
                                     <div key={idx} className="relative group aspect-square bg-gray-100 rounded overflow-hidden">
                                         <img src={e.url} alt="Evidence" className="w-full h-full object-cover" />
                                     </div>
@@ -461,7 +461,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
                         <div className="pt-4 border-t">
                             <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Add Another Item</h4>
                             <div className="flex gap-2 overflow-x-auto pb-2">
-                                {selectedEvent?.items.map(item => (
+                                {selectedEvent?.items?.map(item => (
                                     <button
                                         key={item.inventoryItemId}
                                         onClick={() => {
@@ -486,7 +486,7 @@ export const PortionMonitor: React.FC<{ initialEventId?: string; onClose?: () =>
                         <div className="space-y-3">
                             <select value={leftoverItem} onChange={e => setLeftoverItem(e.target.value)} className="w-full p-3 border rounded bg-white text-gray-900">
                                 <option value="">Select Item...</option>
-                                {selectedEvent?.items.map(i => (
+                                {selectedEvent?.items?.map(i => (
                                     <option key={i.inventoryItemId} value={i.inventoryItemId}>{i.name}</option>
                                 ))}
                             </select>
