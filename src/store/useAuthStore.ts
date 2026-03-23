@@ -161,7 +161,7 @@ export const useAuthStore = create<AuthState>()(
                     email: data.user.email || '',
                     name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || 'User',
                     role: targetRole,
-                    companyId: targetOrgId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback to ensure not undefined
+                    companyId: targetOrgId || '', // Empty if new user, so UI routes to setup
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
                     isSuperAdmin: profile?.is_super_admin || (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') || false,
                     permissionTags,
@@ -301,10 +301,10 @@ export const useAuthStore = create<AuthState>()(
                     }
                 }
 
-                // Final Fallback
-                if (!targetOrgId) targetOrgId = '10959119-72e4-4e57-ba54-923e36bba6a6';
-
-                // Fetch Permissions for this Org/Role
+                // Final Fallback for recognized XQ admin emails if no org
+                if (!targetOrgId && isKnownAdmin) {
+                    targetOrgId = '10959119-72e4-4e57-ba54-923e36bba6a6';
+                }
 
                 // Fetch Permissions for this Org/Role
                 let permissionTags: string[] = isKnownAdmin ? ['*'] : [];
@@ -324,7 +324,7 @@ export const useAuthStore = create<AuthState>()(
                         id: user.id,
                         email: user.email || '',
                         role: safeRole,
-                        companyId: targetOrgId,
+                        companyId: targetOrgId || '',
                         name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || metadata.name || 'User',
                         avatar: metadata.avatar || '',
                         permissionTags,
