@@ -476,32 +476,30 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
                 onChange={e => setEmail(e.target.value)}
               />
             </div>
-
-            {/* Password field for activation */}
-            <div className="relative mt-4">
-              <label className={labelClasses}>Password</label>
-              <div className="relative">
-
-                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                <input
-                  required
-                  type={showPassword ? "text" : "password"}
-                  className="w-full pl-14 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
           </div>
         )}
+
+        <div className="relative">
+          <label className={labelClasses}>Password</label>
+          <div className="relative">
+            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+            <input
+              required
+              type={showPassword ? "text" : "password"}
+              className="w-full pl-14 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
 
         {isEmployeeMode ? (
           <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 p-4 rounded-2xl mb-2">
