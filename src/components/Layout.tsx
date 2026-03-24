@@ -171,8 +171,9 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
           if (i.label === 'Requisitions') {
             const isSuper = !!currentUser?.isSuperAdmin || currentUser?.role === Role.SUPER_ADMIN;
+            const isManager = currentUser?.role === Role.MANAGER || currentUser?.role === Role.CATERING_OPERATIONS_MANAGER;
             // MD check reused from above
-            if (!isMD && !isSuper) return false;
+            if (!isMD && !isSuper && !isManager) return false;
           }
 
           if (i.allowedIndustries) {

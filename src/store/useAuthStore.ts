@@ -156,16 +156,40 @@ export const useAuthStore = create<AuthState>()(
                     }
                 }
 
+                // 4. Fetch Staff ID and Fallback Name from Employees
+                let staffId = undefined;
+                let employeeName = null;
+                try {
+                    const { data: employeeData } = await withTimeout(
+                        supabase.from('employees')
+                            .select('staff_id, first_name, last_name, name')
+                            .eq('user_id', data.user.id)
+                            .maybeSingle(),
+                        3000, 'Employee fetch timed out'
+                    );
+                    if (employeeData) {
+                        staffId = employeeData.staff_id;
+                        employeeName = employeeData.name || (employeeData.first_name ? `${employeeData.first_name} ${employeeData.last_name || ''}`.trim() : null);
+                    }
+                } catch (staffErr) {
+                    console.warn('[Auth] Staff resolution failed:', staffErr);
+                }
+
+                // Fallback for staffId from email if employee check fails
+                if (!staffId && email.toLowerCase().startsWith('xq-')) {
+                    staffId = email.split('@')[0].toUpperCase();
+                }
+
                 const user: User = {
                     id: data.user.id,
                     email: data.user.email || '',
-                    name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || 'User',
+                    name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || employeeName || 'User',
                     role: targetRole,
                     companyId: targetOrgId || '', // Empty if new user, so UI routes to setup
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
                     isSuperAdmin: profile?.is_super_admin || (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') || false,
                     permissionTags,
-                    staffId: email.toLowerCase().startsWith('xq-') ? email.split('@')[0].toUpperCase() : undefined
+                    staffId
                 };
 
                 // FIX: Force correct name for MD if recovery script reset it
@@ -252,13 +276,14 @@ export const useAuthStore = create<AuthState>()(
                 // [CRITICAL FIX] Ensure Company ID is never empty for staff
                 let targetOrgId = profile?.organization_id || metadata.company_id || metadata.organization_id;
 
-                // [PREFIX PROTOCOL] "XQ" implies "Xquisite"
-                // As per user requirement: The prefix is the source of truth.
-                const isXquisiteStaff = user.email?.toLowerCase().startsWith('xq-') || user.email?.includes('@xquisite');
+                const XQUISITE_ORG_ID = '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const isXquisiteStaff = user.email?.toLowerCase().startsWith('xq-') || 
+                                        user.email?.includes('@xquisite') || 
+                                        targetOrgId === XQUISITE_ORG_ID;
 
                 if (!targetOrgId && isXquisiteStaff) {
-                    console.log('[Auth] Recognized XQ prefix. Auto-mapping to Xquisite Workspace.');
-                    targetOrgId = '10959119-72e4-4e57-ba54-923e36bba6a6';
+                    console.log('[Auth] Recognized Xquisite context. Auto-mapping to Xquisite Workspace.');
+                    targetOrgId = XQUISITE_ORG_ID;
                 }
 
                 // [SELF-HEALING] Link Database Record
@@ -319,17 +344,41 @@ export const useAuthStore = create<AuthState>()(
                     } catch (e) { console.warn("[Auth] Permission fetch failed:", e); }
                 }
 
+                // 4. Fetch Staff ID and Fallback Name from Employees (Refresh flow)
+                let staffId = undefined;
+                let employeeName = null;
+                try {
+                    const { data: employeeData } = await withTimeout(
+                        supabase.from('employees')
+                            .select('staff_id, first_name, last_name, name')
+                            .eq('user_id', user.id)
+                            .maybeSingle(),
+                        3000, 'Employee fetch (refresh) timed out'
+                    );
+                    if (employeeData) {
+                        staffId = employeeData.staff_id;
+                        employeeName = employeeData.name || (employeeData.first_name ? `${employeeData.first_name} ${employeeData.last_name || ''}`.trim() : null);
+                    }
+                } catch (staffErr) {
+                    console.warn('[Auth] Staff resolution (refresh) failed:', staffErr);
+                }
+
+                // Fallback for staffId from email
+                if (!staffId && user.email?.toLowerCase().startsWith('xq-')) {
+                    staffId = user.email.split('@')[0].toUpperCase();
+                }
+
                 set({
                     user: {
                         id: user.id,
                         email: user.email || '',
                         role: safeRole,
                         companyId: targetOrgId || '',
-                        name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || metadata.name || 'User',
+                        name: (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) || employeeName || metadata.name || 'User',
                         avatar: metadata.avatar || '',
                         permissionTags,
                         isSuperAdmin: profile?.is_super_admin || isKnownAdmin || false,
-                        staffId: user.email?.toLowerCase().startsWith('xq-') ? user.email.split('@')[0].toUpperCase() : undefined
+                        staffId
                     }
                 });
 

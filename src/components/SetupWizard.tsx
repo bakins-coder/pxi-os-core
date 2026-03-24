@@ -162,6 +162,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             firs_tin: taxId,
             contact_phone: repPhone,
             setup_complete: true,
+            created_by: currentUser?.id,
             enabled_modules: selectedModules,
             contact_person: {
                name: fullDisplayName,
