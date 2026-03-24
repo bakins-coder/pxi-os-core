@@ -50,7 +50,7 @@ const SyncIndicator = () => {
   );
 };
 
-const ParadigmLogo = ({ brandColor, orgName }: { brandColor: string, orgName: string }) => {
+const ParadigmLogo = ({ brandColor, orgName, isCollapsed }: { brandColor: string, orgName: string, isCollapsed?: boolean }) => {
   return (
     <div className="flex items-center gap-3">
       <div className="relative w-10 h-10 group shrink-0">
@@ -59,10 +59,12 @@ const ParadigmLogo = ({ brandColor, orgName }: { brandColor: string, orgName: st
           <Box size={24} className="animate-pulse" style={{ color: brandColor }} />
         </div>
       </div>
-      <div className="flex flex-col min-w-0">
-        <span className="font-black text-xl text-white tracking-tighter leading-none mb-0.5 uppercase truncate">{orgName}</span>
-        <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70" style={{ color: brandColor }}>Smart Platform</span>
-      </div>
+      {!isCollapsed && (
+        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300">
+          <span className="font-black text-xl text-white tracking-tighter leading-none mb-0.5 uppercase truncate">{orgName}</span>
+          <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70" style={{ color: brandColor }}>Smart Platform</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -95,7 +97,7 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
-const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string }) => {
+const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean }) => {
   const { strictMode, settings } = useSettingsStore();
   const { departmentMatrix, messages } = useDataStore();
   const { user: currentUser } = useAuthStore();
@@ -140,8 +142,8 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
-      <div className="p-8 mb-4">
-        <ParadigmLogo brandColor={brandColor} orgName={orgName} />
+      <div className={`p-8 mb-4 flex ${isCollapsed ? 'justify-center px-4' : ''}`}>
+        <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} />
       </div>
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
@@ -193,9 +195,11 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
                 }`}
               style={isActive ? { borderColor: brandColor, color: brandColor } : {}}
             >
-              <div className="flex items-center space-x-3 min-w-0">
-                <item.icon size={18} className={isActive ? '' : 'text-slate-600 group-hover:text-white shrink-0'} />
-                <span className={`text-[10px] uppercase tracking-widest truncate ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
+              <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3 min-w-0'}`}>
+                <item.icon size={18} className={isActive ? 'shrink-0' : 'text-slate-600 group-hover:text-white shrink-0'} />
+                {!isCollapsed && (
+                  <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
+                )}
               </div>
 
               {item.label === 'Team Messages' && unreadMessagesCount > 0 && (
@@ -211,37 +215,40 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
         })}
       </nav>
 
-      <div className="p-4 mt-auto border-t border-white/5">
+      <div className={`p-4 mt-auto border-t border-white/5 flex ${isCollapsed ? 'flex-col items-center gap-4' : 'flex-col'}`}>
         {!strictMode && (
           <button
             onClick={handleOpenAssistant}
-            className="w-full text-left bg-white/5 rounded-2xl p-4 mb-4 border border-white/5 group transition-colors hover:bg-white/10"
+            className={`w-full text-left bg-white/5 rounded-2xl border border-white/5 group transition-colors hover:bg-white/10 ${isCollapsed ? 'p-3 flex justify-center items-center shrink-0 w-auto' : 'p-4 mb-4'}`}
+            title="Intelligent Assistant"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2 mb-2'}`}>
               <Sparkles size={14} className="text-slate-400 group-hover:text-indigo-400 transition-colors shrink-0" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Intelligent Assistant</span>
+              {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all">Intelligent Assistant</span>}
             </div>
-            <p className="text-[10px] text-slate-500 leading-tight uppercase font-bold tracking-tighter italic">"Awaiting neural command..."</p>
+            {!isCollapsed && <p className="text-[10px] text-slate-500 leading-tight uppercase font-bold tracking-tighter italic transition-all">"Awaiting neural command..."</p>}
           </button>
         )}
-        {strictMode && (
+        {strictMode && !isCollapsed && (
           <div className="bg-slate-900/50 p-4 mb-4 rounded-2xl border border-white/5 border-dashed text-center">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">Manual Mode Active</p>
           </div>
         )}
         <button
           onClick={() => import('../services/clear_cache').then(m => m.clearAllClientCache())}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all group mb-2 border border-rose-500/20"
+          className={`w-full flex items-center transition-all group border border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 ${isCollapsed ? 'p-3 justify-center rounded-2xl w-auto shrink-0 mb-0' : 'space-x-3 px-4 py-3 rounded-xl mb-2'}`}
+          title="Reset App"
         >
           <RefreshCw size={18} className="text-rose-500 group-hover:text-rose-400 shrink-0" />
-          <span className="text-xs font-black uppercase tracking-widest">Reset App</span>
+          {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest animate-in fade-in">Reset App</span>}
         </button>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all group"
+          className={`w-full flex items-center transition-all group text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 ${isCollapsed ? 'p-3 justify-center rounded-2xl w-auto shrink-0' : 'space-x-3 px-4 py-3 rounded-xl'}`}
+          title="Sign Out"
         >
           <LogOut size={18} className="text-slate-600 group-hover:text-rose-400 shrink-0" />
-          <span className="text-xs font-black uppercase tracking-widest">Sign Out</span>
+          {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest animate-in fade-in">Sign Out</span>}
         </button>
       </div>
     </div>
@@ -250,6 +257,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath }
 
 export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = ({ children, userRole }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { settings, strictMode } = useSettingsStore();
@@ -328,8 +336,8 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
 
   return (
     <div className="min-h-screen flex bg-[#020617]">
-      <aside className="hidden md:block w-72 fixed h-full z-30 bg-[#020617] border-r border-white/5">
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} />
+      <aside className={`hidden md:flex flex-col fixed h-full z-30 bg-[#020617] border-r border-white/5 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-24' : 'w-72'}`}>
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} isCollapsed={isSidebarCollapsed} />
       </aside>
 
       {isMobileMenuOpen && (
@@ -396,10 +404,11 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
         <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} />
       </aside>
 
-      <div className="flex-1 md:ml-72 flex flex-col min-h-screen w-full overflow-x-hidden">
+      <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
         <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl h-16 md:h-20 flex items-center px-4 md:px-10 justify-between border-b border-white/5 w-full">
           <div className="flex items-center gap-4 md:gap-6 min-w-0">
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 text-slate-500 hover:bg-slate-800 rounded-lg shrink-0"><Menu size={24} /></button>
+            <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="hidden md:flex p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Toggle Sidebar"><Menu size={24} /></button>
             <div className="flex flex-col min-w-0">
               <span className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 truncate hidden md:block">Date: {formattedDate}</span>
               <SyncIndicator />

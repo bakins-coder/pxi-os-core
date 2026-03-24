@@ -332,7 +332,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
         };
 
         try {
-            if (initialEvent) {
+            if (initialEvent && initialEvent.id) {
                 const { invoice } = await updateCateringOrder(initialEvent.id, {
                     customerName,
                     eventDate,

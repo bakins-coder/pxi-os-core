@@ -114,7 +114,7 @@ export const Procurement: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 gap-y-12">
                 {/* Form Section (Left Column) */}
-                <div className="lg:col-span-4 space-y-6">
+                <div className="lg:col-span-5 space-y-6">
                     <div className="bg-[#0f172a] rounded-[2rem] border border-white/5 p-6 md:p-8 shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] pointer-events-none"></div>
 
@@ -329,7 +329,7 @@ export const Procurement: React.FC = () => {
                 </div>
 
                 {/* Drafts & History Section (Right Column) */}
-                <div className="lg:col-span-8 space-y-6">
+                <div className="lg:col-span-7 space-y-6">
 
                     {/* Pending Batch Card */}
                     <div className="bg-[#0f172a] rounded-[2rem] border border-indigo-500/20 p-6 md:p-8 shadow-[0_0_50px_rgba(79,70,229,0.1)] relative overflow-hidden flex flex-col">
