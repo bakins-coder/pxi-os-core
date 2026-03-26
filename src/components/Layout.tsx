@@ -53,10 +53,10 @@ const SyncIndicator = () => {
 const ParadigmLogo = ({ brandColor, orgName, isCollapsed }: { brandColor: string, orgName: string, isCollapsed?: boolean }) => {
   return (
     <div className="flex items-center gap-3">
-      <div className="relative w-10 h-10 group shrink-0">
-        <div className="absolute inset-0 opacity-20 blur-lg group-hover:opacity-40 transition-opacity" style={{ backgroundColor: brandColor }}></div>
-        <div className="relative w-full h-full border-2 rounded-lg flex items-center justify-center transform group-hover:rotate-12 transition-transform" style={{ borderColor: brandColor }}>
-          <Box size={24} className="animate-pulse" style={{ color: brandColor }} />
+      <div className="relative w-12 h-12 group shrink-0">
+        <div className="absolute inset-0 opacity-20 blur-xl group-hover:opacity-40 transition-opacity" style={{ backgroundColor: brandColor }}></div>
+        <div className="relative w-full h-full border-2 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-500 group-hover:scale-105 group-hover:rotate-3 shadow-2xl" style={{ borderColor: brandColor }}>
+          <img src="/wembley_logo.jpg" alt="Logo" className="w-full h-full object-cover" />
         </div>
       </div>
       {!isCollapsed && (
@@ -82,7 +82,7 @@ const NAV_ITEMS = [
   { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
 
   // Industry Specific
-  { label: 'Catering Ops', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
   { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -158,6 +158,17 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
           }
 
           // Strict Administrative Check - ONLY for verified Admins
+          // Industry-specific hiding for Bakery/Catering (Wembley Cakes)
+          const isBakeryOrCatering = settings.type === 'Bakery' || settings.type === 'Catering';
+          if (isBakeryOrCatering) {
+            const irrelevantModules = [
+              'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Project Hub', 'Inventory',
+              'Human Resources', 'Automation', 'Reporting', 'Team Messages', 'Analytics',
+              'Procurement'
+            ];
+            if (irrelevantModules.includes(i.label)) return false;
+          }
+
           if (i.label === 'Super Admin' || i.label === 'IT Console') {
             // Use currentUser from hook for reactivity
             const isSuper = !!currentUser?.isSuperAdmin;
@@ -178,7 +189,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
           if (i.allowedIndustries) {
             const industryMatch = i.allowedIndustries.includes(settings.type as any);
-            const moduleEnabled = i.label === 'Catering Ops' && settings.enabledModules?.includes('Catering');
+            const moduleEnabled = (i.label === 'Orders & Invoicing' || i.label === 'Catering Ops') && settings.enabledModules?.includes('Catering');
 
             if (!industryMatch && !moduleEnabled) return false;
           }

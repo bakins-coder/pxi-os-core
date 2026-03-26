@@ -200,10 +200,10 @@ export const useDataStore = create<DataState>()(
             bankTransactions: [],
             bankStatementLines: [],
             bankAccounts: [
-                { id: 'ba-gt-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Xquisite Cuisine', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                { id: 'ba-gt-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Xquisite Celebrations', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                { id: 'ba-zenith-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'Zenith Bank', accountName: 'Xquisite Celebrations', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                { id: 'ba-first-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() }
+                { id: 'ba-gt-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Wembley Cakes', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                { id: 'ba-gt-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Wembley Cakes', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                { id: 'ba-zenith-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'Zenith Bank', accountName: 'Wembley Cakes', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                { id: 'ba-first-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'First Bank', accountName: 'Wembley Cakes', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() }
             ],
             leaveRequests: [],
             calendarEvents: [],
@@ -2227,14 +2227,14 @@ export const useDataStore = create<DataState>()(
                     },
                     {
                         id: crypto.randomUUID(), companyId: companyId,
-                        title: 'Mise en Place (Food Prep)',
-                        description: 'Initial ingredient preparation and marination.',
+                        title: 'Cake Prep & Decoration',
+                        description: 'Baking, layering, and initial decoration.',
                         dueDate: oneDayBefore.toISOString().split('T')[0], priority: 'Medium', status: 'Todo'
                     },
                     {
                         id: crypto.randomUUID(), companyId: companyId,
-                        title: 'Live Cooking / Final Production',
-                        description: 'CRITICAL: Main cooking execution on event day.',
+                        title: 'Final Assembly & Decoration',
+                        description: 'Final icing, flower placement, and detailing.',
                         dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
                     },
                     {
@@ -2245,14 +2245,14 @@ export const useDataStore = create<DataState>()(
                     },
                     {
                         id: crypto.randomUUID(), companyId: companyId,
-                        title: 'Event Setup',
-                        description: 'Setup service points, tables, and chaffing dishes.',
+                        title: 'Delivery & Setup',
+                        description: 'Setup cake stand, arrange cupcakes, and toppers.',
                         dueDate: d.eventDate, priority: 'High', status: 'Todo'
                     },
                     {
                         id: crypto.randomUUID(), companyId: companyId,
-                        title: 'Service Delivery',
-                        description: 'Execute food service and guest management.',
+                        title: 'Order Handover',
+                        description: 'Handover order to client and ensure satisfaction.',
                         dueDate: d.eventDate, priority: 'Critical', status: 'Todo'
                     },
                     {

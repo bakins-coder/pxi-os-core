@@ -42,8 +42,8 @@ export const generateInvoicePDF = async (
 
     // Determine organization name based on invoice category
     // Fallback: Infer 'Cuisine' if service charge is 0 and it's a sales invoice
-    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Cuisine' : 'Banquet');
-    const orgName = inferredCategory === 'Cuisine' ? 'Xquisite Cuisine Limited' : (settings.name || 'Xquisite Celebrations Limited');
+    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Standard' : 'Custom');
+    const orgName = 'Wembley Cakes';
     const isProforma = invoice.status === InvoiceStatus.PROFORMA;
 
     // ---------------------------------------------------------
@@ -294,7 +294,7 @@ export const generateInvoicePDF = async (
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
-    const payText = `Thank you for your patronage. Please make all payment transfers to:\nXQUISITE CELEBRATIONS LIMITED`;
+    const payText = `Thank you for your patronage. Please make all payment transfers to:\nWEMBLEY CAKES`;
     doc.text(payText, 15, leftColY);
     leftColY += 12;
 
@@ -304,10 +304,10 @@ export const generateInvoicePDF = async (
 
     // Bank Grid (2x2)
     const banks = [
-        { name: "Xquisite Cuisine", bank: "GT Bank", acc: "0210736266" },
-        { name: "Xquisite Celebrations", bank: "GT Bank", acc: "0396426845" },
-        { name: "Xquisite Celebrations", bank: "Zenith Bank", acc: "1010951007" },
-        { name: "Xquisite Cuisine", bank: "First Bank", acc: "2022655945" }
+        { name: "Wembley Cakes", bank: "GT Bank", acc: "0210736266" },
+        { name: "Wembley Cakes", bank: "GT Bank", acc: "0396426845" },
+        { name: "Wembley Cakes", bank: "Zenith Bank", acc: "1010951007" },
+        { name: "Wembley Cakes", bank: "First Bank", acc: "2022655945" }
     ];
 
     const startX = 15;
@@ -380,7 +380,7 @@ export const generateInvoicePDF = async (
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold italic');
     doc.setTextColor(255, 255, 255);
-    doc.text('Bon Apetit. We look forward to serving you again soon.', 105, 291, { align: 'center' });
+    doc.text('Sweet treats for sweet moments. We look forward to serving you again soon.', 105, 291, { align: 'center' });
 
     if (options.save) {
         doc.save(`Invoice-${invoice.number}.pdf`);

@@ -681,7 +681,7 @@ const AddBankAccountModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Account Name</label>
                   <input
                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-900 outline-none focus:border-indigo-500 transition-all"
-                     placeholder="e.g. Xquisite Operations"
+                     placeholder="e.g. Wembley Cakes Operations"
                      value={formData.accountName}
                      onChange={e => setFormData({ ...formData, accountName: e.target.value })}
                   />
@@ -914,24 +914,25 @@ export const Finance = () => {
 
    // Auto-seed bank accounts if missing (Recover state)
    useEffect(() => {
-      if ((bankAccounts || []).length === 0) {
-         // Xquisite Default Accounts
+      const legacyAccounts = (bankAccounts || []).filter(acc =>
+         acc.accountName.includes('Xquisite') ||
+         ['0210736266', '0396426845', '1010951007', '2022655945'].includes(acc.accountNumber)
+      );
+
+      if ((bankAccounts || []).length === 0 || legacyAccounts.length > 0) {
          const defaults = [
-            { bankName: 'GT Bank', accountName: 'Xquisite Cuisine', accountNumber: '0210736266', currency: 'NGN' as const, balanceCents: 0, isActive: true },
-            { bankName: 'GT Bank', accountName: 'Xquisite Celebrations', accountNumber: '0396426845', currency: 'NGN' as const, balanceCents: 0, isActive: true },
-            { bankName: 'Zenith Bank', accountName: 'Xquisite Celebrations', accountNumber: '1010951007', currency: 'NGN' as const, balanceCents: 0, isActive: true },
-            { bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN' as const, balanceCents: 0, isActive: true }
+            { id: crypto.randomUUID(), bankName: 'Bank Account 1', accountName: org.name || 'Wembley Cakes', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
+            { id: crypto.randomUUID(), bankName: 'Bank Account 2', accountName: org.name || 'Wembley Cakes', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
          ];
 
-         // Add them one by one
-         defaults.forEach(acc => {
-            // Basic check to avoid duplicates if partial state exists (though length check handles most)
-            // But here we know length is 0 so just add
-            // use addBankAccount from store
-            useDataStore.getState().addBankAccount(acc);
-         });
+         if (legacyAccounts.length > 0) {
+            useDataStore.setState({ bankAccounts: defaults });
+            useDataStore.getState().syncWithCloud();
+         } else if ((bankAccounts || []).length === 0) {
+            defaults.forEach(acc => useDataStore.getState().addBankAccount(acc));
+         }
       }
-   }, [(bankAccounts || []).length]); // Dependency on length
+   }, [(bankAccounts || []).length, org.name]);
 
    // ... rest of component
 
@@ -1222,7 +1223,7 @@ export const Finance = () => {
                   <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Outflows</p><h3 className="text-3xl font-black text-rose-600">₦{(bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600"><TrendingDown size={24} /></div></div>
                </div>
                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
-                  <div className="p-8 border-b border-slate-50 flex justify-between items-center"><div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Manual Ledger</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Xquisite Centralized Cash Book</p></div><button onClick={() => setIsEntryModalOpen(true)} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"><Plus size={16} /> Record Entry</button></div>
+                  <div className="p-8 border-b border-slate-50 flex justify-between items-center"><div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Manual Ledger</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{org.name} Centralized Cash Book</p></div><button onClick={() => setIsEntryModalOpen(true)} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"><Plus size={16} /> Record Entry</button></div>
                   <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Date</th><th className="px-8 py-4">Description</th><th className="px-8 py-4">Category</th><th className="px-8 py-4 text-right">Net Value</th><th className="px-8 py-4 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-50">{bookkeeping.map(entry => {
                      const isSensitive = ['Salaries', 'Payroll', 'Bonus'].some(k => (entry.category || '').includes(k));
                      if (isSensitive && !canViewSensitive) return null;
@@ -1393,7 +1394,7 @@ export const Finance = () => {
          {
             activeTab === 'watchdog' && (
                <div className="space-y-6 animate-in slide-in-from-bottom-4">
-                  <div className="bg-slate-900 p-8 rounded-[3rem] text-white relative overflow-hidden border border-white/5 shadow-2xl"><div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl"></div><div className="relative z-10 flex items-center gap-6"><div className="w-16 h-16 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-xl animate-pulse"><ShieldAlert size={32} /></div><div><h2 className="text-2xl font-black uppercase tracking-tight">Xquisite Watchdog Active</h2><p className="text-rose-200 text-sm font-medium">Scanning for duplicates, anomalies, and liquidity risks in real-time.</p></div></div></div>
+                  <div className="bg-slate-900 p-8 rounded-[3rem] text-white relative overflow-hidden border border-white/5 shadow-2xl"><div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl"></div><div className="relative z-10 flex items-center gap-6"><div className="w-16 h-16 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-xl animate-pulse"><ShieldAlert size={32} /></div><div><h2 className="text-2xl font-black uppercase tracking-tight">{org.name} Watchdog Active</h2><p className="text-rose-200 text-sm font-medium">Scanning for duplicates, anomalies, and liquidity risks in real-time.</p></div></div></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{anomalies.map(ano => (<div key={ano.id} className={`p-8 rounded-[2.5rem] bg-white border-2 flex items-start gap-6 transition-all shadow-sm hover:shadow-xl ${ano.severity === 'High' ? 'border-rose-100' : 'border-amber-100'}`}><div className={`p-4 rounded-2xl ${ano.severity === 'High' ? 'bg-rose-50 text-rose-500' : 'bg-amber-50 text-amber-500'}`}>{ano.severity === 'High' ? <AlertTriangle size={24} /> : <Zap size={24} />}</div><div className="flex-1"><div className="flex justify-between items-center mb-2"><span className={`text-[10px] font-black uppercase tracking-widest ${ano.severity === 'High' ? 'text-rose-600' : 'text-amber-600'}`}>{ano.type}</span><span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${ano.severity === 'High' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}`}>{ano.severity} Severity</span></div><p className="font-bold text-slate-800 text-lg leading-tight mb-4">{ano.message}</p><div className="flex gap-2"><button className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Audit Entry</button><button className="bg-slate-50 text-slate-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">Ignore</button></div></div></div>))}{anomalies.length === 0 && (<div className="col-span-2 p-20 text-center bg-white rounded-[3rem] border border-dashed border-slate-200"><CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-6 opacity-30" /><p className="text-xl font-bold text-slate-400 uppercase tracking-widest">No Anomalies Detected</p></div>)}</div>
                </div>
             )

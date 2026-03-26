@@ -398,7 +398,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
-   const [isBanquetMode, setIsBanquetMode] = useState(
+   const [isCustomMode, setIsCustomMode] = useState(
       (invoice.lines && (invoice.lines.some(l => l.description.startsWith('[SECTION]')) || (invoice.lines.length > 0 && invoice.lines[0].description.toLowerCase().includes('supply')))) || false
    );
    const [showDiscountCol, setShowDiscountCol] = useState(
@@ -471,7 +471,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const { contacts } = useDataStore.getState();
       const customer = contacts.find(c => c.id === invoice.contactId);
 
-      const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Banquet') };
+      const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Custom') };
       await generateInvoicePDF(pdfInvoice, customer, settings, { save: true });
       setIsShareMenuOpen(false);
    };
@@ -482,7 +482,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          const { contacts } = useDataStore.getState();
          const customer = contacts.find(c => c.id === invoice.contactId);
 
-         const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Banquet') };
+         const pdfInvoice = { ...invoice, category: isCuisine ? 'Standard' : (invoice.category || 'Custom') };
          const doc = await generateInvoicePDF(pdfInvoice, customer, settings, { save: false, returnDoc: true }) as any;
          const pdfBlob = doc.output('blob');
          const file = new File([pdfBlob], `Invoice - ${invoice.number}.pdf`, { type: 'application/pdf' });
@@ -520,8 +520,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    };
 
    const addLineItem = () => {
-      const isActuallyBanquet = isBanquetMode;
-      const desc = isActuallyBanquet ? '[SECTION] New Service/Item' : 'New Item';
+      const isActuallyCustom = isCustomMode;
+      const desc = isActuallyCustom ? '[SECTION] New Item/Service' : 'New Item';
 
       setEditableLines([
          ...editableLines,
@@ -540,14 +540,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       setEditableLines(newLines);
    };
 
-   const autoStructureBanquet = () => {
+   const autoStructureCakeOrder = () => {
       const buckets: Record<string, InvoiceLine[]> = {
-         'Nigerian Menu': [],
-         'Oriental Menu': [],
-         'Continental Menu': [],
-         'Small Chops & Starters': [],
-         'Drinks & Beverages': [],
-         'Logistics & Service': [],
+         'Wedding Cakes': [],
+         'Birthday Cakes': [],
+         'Custom Cakes': [],
+         'Cupcakes & Sweets': [],
+         'Toppers & Accessories': [],
+         'Delivery & Setup': [],
          'General': []
       };
 
@@ -558,18 +558,18 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          const desc = line.description.toLowerCase();
          const cat = line.category; // Use the preserved category if available
 
-         if (cat === 'Nigerian Menu' || desc.includes('nigerian') || desc.includes('rice') || desc.includes('yam') || desc.includes('swallow') || desc.includes('soup') || desc.includes('stew') || desc.includes('moimoi') || desc.includes('eba') || desc.includes('amala') || desc.includes('ofada') || desc.includes('agoyin') || desc.includes('efo riro') || desc.includes('egusi') || desc.includes('gbegiri')) {
-            buckets['Nigerian Menu'].push(line);
-         } else if (cat === 'Oriental Menu' || desc.includes('thai') || desc.includes('oriental') || desc.includes('chinese') || desc.includes('asian') || desc.includes('noodles') || desc.includes('stir fry') || desc.includes('mongolian') || desc.includes('curry')) {
-            buckets['Oriental Menu'].push(line);
-         } else if (cat === 'Continental Menu' || desc.includes('pasta') || desc.includes('burger') || desc.includes('steak') || desc.includes('salad') || desc.includes('ceaser') || desc.includes('coleslaw')) {
-            buckets['Continental Menu'].push(line);
-         } else if (cat === 'Small Chops & Starters' || desc.includes('spring roll') || desc.includes('samosa') || desc.includes('prawn') || desc.includes('dim sum') || desc.includes('mosa') || desc.includes('puff puff')) {
-            buckets['Small Chops & Starters'].push(line);
-         } else if (cat === 'Drinks & Beverages' || desc.includes('water') || desc.includes('ice') || desc.includes('drink') || desc.includes('wine') || desc.includes('juice') || desc.includes('chapman') || desc.includes('beverage') || desc.includes('soda')) {
-            buckets['Drinks & Beverages'].push(line);
-         } else if (desc.includes('transport') || desc.includes('truck') || desc.includes('waiter') || desc.includes('service') || desc.includes('logistics') || desc.includes('rental')) {
-            buckets['Logistics & Service'].push(line);
+         if (cat === 'Wedding Cakes' || desc.includes('wedding') || desc.includes('tiered') || desc.includes('fondant')) {
+            buckets['Wedding Cakes'].push(line);
+         } else if (cat === 'Birthday Cakes' || desc.includes('birthday') || desc.includes('age') || desc.includes('celebration')) {
+            buckets['Birthday Cakes'].push(line);
+         } else if (cat === 'Custom Cakes' || desc.includes('custom') || desc.includes('special') || desc.includes('design')) {
+            buckets['Custom Cakes'].push(line);
+         } else if (cat === 'Cupcakes & Sweets' || desc.includes('cupcake') || desc.includes('muffin') || desc.includes('brownie') || desc.includes('cookie') || desc.includes('donut')) {
+            buckets['Cupcakes & Sweets'].push(line);
+         } else if (cat === 'Toppers & Accessories' || desc.includes('topper') || desc.includes('candle') || desc.includes('balloon') || desc.includes('card') || desc.includes('ribbon')) {
+            buckets['Toppers & Accessories'].push(line);
+         } else if (desc.includes('delivery') || desc.includes('setup') || desc.includes('transport') || desc.includes('pickup') || desc.includes('logistics')) {
+            buckets['Delivery & Setup'].push(line);
          } else {
             buckets['General'].push(line);
          }
@@ -579,9 +579,9 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const newLines: InvoiceLine[] = [];
       Object.entries(buckets).forEach(([category, items]) => {
          if (items.length > 0) {
-            // Special Rule: Logistics don't use guest count multiplier
-            const isLogistics = category.includes('Logistics');
-            const headerQty = isLogistics ? 1 : guestCount;
+            // Special Rule: Delivery don't use quantity multiplier (usually flat rate)
+            const isDelivery = category.includes('Delivery');
+            const headerQty = isDelivery ? 1 : guestCount;
 
             // Add Header
             newLines.push({
@@ -599,14 +599,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       setEditableLines(newLines);
    };
 
-   const toggleBanquetMode = () => {
-      if (!isBanquetMode) {
-         // Enable Banquet Mode
+   const toggleCustomMode = () => {
+      if (!isCustomMode) {
+         // Enable Custom Mode
          // Check if we need to auto-structure (if no sections exist)
          const hasSections = editableLines.some(l => l.description.startsWith('[SECTION]'));
          if (!hasSections) {
-            if (editableLines.length > 0 && confirm("Automatically group items into Banquet Sections (e.g. Menu, Logistics)?")) {
-               autoStructureBanquet();
+            if (editableLines.length > 0 && confirm("Automatically group items into Order Sections (e.g. Cakes, Delivery)?")) {
+               autoStructureCakeOrder();
             } else {
                // Fallback to single header legacy behavior if they decline or list empty
                let newLines = [...editableLines];
@@ -615,7 +615,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                   if (!hasSupplyHeader) {
                      newLines = [{
                         id: `line-${Date.now()}`,
-                        description: '[SECTION] Supply of various menu items listed below:',
+                        description: '[SECTION] Supply of various cakes and items listed below:',
                         quantity: guestCount,
                         unitPriceCents: 0
                      }, ...newLines];
@@ -624,9 +624,9 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                setEditableLines(newLines);
             }
          }
-         setIsBanquetMode(true);
+         setIsCustomMode(true);
       } else {
-         setIsBanquetMode(false);
+         setIsCustomMode(false);
       }
    };
 
@@ -684,7 +684,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                      <img src="/xquisite-logo-full.png" alt="Xquisite Celebrations" className="w-full object-contain" />
                   </div>
                   <div className="text-right">
-                     <h2 className="text-sm font-bold text-slate-900">{isCuisine || invoice.category === 'Cuisine' ? 'Xquisite Cuisine Limited' : (org.name || 'Xquisite Celebrations Limited')}</h2>
+                     <h2 className="text-sm font-bold text-slate-900">{isCuisine || invoice.category === 'Cuisine' ? 'Wembley Cakes' : (org.name || 'Wembley Cakes')}</h2>
                   </div>
                </div>
 
@@ -1007,7 +1007,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                            // 2. Calculate Effective Totals (Using Manual Prices)
                            const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
                               // Banquet Mode: ONLY lines marked as [SECTION] headers contribute to cost
-                              if (isBanquetMode) {
+                              if (isCustomMode) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
 
@@ -1018,7 +1018,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                            }, 0);
 
                            const effectiveTaxableSubtotal = editableLines.reduce((acc, l, idx) => {
-                              if (isBanquetMode) {
+                              if (isCustomMode) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
                               if (isNonFoodItem(l.description)) return acc;
@@ -1109,7 +1109,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                {/* 5. Orange Footer Brand Message */}
                <div className="bg-orange-500 py-4 px-8 -mx-8 md:-mx-12 mt-12 mb-[-3rem] md:mb-[-4rem]">
                   <p className="text-white font-bold italic text-center text-sm md:text-base font-serif">
-                     Bon Apetit. We look forward to serving you again soon.
+                     Sweet treats for sweet moments. We look forward to serving you again soon.
                   </p>
                </div>
 
@@ -1121,12 +1121,12 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                <div className="flex flex-wrap gap-2 flex-1 items-center justify-between md:justify-start">
                   <div className="flex gap-2 items-center">
                      <button
-                        onClick={() => toggleBanquetMode()}
-                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isBanquetMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'} `}
+                        onClick={() => toggleCustomMode()}
+                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${isCustomMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'} `}
                      >
-                        {isBanquetMode ? 'Banquet Mode ON' : 'Banquet Mode OFF'}
+                        {isCustomMode ? 'Custom Mode ON' : 'Custom Mode OFF'}
                      </button>
-                     {isBanquetMode && (
+                     {isCustomMode && (
                         <button
                            onClick={() => setShowDiscountCol(!showDiscountCol)}
                            className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${showDiscountCol ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'} `}
@@ -1578,20 +1578,20 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
    const updateCateringEvent = useDataStore(state => state.updateCateringEvent);
 
    const handleBypass = () => {
-      if (confirm("Manual Bypass: Move this event to Execution phase?\n\nUse this only if procurement is complete but state hasn't updated automatically.")) {
+      if (confirm("Manual Bypass: Move this order to Production phase?\n\nUse this only if procurement is complete but state hasn't updated automatically.")) {
          updateCateringEvent(event.id, { currentPhase: 'Execution' });
       }
    };
 
    const handleCook = () => {
-      if (confirm("Confirm Kitchen Production Phase?\n\nThis will assume cooking is in progress. You can then launch the Portion Monitor.")) {
+      if (confirm("Confirm Cake Production Phase?\n\nThis will assume production is in progress. You can then launch the Portion Monitor.")) {
          deductStockFromCooking(event.id);
          alert("Production Confirmed. Launch Portion Monitor to track service.");
       }
    };
 
    const handleComplete = () => {
-      if (confirm("Are you sure you want to close this event? This will archive it as 'Completed'.")) {
+      if (confirm("Are you sure you want to close this order? This will archive it as 'Completed'.")) {
          completeEvent(event.id);
       }
    };
@@ -1664,7 +1664,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                </div>
             </div>
             <div className="text-right shrink-0 bg-slate-50 px-5 flex flex-col justify-center gap-1 min-w-[120px] h-20 md:h-24 rounded-xl border border-slate-100">
-               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Portions Booked</p>
+               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Quantity/Units</p>
                <p className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter leading-none">{event.guestCount}</p>
             </div>
          </div>
@@ -1687,7 +1687,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <section>
                <div className="flex items-center gap-4 mb-8">
-                  <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">{event.orderType === 'Cuisine' ? 'Ordered Menu Items' : 'Banquet Menu Roster'}</h4>
+                  <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">{event.orderType === 'Cuisine' ? 'Ordered Items' : 'Custom Cake Details'}</h4>
                   <div className="h-px flex-1 bg-slate-100"></div>
                </div>
                <div className="grid grid-cols-1 gap-4">
@@ -1728,7 +1728,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                      <div className="p-5 md:p-6 bg-slate-900 border border-[#00ff9d]/20 rounded-2xl shadow-xl">
                         <div className="flex items-center gap-3 mb-2">
                            <User size={12} className="text-[#00ff9d]" />
-                           <p className="text-[8px] font-black text-[#00ff9d] uppercase tracking-widest">Lead Planner</p>
+                           <p className="text-[8px] font-black text-[#00ff9d] uppercase tracking-widest">Lead Designer</p>
                         </div>
                         <p className="text-base md:text-lg font-black text-white uppercase tracking-tight">{event.banquetDetails.eventPlanner}</p>
                      </div>
@@ -1792,11 +1792,11 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                      </button>
                      {event.banquetDetails?.productionConfirmed ? (
                         <div className="bg-orange-50 text-orange-600 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-orange-100 flex items-center gap-3">
-                           <Flame size={18} className="animate-pulse" /> Kitchen In Production
+                           <Flame size={18} className="animate-pulse" /> Cake In Production
                         </div>
                      ) : (
                         <button onClick={handleCook} className="bg-orange-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
-                           <Flame size={18} /> Confirm Kitchen Production
+                           <Flame size={18} /> Confirm Cake Production
                         </button>
                      )}
                   </>
@@ -1819,7 +1819,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                      )}
                      {event.status === 'Archived' && (
                         <div className="bg-slate-50 text-slate-400 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-100 flex items-center gap-3">
-                           <CheckCircle2 size={18} /> Event Closed
+                           <CheckCircle2 size={18} /> Order Closed
                         </div>
                      )}
                   </>
@@ -1830,7 +1830,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                   </button>
                )}
                <button onClick={handleCancelOrder} className="px-8 py-4 text-rose-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">Cancel Order</button>
-               <button onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">Close Node</button>
+               <button onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">Close Order</button>
             </div>
          </div>
       </div>
@@ -1916,7 +1916,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    const dropdownRef = useRef<HTMLDivElement>(null);
 
    const [deliveryLocation, setDeliveryLocation] = useState('');
-   const [packaging, setPackaging] = useState('Bulk Boxes');
+   const [packaging, setPackaging] = useState('Cake Box (Standard)');
 
    const [customProductName, setCustomProductName] = useState('');
    const [customProductPrice, setCustomProductPrice] = useState(0);
@@ -1937,18 +1937,18 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    }, []);
 
    useEffect(() => {
-      const savedDraft = localStorage.getItem('cuisine_draft');
+      const savedDraft = localStorage.getItem('cake_standard_draft');
       if (savedDraft) {
          try {
             const draft = JSON.parse(savedDraft);
-            if (window.confirm("Found an unfinished Cuisine Order draft. Restore it?")) {
+            if (window.confirm("Found an unfinished Standard Order draft. Restore it?")) {
                setSearchTerm(draft.customerName || '');
                setCustomerName(draft.customerName || '');
                setEventDate(draft.eventDate || new Date().toISOString().split('T')[0]);
                setInvoiceDate(draft.invoiceDate || new Date().toISOString().split('T')[0]);
                setItems(draft.items || []);
             } else {
-               localStorage.removeItem('cuisine_draft');
+               localStorage.removeItem('cake_standard_draft');
             }
          } catch (e) {
             console.error(e);
@@ -1969,7 +1969,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                items,
                timestamp: Date.now()
             };
-            localStorage.setItem('cuisine_draft', JSON.stringify(draft));
+            localStorage.setItem('cake_standard_draft', JSON.stringify(draft));
             console.log("[CuisineOrderModal] Draft auto-saved.");
          }
       }, 2000);
@@ -2092,8 +2092,8 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
          })),
          orderType: 'Cuisine',
          banquetDetails: {
-            notes: 'Cuisine Order (Smaller portions)',
-            eventType: 'Cuisine Order',
+            notes: 'Standard Order',
+            eventType: 'Standard Order',
             location: deliveryLocation,
             contactPerson: packaging // Using contactPerson as proxy for packaging in legacy field
          }
@@ -2101,7 +2101,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
       try {
          const { invoice } = await createCateringOrder(payload);
-         localStorage.removeItem('cuisine_draft');
+         localStorage.removeItem('cake_standard_draft');
          onFinalize(invoice);
          onClose();
       } catch (err) {
@@ -2115,15 +2115,15 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
             items,
             timestamp: Date.now()
          };
-         localStorage.setItem('cuisine_draft', JSON.stringify(draft));
+         localStorage.setItem('cake_standard_draft', JSON.stringify(draft));
 
-         alert("Failed to create cuisine order. Your data has been saved as a draft. Reload to restore.");
+         alert("Failed to create standard order. Your data has been saved as a draft. Reload to restore.");
       }
    };
 
    const handleCancel = () => {
       if (confirm("Are you sure you want to cancel? Any unsaved changes will be lost.")) {
-         localStorage.removeItem('cuisine_draft');
+         localStorage.removeItem('cake_standard_draft');
          onClose();
       }
    };
@@ -2135,7 +2135,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"><UtensilsCrossed size={20} /></div>
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Cuisine Order Portal</h2>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Standard Cake Order Portal</h2>
                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Select products for immediate fulfillment</p>
                   </div>
                </div>
@@ -2204,10 +2204,11 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                  value={packaging}
                                  onChange={e => setPackaging(e.target.value)}
                               >
-                                 <option>Bulk Boxes</option>
-                                 <option>Individual Packs</option>
-                                 <option>Premium Platters</option>
-                                 <option>Custom Request</option>
+                                 <option>Cake Box (Standard)</option>
+                                 <option>Individual Cupcake Box</option>
+                                 <option>Tiered Cake Carrier</option>
+                                 <option>Luxury Gift Wrap</option>
+                                 <option>Custom Packaging</option>
                               </select>
                            </div>
                         </div>
@@ -2574,7 +2575,7 @@ export const Catering = () => {
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
                   <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
-                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Catering Operations</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Cuisine & Banquet Management Node Active</p></div>
+                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Cake Orders</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Standard & Custom Cake Management Active</p></div>
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
@@ -2588,7 +2589,7 @@ export const Catering = () => {
                      <Share2 size={14} /> <span className="hidden md:inline">Share Booking Link</span><span className="md:hidden">Share</span>
                   </button>
                   <div className="w-px bg-white/10 my-2 shrink-0"></div>
-                  {[{ id: 'cuisine', label: 'Cuisine', icon: UtensilsCrossed }, { id: 'orders', label: 'Banquets', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
+                  {[{ id: 'cuisine', label: 'Standard Cakes', icon: UtensilsCrossed }, { id: 'orders', label: 'Custom Cakes', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
                      <button
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id as any); setSelectedEventId(null); }}
@@ -2608,13 +2609,13 @@ export const Catering = () => {
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'} `}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
                         <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">
-                           {viewMode} {activeTab === 'orders' ? 'Banquets' : 'Cuisine Orders'} ({filteredEvents.length})
+                           {viewMode} {activeTab === 'orders' ? 'Custom Cakes' : 'Standard Orders'} ({filteredEvents.length})
                         </h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                            {activeTab === 'orders' ? (
-                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> Create Banquet</button>
+                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New Custom Order</button>
                            ) : (
-                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> Create New Cuisine Order</button>
+                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New Standard Order</button>
                            )}
                         </div>
                      </div>

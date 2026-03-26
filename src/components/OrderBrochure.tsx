@@ -10,8 +10,8 @@ import {
 import { MenuCard } from './MenuCard';
 
 export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType: propOrderType }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent, orderType?: string }) => {
-    const orderType = propOrderType || initialEvent?.orderType || 'Banquet';
-    const isCuisine = orderType === 'Cuisine';
+    const orderType = propOrderType || initialEvent?.orderType || 'Custom';
+    const isCuisine = orderType === 'Standard' || orderType === 'Cuisine';
     const [menuItems, setMenuItems] = useState<InventoryItem[]>([]);
     const [selected, setSelected] = useState<Record<string, number>>(() => {
         if (initialEvent) {
@@ -65,8 +65,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
     const [isBasketOpen, setIsBasketOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'details' | 'menu'>('details');
 
-    const standardCategories = ["Hors D'Oeuvres", "Starters", "Salads", "Nigerian Cuisine", "Oriental", "Continental", "Hot Plates", "Desserts"];
-    const mandatoryLockCategories = ["Nigerian Cuisine", "Oriental", "Continental", "Hot Plates"];
+    const standardCategories = ["Wedding Cakes", "Birthday Cakes", "Anniversary Cakes", "Cupcakes", "Cookies & Brownies", "Pastries", "Custom Designs"];
+    const mandatoryLockCategories: string[] = [];
     const [activeCategory, setActiveCategory] = useState("All");
 
     // Store Hooks
@@ -79,7 +79,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
     // [DRAFT LOGIC]
     useEffect(() => {
-        const savedDraft = localStorage.getItem('banquet_order_draft');
+        const savedDraft = localStorage.getItem('cake_custom_draft');
         if (savedDraft) {
             try {
                 const draft = JSON.parse(savedDraft);
@@ -101,7 +101,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     setCustomItems(draft.customItems || {});
                     console.log("Draft restored successfully.");
                 } else {
-                    localStorage.removeItem('banquet_order_draft');
+                    localStorage.removeItem('cake_custom_draft');
                 }
             } catch (e) {
                 console.error("Failed to parse draft", e);
@@ -122,7 +122,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     selected, customItems,
                     timestamp: Date.now()
                 };
-                localStorage.setItem('banquet_order_draft', JSON.stringify(draftData));
+                localStorage.setItem('cake_custom_draft', JSON.stringify(draftData));
                 console.log("[OrderBrochure] Draft auto-saved.");
             }
         }, 2000); // 2 second debounce
@@ -236,21 +236,14 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
         // Normalization Map for known DB variations
         const catMap: Record<string, string> = {
-            "Hors D'Oeuvre": "Hors D'Oeuvres",
-            "Starters": "Starters",
-            "Salads": "Salads",
-            "Nigerian": "Nigerian Cuisine",
-            "Nigerian Cuisine": "Nigerian Cuisine",
-            "Oriental": "Oriental",
-            "Continental": "Continental",
-            "Hot Plates": "Hot Plates",
-            "Dessert": "Desserts",
-            "Desserts": "Desserts",
-            "Main": "Hot Plates",
-            "Mains": "Hot Plates",
-            "Swallow": "Nigerian Cuisine",
-            "Local": "Nigerian Cuisine",
-            "Starter": "Starters"
+            "Wedding": "Wedding Cakes",
+            "Birthday": "Birthday Cakes",
+            "Anniversary": "Anniversary Cakes",
+            "Cupcake": "Cupcakes",
+            "Cookies": "Cookies & Brownies",
+            "Brownies": "Cookies & Brownies",
+            "Pastry": "Pastries",
+            "Custom": "Custom Designs"
         };
 
         menuItems.forEach(item => {
@@ -342,7 +335,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 });
                 setIsSubmitting(false);
                 // [CLEAR DRAFT ON SUCCESS]
-                localStorage.removeItem('banquet_order_draft');
+                localStorage.removeItem('cake_custom_draft');
                 if (invoice) {
                     onFinalize(invoice);
                 } else {
@@ -382,7 +375,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 });
                 setIsSubmitting(false);
                 // [CLEAR DRAFT ON SUCCESS]
-                localStorage.removeItem('banquet_order_draft');
+                localStorage.removeItem('cake_custom_draft');
                 onFinalize(invoice);
             }
         } catch (err: any) {
@@ -396,7 +389,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 selected, customItems,
                 timestamp: Date.now()
             };
-            localStorage.setItem('banquet_order_draft', JSON.stringify(draftData));
+            localStorage.setItem('cake_custom_draft', JSON.stringify(draftData));
 
             alert(`Failed to finalize order due to a system error: ${err.message || 'Unknown error'}. \n\nYour order data has been saved locally as a 'Pending Draft'. \n\nPlease reload the page or check your connection, and you will be prompted to restore this data so you don't have to start over.`);
             setIsSubmitting(false);
@@ -412,7 +405,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     <div className="flex justify-between items-center px-1">
                         <div className="flex items-center gap-2 md:gap-4 shrink-0">
                             <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} className="md:w-5 md:h-5" /></div>
-                            <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">{isCuisine ? 'Cuisine Order' : 'Banquet Creation'}</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">{isCuisine ? 'New Direct Order Node' : 'New Event Node Hub'}</p></div>
+                            <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">{isCuisine ? 'Standard Order' : 'Custom Cake Order'}</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">{isCuisine ? 'New Standard Order Node' : 'New Custom Cake Node'}</p></div>
                         </div>
                         <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} className="md:w-5 md:h-5" /></button>
                     </div>
@@ -423,13 +416,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             onClick={() => setActiveTab('details')}
                             className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'details' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                         >
-                            1. Event Details
+                            1. Client & Spec
                         </button>
                         <button
                             onClick={() => setActiveTab('menu')}
                             className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                         >
-                            2. Menu Selection
+                            2. The Menu
                         </button>
                     </div>
 
@@ -471,19 +464,19 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2">
                                 <Users size={16} className="text-indigo-600" />
-                                <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Client Identity'}</h3>
+                                <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3>
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Customer Name *' : 'Host Entity *'}</label>
-                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder={isCuisine ? "Customer Name" : "Host Name"} value={customerName} onChange={e => handleHostChange(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Customer Name *' : 'Client Name *'}</label>
+                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder={isCuisine ? "Customer Name" : "Client Name"} value={customerName} onChange={e => handleHostChange(e.target.value)} />
                                 <datalist id="contacts-list-b">
                                     {contacts.map(c => <option key={c.id} value={c.name} />)}
                                 </datalist>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Packaging Info' : 'Contact Person'}</label>
-                                    <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder={isCuisine ? "e.g. Bulk Boxes" : ""} value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Packaging Info' : 'Packaging / Notes'}</label>
+                                    <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder={isCuisine ? "e.g. Bulk Boxes" : "Specific packaging needs"} value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Phone *</label>
@@ -504,13 +497,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             {!isCuisine && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Type</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Cake Category</label>
                                         <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
-                                            <option>Wedding</option><option>Corporate</option><option>Funeral</option><option>Birthday</option><option>Anniversary</option><option>Cocktail</option>
+                                            <option>Wedding</option><option>Birthday</option><option>Anniversary</option><option>Baby Shower</option><option>Corporate Event</option><option>Other Celebration</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Theme Colour</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Icing/Theme Colour</label>
                                         <div className="flex items-center gap-3 p-3 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
                                             <input type="color" className="w-12 h-12 md:w-8 md:h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
                                             <span className="font-mono text-xs font-black uppercase text-slate-950">{themeColor}</span>
@@ -520,29 +513,29 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Date *' : 'Event Date *'}</label>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Date *' : 'Delivery/Collection Date *'}</label>
                                     <input type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Total Portions *' : 'Guest Count *'}</label>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Total Units *' : 'Servings / Units *'}</label>
                                     <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                                 </div>
                             </div>
                             {!isCuisine && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Event Planner</label>
-                                        <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Lead Designer</label>
+                                        <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Designer Name (Optional)" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Planner Phone</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Designer Phone</label>
                                         <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone (Optional)" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} />
                                     </div>
                                 </div>
                             )}
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Address *' : 'Venue Address *'}</label>
-                                <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder={isCuisine ? "Where should we deliver?" : "Location Detail"} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Address *' : 'Delivery/Pickup Address *'}</label>
+                                <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm placeholder:text-slate-400" rows={2} placeholder={isCuisine ? "Where should we deliver?" : "Delivery Location"} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
                             </div>
                         </section>
 
@@ -572,7 +565,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                                 <div className="flex-1"></div>
                                                 <div className={`px-2 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : isMandatory ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
                                                     {isMandatory && catTotal !== guestCount && <AlertCircle size={8} className="md:w-3 md:h-3" />}
-                                                    Q: {catTotal} / {guestCount}
+                                                    Units: {catTotal} / {guestCount}
                                                 </div>
                                             </div>
 
@@ -603,7 +596,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                 <div className="flex justify-between items-center mb-6 md:mb-10">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 bg-[#00ff9d] rounded-xl flex items-center justify-center text-slate-950"><ShoppingCart size={20} /></div>
-                                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter">Event Basket</h3>
+                                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter">Cake Selection</h3>
                                     </div>
                                     <button onClick={() => setIsBasketOpen(false)} className="p-3 bg-white/10 hover:bg-rose-500 rounded-xl transition-all"><X size={20} /></button>
                                 </div>
@@ -647,7 +640,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                                             <div key={id} className={`flex justify-between items-center p-4 bg-white/5 rounded-2xl border ${isCustom ? 'border-emerald-500/30' : 'border-white/5'}`}>
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs font-black uppercase truncate">{name} {isCustom && <span className="text-[8px] bg-emerald-500 text-white px-1 rounded ml-1">Custom</span>}</p>
-                                                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{qty} Portions</p>
+                                                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{qty} Units</p>
                                                                 </div>
                                                                 <button onClick={() => isCustom ? removeCustomItem(id) : updateQty(id, 0)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
                                                             </div>
@@ -693,7 +686,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             className={`flex-1 px-4 py-2.5 md:py-4 rounded-lg md:rounded-xl font-black uppercase text-[9px] md:text-[10px] shadow-lg transition-all flex items-center justify-center gap-1.5 ${hasSelection && customerName ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                         >
                             {isSubmitting ? <RefreshCw className="animate-spin" size={14} /> : <ArrowRight size={14} />}
-                            Finalize Order {!isPortionLocked && '(Unequal Qty)'}
+                            Finalize Order {!isPortionLocked && '(Unequal Units)'}
                         </button>
                     </div>
                 </div>

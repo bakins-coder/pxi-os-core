@@ -19,11 +19,11 @@ interface SettingsState {
 
 const DEFAULT_SETTINGS: OrganizationSettings = {
     id: '',
-    name: 'My New Workspace',
-    type: 'General',
+    name: 'Wembley Cakes',
+    type: 'Bakery',
     currency: 'NGN',
     setupComplete: false,
-    enabledModules: ['CRM', 'Finance', 'Reports'],
+    enabledModules: ['CRM', 'Finance', 'Reports', 'Catering'],
     agentMode: AIAgentMode.AI_AGENTIC,
     brandColor: '#00ff9d',
     integrations: [],
@@ -81,9 +81,9 @@ export const useSettingsStore = create<SettingsState>()(
                                 id: data.id,
                                 name: data.name,
                                 brandColor: data.brand_color || state.settings.brandColor,
-                                // FIX: DB column is 'logo', not 'logo_url'
                                 logo: data.logo || state.settings.logo,
-                                setupComplete: true
+                                setupComplete: true,
+                                enabledModules: data.enabled_modules || state.settings.enabledModules
                             }
                         }));
                     } else if (error) {

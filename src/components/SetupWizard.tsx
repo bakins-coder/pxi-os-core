@@ -41,7 +41,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
    const [taxId, setTaxId] = useState(partialData.taxId || '');
    const [brandColor, setBrandColor] = useState(partialData.brandColor || '#00ff9d');
    const [logo, setLogo] = useState(partialData.logo || '');
-   const [selectedModules, setSelectedModules] = useState<AppModule[]>(partialData.selectedModules || ['CRM', 'Reports']);
+   const [selectedModules, setSelectedModules] = useState<AppModule[]>(partialData.selectedModules || ['CRM', 'Reports', 'Finance']);
    const [invites, setInvites] = useState<{ email: string; role: Role }[]>(partialData.invites || []);
 
    const fullDisplayName = `${repTitle} ${firstName} ${lastName}`.trim();
@@ -80,6 +80,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       }
    }, [showRestoreToast]);
 
+   // Auto-select industry modules
+   useEffect(() => {
+      if (orgType === 'Catering' || orgType === 'Bakery') {
+         if (!selectedModules.includes('Catering')) {
+            setSelectedModules(prev => Array.from(new Set([...prev, 'Catering', 'Finance'])));
+         }
+      }
+   }, [orgType]);
+
    // AUTO-RECOVERY: Check if user is already linked to an org (Stale Session Fix)
    useEffect(() => {
       const checkExistingOrg = async () => {
@@ -113,6 +122,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                      role: profile.role as Role || currentUser.role
                   });
 
+                  // Determine enabled modules based on organization type for auto-recovery
+                  const industryModules = (org.type === 'Catering' || org.type === 'Bakery') ? ['CRM', 'Finance', 'Reports', 'Catering'] : ['CRM', 'Finance', 'Reports'];
+
                   completeSetup({
                      id: org.id,
                      name: org.name,
@@ -122,7 +134,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                      logo: org.logo,
                      address: org.address,
                      firs_tin: org.firs_tin,
-                     contactPhone: org.contact_phone
+                     contactPhone: org.contact_phone,
+                     enabledModules: industryModules as AppModule[] // Use the determined modules
                   });
 
                   // 4. Redirect
@@ -185,14 +198,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
          if (currentUser?.id) {
             const userPayload = {
                id: currentUser.id,
-               company_id: newCompanyId,
-               name: fullDisplayName,
+               organization_id: newCompanyId,
+               first_name: firstName,
+               last_name: lastName,
                email: currentUser.email || '',
                role: Role.ADMIN
             };
 
             const { error: userError } = await supabase
-               .from('users')
+               .from('profiles')
                .upsert(userPayload);
 
             if (userError) console.warn('Failed to link user profile:', userError);
@@ -327,7 +341,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             {/* Sidebar */}
             <div className="w-full md:w-80 bg-slate-950 p-10 flex flex-col justify-between border-r border-slate-800">
                <div>
-                  <div className="w-16 h-16 bg-[#00ff9d] rounded-3xl flex items-center justify-center mb-12 shadow-2xl rotate-3"><Zap className="text-slate-950" size={32} /></div>
+                  <div className="w-24 h-24 border-2 border-[#00ff9d] rounded-[2rem] flex items-center justify-center mb-12 shadow-2xl overflow-hidden rotate-3 bg-white">
+                     <img src="/wembley_logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+                  </div>
                   <h2 className="text-3xl font-black text-white tracking-tighter uppercase leading-tight mb-2">Platform<br />Instantiation</h2>
                   <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-[0.2em] mb-12">Core Setup Sequence v4.0</p>
 
@@ -340,12 +356,16 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                         { s: 5, label: 'Modules', icon: LayoutGrid },
                         { s: 6, label: 'Personnel', icon: Users }
                      ].map(item => (
-                        <div key={item.s} className={`flex items-center gap-4 transition-all duration-500 ${step === item.s ? 'translate-x-3' : 'opacity-80'}`}>
+                        <button
+                           key={item.s}
+                           onClick={() => setStep(item.s)}
+                           className={`flex items-center gap-4 transition-all duration-500 w-full text-left group ${step === item.s ? 'translate-x-3' : 'opacity-80 hover:translate-x-1'}`}
+                        >
                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 ${step === item.s ? 'bg-[#00ff9d] border-[#00ff9d] text-slate-950 shadow-[0_0_20px_rgba(0,255,157,0.3)]' : 'border-white/20 text-white/40'}`}>
                               <item.icon size={14} strokeWidth={3} />
                            </div>
-                           <span className={`text-[10px] font-black uppercase tracking-widest ${step === item.s ? 'text-white' : 'text-white/40'}`}>{item.label}</span>
-                        </div>
+                           <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${step === item.s ? 'text-white' : 'text-white/40 group-hover:text-white/70'}`}>{item.label}</span>
+                        </button>
                      ))}
                   </div>
                </div>
