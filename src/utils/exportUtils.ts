@@ -153,7 +153,8 @@ export const generateInvoicePDF = async (
 
     addDetail('Invoice Number:', invoice.number);
     addDetail('Invoice Date:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
-    addDetail('Payment Due:', new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+    const effectiveDueDate = invoice.dueDate && !isNaN(new Date(invoice.dueDate).getTime()) ? invoice.dueDate : invoice.date;
+    addDetail('Payment Due:', new Date(effectiveDueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
 
 
     // ---------------------------------------------------------
@@ -298,6 +299,12 @@ export const generateInvoicePDF = async (
     doc.text(payText, 15, leftColY);
     leftColY += 12;
 
+    // Check for space before Bank Details
+    if (leftColY + 60 > 280) {
+        doc.addPage();
+        leftColY = 20;
+    }
+
     doc.setFont('helvetica', 'bold');
     doc.text('Bank Details:', 15, leftColY);
     leftColY += 6;
@@ -346,6 +353,12 @@ export const generateInvoicePDF = async (
     // Move logic cursor down
     const bankBottomY = leftColY + (2 * (boxH + gap));
     let bottomY = Math.max(bankBottomY, boxBottomY) + 15;
+
+    // Check for space before Terms & Disclaimer
+    if (bottomY + 50 > 280) {
+        doc.addPage();
+        bottomY = 20;
+    }
 
     // Terms & Conditions
     doc.setFontSize(9);
@@ -715,7 +728,6 @@ export const generateHandoverReport = (event: CateringEvent, monitor: PortionMon
         monitor.handoverEvidence.forEach((ev, idx) => {
             if (currentY + 60 > 280) {
                 doc.addPage();
-                currentY = 20;
             }
             try {
                 // Add image (assuming standard aspect ratio for simplicity, scaling to width 80)

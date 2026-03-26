@@ -508,6 +508,46 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       setIsShareMenuOpen(false);
    };
 
+   const handleCopyShareText = async () => {
+      const { settings } = useSettingsStore.getState();
+      const subtotal = editableLines.reduce((acc, l) => {
+         if (isBanquetMode && !l.description.startsWith('[SECTION] ')) return acc;
+         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null) ? l.manualPriceCents : l.unitPriceCents;
+         return acc + (l.quantity * price);
+      }, 0);
+
+      const isCuisine = effectiveIsCuisine;
+      const sc = isCuisine ? 0 : Math.round(subtotal * 0.15);
+      const vat = isCuisine ? 0 : Math.round((subtotal + sc) * 0.075);
+      const total = subtotal + sc + vat;
+      const finalTotal = manualTotalOverride ?? total;
+
+      const summary = `
+*INVOICE SUMMARY: ${invoice.number}*
+Customer: ${contact?.name || 'Valued Customer'}
+Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
+Due: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString('en-GB')}
+
+*FEES:*
+Subtotal: ₦${(subtotal / 100).toLocaleString()}
+Service Charge: ₦${(sc / 100).toLocaleString()}
+VAT: ₦${(vat / 100).toLocaleString()}
+*TOTAL DUE: ₦${(finalTotal / 100).toLocaleString()}*
+
+*BANK DETAILS:*
+Xquisite Cuisine (GTB): 0210736266
+Xquisite Celebrations (GTB): 0396426845
+Xquisite Celebrations (Zenith): 1010951007
+Xquisite Cuisine (First Bank): 2022655945
+
+Link: ${window.location.origin}/#/invoice/${invoice.id}
+      `.trim();
+
+      await navigator.clipboard.writeText(summary);
+      alert("Professional invoice summary copied to clipboard!");
+      setIsShareMenuOpen(false);
+   };
+
    const handleLineChange = (idx: number, field: keyof InvoiceLine, value: any) => {
       const newLines = [...editableLines];
       // Preserve SECTION marker if editing description of a header
@@ -1168,6 +1208,13 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
                                     <div className="text-left">
                                        <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Download PDF</p>
                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Save to this device</p>
+                                    </div>
+                                 </button>
+                                 <button onClick={handleCopyShareText} className="w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors border-b border-slate-100 group">
+                                    <div className="w-9 h-9 rounded-xl bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-all shadow-sm"><MessageSquare size={18} /></div>
+                                    <div className="text-left">
+                                       <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Copy Text Summary</p>
+                                       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Perfect for WhatsApp/SMS</p>
                                     </div>
                                  </button>
                                  <button onClick={handleSharePDF} className="w-full p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors group">

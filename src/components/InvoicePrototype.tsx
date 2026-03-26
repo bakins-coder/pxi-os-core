@@ -133,6 +133,33 @@ export const InvoicePrototype = () => {
         }
     };
 
+    const handleCopyShareText = async () => {
+        if (!invoice) return;
+        const summary = `
+*INVOICE SUMMARY: ${invoice.number}*
+Customer: ${customerName}
+Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
+Due: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString('en-GB')}
+
+*FEES:*
+Subtotal: ₦${subtotal.toLocaleString()}
+Service Charge: ₦${serviceCharge.toLocaleString()}
+VAT: ₦${vat.toLocaleString()}
+*TOTAL DUE: ₦${totalAmount.toLocaleString()}*
+
+*BANK DETAILS:*
+Xquisite Cuisine (GTB): 0210736266
+Xquisite Celebrations (GTB): 0396426845
+Xquisite Celebrations (Zenith): 1010951007
+Xquisite Cuisine (First Bank): 2022655945
+
+Link: ${window.location.href}
+        `.trim();
+
+        await navigator.clipboard.writeText(summary);
+        alert("Invoice summary copied to clipboard!");
+    };
+
     return (
         <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white text-slate-900">
             {/* Control Bar */}
@@ -160,7 +187,13 @@ export const InvoicePrototype = () => {
                         onClick={handleSharePDF}
                         className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all"
                     >
-                        <Share2 size={18} /> Share
+                        <Share2 size={18} /> Share PDF
+                    </button>
+                    <button
+                        onClick={handleCopyShareText}
+                        className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all"
+                    >
+                        <Share2 size={18} /> Copy Summary
                     </button>
                 </div>
             </div>

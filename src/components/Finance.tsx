@@ -196,7 +196,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales', orderType 
 
    // Invoice State
    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-   const [dueDate, setDueDate] = useState('');
+   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
    const [lines, setLines] = useState<{ id: string, description: string, quantity: number, price: number, manualPrice: number | undefined }[]>([
       { id: `line-${Date.now()}`, description: '', quantity: 1, price: 0, manualPrice: undefined }
    ]);
