@@ -316,11 +316,19 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
     const isCorporateEmail = email.includes('@xquisite.com'); // Or other known domains
     if (isStaffId || isCorporateEmail) {
       setIsEmployeeMode(true);
+    } else {
+      setIsEmployeeMode(false);
     }
   }, [email]);
 
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
     setIsLoading(true);
     setError('');
 
@@ -479,25 +487,42 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
           </div>
         )}
 
-        <div className="relative">
-          <label className={labelClasses}>Password</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
-            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-            <input
-              required
-              type={showPassword ? "text" : "password"}
-              className="w-full pl-14 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+            <label className={labelClasses}>Create Password</label>
+            <div className="relative">
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                className="w-full pl-14 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <label className={labelClasses}>Confirm Password</label>
+            <div className="relative">
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                className="w-full pl-14 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 

@@ -335,7 +335,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
     const col = useOrgId ? 'organization_id' : 'company_id';
     if (effectiveId === VALID_UUID) {
       const { data: uuidData } = await supabase.from(tableName).select('*').eq(col, VALID_UUID);
-      return (uuidData || []).map(item =\u003e mapItem(item));
+      return (uuidData || []).map(item => mapItem(item));
     } else if (isUUID(effectiveId)) {
       query = query.eq(col, effectiveId);
     }
@@ -343,7 +343,7 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(item =\u003e mapItem(item));
+  return (data || []).map(item => mapItem(item));
 };
 
 export const postReusableMovement = async (params: any) => {
