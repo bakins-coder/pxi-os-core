@@ -60,9 +60,9 @@ interface DataState {
     realtimeChannel: any | null;
 
     // Actions
-    addInventoryItem: (item: Partial<InventoryItem>) => void;
-    updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
-    addRequisition: (req: Partial<Requisition>) => void;
+    addInventoryItem: (item: Partial<InventoryItem>) => Promise<void>;
+    updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => Promise<void>;
+    addRequisition: (req: Partial<Requisition>) => Promise<void>;
     addRequisitionsBulk: (reqs: Partial<Requisition>[]) => void;
     updateRequisition: (id: string, updates: Partial<Requisition>) => void;
     approveRequisition: (id: string, sourceAccountId?: string) => Promise<void>;
@@ -243,19 +243,18 @@ export const useDataStore = create<DataState>()(
             addInventoryItem: async (item) => {
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-                const userId = user?.id || 'sys';
 
                 const newItemId = item.id || crypto.randomUUID();
 
                 // Optimistic Local Update
                 const newItem = { ...item, id: newItemId, companyId: companyId };
                 set((state) => ({
-                    inventory: [newItem as InventoryItem, ...state.inventory]
+                    inventory: [newItem as InventoryItem, ...state.inventory],
+                    ingredients: (item.type === 'ingredient' || item.type === 'raw_material')
+                        ? [{ ...newItem, stockLevel: item.stockQuantity || 0 } as any, ...state.ingredients]
+                        : state.ingredients
                 }));
 
-                if (!user || !user.companyId) return;
-
-                // Determine entity type for media
                 const entityTypeMap: Record<string, 'product' | 'asset' | 'ingredient'> = {
                     'product': 'product',
                     'asset': 'asset',
@@ -266,109 +265,45 @@ export const useDataStore = create<DataState>()(
                 const entityType = (item.type && entityTypeMap[item.type]) || 'product';
 
                 // Handle Image Upload if Base64
-                let uploadedMedia: { bucket: string, path: string } | null = null;
-
                 if (item.image && item.image.startsWith('data:image')) {
                     try {
-                        // Upload
                         const uploadRes = await uploadEntityImage(companyId, entityType, newItemId, item.image);
-                        uploadedMedia = uploadRes;
+                        await saveEntityMedia({
+                            entity_type: entityType,
+                            entity_id: newItemId,
+                            organization_id: companyId,
+                            bucket: uploadRes.bucket,
+                            object_path: uploadRes.path,
+                            is_primary: true
+                        });
 
-                        // Construct Public URL (Optimistic for DB text column if needed, though View handles it)
-                        // Assuming standard Supabase Storage Public URL pattern for now or relying on View
-                        // For products, we don't send image_url to 'products' table if moving to entity_media,
-                        // BUT if we want to be safe, we can trigger the entity_media insert.
+                        // Update local state with the new image URL from storage
+                        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                        const publicUrl = `${supabaseUrl}/storage/v1/object/public/${uploadRes.bucket}/${uploadRes.path}`;
+                        set((state) => ({
+                            inventory: state.inventory.map(i => i.id === newItemId ? { ...i, image: publicUrl } : i),
+                            ingredients: state.ingredients.map(i => i.id === newItemId ? { ...i, image: publicUrl } : i)
+                        }));
                     } catch (err) {
                         console.error("Image upload failed:", err);
                     }
                 }
 
-                // Determine DB Table
-                let tableName = '';
-                let dbPayload: any = {
-                    organization_id: companyId,
-                    name: item.name,
-                    category: (item.category as any)
-                };
-
-                // Add Image URL if available (and valid URL)
-                if (uploadedMedia) {
-                    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-                    const { bucket, path } = uploadedMedia;
-                    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
-                    dbPayload.image = publicUrl;
-                    dbPayload.image_url = publicUrl;
-                } else if (item.image && item.image.startsWith('http')) {
-                    dbPayload.image = item.image;
-                    dbPayload.image_url = item.image;
-                }
-
-                // Type Mapping
-                if (item.type === 'product') {
-                    tableName = 'products';
-                    // Products table schema: name, description, price_cents, category, etc.
-                    dbPayload.description = item.description;
-                    dbPayload.price_cents = item.priceCents;
-                    // Fix: category column in products schema? Yes, from fix_inventory_tables.
-                    // But we must check if category is text or ID. The migration said category TEXT in inventory, 
-                    dbPayload.category = (item.category as any);
-                } else if (item.type === 'asset' || item.type === 'reusable') {
-                    tableName = 'reusable_items';
-                    dbPayload.type = 'asset';
-                    dbPayload.stock_level = item.stockQuantity;
-                    dbPayload.price_cents = item.priceCents;
-                    dbPayload.category = (item.category as any);
-                } else if (item.type === 'rental') {
-                    tableName = 'rental_items';
-                    dbPayload.replacement_cost_cents = item.priceCents;
-                    dbPayload.category = (item.category as any);
-                } else if (item.type === 'raw_material' || item.type === 'ingredient') {
-                    tableName = 'ingredients';
-                    dbPayload.unit = (item as any).unit;
-                    dbPayload.current_cost_cents = item.priceCents;
-                    dbPayload.stock_level = item.stockQuantity || 0;
-                    dbPayload.category = (item.category as any);
-                }
-
-                if (tableName && supabase) {
-                    try {
-                        const { error } = await supabase.from(tableName).upsert({ ...dbPayload, id: newItemId });
-                        if (error) {
-                            console.error("Failed to update item:", error);
-                            return;
-                        }
-                        const insertedId = newItemId; // If upserting with a generated ID, use that ID for media
-                        // 2. Insert Entity Media if uploaded
-                        if (uploadedMedia && insertedId) {
-                            await saveEntityMedia({
-                                entity_type: entityType,
-                                entity_id: insertedId,
-                                organization_id: companyId,
-                                bucket: uploadedMedia.bucket,
-                                object_path: uploadedMedia.path,
-                                is_primary: true
-                            });
-                        }
-                    } catch (e) {
-                        console.error(e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             updateInventoryItem: async (id, updates) => {
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-                const userId = user?.id || 'sys';
 
                 // Optimistic Local Update
                 set((state) => ({
-                    inventory: state.inventory.map(item => item.id === id ? { ...item, ...updates } : item)
+                    inventory: state.inventory.map(item => item.id === id ? { ...item, ...updates, stockQuantity: (updates as any).stockQuantity ?? ((updates as any).stockLevel ?? item.stockQuantity) } : item),
+                    ingredients: (updates.type === 'ingredient' || updates.type === 'raw_material')
+                        ? state.ingredients.map(ing => ing.id === id ? { ...ing, ...updates, stockLevel: (updates as any).stockQuantity ?? ((updates as any).stockLevel ?? ing.stockLevel) } as any : ing)
+                        : state.ingredients
                 }));
 
-                if (!user || !user.companyId) return;
-
                 // Handle Image Upload if Base64
-                let uploadedMedia: { bucket: string, path: string } | null = null;
-
                 if (updates.image && updates.image.startsWith('data:image')) {
                     try {
                         const entityTypeMap: Record<string, 'product' | 'asset' | 'ingredient'> = {
@@ -381,120 +316,31 @@ export const useDataStore = create<DataState>()(
                         const entityType = (updates.type && entityTypeMap[updates.type]) || 'product';
 
                         const uploadRes = await uploadEntityImage(companyId, entityType, id, updates.image);
-                        uploadedMedia = uploadRes;
+                        await saveEntityMedia({
+                            entity_type: entityType,
+                            entity_id: id,
+                            organization_id: companyId,
+                            bucket: uploadRes.bucket,
+                            object_path: uploadRes.path,
+                            is_primary: true
+                        });
 
-                        // Construct public URL and update the image field
+                        // Update local state with the new image URL from storage
                         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                        if (supabaseUrl && uploadedMedia) {
-                            // VITE_SUPABASE_URL already includes https://, so don't add it again
-                            updates.image = `${supabaseUrl}/storage/v1/object/public/${uploadedMedia.bucket}/${uploadedMedia.path}`;
-                        }
+                        const publicUrl = `${supabaseUrl}/storage/v1/object/public/${uploadRes.bucket}/${uploadRes.path}`;
+                        set((state) => ({
+                            inventory: state.inventory.map(i => i.id === id ? { ...i, image: publicUrl } : i),
+                            ingredients: state.ingredients.map(i => i.id === id ? { ...i, image: publicUrl } : i)
+                        }));
                     } catch (err) {
                         console.error("Image upload failed:", err);
                     }
                 }
 
-                // Sync to Cloud
-                try {
-                    const item = get().inventory.find(i => i.id === id);
-                    if (!item) return;
-
-                    const updatedItem = { ...item, ...updates };
-
-                    // Determine DB Table
-                    let tableName = '';
-                    let dbPayload: any = {
-                        organization_id: companyId,
-                        name: updatedItem.name,
-                        image_url: updatedItem.image, // Use image_url column to match DB schema
-                    };
-
-                    if (updatedItem.type === 'product') {
-                        tableName = 'products';
-                        dbPayload.description = updatedItem.description;
-                        dbPayload.price_cents = updatedItem.priceCents;
-                        // Note: products table uses category_id (UUID), not category (string)
-                        // Category updates need a separate lookup - skipping for now to fix image persistence
-                    } else if (updatedItem.type === 'asset' || updatedItem.type === 'reusable') {
-                        tableName = 'reusable_items';
-                        dbPayload.type = 'asset';
-                        dbPayload.category = (updatedItem.category as any);
-                    } else if (updatedItem.type === 'rental') {
-                        tableName = 'rental_items';
-                        dbPayload.replacement_cost_cents = updatedItem.priceCents;
-                        dbPayload.category = (updatedItem.category as any);
-                    } else if (updatedItem.type === 'ingredient' || updatedItem.type === 'raw_material') {
-                        tableName = 'ingredients';
-                        dbPayload.unit = (updatedItem as any).unit;
-                        dbPayload.current_cost_cents = updatedItem.priceCents;
-                        dbPayload.stock_level = updatedItem.stockQuantity;
-                        dbPayload.category = (updatedItem.category as any);
-                    }
-
-                    if (tableName) {
-                        // Use syncTableToCloud helper which handles upsert/mapping? 
-                        // Or just update directly?
-                        // useDataStore generally used syncTableToCloud for bulk. 
-                        // But for single item update, direct update is cleaner.
-                        // Let's try direct update.
-                        console.log('[updateInventoryItem] Updating DB:', { tableName, id, dbPayload });
-                        const { data, error, count } = await (supabase as any)
-                            .from(tableName)
-                            .update(dbPayload)
-                            .eq('id', id)
-                            .select();
-                        if (error) {
-                            console.error('[updateInventoryItem] DB Update Error:', error);
-                        } else {
-                            console.log('[updateInventoryItem] DB Update Success. Rows:', data?.length, 'Data:', data);
-                        }
-                    }
-
-                    // Update Entity Media if uploaded
-                    if (uploadedMedia) {
-                        await saveEntityMedia({
-                            entity_type: tableName === 'products' ? 'product' : tableName === 'reusable_items' ? 'asset' : 'ingredient',
-                            entity_id: id,
-                            organization_id: companyId,
-                            bucket: uploadedMedia.bucket,
-                            object_path: uploadedMedia.path,
-                            is_primary: true
-                        });
-                    }
-                } catch (e) {
-                    console.error("Failed to update inventory item:", e);
-                }
+                await get().syncWithCloud();
             },
-            addRequisition: (req) => {
-                const state = get();
-                const user = useAuthStore.getState().user;
 
-                const sanitizeUUID = (id: any) => {
-                    if (!id || id === 'sys' || id === '' || id === 'undefined') return null;
-                    return id;
-                };
-
-                const requestorId = sanitizeUUID(req.requestorId || user?.id);
-                const employee = state.employees.find(e => e.id === requestorId || e.userId === requestorId);
-                const requestorName = req.requestorName || (employee ? `${employee.firstName} ${employee.lastName}` : (user?.name || 'System'));
-
-                set((state) => ({
-                    requisitions: [{
-                        ...req,
-                        id: req.id || crypto.randomUUID(),
-                        companyId: user?.companyId || (req as any).companyId,
-                        status: req.status || 'Pending',
-                        requestorId,
-                        requestorName,
-                        ingredientId: sanitizeUUID(req.ingredientId),
-                        referenceId: sanitizeUUID(req.referenceId),
-                        sourceAccountId: sanitizeUUID(req.sourceAccountId),
-                        createdAt: req.createdAt || new Date().toISOString()
-                    } as Requisition, ...state.requisitions]
-                }));
-                get().syncWithCloud();
-            },
-            addRequisitionsBulk: (reqs) => {
+            addRequisitionsBulk: async (reqs) => {
                 const state = get();
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
@@ -525,13 +371,13 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({
                     requisitions: [...newReqs, ...state.requisitions]
                 }));
-                get().syncWithCloud();
+                await get().syncWithCloud();
             },
-            updateRequisition: (id, updates) => {
+            updateRequisition: async (id, updates) => {
                 set((state) => ({
                     requisitions: state.requisitions.map(r => r.id === id ? { ...r, ...updates } : r)
                 }));
-                get().syncWithCloud();
+                await get().syncWithCloud();
             },
             approveRequisition: async (id, sourceAccountId) => {
                 const state = get();
@@ -545,7 +391,8 @@ export const useDataStore = create<DataState>()(
                         const newStock = Math.max(0, ing.stockLevel - req.quantity);
 
                         set((s) => ({
-                            ingredients: s.ingredients.map(i => i.id === req.ingredientId ? { ...i, stockLevel: newStock } : i),
+                            ingredients: s.ingredients.map(i => i.id === req.ingredientId ? { ...i, stockLevel: newStock, stockQuantity: newStock } : i),
+                            inventory: s.inventory.map(i => i.id === req.ingredientId ? { ...i, stockQuantity: newStock, stockLevel: newStock } : i),
                             requisitions: s.requisitions.map(r => r.id === id ? { ...r, status: 'Issued' } : r)
                         }));
 
@@ -589,19 +436,11 @@ export const useDataStore = create<DataState>()(
                                     notes: `Release Approved: ${req.notes || req.itemName || 'No notes'}`
                                 });
                                 console.log("[Stock] Released movement posted successfully. New stock:", newStock);
-                            } else {
-                                console.warn("[Stock] No location found for org, skipping movement. Falling back to direct DB update.");
                             }
                         } catch (e) {
                             console.error("Failed to post release movement:", e);
                         }
 
-                        // Always update ingredients table directly as a guaranteed fallback
-                        if (supabase) {
-                            const { error: updateErr } = await supabase.from('ingredients').update({ stock_level: newStock }).eq('id', req.ingredientId);
-                            if (updateErr) console.error('[Stock] Direct DB update failed:', updateErr);
-                            else console.log('[Stock] Direct DB update succeeded. stock_level =', newStock);
-                        }
                         await get().syncWithCloud();
                         return;
                     }
@@ -652,16 +491,6 @@ export const useDataStore = create<DataState>()(
                             paymentMethod: 'Bank Transfer'
                         };
                         updatedBookkeeping = [newBookkeepingEntry, ...state.bookkeeping];
-
-                        // Persist Bank Account Update
-                        if (supabase) {
-                            supabase.from('bank_accounts').update({
-                                balance_cents: account.balanceCents - req.totalAmountCents,
-                                last_updated: new Date().toISOString()
-                            }).eq('id', sourceAccountId).then(({ error }) => {
-                                if (error) console.error("Failed to update bank balance:", error);
-                            });
-                        }
                     }
                 } else if (isCash) {
                     // Handle Cash Deduction
@@ -688,7 +517,7 @@ export const useDataStore = create<DataState>()(
                     bookkeeping: updatedBookkeeping,
                     cashAtHandCents: updatedCashAtHand
                 }));
-                get().syncWithCloud();
+                await get().syncWithCloud();
             },
             rejectRequisition: (id) => {
                 set((state) => ({
@@ -790,6 +619,7 @@ export const useDataStore = create<DataState>()(
                         i.id === ingId ? {
                             ...i,
                             stockLevel: newTotalQty,
+                            stockQuantity: newTotalQty,
                             currentCostCents: newAvgCost,
                             lastPackCount: packCount,
                             lastPackSize: packSize,
@@ -798,7 +628,7 @@ export const useDataStore = create<DataState>()(
                         } : i
                     );
                     const updatedInventory = state.inventory.map(i =>
-                        i.id === ingId ? { ...i, stockQuantity: newTotalQty } : i
+                        i.id === ingId ? { ...i, stockQuantity: newTotalQty, stockLevel: newTotalQty } : i
                     );
                     return { ingredients: updatedIngredients, inventory: updatedInventory };
                 });
@@ -860,7 +690,7 @@ export const useDataStore = create<DataState>()(
                             unitId: 'ee88effb-8562-4b23-96a0-bb8db464ead4',
                             type: 'purchase',
                             refType: 'manual_receipt',
-                            refId: userRef?.id || 'sys',
+                            refId: userRef?.id || null,
                             locationId: locationId,
                             notes: 'Manual Receipt via Frontend',
                             unitCostCents: effectiveUnitCostCents,
@@ -949,6 +779,7 @@ export const useDataStore = create<DataState>()(
                         }
                     }
                 } catch (e) { console.error(e); }
+                await get().syncWithCloud();
             },
             returnRental: async (id, status, notes) => {
                 const user = useAuthStore.getState().user;
@@ -1008,6 +839,7 @@ export const useDataStore = create<DataState>()(
                         }
                     }
                 } catch (e) { console.error(e); }
+                await get().syncWithCloud();
             },
             checkOverdueAssets: () => set((state) => {
                 const now = new Date();
@@ -1060,69 +892,17 @@ export const useDataStore = create<DataState>()(
                     contacts: [newContact, ...state.contacts]
                 }));
 
-                if (!user || !user.companyId) return;
-
-                // Persistence
-                if (supabase) {
-                    try {
-                        const payload = {
-                            id: contactId,
-                            organization_id: companyId,
-                            name: contact.name,
-                            email: contact.email,
-                            phone: contact.phone,
-                            address: contact.address,
-                            type: contact.type || 'Individual',
-                            customer_type: (contact as any).customerType || 'Individual',
-                            preferences: {},
-                            document_links: []
-                        };
-
-                        const { error } = await supabase.from('contacts').upsert(payload);
-                        if (error) {
-                            console.error("Failed to persist contact:", error);
-                        }
-                    } catch (e: any) {
-                        console.error("Contact Persistence Error:", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             updateContact: async (id, updates) => {
-                const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-
                 set((state) => ({
                     contacts: state.contacts.map(c => c.id === id ? { ...c, ...updates } : c)
                 }));
 
-                if (!user || !user.companyId) return;
-
-                if (supabase) {
-                    try {
-                        const contact = get().contacts.find(c => c.id === id);
-                        if (contact) {
-                            const payload = {
-                                id: contact.id,
-                                organization_id: companyId,
-                                name: contact.name,
-                                email: contact.email,
-                                phone: contact.phone,
-                                address: contact.address,
-                                type: contact.type,
-                                customer_type: contact.customerType,
-                                preferences: contact.preferences,
-                                document_links: contact.documentLinks
-                            };
-                            await supabase.from('contacts').upsert(payload);
-                        }
-                    } catch (e) {
-                        console.error("Update Contact Error:", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             addInteractionLog: async (log) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
                 const userId = user?.id || 'sys';
 
                 const logId = log.id || crypto.randomUUID();
@@ -1137,25 +917,7 @@ export const useDataStore = create<DataState>()(
                     interactionLogs: [newLog, ...state.interactionLogs]
                 }));
 
-                if (!user || !user.companyId) return;
-
-                if (supabase) {
-                    try {
-                        const payload = {
-                            id: logId,
-                            contact_id: log.contactId,
-                            type: log.type,
-                            summary: log.summary,
-                            content: log.content,
-                            created_at: newLog.createdAt,
-                            created_by: userId,
-                            organization_id: companyId
-                        };
-                        await supabase.from('interaction_logs').upsert(payload);
-                    } catch (e) {
-                        console.error("Add Interaction Log Error:", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             addContactsBulk: (contacts) => set((state) => ({
                 contacts: [...contacts.map(c => ({ ...c, id: c.id || crypto.randomUUID(), companyId: c.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' }) as Contact), ...state.contacts]
@@ -1164,46 +926,8 @@ export const useDataStore = create<DataState>()(
                 contacts: state.contacts.filter(c => c.id !== id)
             })),
             addInvoice: async (invoice) => {
-                const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || invoice.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-
                 set((state) => ({ invoices: [invoice, ...state.invoices] }));
-
-                if (!supabase || !user || !user.companyId) return;
-
-                // Sync to DB
-                try {
-                    // 1. Insert Invoice Header (Exclude 'lines' to avoid column error)
-                    const { lines, ...invoiceHeader } = invoice;
-
-                    const payload = {
-                        id: invoice.id,
-                        company_id: companyId,
-                        contact_id: invoice.contactId,
-                        number: invoice.number,
-                        date: invoice.date,
-                        due_date: invoice.dueDate,
-                        status: invoice.status,
-                        type: invoice.type || 'Sales',
-                        total_cents: invoice.totalCents || 0,
-                        subtotal_cents: invoice.subtotalCents || 0,
-                        service_charge_cents: invoice.serviceChargeCents || 0,
-                        vat_cents: invoice.vatCents || 0,
-                        paid_amount_cents: invoice.paidAmountCents || 0,
-                        category: invoice.category,
-                        lines: invoice.lines
-                    };
-
-                    const { error } = await supabase.from('invoices').upsert(payload);
-                    if (error) {
-                        console.error("Failed to persist invoice:", error);
-                        alert(`Invoice Save Failed: ${error.message}`);
-                    }
-
-                } catch (e: any) {
-                    console.error("Invoice Persistence Error:", e);
-                    alert(`Invoice Persistence Error: ${e.message || e}`);
-                }
+                await get().syncWithCloud();
             },
             updateInvoiceStatus: (id, status) => set((state) => ({
                 invoices: state.invoices.map(inv => inv.id === id ? { ...inv, status } : inv)
@@ -1214,9 +938,10 @@ export const useDataStore = create<DataState>()(
             addTransaction: (tx) => set((state) => ({
                 bankTransactions: [tx, ...state.bankTransactions]
             })),
-            recordPayment: (id, amount, bankAccountId, statusOverride) => set((state) => {
+            recordPayment: async (id, amount, bankAccountId, statusOverride) => {
+                const state = get();
                 const invoice = state.invoices.find(inv => inv.id === id);
-                if (!invoice) return state;
+                if (!invoice) return;
 
                 const isPurchase = invoice.type === 'Purchase';
                 const newPaid = (invoice.paidAmountCents || 0) + amount;
@@ -1232,7 +957,6 @@ export const useDataStore = create<DataState>()(
                 if (bankAccountId) {
                     const account = state.bankAccounts.find(a => a.id === bankAccountId);
                     if (account) {
-                        // If purchase, money goes OUT (decrement balance)
                         const balanceDelta = isPurchase ? -amount : amount;
                         updatedBankAccounts = state.bankAccounts.map(a =>
                             a.id === bankAccountId
@@ -1252,16 +976,6 @@ export const useDataStore = create<DataState>()(
                             referenceId: id
                         };
                         updatedBankTransactions = [newBankTx, ...state.bankTransactions];
-
-                        // Persist Bank Account Update
-                        if (supabase) {
-                            supabase.from('bank_accounts').update({
-                                balance_cents: account.balanceCents + balanceDelta,
-                                last_updated: new Date().toISOString()
-                            }).eq('id', bankAccountId).then(({ error }) => {
-                                if (error) console.error("Failed to update bank balance:", error);
-                            });
-                        }
                     }
                 }
 
@@ -1277,23 +991,15 @@ export const useDataStore = create<DataState>()(
                     paymentMethod: bankAccountId ? 'Bank Transfer' : 'Cash'
                 };
 
-                // Sync invoice update to Supabase
-                if (supabase) {
-                    supabase.from('invoices').update({
-                        paid_amount_cents: newPaid,
-                        status: newStatus
-                    }).eq('id', id).then(({ error }) => {
-                        if (error) console.error("Failed to update invoice:", error);
-                    });
-                }
-
-                return {
+                set({
                     invoices: updatedInvoices,
                     bookkeeping: [newEntry, ...state.bookkeeping],
                     bankAccounts: updatedBankAccounts,
                     bankTransactions: updatedBankTransactions
-                };
-            }),
+                });
+
+                await get().syncWithCloud();
+            },
             reconcileMatch: (lineId, accountId) => set((state) => ({
                 bankStatementLines: state.bankStatementLines.map(l => l.id === lineId ? { ...l, isMatched: true } : l)
             })),
@@ -1310,47 +1016,14 @@ export const useDataStore = create<DataState>()(
                 } as BankAccount;
 
                 set(state => ({ bankAccounts: [newAccount, ...state.bankAccounts] }));
-
-                if (supabase) {
-                    try {
-                        await supabase.from('bank_accounts').upsert({
-                            id: newAccount.id,
-                            organization_id: companyId,
-                            bank_name: newAccount.bankName,
-                            account_name: newAccount.accountName,
-                            account_number: newAccount.accountNumber,
-                            currency: newAccount.currency,
-                            balance_cents: newAccount.balanceCents,
-                            is_active: true,
-                            last_updated: newAccount.lastUpdated
-                        });
-                    } catch (e) { console.error("Failed to add bank account", e); }
-                }
+                await get().syncWithCloud();
             },
 
             updateBankAccount: async (id, updates) => {
                 set(state => ({
                     bankAccounts: state.bankAccounts.map(b => b.id === id ? { ...b, ...updates, lastUpdated: new Date().toISOString() } : b)
                 }));
-
-                if (supabase) {
-                    try {
-                        const account = get().bankAccounts.find(b => b.id === id);
-                        if (account) {
-                            await supabase.from('bank_accounts').upsert({
-                                id: account.id,
-                                organization_id: account.companyId,
-                                bank_name: account.bankName,
-                                account_name: account.accountName,
-                                account_number: account.accountNumber,
-                                currency: account.currency,
-                                balance_cents: account.balanceCents,
-                                is_active: account.isActive,
-                                last_updated: new Date().toISOString()
-                            });
-                        }
-                    } catch (e) { console.error("Failed to update bank account", e); }
-                }
+                await get().syncWithCloud();
             },
 
             deleteBankAccount: async (id) => {
@@ -1364,58 +1037,19 @@ export const useDataStore = create<DataState>()(
 
             addEmployee: async (emp) => {
                 const user = useAuthStore.getState().user;
-                console.log('[HR Debug] Current User:', user);
-
-                if (!supabase) throw new Error("Database connection unavailable");
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
                 const newEmp = {
                     ...emp,
                     id: emp.id || crypto.randomUUID(),
-                    // Ensure we use the correct column logic for the DB payload, but local model uses camelCase
-                    companyId: user?.companyId || emp.companyId,
+                    companyId,
                     status: (emp.status as any) || 'Active',
                     kpis: emp.kpis || [],
                     avatar: emp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.firstName}`
                 } as Employee;
 
-                console.log('[HR Debug] New Employee Payload:', newEmp);
-
-                // EXPLICIT DB INSERTION FOR VERIFICATION
-                // We construct the DB payload manually to match the schema we just fixed
-                const dbPayload = {
-                    id: newEmp.id,
-                    organization_id: newEmp.companyId, // mapped from companyId
-                    first_name: newEmp.firstName,
-                    last_name: newEmp.lastName,
-                    email: newEmp.email,
-                    role: newEmp.role,
-                    status: newEmp.status,
-                    phone_number: newEmp.phoneNumber,
-                    salary_cents: newEmp.salaryCents,
-                    date_of_employment: newEmp.dateOfEmployment,
-                    dob: newEmp.dob,
-                    gender: newEmp.gender,
-                    address: newEmp.address,
-                    kpis: newEmp.kpis,
-                    avatar: newEmp.avatar,
-                    health_notes: newEmp.healthNotes,
-                    title: newEmp.title,
-                    staff_id: (newEmp as any).staffId
-                };
-
-                const { error } = await supabase.from('employees').insert([dbPayload]);
-
-                if (error) {
-                    console.error("DB Insert Failed:", error);
-                    throw new Error(`Database Error: ${error.message}`);
-                }
-
-                // If successful, update local state
-                set((state) => ({ employees: [newEmp, ...state.employees] }));
-
-                // Trigger full sync just in case, but we know this one is done
-                get().syncWithCloud();
-
+                set(state => ({ employees: [newEmp, ...state.employees] }));
+                await get().syncWithCloud();
                 return newEmp;
             },
             updateEmployee: (id, updates) => {
@@ -1706,9 +1340,59 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
             },
 
-            addIngredient: (ing) => {
+            addRequisition: async (req) => {
+                const state = get();
                 const user = useAuthStore.getState().user;
                 const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                const sanitizeUUID = (id: any) => {
+                    if (!id || id === 'sys' || id === '' || id === 'undefined') return null;
+                    return id;
+                };
+
+                const requestorId = sanitizeUUID(req.requestorId || user?.id);
+                const employee = state.employees.find(e => e.id === requestorId || e.userId === requestorId);
+                const requestorName = req.requestorName || (employee ? `${employee.firstName} ${employee.lastName}` : (user?.name || 'System'));
+
+                const newReq: Requisition = {
+                    ...req,
+                    id: req.id || crypto.randomUUID(),
+                    companyId,
+                    type: req.type as any,
+                    category: req.category as any,
+                    itemName: req.itemName || 'Unnamed Item',
+                    ingredientId: sanitizeUUID(req.ingredientId),
+                    quantity: req.quantity || 0,
+                    pricePerUnitCents: req.pricePerUnitCents || 0,
+                    totalAmountCents: req.totalAmountCents || 0,
+                    requestorId: requestorId,
+                    requestorName,
+                    status: req.status || 'Pending',
+                    referenceId: sanitizeUUID(req.referenceId),
+                    notes: req.notes,
+                    sourceAccountId: sanitizeUUID(req.sourceAccountId),
+                    createdAt: new Date().toISOString(),
+                    unit: req.unit,
+                    packCount: req.packCount,
+                    packSize: req.packSize,
+                    packType: req.packType
+                };
+
+                set((state) => ({ requisitions: [newReq, ...state.requisitions] }));
+                await get().syncWithCloud();
+            },
+            addIngredient: async (ing) => {
+                const user = useAuthStore.getState().user;
+                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+
+                const cleanName = (ing.name || '').trim().toLowerCase();
+                const existing = get().ingredients.find(i => (i.name || '').trim().toLowerCase() === cleanName);
+                if (existing) {
+                    console.warn(`[Stock] Duplicate ingredient name detected: "${ing.name}". Redirecting to update existing.`);
+                    // Note: Alert isn't great for all callers, so we log it.
+                    // We could also return early here to prevent the duplicate.
+                    return;
+                }
 
                 const newIngId = ing.id || crypto.randomUUID();
                 const newIng = {
@@ -1738,7 +1422,7 @@ export const useDataStore = create<DataState>()(
                     inventory: [newInvItem, ...state.inventory]
                 }));
 
-                get().syncWithCloud();
+                await get().syncWithCloud();
             },
 
             updateIngredient: async (id, updates) => {
@@ -1753,16 +1437,15 @@ export const useDataStore = create<DataState>()(
 
                 set((state) => ({
                     ingredients: state.ingredients.map((ing) =>
-                        ing.id === id ? { ...ing, ...updates, lastUpdated: new Date().toISOString(), updatedBy: userId, updatedByName: userName } : ing
+                        ing.id === id ? { ...ing, ...updates, lastUpdated: new Date().toISOString(), updatedBy: userId, updatedByName: userName, stockLevel: updates.stockLevel ?? ing.stockLevel } : ing
                     ),
-                    // Also update inventory if matched
-                    inventory: state.inventory.map(inv => inv.id === id ? { ...inv, ...updates } : inv)
+                    // Also update inventory if matched, keeping stockQuantity and stockLevel in sync
+                    inventory: state.inventory.map(inv => inv.id === id ? { ...inv, ...updates, stockQuantity: updates.stockLevel ?? inv.stockQuantity } : inv)
                 }));
 
                 // Handle Image Update
                 if (updates.image && updates.image.startsWith('data:image')) {
                     try {
-                        // Assuming ingredients are 'ingredient' type
                         const uploadRes = await uploadEntityImage(companyId, 'ingredient', id, updates.image);
                         await saveEntityMedia({
                             entity_type: 'ingredient',
@@ -1772,34 +1455,17 @@ export const useDataStore = create<DataState>()(
                             object_path: uploadRes.path,
                             is_primary: true
                         });
-                        // Note: We don't update existing 'image_url' column in 'ingredients' table to avoid duplication/confusion
-                        // given the new strategy. But if the old logic relies on it, we might have issues.
-                        // Ideally we update the view or the legacy column with the public URL?
-                        // For now we stick to the new plan: entity_media is the source of truth.
                     } catch (e) {
                         console.error("Failed to update ingredient image:", e);
                     }
                 }
 
-                // Sync other fields
-                // ... (existing sync logic or just let syncWithCloud handle generic table updates?)
-                // The generic 'syncWithCloud' pulls entire table. We want to push updates.
-                // The store has `updateIngredient` which calls `get().syncWithCloud()`.
-                // Actually `get().syncWithCloud()` likely does a FULL PULL or PUSH?
-                // Let's check `syncWithCloud` implementation. It seems missing here or assumes pull.
+                if (Object.keys(updates).length > 0) {
+                    // Note: We used to do a manual update here, but we now rely on syncWithCloud
+                    // which handles all mappings automatically.
+                }
 
-                // For safety, let's explicitly update the row if we can.
-                try {
-                    const { error } = await supabase!.from('ingredients').update({
-                        name: updates.name,
-                        stock_level: updates.stockLevel,
-                        current_cost_cents: updates.currentCostCents
-                        // Add other fields if necessary
-                    }).eq('id', id);
-                    if (error) console.error(error);
-                } catch (e) { }
-
-                get().syncWithCloud();
+                await get().syncWithCloud();
             },
 
             deleteIngredient: async (id) => {
@@ -1869,63 +1535,15 @@ export const useDataStore = create<DataState>()(
                     updatedAt: now
                 } as Lead;
 
-                // Optimistic
                 set((state) => ({ leads: [newLead, ...state.leads] }));
-
-                if (supabase) {
-                    try {
-                        const payload = {
-                            id: newLeadId,
-                            organization_id: companyId,
-                            name: newLead.name,
-                            email: newLead.email,
-                            phone: newLead.phone,
-                            company: newLead.company,
-                            source: newLead.source,
-                            status: newLead.status,
-                            interest_level: newLead.interestLevel,
-                            notes: newLead.notes,
-                            conversation_id: newLead.conversationId,
-                            created_at: now,
-                            updated_at: now
-                        };
-                        const { error } = await supabase.from('leads').insert(payload);
-                        if (error) console.error("Failed to persist lead:", error);
-                    } catch (e) {
-                        console.error("Lead Persistence Error:", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             updateLead: async (id, updates) => {
                 const now = new Date().toISOString();
                 set((state) => ({
                     leads: state.leads.map(l => l.id === id ? { ...l, ...updates, updatedAt: now } : l)
                 }));
-
-                if (supabase) {
-                    try {
-                        const payload = {
-                            ...updates,
-                            updated_at: now
-                        };
-                        // Map camelCase to snake_case if needed, but our payload might already be snake_case or we use mapIncomingRow logic?
-                        // Actually let's manually map for safety or use a helper. 
-                        // The leads table uses snake_case.
-                        const dbPayload: any = { updated_at: now };
-                        if (updates.name) dbPayload.name = updates.name;
-                        if (updates.email) dbPayload.email = updates.email;
-                        if (updates.phone) dbPayload.phone = updates.phone;
-                        if (updates.company) dbPayload.company = updates.company;
-                        if (updates.status) dbPayload.status = updates.status;
-                        if (updates.interestLevel) dbPayload.interest_level = updates.interestLevel;
-                        if (updates.notes) dbPayload.notes = updates.notes;
-
-                        const { error } = await supabase.from('leads').update(dbPayload).eq('id', id);
-                        if (error) console.error("Failed to update lead:", error);
-                    } catch (e) {
-                        console.error("Lead Update Error:", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             addAgenticLog: (log) => {
                 const newLog = {
@@ -1938,12 +1556,8 @@ export const useDataStore = create<DataState>()(
 
             addMessage: async (message) => {
                 const user = useAuthStore.getState().user;
-
-                // CRITICAL: Database requires a valid UUID for organization_id
                 const orgId = message.organizationId || user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
 
-                // UUID Fix: Primary Key 'id' must be a valid UUID
-                // Use the provided ID if it looks like a UUID, otherwise generate a fresh one
                 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                 const msgId = (message.id && uuidRegex.test(message.id)) ? message.id : crypto.randomUUID();
 
@@ -1954,40 +1568,17 @@ export const useDataStore = create<DataState>()(
                     organizationId: orgId
                 } as Message;
 
-                // Optimistic Update
                 set((state) => ({
                     messages: [...state.messages, newMessage]
                 }));
 
-                // Persist
-                if (supabase) {
-                    try {
-                        const payload = {
-                            id: msgId,
-                            sender_id: newMessage.senderId,
-                            recipient_id: newMessage.recipientId,
-                            content: newMessage.content,
-                            created_at: newMessage.createdAt,
-                            organization_id: orgId
-                        };
-                        const { error } = await supabase.from('messages').insert(payload);
-                        if (error) {
-                            console.error("Failed to persist message:", error);
-                        }
-                    } catch (e) {
-                        console.error("Message Persistence Error:", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
             markMessageRead: async (messageId) => {
                 set((state) => ({
                     messages: state.messages.map(m => m.id === messageId ? { ...m, readAt: new Date().toISOString(), status: 'read' } : m)
                 }));
-
-                if (supabase) {
-                    const { error } = await supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', messageId);
-                    if (error) console.error(error);
-                }
+                await get().syncWithCloud();
             },
 
             initializePortionMonitor: (eventId, tableCount, guestsPerTable) => set((state) => {
@@ -2471,7 +2062,12 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
                 return {
                     cateringEvents: updatedEvents,
-                    inventory: updatedInventory
+                    inventory: updatedInventory,
+                    // CRITICAL: Also update the specialized tables to prevent syncWithCloud from overwriting
+                    ingredients: state.ingredients.map(ing => {
+                        const updatedItem = updatedInventory.find(i => i.id === ing.id);
+                        return updatedItem ? { ...ing, stockLevel: updatedItem.stockQuantity } as any : ing;
+                    })
                 };
             }),
 
@@ -2504,7 +2100,12 @@ export const useDataStore = create<DataState>()(
                 get().syncWithCloud();
                 return {
                     cateringEvents: updatedEvents,
-                    inventory: updatedInventory
+                    inventory: updatedInventory,
+                    // CRITICAL: Also update the specialized tables to prevent syncWithCloud from overwriting
+                    ingredients: state.ingredients.map(ing => {
+                        const updatedItem = updatedInventory.find(i => i.id === ing.id);
+                        return updatedItem ? { ...ing, stockLevel: updatedItem.stockQuantity } as any : ing;
+                    })
                 };
             }),
             createCateringOrder: async (d) => {
@@ -2847,15 +2448,7 @@ export const useDataStore = create<DataState>()(
                     })
                 }));
 
-                if (supabase) {
-                    try {
-                        // Mark as In Production if tracking detailed status
-                        // For now we just keep it in 'Execution'
-                        console.log("Stock deduction triggered for event", eventId);
-                    } catch (e) {
-                        console.error("Failed to deduct stock", e);
-                    }
-                }
+                await get().syncWithCloud();
             },
 
 
@@ -3153,30 +2746,66 @@ export const useDataStore = create<DataState>()(
                 };
 
                 try {
-                    // Critical: Sync Contacts FIRST to ensure FK relationships (Invoices -> Contacts)
-                    try {
-                        await safeSync('contacts', state.contacts);
-                    } catch (e) {
-                        console.warn("Contacts sync failed, proceeding to others", e);
+                    const tableToStoreKey: Record<string, keyof DataState> = {
+                        'contacts': 'contacts',
+                        'invoices': 'invoices',
+                        'catering_events': 'cateringEvents',
+                        'projects': 'projects',
+                        'bookkeeping': 'bookkeeping',
+                        'tasks': 'tasks',
+                        'employees': 'employees',
+                        'requisitions': 'requisitions',
+                        'chart_of_accounts': 'chartOfAccounts',
+                        'bank_transactions': 'bankTransactions',
+                        'bank_accounts': 'bankAccounts',
+                        'ingredients': 'ingredients',
+                        'reusable_items': 'inventory',
+                        'rental_items': 'inventory',
+                        'products': 'inventory',
+                        'assets': 'inventory',
+                        'leads': 'leads',
+                        'performance_reviews': 'performanceReviews',
+                        'messages': 'messages',
+                        'interaction_logs': 'interactionLogs'
+                    };
+
+                    const syncResults = await Promise.all([
+                        'contacts', 'invoices', 'catering_events', 'projects', 'bookkeeping',
+                        'tasks', 'employees', 'requisitions', 'chart_of_accounts',
+                        'bank_transactions', 'bank_accounts', 'ingredients', 'reusable_items',
+                        'rental_items', 'products', 'assets', 'leads', 'performance_reviews',
+                        'messages', 'interaction_logs'
+                    ].map(async (table) => {
+                        try {
+                            const storeKey = tableToStoreKey[table];
+                            const tableData = get()[storeKey] as any[];
+                            if (!tableData) {
+                                console.warn(`[Sync] Store key '${storeKey}' for table '${table}' is empty, skipping.`);
+                                return { table, status: 'skipped' };
+                            }
+
+                            await syncTableToCloud(table, tableData);
+                            return { table, status: 'success' };
+                        } catch (err: any) {
+                            console.error(`[Sync] Table '${table}' failed:`, err.message);
+                            return { table, status: 'error', error: err.message };
+                        }
+                    }));
+
+                    const failures = syncResults.filter(r => r.status === 'error');
+                    if (failures.length > 0) {
+                        console.warn(`Sync completed with ${failures.length} table failures:`, failures.map(f => f.table).join(', '));
+
+                        // Alert user for critical data loss risk
+                        const criticalTables = ['ingredients', 'inventory', 'requisitions', 'invoices'];
+                        const criticalFailures = failures.filter(f => criticalTables.includes(f.table));
+                        if (criticalFailures.length > 0) {
+                            alert(`Cloud Sync Error: The following data could not be saved to the cloud: ${criticalFailures.map(f => f.table).join(', ')}. Please try refreshing or check your connection.`);
+                        }
+
+                        const reqFailure = failures.find(f => f.table === 'requisitions');
+                        if (reqFailure) throw new Error(reqFailure.error);
                     }
-
-                    const freshState = get(); // Get latest state just before sync call
-
-                    await Promise.all([
-                        // syncTableToCloud('inventory', state.inventory), // DISABLED
-                        // safeSync('contacts', state.contacts), // Moved up
-                        safeSync('invoices', freshState.invoices),
-                        safeSync('catering_events', freshState.cateringEvents),
-                        safeSync('projects', freshState.projects),
-                        safeSync('bookkeeping', freshState.bookkeeping),
-                        safeSync('tasks', freshState.tasks),
-                        safeSync('employees', freshState.employees),
-                        safeSync('requisitions', freshState.requisitions),
-                        safeSync('chart_of_accounts', freshState.chartOfAccounts),
-                        safeSync('bank_transactions', freshState.bankTransactions),
-                        safeSync('ingredients', freshState.ingredients),
-                        safeSync('leads', freshState.leads)
-                    ]);
                     set({ isSyncing: false, syncStatus: 'Synced' });
 
                     // If a sync was requested during this sync, run it again
@@ -3187,12 +2816,17 @@ export const useDataStore = create<DataState>()(
                     const errorMsg = (e as Error).message;
                     set({ isSyncing: false, syncStatus: 'Error', lastSyncError: errorMsg });
                     console.error('Cloud Sync Failed:', e);
-                    throw e; // Re-throw to allow caller (like createCateringOrder) to handle it
+                    throw e; // Re-throw to allow caller to handle it
                 }
             },
 
             hydrateFromCloud: async () => {
                 if (!supabase) return;
+                // Prevent race condition: If a sync is in progress, bailing prevents pulling stale data
+                if (get().isSyncing) {
+                    console.log("[Hydrate] Sync in progress, skipping hydration to prevent state collision.");
+                    return;
+                }
 
                 const companyId = useAuthStore.getState().user?.companyId;
                 if (!companyId) return;
@@ -3364,6 +2998,7 @@ export const useDataStore = create<DataState>()(
                             if (isInvalid) {
                                 img = 'https://placehold.co/100x100?text=No+Image';
                             }
+                            item.image = img; // Standardize for consistency
 
                             combinedInventory.push({
                                 ...item,
@@ -3440,7 +3075,7 @@ export const useDataStore = create<DataState>()(
 
                     // Ingredients
                     if (ingredientItems !== null) {
-                        const processedIngredients: Ingredient[] = ingredientItems.map((item: any) => {
+                        const processedIngredientsRaw: Ingredient[] = ingredientItems.map((item: any) => {
                             if (!item.id) return null;
 
                             const cat = (categories as any[])?.find(c => c.id === item.category_id || c.id === item.categoryId);
@@ -3465,26 +3100,36 @@ export const useDataStore = create<DataState>()(
                                 lastUpdated: new Date().toISOString()
                             };
 
-                            // Add to combined inventory for later derived processing
-                            combinedInventory.push(ing);
                             return ing;
                         }).filter(Boolean) as Ingredient[];
 
-                        // set({ ingredients: processedIngredients }); // Correctly set later in newState
+                        // Failsafe in-memory deduplication (if DB merge has any residual duplicates or race conditions)
+                        const deduped: Ingredient[] = [];
+                        const seenNames = new Set();
+                        processedIngredientsRaw.forEach(ing => {
+                            const n = (ing.name || '').trim().toLowerCase();
+                            const existing = deduped.find(d => (d.name || '').trim().toLowerCase() === n);
+                            if (existing) {
+                                // Sum stock if we find more than one row with current state (just in case)
+                                console.warn(`[Hydration] Duplicate "${n}" in memory. Merging stock fallback.`, { id1: existing.id, id2: ing.id });
+                                existing.stockLevel += ing.stockLevel;
+                                existing.stockQuantity += ing.stockQuantity;
+                            } else {
+                                deduped.push(ing);
+                                seenNames.add(n);
+                            }
+                        });
+
+                        combinedInventory.push(...deduped);
                     }
 
 
-                    // 2. Derive Ingredients State
+                    // 2. Derive Ingredients State - Use the already processed items from combinedInventory
+                    // which already have the prioritized stockLevel from the step above.
                     const processedIngredients: Ingredient[] = combinedInventory
                         .filter(i => i.type === 'ingredient' || i.type === 'raw_material')
-                        .map(i => ({
-                            ...i,
-                            stockLevel: i.stockQuantity,
-                            // Ensure numeric fields
-                            currentCostCents: typeof i.priceCents === 'string' ? parseInt(i.priceCents) : i.priceCents,
-                            unit: (i as any).unit,
-                            lastUpdated: new Date().toISOString()
-                        }));
+                        // No need for another .map here as we already processed them correctly during the push
+                        .map(i => i as unknown as Ingredient);
 
                     // 3. Process Recipes for BOQ
                     const processedRecipes: Recipe[] = (recipesRaw || []).map((r: any) => ({
@@ -3987,7 +3632,7 @@ export const useDataStore = create<DataState>()(
                     } else {
                         const newKB: KnowledgeBase = {
                             id: crypto.randomUUID(),
-                            organizationId: useAuthStore.getState().user?.companyId || 'sys',
+                            organizationId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
                             agentId,
                             sources: [newSource],
                             lastUpdated: new Date().toISOString()

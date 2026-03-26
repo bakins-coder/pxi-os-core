@@ -24,10 +24,7 @@ export const checkCloudHealth = async () => {
   if (!supabase) return { status: 'Disconnected', error: 'Missing Credentials' };
   try {
     const { error } = await supabase.from('organizations').select('id').limit(1);
-    // 42501 = Permission Denied (Means DB is reachable but blocked by RLS) -> Healthy
-    // PGRST116 = No Rows -> Healthy
     if (error && error.code !== 'PGRST116' && error.code !== '42501') {
-      // Ignore UUID casting errors (caused by bad metadata RLS) - Treat as healthy/blocked
       if (error.message?.includes('input syntax for type uuid')) {
         console.warn('[Cloud] RLS UUID Mismatch detected (Harmless for health check)');
         return { status: 'Connected', latency: 'Stable' };
@@ -40,14 +37,12 @@ export const checkCloudHealth = async () => {
     if (msg.includes('input syntax for type uuid')) {
       return { status: 'Connected', latency: 'Stable' };
     }
-    // Case insensitive check for schema error (usually "DATABASE ERROR QUERYING SCHEMA")
     if (msg.includes('schema') || msg.includes('database error')) return { status: 'Connected', latency: 'Degraded' };
     return { status: 'Error', error: (e as Error).message };
   }
 };
 
 // --- Database Schema Whitelists ---
-// These MUST match the columns in src/types/supabase.ts to prevent sync failures.
 const SCHEMA_WHITELISTS: Record<string, string[]> = {
   catering_events: ['id', 'company_id', 'organization_id', 'customer_name', 'deal_id', 'event_date', 'guest_count', 'status', 'financials', 'cuisine_details'],
   invoices: ['id', 'company_id', 'number', 'contact_id', 'date', 'due_date', 'status', 'type', 'total_cents', 'subtotal_cents', 'service_charge_cents', 'vat_cents', 'paid_amount_cents', 'manual_set_price_cents', 'discount_cents', 'standard_total_cents', 'lines'],
@@ -66,130 +61,126 @@ const SCHEMA_WHITELISTS: Record<string, string[]> = {
   messages: ['id', 'organization_id', 'sender_id', 'recipient_id', 'content', 'type', 'status', 'created_at', 'read_at'],
   interaction_logs: ['id', 'contact_id', 'type', 'summary', 'content', 'created_by', 'created_at'],
   locations: ['id', 'organization_id', 'name', 'type', 'is_active'],
-  leads: ['id', 'organization_id', 'name', 'email', 'phone', 'company', 'source', 'status', 'interest_level', 'notes', 'conversation_id', 'created_at', 'updated_at']
+  leads: ['id', 'organization_id', 'name', 'email', 'phone', 'company', 'source', 'status', 'interest_level', 'notes', 'conversation_id', 'created_at', 'updated_at'],
+  bank_accounts: ['id', 'company_id', 'name', 'type', 'balance_cents', 'currency', 'account_number', 'institution_name', 'last_updated'],
+  ingredient_stock_batches: ['id', 'organization_id', 'ingredient_id', 'location_id', 'quantity', 'unit_id', 'received_at', 'expires_at', 'lot_code', 'status']
 };
 
 /**
- * Synchronize local data block to a remote table
+ * Consistent camelCase to snake_case mapping for outgoing data
+ */
+const mapOutgoingRow = (newItem: any) => {
+  const mapped: any = { ...newItem };
+  const mappings: Record<string, string> = {
+    'companyId': 'company_id',
+    'organizationId': 'organization_id',
+    'stockLevel': 'stock_level',
+    'stockQuantity': 'stock_quantity',
+    'currentCostCents': 'current_cost_cents',
+    'marketPriceCents': 'market_price_cents',
+    'lastPackCount': 'last_pack_count',
+    'lastPackSize': 'last_pack_size',
+    'lastPackType': 'last_pack_type',
+    'reorderPoint': 'reorder_point',
+    'shelfLifeDays': 'shelf_life_days',
+    'preferredSupplierId': 'preferred_supplier_id',
+    'requestorName': 'requestor_name',
+    'totalAmountCents': 'total_amount_cents',
+    'packedUnits': 'packed_units',
+    'costPerUnitCents': 'cost_price_cents',
+    'imageUrl': 'image_url',
+    'categoryId': 'category_id',
+    'unitId': 'unit_id',
+    'priceCents': 'price_cents',
+    'parentId': 'parent_id',
+    'referenceId': 'reference_id',
+    'projectId': 'project_id',
+    'assigneeId': 'assignee_id',
+    'ingredientId': 'ingredient_id',
+    'supplierId': 'supplier_id',
+    'bankAccountId': 'bank_account_id',
+  };
+
+  Object.entries(mappings).forEach(([camel, snake]) => {
+    if (camel in mapped && mapped[camel] !== undefined) {
+      mapped[snake] = mapped[camel];
+    }
+  });
+
+  return mapped;
+};
+
+/**
+ * Syncs a local store table to the cloud
  */
 export const syncTableToCloud = async (tableName: string, data: any[]) => {
   if (!supabase) return;
+  const whitelist = SCHEMA_WHITELISTS[tableName];
+  if (!whitelist) {
+    console.warn(`[Supabase] No whitelist for table ${tableName}. Skipping sync.`);
+    return;
+  }
 
-  // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = [
-    'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
-    'employees', 'catering_events', 'leave_requests', 'categories',
-    'rental_stock', 'ingredient_stock_batches', 'performance_reviews', 'leads'
-  ].includes(tableName);
+  const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
 
   const sanitizedData = data.filter(item => {
-    if (tableName === 'reusable_items') {
-      return item.type === 'asset' || item.type === 'reusable' || item.isAsset === true || item.is_asset === true;
-    }
+    if (tableName === 'reusable_items') return item.type === 'reusable';
+    if (tableName === 'rental_items') return item.type === 'rental';
+    if (tableName === 'products') return item.type === 'product';
+    if (tableName === 'assets') return item.type === 'asset' || item.isAsset === true;
     return true;
   }).map(item => {
     const newItem = { ...item };
-    const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
+    const noOrgTables = ['messages', 'notifications', 'audit_logs'];
 
-    // 1. Initial ID Mapping
-    if (useOrgId) {
+    // 1. Initial Organization mapping
+    if (!noOrgTables.includes(tableName)) {
       if (newItem.companyId === 'org-xquisite') newItem.companyId = VALID_UUID;
-      if ('companyId' in newItem) { newItem.organization_id = newItem.companyId; delete newItem.companyId; }
-      if ('company_id' in newItem) {
-        if (newItem.company_id === 'org-xquisite') newItem.company_id = VALID_UUID;
-        if (!newItem.organization_id) newItem.organization_id = newItem.company_id;
-        delete newItem.company_id;
-      }
-    } else {
-      if (newItem.companyId === 'org-xquisite') newItem.companyId = VALID_UUID;
-      if ('companyId' in newItem) {
-        newItem.company_id = newItem.companyId;
-        // Some tables use organization_id instead of company_id
-        const whitelist = SCHEMA_WHITELISTS[tableName];
-        if (whitelist?.includes('organization_id') && !('organization_id' in newItem)) {
-          newItem.organization_id = newItem.companyId;
+      if (newItem.organizationId === 'org-xquisite') newItem.organizationId = VALID_UUID;
+
+      // Force organization_id mapping for tables that use it
+      const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'categories', 'ingredient_stock_batches', 'leads'].includes(tableName);
+      if (useOrgId) {
+        if (!newItem.organization_id) {
+          newItem.organization_id = newItem.organizationId || newItem.companyId || newItem.company_id || VALID_UUID;
         }
-        delete newItem.companyId;
+      } else {
+        if (!newItem.company_id) {
+          newItem.company_id = newItem.companyId || newItem.organizationId || newItem.organization_id || VALID_UUID;
+        }
       }
     }
 
-    // 2. Comprehensive Field Conversion (camelCase -> snake_case)
-    // Common mappings
-    if ('contactId' in newItem) { newItem.contact_id = newItem.contactId; delete newItem.contactId; }
-    if ('organizationId' in newItem) { newItem.organization_id = newItem.organizationId; delete newItem.organizationId; }
-    if ('totalCents' in newItem) { newItem.total_cents = newItem.totalCents; delete newItem.totalCents; }
-    if ('createdAt' in newItem) { newItem.created_at = newItem.createdAt; delete newItem.createdAt; }
-    if ('customerName' in newItem) { newItem.customer_name = newItem.customerName; delete newItem.customerName; }
-    if ('guestCount' in newItem) { newItem.guest_count = newItem.guestCount; delete newItem.guestCount; }
-    if ('itemName' in newItem) { newItem.item_name = newItem.itemName; delete newItem.itemName; }
-    if ('pricePerUnitCents' in newItem) { newItem.price_per_unit_cents = newItem.pricePerUnitCents; delete newItem.pricePerUnitCents; }
-    if ('totalAmountCents' in newItem) { newItem.total_amount_cents = newItem.totalAmountCents; delete newItem.totalAmountCents; }
-    if ('requestorId' in newItem) { newItem.requestor_id = newItem.requestorId; delete newItem.requestorId; }
-    if ('sourceAccountId' in newItem) { newItem.source_account_id = newItem.sourceAccountId; delete newItem.sourceAccountId; }
-    if ('referenceId' in newItem) { newItem.reference_id = newItem.referenceId; delete newItem.referenceId; }
-    if ('ingredientId' in newItem) { newItem.ingredient_id = newItem.ingredientId; delete newItem.ingredientId; }
-    if ('packCount' in newItem) { newItem.pack_count = newItem.packCount; delete newItem.packCount; }
-    if ('packSize' in newItem) { newItem.pack_size = newItem.packSize; delete newItem.packSize; }
-    if ('packType' in newItem) { newItem.pack_type = newItem.packType; delete newItem.packType; }
+    // 2. Comprehensive Outgoing Mapping (Camel -> Snake)
+    const mapped = mapOutgoingRow(newItem);
 
-    // Inventory/Product
-    if ('priceCents' in newItem) { newItem.price_cents = newItem.priceCents; delete newItem.priceCents; }
-    if ('stockQuantity' in newItem || 'stockLevel' in newItem) {
-      const val = newItem.stockQuantity ?? newItem.stockLevel;
-      newItem.stock_quantity = val;
-      newItem.stock_level = val;
-      delete newItem.stockQuantity;
-      delete newItem.stockLevel;
-    }
-    if ('imageUrl' in newItem) { newItem.image_url = newItem.imageUrl; delete newItem.imageUrl; }
-    if ('lastPackCount' in newItem) { newItem.last_pack_count = newItem.lastPackCount; delete newItem.lastPackCount; }
-    if ('lastPackSize' in newItem) { newItem.last_pack_size = newItem.lastPackSize; delete newItem.lastPackSize; }
-    if ('lastPackType' in newItem) { newItem.last_pack_type = newItem.lastPackType; delete newItem.lastPackType; }
-    if ('currentCostCents' in newItem) { newItem.current_cost_cents = newItem.currentCostCents; delete newItem.currentCostCents; }
-
-    // Catering Special Packing Logic
+    // 3. Catering Special Packing Logic
     if (tableName === 'catering_events') {
-      // Pack all fields NOT in the whitelist into the 'financials' object
-      // This preserves full frontend state (items, costingSheet, etc.) in a JSONB column
       const packedData: any = { ...newItem.financials };
-
       const fieldsToPack = [
         'items', 'costingSheet', 'orderType', 'banquetDetails', 'cuisineDetails', 'currentPhase',
         'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
         'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor',
         'customerName', 'guestCount'
       ];
-
       fieldsToPack.forEach(field => {
         if (field in newItem && newItem[field] !== undefined && newItem[field] !== null) {
           packedData[field] = newItem[field];
-          // delete newItem[field]; // Already mapped to snake_case if in whitelist
         }
       });
-
-      newItem.financials = packedData;
-      // Ensure company_id is set (catering_events uses both)
-      newItem.company_id = newItem.organization_id;
+      mapped.financials = packedData;
+      if (whitelist.includes('company_id')) mapped.company_id = mapped.organization_id;
     }
 
-    // 3. Final Whitelist Enforcement
-    const whitelist = SCHEMA_WHITELISTS[tableName];
-    if (whitelist) {
-      const filteredItem: any = {};
-      whitelist.forEach(key => {
-        if (key in newItem) filteredItem[key] = newItem[key];
-      });
-      if (tableName === 'catering_events') {
-        console.log(`[Supabase] Syncing catering_event ${newItem.id}:`, {
-          customer_name: newItem.customer_name,
-          guest_count: newItem.guest_count,
-          financials: !!newItem.financials
-        });
+    // 4. Final Whitelist Enforcement
+    const filteredItem: any = {};
+    whitelist.forEach(key => {
+      if (key in mapped) {
+        filteredItem[key] = mapped[key];
       }
+    });
 
-      return filteredItem;
-    }
-    return newItem;
+    return filteredItem;
   });
 
   // Batch items to avoid payload limits
@@ -216,7 +207,6 @@ export const mapIncomingRow = (tableName: string, item: any) => {
   if (!item) return item;
   const newItem = { ...item };
 
-  // 1. Column Mappings (Snake -> Camel)
   const mappings: Record<string, string> = {
     'company_id': 'companyId',
     'organization_id': 'organizationId',
@@ -270,11 +260,11 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'price_source_query': 'priceSourceQuery',
     'sub_recipe_group': 'subRecipeGroup',
     'balance_cents': 'balanceCents',
+    'amount_cents': 'amountCents',
     'sender_id': 'senderId',
     'recipient_id': 'recipientId',
     'created_at': 'createdAt',
     'read_at': 'readAt',
-    // Employee mappings
     'first_name': 'firstName',
     'last_name': 'lastName',
     'phone_number': 'phoneNumber',
@@ -284,11 +274,9 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'staff_id': 'staffId',
     'user_id': 'userId',
     'id_card_issued_date': 'idCardIssuedDate',
-    // Contact mappings
     'customer_type': 'customerType',
     'registration_number': 'registrationNumber',
     'job_title': 'jobTitle',
-    // Misc
     'rental_vendor': 'rentalVendor',
     'last_pack_count': 'lastPackCount',
     'last_pack_size': 'lastPackSize',
@@ -305,153 +293,69 @@ export const mapIncomingRow = (tableName: string, item: any) => {
 
   Object.entries(mappings).forEach(([snake, camel]) => {
     if (snake in newItem) {
-      if (newItem[snake] !== null || !(camel in newItem)) {
-        newItem[camel] = newItem[snake];
-      }
+      newItem[camel] = newItem[snake];
       delete newItem[snake];
     }
   });
 
-  if ('stock_level' in item) {
-    newItem.stockLevel = item.stock_level;
-    newItem.stockQuantity = item.stock_level;
+  if ('imageUrl' in newItem) newItem.image = newItem.imageUrl;
+  if (tableName === 'bank_accounts') {
+    if ('institutionName' in newItem) newItem.bankName = newItem.institutionName;
+    if ('name' in newItem) newItem.accountName = newItem.name;
   }
-
-  // Handle orgId to companyId mapping for consistency across all tables
-  if ('organization_id' in item) {
-    newItem.companyId = item.organization_id;
+  if ('stock_level' in item || 'stock_quantity' in item) {
+    const val = item.stock_level ?? item.stock_quantity ?? 0;
+    newItem.stockLevel = val;
+    newItem.stockQuantity = val;
   }
+  if ('organization_id' in item) newItem.companyId = item.organization_id;
 
-  // 2. Catering Special Unpacking
-  if (tableName === 'catering_events' && newItem.financials && typeof newItem.financials === 'object') {
+  if (tableName === 'catering_events' && newItem.financials) {
     const financials = newItem.financials as any;
-    const packedFields = [
-      'items', 'costingSheet', 'orderType', 'banquetDetails', 'cuisineDetails', 'currentPhase',
-      'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location',
-      'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor',
-      'customerName', 'guestCount'
-    ];
-
+    const packedFields = ['items', 'costingSheet', 'orderType', 'banquetDetails', 'cuisineDetails', 'currentPhase', 'readinessScore', 'tasks', 'hardwareChecklist', 'endDate', 'location', 'dispatchedAssets', 'logisticsReturns', 'reconciliationStatus', 'portionMonitor', 'customerName', 'guestCount'];
     packedFields.forEach(field => {
-      const val = financials[field];
-      if (field in financials && val !== null && val !== undefined && val !== 'undefined' && val !== 'null') {
-        newItem[field] = val;
-      }
-    });
-  }
-
-  // Final Sanitization: Ensure customerName isn't a literal "undefined"/"null" string
-  if (newItem.customerName === 'undefined' || newItem.customerName === 'null') {
-    newItem.customerName = '';
-  }
-
-  if (tableName === 'messages') {
-    newItem.status = newItem.readAt ? 'read' : 'sent';
-  }
-
-  if (tableName === 'catering_events') {
-    console.log(`[Supabase] Mapped Item ${newItem.id}:`, {
-      customerName: newItem.customerName,
-      guestCount: newItem.guestCount
+      if (field in financials) newItem[field] = financials[field];
     });
   }
 
   return newItem;
 };
 
-/**
- * Pull cloud state to local storage, filtered by current session company_id if possible
- */
 export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
-
-  // Tables that use 'organization_id' instead of 'company_id'
-  const useOrgId = [
-    'reusable_items', 'rental_items', 'ingredients', 'products', 'assets',
-    'employees', 'catering_events', 'job_roles', 'departments',
-    'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches',
-    'performance_reviews', 'recipes', 'messages', 'leads'
-  ].includes(tableName);
-
+  const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'job_roles', 'departments', 'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches', 'performance_reviews', 'recipes', 'messages', 'leads'].includes(tableName);
   const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
-  const LEGACY_ID = 'org-xquisite';
   const effectiveId = companyId === 'org-xquisite' ? VALID_UUID : companyId;
 
-  // UUID Validation Regex
-  const isUUID = (id?: string) => {
-    if (!id) return false;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(id);
-  };
-
-  // Helper for consistent snake_case to camelCase mapping
+  const isUUID = (id?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
   const mapItem = (item: any) => mapIncomingRow(tableName, item);
 
-
   let query = supabase.from(tableName).select('*');
-
   if (effectiveId) {
     const col = useOrgId ? 'organization_id' : 'company_id';
     if (effectiveId === VALID_UUID) {
-      const { data: uuidData, error: uuidError } = await supabase.from(tableName).select('*').eq(col, VALID_UUID);
-      if (uuidError) throw uuidError;
-
-      try {
-        const { data: legacyData, error: legacyError } = await supabase.from(tableName).select('*').eq(col, LEGACY_ID);
-        if (!legacyError && legacyData && legacyData.length > 0) {
-          return [...(uuidData || []), ...legacyData].map(item => mapItem(item));
-        }
-      } catch (e) {
-        console.warn(`[Supabase] Skipping legacy ID for ${tableName} due to type mismatch.`);
-      }
-      return (uuidData || []).map(item => mapItem(item));
-    } else if (effectiveId) {
-      if (isUUID(effectiveId)) {
-        query = query.eq(col, effectiveId);
-      } else {
-        console.warn(`[Supabase] Skipping query for ${tableName} because ${effectiveId} is not a valid UUID for ${col}.`);
-        return [];
-      }
+      const { data: uuidData } = await supabase.from(tableName).select('*').eq(col, VALID_UUID);
+      return (uuidData || []).map(item =\u003e mapItem(item));
+    } else if (isUUID(effectiveId)) {
+      query = query.eq(col, effectiveId);
     }
   }
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(item => mapItem(item));
+  return (data || []).map(item =\u003e mapItem(item));
 };
-
-// --- RPC Helpers ---
 
 export const postReusableMovement = async (params: any) => {
   if (!supabase) throw new Error("Supabase not initialized");
-  const { data, error } = await supabase.rpc('post_reusable_movement', {
-    p_org: params.orgId,
-    p_item: params.itemId,
-    p_delta: params.delta,
-    p_unit: params.unitId,
-    p_type: params.type,
-    p_ref_type: params.refType,
-    p_ref_id: params.refId,
-    p_location: params.locationId,
-    p_notes: params.notes
-  });
+  const { data, error } = await supabase.rpc('post_reusable_movement', { p_org: params.orgId, p_item: params.itemId, p_delta: params.delta, p_unit: params.unitId, p_type: params.type, p_ref_type: params.refType, p_ref_id: params.refId, p_location: params.locationId, p_notes: params.notes });
   if (error) throw error;
   return data;
 };
 
 export const postRentalMovement = async (params: any) => {
   if (!supabase) throw new Error("Supabase not initialized");
-  const { data, error } = await supabase.rpc('post_rental_movement', {
-    p_org: params.orgId,
-    p_item: params.itemId,
-    p_delta: params.delta,
-    p_unit: params.unitId,
-    p_type: params.type,
-    p_ref_type: params.refType,
-    p_ref_id: params.refId,
-    p_location: params.locationId,
-    p_notes: params.notes
-  });
+  const { data, error } = await supabase.rpc('post_rental_movement', { p_org: params.orgId, p_item: params.itemId, p_delta: params.delta, p_unit: params.unitId, p_type: params.type, p_ref_type: params.refType, p_ref_id: params.refId, p_location: params.locationId, p_notes: params.notes });
   if (error) throw error;
   return data;
 };
@@ -459,123 +363,52 @@ export const postRentalMovement = async (params: any) => {
 export const postIngredientMovement = async (params: any) => {
   if (!supabase) throw new Error("Supabase not initialized");
   const { data, error } = await supabase.rpc('post_ingredient_movement', {
-    p_org: params.orgId,
+    p_org: params.orgId === 'org-xquisite' ? '10959119-72e4-4e57-ba54-923e36bba6a6' : params.orgId,
     p_ingredient: params.itemId,
     p_delta: params.delta,
     p_unit: params.unitId,
-    p_type: params.type,
+    p_type: params.type === 'release' ? 'production_issue' : params.type,
     p_ref_type: params.refType,
     p_ref_id: params.refId,
     p_location: params.locationId,
     p_notes: params.notes,
-    p_unit_cost_cents: params.unitCostCents,
-    p_expires_at: params.expiresAt
+    p_unit_cost_cents: params.unitCostCents || 0,
+    p_expires_at: params.expiresAt || null
   });
   if (error) throw error;
   return data;
 };
 
-export const pullInventoryViews = async (viewName: 'v_reusable_inventory' | 'v_rental_inventory' | 'v_ingredient_inventory', orgId: string) => {
+export const pullInventoryViews = async (viewName: any, orgId: string) => {
   if (!supabase) return [];
   const { data, error } = await supabase.from(viewName).select('*').eq('organization_id', orgId);
-  if (error) {
-    console.error(`Failed to pull view ${viewName}:`, error);
-    return [];
-  }
-  return data;
+  return data || [];
 };
 
-// --- Media Helpers ---
-
-export const uploadEntityImage = async (
-  orgId: string,
-  entityType: 'product' | 'ingredient' | 'asset',
-  entityId: string,
-  base64Data: string
-) => {
-  console.log('[Supabase] uploadEntityImage called');
+export const uploadEntityImage = async (orgId: string, entityType: string, entityId: string, base64Data: string) => {
   if (!supabase) throw new Error("Supabase not initialized");
-
-  // distinct path: product/{org_id}/{product_id}/{timestamp}.jpg
   const filename = `${Date.now()}.jpg`;
-  const bucketName = 'product_media';
   const objectPath = `${entityType}/${orgId}/${entityId}/${filename}`;
-
-  console.log('[Supabase] Converting base64...');
-
-  // Robust Base64 to Blob conversion
   const base64Clean = base64Data.split(',')[1] || base64Data;
   const binaryStr = atob(base64Clean);
-  const len = binaryStr.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryStr.charCodeAt(i);
-  }
-  const blob = new Blob([bytes], { type: 'image/jpeg' });
-
-  console.log('[Supabase] Uploading to bucket:', bucketName, 'Path:', objectPath);
-
-  const { data, error } = await supabase.storage
-    .from(bucketName)
-    .upload(objectPath, blob, {
-      contentType: 'image/jpeg',
-      upsert: true
-    });
-
-  if (error) {
-    console.error('[Supabase] Upload Error:', error);
-    throw error;
-  }
-
-  console.log('[Supabase] Upload Success:', data);
-  return { bucket: bucketName, path: data.path };
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+  const { data, error } = await supabase.storage.from('product_media').upload(objectPath, new Blob([bytes], { type: 'image/jpeg' }), { contentType: 'image/jpeg', upsert: true });
+  if (error) throw error;
+  return { bucket: 'product_media', path: data.path };
 };
 
-export const saveEntityMedia = async (
-  mediaData: {
-    entity_type: string;
-    entity_id: string;
-    organization_id: string;
-    bucket: string;
-    object_path: string;
-    is_primary: boolean;
-  }
-) => {
+export const saveEntityMedia = async (mediaData: any) => {
   if (!supabase) throw new Error("Supabase not initialized");
-
-  const { error } = await supabase
-    .from('entity_media')
-    .insert([mediaData]);
-
+  const { error } = await supabase.from('entity_media').insert([mediaData]);
   if (error) throw error;
 };
 
-export const uploadEntityDocument = async (
-  orgId: string,
-  entityType: 'contact' | 'product' | 'ingredient' | 'asset' | 'event',
-  entityId: string,
-  file: File
-) => {
+export const uploadEntityDocument = async (orgId: string, entityType: string, entityId: string, file: File) => {
   if (!supabase) throw new Error("Supabase not initialized");
-
   const filename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-  const bucketName = 'product_media'; // Using existing bucket
   const objectPath = `${entityType}/${orgId}/${entityId}/${filename}`;
-
-  console.log('[Supabase] Uploading document:', objectPath);
-
-  const { data, error } = await supabase.storage
-    .from(bucketName)
-    .upload(objectPath, file, {
-      contentType: file.type,
-      upsert: true
-    });
-
-  if (error) {
-    console.error('[Supabase] Document Upload Error:', error);
-    throw error;
-  }
-
-  console.log('[Supabase] Document Upload Success:', data);
-  return { bucket: bucketName, path: data.path };
+  const { data, error } = await supabase.storage.from('product_media').upload(objectPath, file, { contentType: file.type, upsert: true });
+  if (error) throw error;
+  return { bucket: 'product_media', path: data.path };
 };

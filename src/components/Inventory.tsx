@@ -342,8 +342,21 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
    const [isMaximized, setIsMaximized] = useState(false);
    const returnRental = useDataStore(state => state.returnRental);
 
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
    if (!isOpen || !rental) return null;
-   const handleReturn = () => { returnRental(rental.id, status, notes); onClose(); };
+   const handleReturn = async () => {
+      setIsSubmitting(true);
+      try {
+         await returnRental(rental.id, status, notes);
+         onClose();
+      } catch (error: any) {
+         console.error('Error returning rental:', error);
+         alert(`Failed to process return: ${error.message || 'Unknown error'}`);
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
    return (
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
          <div
@@ -364,7 +377,13 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Return Status</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={status} onChange={e => setStatus(e.target.value as any)}><option value="Returned">Safely Returned</option><option value="Damaged">Damaged / Broken</option><option value="Lost">Lost / Unaccounted</option></select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Discrepancy Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain damages or loss details..." /></div>
             </div>
-            <div className="p-8 bg-slate-50 flex gap-4"><button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button><button onClick={handleReturn} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl">Complete Return Cycle</button></div>
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
+               <button onClick={handleReturn} disabled={isSubmitting} className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl flex items-center justify-center gap-2">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin text-[#00ff9d]" /> : null}
+                  {isSubmitting ? 'Processing...' : 'Complete Return Cycle'}
+               </button>
+            </div>
          </div>
       </div>
    );
@@ -379,24 +398,34 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
    const addRequisition = useDataStore(state => state.addRequisition);
    const { user } = useAuthStore();
 
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
    if (!isOpen) return null;
-   const handleReleaseRequest = () => {
+   const handleReleaseRequest = async () => {
       if (!selectedIngId || qty <= 0) return;
       const ing = ingredients.find(i => i.id === selectedIngId);
-      addRequisition({
-         type: 'Release',
-         category: 'Food',
-         itemName: `Release: ${ing?.name}`,
-         ingredientId: selectedIngId,
-         quantity: qty,
-         pricePerUnitCents: 0,
-         totalAmountCents: 0,
-         referenceId: selectedEventId,
-         notes: notes || `Standard release to kitchen`,
-         requestorId: user?.id
-      });
-      onClose();
-      alert("Release requisition logged for approval.");
+      setIsSubmitting(true);
+      try {
+         await addRequisition({
+            type: 'Release',
+            category: 'Food',
+            itemName: `Release: ${ing?.name}`,
+            ingredientId: selectedIngId,
+            quantity: qty,
+            pricePerUnitCents: 0,
+            totalAmountCents: 0,
+            referenceId: selectedEventId,
+            notes: notes || `Standard release to kitchen`,
+            requestorId: user?.id
+         });
+         onClose();
+         alert("Release requisition logged for approval.");
+      } catch (error: any) {
+         console.error('Error adding release requisition:', error);
+         alert(`Failed to log release request: ${error.message || 'Unknown error'}`);
+      } finally {
+         setIsSubmitting(false);
+      }
    };
    return (
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in zoom-in duration-300" onClick={onClose}>
@@ -419,7 +448,13 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
                <div className="grid grid-cols-1 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Quantity</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g., Replacement for spoiled batch..." /></div>
             </div>
-            <div className="p-8 bg-slate-50 flex gap-4"><button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button><button onClick={handleReleaseRequest} className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl">Authorize Release</button></div>
+            <div className="p-8 bg-slate-50 flex gap-4">
+               <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
+               <button onClick={handleReleaseRequest} disabled={isSubmitting} className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl flex items-center justify-center gap-2">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {isSubmitting ? 'Authorizing...' : 'Authorize Release'}
+               </button>
+            </div>
          </div>
       </div>
    );
@@ -437,6 +472,8 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
    const addRequisition = useDataStore(state => state.addRequisition);
    const { user } = useAuthStore();
 
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
    // Auto-set estimated cost when ingredient selected
    useEffect(() => {
       const ing = ingredients.find(i => i.id === selectedIngId);
@@ -447,38 +484,46 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
 
    if (!isOpen) return null;
 
-   const handleSubmit = () => {
-      if (isManualInput) {
-         if (!newItemName || qty <= 0) return;
-         addRequisition({
-            type: 'Purchase',
-            category: 'Food',
-            itemName: newItemName,
-            quantity: qty,
-            pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
-            totalAmountCents: estimatedCost * 100,
-            notes: notes || 'Stock replenishment request',
-            status: 'Pending',
-            requestorId: user?.id
-         });
-      } else {
-         if (!selectedIngId || qty <= 0) return;
-         const ing = ingredients.find(i => i.id === selectedIngId);
-         addRequisition({
-            type: 'Purchase',
-            category: 'Food',
-            itemName: ing?.name || 'Unknown Item',
-            ingredientId: selectedIngId,
-            quantity: qty,
-            pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
-            totalAmountCents: estimatedCost * 100,
-            notes: notes || 'Stock replenishment request',
-            status: 'Pending',
-            requestorId: user?.id
-         });
+   const handleSubmit = async () => {
+      setIsSubmitting(true);
+      try {
+         if (isManualInput) {
+            if (!newItemName || qty <= 0) return;
+            await addRequisition({
+               type: 'Purchase',
+               category: 'Food',
+               itemName: newItemName,
+               quantity: qty,
+               pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
+               totalAmountCents: estimatedCost * 100,
+               notes: notes || 'Stock replenishment request',
+               status: 'Pending',
+               requestorId: user?.id
+            });
+         } else {
+            if (!selectedIngId || qty <= 0) return;
+            const ing = ingredients.find(i => i.id === selectedIngId);
+            await addRequisition({
+               type: 'Purchase',
+               category: 'Food',
+               itemName: ing?.name || 'Unknown Item',
+               ingredientId: selectedIngId,
+               quantity: qty,
+               pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
+               totalAmountCents: estimatedCost * 100,
+               notes: notes || 'Stock replenishment request',
+               status: 'Pending',
+               requestorId: user?.id
+            });
+         }
+         onClose();
+         alert("Purchase Request Submitted for Approval");
+      } catch (error: any) {
+         console.error('Error submitting purchase request:', error);
+         alert(`Failed to submit purchase request: ${error.message || 'Unknown error'}`);
+      } finally {
+         setIsSubmitting(false);
       }
-      onClose();
-      alert("Purchase Request Submitted for Approval");
    };
 
    return (
@@ -569,9 +614,12 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
                <button
                   onClick={handleSubmit}
-                  disabled={qty <= 0 || (isManualInput ? !newItemName : !selectedIngId)}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-               >Submit Request</button>
+                  disabled={isSubmitting || qty <= 0 || (isManualInput ? !newItemName : !selectedIngId)}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+               >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+               </button>
             </div>
          </div>
       </div>
@@ -619,33 +667,43 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
       }
    }, [selectedReqId, mode, approvedRequests]);
 
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
    if (!isOpen) return null;
 
-   const handleReceive = () => {
-      if (isManualInput && mode === 'Direct') {
-         if (!newItemName || effectiveQty <= 0) return;
-         const newIngId = crypto.randomUUID();
-         addIngredient({
-            id: newIngId,
-            name: newItemName,
-            unit: newItemUnit as any,
-            stockLevel: 0,
-            currentCostCents: 0,
-            category: 'Dry Goods',
-            lastPackCount: inputStrategy === 'Bulk' ? bulkPackCount : undefined,
-            lastPackSize: inputStrategy === 'Bulk' ? bulkPackSize : undefined,
-            lastPackType: inputStrategy === 'Bulk' ? bulkPackType : undefined
-         });
-         receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100);
-      } else {
-         if (!selectedIngId || effectiveQty <= 0) return;
-         receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100);
+   const handleReceive = async () => {
+      setIsSubmitting(true);
+      try {
+         if (isManualInput && mode === 'Direct') {
+            if (!newItemName || effectiveQty <= 0) return;
+            const newIngId = crypto.randomUUID();
+            await addIngredient({
+               id: newIngId,
+               name: newItemName,
+               unit: newItemUnit as any,
+               stockLevel: 0,
+               currentCostCents: 0,
+               category: 'Dry Goods',
+               lastPackCount: inputStrategy === 'Bulk' ? bulkPackCount : undefined,
+               lastPackSize: inputStrategy === 'Bulk' ? bulkPackSize : undefined,
+               lastPackType: inputStrategy === 'Bulk' ? bulkPackType : undefined
+            });
+            await receiveFoodStock(newIngId, effectiveQty, effectiveCost * 100);
+         } else {
+            if (!selectedIngId || effectiveQty <= 0) return;
+            await receiveFoodStock(selectedIngId, effectiveQty, effectiveCost * 100);
 
-         if (mode === 'FromRequest' && selectedReqId) {
-            updateRequisition(selectedReqId, { status: 'Paid' });
+            if (mode === 'FromRequest' && selectedReqId) {
+               await updateRequisition(selectedReqId, { status: 'Paid' });
+            }
          }
+         onClose();
+      } catch (error: any) {
+         console.error('Error receiving stock:', error);
+         alert(`Failed to receive stock: ${error.message || 'Unknown error'}`);
+      } finally {
+         setIsSubmitting(false);
       }
-      onClose();
    };
 
    return (
@@ -795,10 +853,11 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400">Cancel</button>
                <button
                   onClick={handleReceive}
-                  disabled={(mode === 'FromRequest' && !selectedReqId) || (mode === 'Direct' && !isManualInput && !selectedIngId) || effectiveQty <= 0}
-                  className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all disabled:opacity-50"
+                  disabled={isSubmitting || (mode === 'FromRequest' && !selectedReqId) || (mode === 'Direct' && !isManualInput && !selectedIngId) || effectiveQty <= 0}
+                  className="flex-1 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                >
-                  Commit to Stock
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin text-[#00ff9d]" /> : null}
+                  {isSubmitting ? 'Syncing...' : 'Commit to Stock'}
                </button>
             </div>
          </div>
@@ -814,13 +873,23 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
    const [isMaximized, setIsMaximized] = useState(false);
    const issueRental = useDataStore(state => state.issueRental);
 
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
    if (!isOpen) return null;
 
-   const handleIssue = () => {
+   const handleIssue = async () => {
       if (!selectedAssetId || !selectedEventId || qty <= 0) return;
-      issueRental(selectedEventId, selectedAssetId, qty, vendor);
-      onClose();
-      alert("Assets successfully issued and moved to event liability ledger.");
+      setIsSubmitting(true);
+      try {
+         await issueRental(selectedEventId, selectedAssetId, qty, vendor);
+         onClose();
+         alert("Assets successfully issued and moved to event liability ledger.");
+      } catch (error) {
+         console.error('Error issuing assets:', error);
+         alert('Failed to issue assets.');
+      } finally {
+         setIsSubmitting(false);
+      }
    };
 
    return (
@@ -872,7 +941,10 @@ const AssetIssueModal = ({ isOpen, onClose, assets, events }: { isOpen: boolean,
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-100 rounded-2xl transition-all">Cancel</button>
-               <button onClick={handleIssue} className="flex-1 py-4 bg-slate-900 text-emerald-400 rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all">Confirm Dispatch</button>
+               <button onClick={handleIssue} disabled={isSubmitting} className="flex-1 py-4 bg-slate-900 text-emerald-400 rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {isSubmitting ? 'Confirming...' : 'Confirm Dispatch'}
+               </button>
             </div>
          </div>
       </div>
@@ -893,8 +965,8 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
       setShowScanModal(false);
       try {
          const items = await parseInventoryList(imageSrc);
-         items.forEach(item => {
-            addInventoryItem({
+         for (const item of items) {
+            await addInventoryItem({
                name: item.name,
                stockQuantity: item.quantity,
                category: (item.category as any) || 'Hardware',
@@ -903,7 +975,7 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
                isAsset: true,
                isRental: false
             });
-         });
+         }
          alert(`Successfully scanned ${items.length} assets!`);
       } catch (error) {
          console.error('Scan failed', error);
@@ -965,12 +1037,17 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
    const [stock, setStock] = useState(editItem?.stockLevel || 0);
    const [cost, setCost] = useState(editItem?.currentCostCents ? editItem.currentCostCents / 100 : 0);
    const [image, setImage] = useState(editItem?.image || '');
+   const [packCount, setPackCount] = useState(editItem?.lastPackCount || 0);
+   const [packSize, setPackSize] = useState(editItem?.lastPackSize || 0);
+   const [packType, setPackType] = useState(editItem?.lastPackType || 'Bags');
 
    const [showCamera, setShowCamera] = useState(false);
    const [isMaximized, setIsMaximized] = useState(false);
    const [uploadStatus, setUploadStatus] = useState('');
 
    const { addIngredient, updateIngredient } = useDataStore();
+
+   const [isSubmitting, setIsSubmitting] = useState(false);
 
    useEffect(() => {
       if (isOpen) {
@@ -980,17 +1057,34 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
          setStock(editItem?.stockLevel || 0);
          setCost(editItem?.currentCostCents ? editItem.currentCostCents / 100 : 0);
          setImage(editItem?.image || '');
+         setPackCount(editItem?.lastPackCount || 0);
+         setPackSize(editItem?.lastPackSize || 0);
+         setPackType(editItem?.lastPackType || 'Bags');
       }
    }, [isOpen, editItem]);
 
-   const handleSave = () => {
+   const handleSave = async () => {
       if (!name) return;
-      if (editItem) {
-         updateIngredient(editItem.id, { name, category, unit, stockLevel: stock, currentCostCents: cost * 100, image });
-      } else {
-         addIngredient({ name, category, unit, stockLevel: stock, currentCostCents: cost * 100, image });
+      setIsSubmitting(true);
+      try {
+         if (editItem) {
+            await updateIngredient(editItem.id, {
+               name, category, unit, stockLevel: stock, currentCostCents: cost * 100, image,
+               lastPackCount: packCount, lastPackSize: packSize, lastPackType: packType
+            });
+         } else {
+            await addIngredient({
+               name, category, unit, stockLevel: stock, currentCostCents: cost * 100, image,
+               lastPackCount: packCount, lastPackSize: packSize, lastPackType: packType
+            });
+         }
+         onClose();
+      } catch (error) {
+         console.error('Error saving ingredient:', error);
+         alert('Failed to save ingredient. Please try again.');
+      } finally {
+         setIsSubmitting(false);
       }
-      onClose();
    };
 
    if (!isOpen) return null;
@@ -1043,6 +1137,27 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
                   </div>
                </div>
 
+               <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 space-y-4">
+                  <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Optional: Packaging Meta Labels</p>
+                  <div className="grid grid-cols-3 gap-4">
+                     <div>
+                        <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">Pack Type</label>
+                        <select className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-black outline-none" value={packType} onChange={e => setPackType(e.target.value)}>
+                           <option>Bags</option><option>Packs</option><option>Cartons</option><option>Gallons</option><option>Pieces</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">Count</label>
+                        <input type="number" className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-black outline-none" value={packCount} onChange={e => setPackCount(parseFloat(e.target.value) || 0)} placeholder="12" />
+                     </div>
+                     <div>
+                        <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">Size</label>
+                        <input type="number" className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-black outline-none" value={packSize} onChange={e => setPackSize(parseFloat(e.target.value) || 0)} placeholder="5" />
+                     </div>
+                  </div>
+                  <p className="text-[8px] text-slate-400 italic">This info reflects the last batch received and is used for UI labelling.</p>
+               </div>
+
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Image</label>
                   <div className="flex gap-4">
@@ -1073,7 +1188,14 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-100 rounded-2xl transition-all">Cancel</button>
-               <button onClick={handleSave} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all">Save to Inventory</button>
+               <button
+                  onClick={handleSave}
+                  disabled={isSubmitting || !name}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+               >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin text-white" /> : null}
+                  {isSubmitting ? 'Saving...' : 'Save to Inventory'}
+               </button>
             </div>
          </div>
 
@@ -1169,15 +1291,25 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 
    const { addInventoryItem, updateInventoryItem } = useDataStore();
 
-   const handleSave = () => {
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
+   const handleSave = async () => {
       if (!name) return;
-      console.log('Saving product with image:', image ? image.substring(0, 50) : 'no image');
-      if (editItem) {
-         updateInventoryItem(editItem.id, { name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
-      } else {
-         addInventoryItem({ name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
+      setIsSubmitting(true);
+      try {
+         console.log('Saving product with image:', image ? image.substring(0, 50) : 'no image');
+         if (editItem) {
+            await updateInventoryItem(editItem.id, { name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
+         } else {
+            await addInventoryItem({ name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
+         }
+         onClose();
+      } catch (error: any) {
+         console.error('Error saving item:', error);
+         alert(`Failed to save item: ${error.message || 'Unknown error'}`);
+      } finally {
+         setIsSubmitting(false);
       }
-      onClose();
    };
 
    useEffect(() => {
@@ -1297,7 +1429,14 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 
             <div className="p-8 bg-slate-50 flex gap-4">
                <button onClick={onClose} className="flex-1 py-4 font-black uppercase text-[10px] text-slate-400 hover:bg-slate-100 rounded-2xl transition-all">Cancel</button>
-               <button onClick={handleSave} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all">Save Product</button>
+               <button
+                  onClick={handleSave}
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+               >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin text-white" /> : null}
+                  {isSubmitting ? 'Saving...' : 'Save Product'}
+               </button>
             </div>
          </div>
 
@@ -1368,15 +1507,15 @@ export const Inventory = () => {
          const items = await parseInventoryList(imageSrc);
 
          // Add items to store with simple mapping
-         items.forEach(item => {
-            addIngredient({
+         for (const item of items) {
+            await addIngredient({
                name: item.name,
                stockLevel: item.quantity,
                unit: (item.unit as any) || 'pcs',
                category: (item.category as any) || 'Dry Goods',
                currentCostCents: 0
             });
-         });
+         }
 
          alert(`Successfully scanned and added ${items.length} items to inventory!`);
       } catch (error) {
@@ -1577,7 +1716,7 @@ export const Inventory = () => {
                         </>
                      )}
                   </div>
-               </td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
+               </td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
             </div>
          )}
 

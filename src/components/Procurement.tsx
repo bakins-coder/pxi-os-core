@@ -80,19 +80,23 @@ export const Procurement: React.FC = () => {
         if (!user || draftRequests.length === 0) return;
         setIsSubmitting(true);
 
-        const newReqs = draftRequests.map((draft, idx) => ({
-            ...draft,
-            id: crypto.randomUUID()
-        }));
+        try {
+            const newReqs = draftRequests.map((draft) => ({
+                ...draft,
+                id: crypto.randomUUID()
+            }));
 
-        setTimeout(() => {
-            addRequisitionsBulk(newReqs);
-            setIsSubmitting(false);
+            await addRequisitionsBulk(newReqs);
+
             setSuccessMessage(`Successfully submitted ${newReqs.length} request(s) to MD!`);
             setDraftRequests([]);
-
             setTimeout(() => setSuccessMessage(''), 4000);
-        }, 800);
+        } catch (error: any) {
+            console.error('[Procurement] Batch Submission Failed:', error);
+            alert(`Failed to submit batch: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const batchTotalCents = draftRequests.reduce((sum, req) => sum + (req.totalAmountCents || 0), 0);
@@ -154,7 +158,7 @@ export const Procurement: React.FC = () => {
                                     <input
                                         type="number"
                                         min="0"
-                                        step="0.01"
+                                        step="any"
                                         value={formData.pricePerUnit || ''}
                                         onChange={e => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
                                         placeholder="0.00"
@@ -179,7 +183,7 @@ export const Procurement: React.FC = () => {
                                             <input
                                                 type="number"
                                                 min="0"
-                                                step="0.01"
+                                                step="any"
                                                 required
                                                 value={formData.quantity || ''}
                                                 onChange={e => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
@@ -236,7 +240,7 @@ export const Procurement: React.FC = () => {
                                                 <input
                                                     type="number"
                                                     min="0"
-                                                    step="0.01"
+                                                    step="any"
                                                     placeholder="e.g. 5"
                                                     className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
                                                     value={bulkPackSize || ''}
@@ -269,7 +273,7 @@ export const Procurement: React.FC = () => {
                                                 <input
                                                     type="number"
                                                     min="0"
-                                                    step="0.01"
+                                                    step="any"
                                                     placeholder="e.g. 16000"
                                                     className="w-full bg-[#020617] border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
                                                     value={bulkPackCost || ''}

@@ -400,6 +400,7 @@ export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | '
 
 export interface Requisition {
   id: string;
+  companyId: string;
   type: 'Purchase' | 'Release' | 'Rental' | 'Hiring' | 'Loan';
   category: 'Food' | 'Hardware' | 'Service' | 'Financial';
   itemName: string;
