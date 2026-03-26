@@ -405,8 +405,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-2 md:p-8 bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-500 overflow-y-auto">
-            <div onClick={(e) => e.stopPropagation()} className="bg-white md:rounded-[3rem] shadow-2xl w-full max-w-7xl min-h-[100vh] md:min-h-0 md:h-[95vh] overflow-hidden flex flex-col md:border border-slate-200">
+        <div className="fixed inset-0 z-[150] flex items-start md:items-center justify-center p-0 md:p-8 bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-500 overflow-y-auto">
+            <div onClick={(e) => e.stopPropagation()} className="bg-white md:rounded-[3rem] shadow-2xl w-full max-w-7xl h-[100dvh] md:h-[95vh] md:min-h-0 overflow-hidden flex flex-col md:border border-slate-200">
                 {/* HEADER */}
                 <div className="p-2 md:p-8 border-b border-slate-50 flex flex-col gap-2 md:gap-4 bg-slate-50/50">
                     <div className="flex justify-between items-center px-1">
@@ -465,8 +465,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
                     {/* SIDEBAR: Event Details */}
                     <div className={`
-               w-full md:w-[400px] lg:w-[440px] md:border-r-2 border-slate-100 p-6 md:p-10 space-y-8 bg-slate-50/80 overflow-y-auto scrollbar-thin
-               ${activeTab === 'details' ? 'block' : 'hidden md:block'}
+               w-full md:w-[400px] lg:w-[440px] md:border-r-2 border-slate-100 p-6 md:p-10 space-y-8 bg-slate-50/80 overflow-y-auto overflow-x-hidden scrollbar-thin
+               ${activeTab === 'details' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}
             `}>
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2">
