@@ -9,6 +9,7 @@ import {
    VideoOff, PhoneOff, Send, Paperclip, MessageSquare,
    Activity, X, Check, Bot, ListTodo, Sparkles, RefreshCw, ClipboardCheck, ArrowRight, ShieldCheck, Zap
 } from 'lucide-react';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 
 
@@ -75,7 +76,6 @@ const MeetingReportModal = ({ data, onSync, onClose }: { data: any, onSync: (tas
    );
 };
 
-import { useSettingsStore } from '../store/useSettingsStore';
 
 export const TeamCommunication = () => {
    const { employees, addMeetingTask, messages: storeMessages, addMessage, markMessageRead } = useDataStore();
@@ -148,7 +148,7 @@ export const TeamCommunication = () => {
          createdAt: new Date().toISOString(),
          type: 'text',
          status: 'sent',
-         organizationId: currentUser.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' // Fallback to Main Org UUID to prevent FK Violation
+         organizationId: currentUser.companyId || '' // Fallback to prevent FK Violation
       };
 
       addMessage(newMsg);

@@ -50,19 +50,46 @@ const SyncIndicator = () => {
   );
 };
 
-const ParadigmLogo = ({ brandColor, orgName, isCollapsed }: { brandColor: string, orgName: string, isCollapsed?: boolean }) => {
+const ParadigmLogo = ({ brandColor, orgName, isCollapsed, logo }: { brandColor: string, orgName: string, isCollapsed?: boolean, logo?: string }) => {
+  const isXquisite = orgName?.toLowerCase().includes('xquisite');
+  const isWembley = orgName?.toLowerCase().includes('wembley');
+
+  if (isXquisite) {
+    return (
+      <div className={`flex items-center transition-all duration-500 ${isCollapsed ? 'justify-center px-1' : 'w-full px-4'}`}>
+        <div className={`relative ${isCollapsed ? 'w-12 h-12' : 'w-full h-16'} transition-all duration-500`}>
+          <img
+            src="/xquisite-logo.png"
+            className={`w-full h-full ${isCollapsed ? 'object-cover object-left scale-[1.35]' : 'object-contain'} brightness-110 drop-shadow-2xl transition-all duration-500`}
+            alt="Xquisite"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3">
-      <div className="relative w-12 h-12 group shrink-0">
+      <div className={`relative ${isCollapsed ? 'w-10 h-10' : 'w-10 h-10'} group shrink-0 transition-all duration-300`}>
         <div className="absolute inset-0 opacity-20 blur-xl group-hover:opacity-40 transition-opacity" style={{ backgroundColor: brandColor }}></div>
-        <div className="relative w-full h-full border-2 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-500 group-hover:scale-105 group-hover:rotate-3 shadow-2xl" style={{ borderColor: brandColor }}>
-          <img src="/wembley_logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+        <div className={`relative w-full h-full border-2 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-500 group-hover:scale-105 shadow-2xl bg-slate-900/50`} style={{ borderColor: brandColor }}>
+          {logo || isWembley ? (
+            <img src={logo || '/wembley_logo.jpg'} alt={orgName} className="w-full h-full object-cover" />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full font-black text-xs" style={{ color: brandColor }}>
+              {orgName?.charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
       </div>
       {!isCollapsed && (
-        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300">
-          <span className="font-black text-xl text-white tracking-tighter leading-none mb-0.5 uppercase truncate">{orgName}</span>
-          <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70" style={{ color: brandColor }}>Smart Platform</span>
+        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300 overflow-visible">
+          <span className="font-black text-lg text-white tracking-tighter leading-none mb-1 uppercase whitespace-nowrap">
+            {orgName}
+          </span>
+          <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70" style={{ color: brandColor }}>
+            Smart Platform
+          </span>
         </div>
       )}
     </div>
@@ -97,10 +124,13 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
-const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean }) => {
+const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string }) => {
   const { strictMode, settings } = useSettingsStore();
   const { departmentMatrix, messages } = useDataStore();
   const { user: currentUser } = useAuthStore();
+
+  const isBakery = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
+  const bakeryAllowedLabels = ['Dashboard', 'CRM', 'Orders & Invoicing', 'Finance'];
 
   const unreadMessagesCount = messages.filter(m =>
     m.recipientId === currentUser?.id && !m.readAt && m.status !== 'read'
@@ -143,7 +173,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
       <div className={`p-8 mb-4 flex ${isCollapsed ? 'justify-center px-4' : ''}`}>
-        <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} />
+        <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={logo} />
       </div>
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
@@ -157,17 +187,15 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
             if (hiddenForMD.includes(i.label)) return false;
           }
 
-          // Strict Administrative Check - ONLY for verified Admins
-          // Industry-specific hiding for Bakery/Catering (Wembley Cakes)
-          const isBakeryOrCatering = settings.type === 'Bakery' || settings.type === 'Catering';
-          if (isBakeryOrCatering) {
-            const irrelevantModules = [
-              'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Project Hub', 'Inventory',
-              'Human Resources', 'Automation', 'Reporting', 'Team Messages', 'Analytics',
-              'Procurement'
-            ];
-            if (irrelevantModules.includes(i.label)) return false;
+          const isWembley = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
+          if (isWembley) {
+            const allowedForBakery = ['Dashboard', 'CRM', 'Orders & Invoicing', 'Finance', 'User Guides', 'Settings'];
+            if (!allowedForBakery.includes(i.label)) return false;
           }
+
+          // Strict Administrative Check - ONLY for verified Admins
+          // [REMOVED] Industry-specific hiding for Bakery/Catering to restore visibility
+          // Previously blocked modules like Inventory, HR, etc. for these types.
 
           if (i.label === 'Super Admin' || i.label === 'IT Console') {
             // Use currentUser from hook for reactivity
@@ -196,6 +224,12 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
           return true;
         }).map(item => {
+          let displayLabel = item.label;
+          if (displayLabel === 'Orders & Invoicing' || displayLabel === 'Catering Ops') {
+            const isBakery = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
+            displayLabel = isBakery ? 'Orders & Invoicing' : 'Catering Ops';
+          }
+
           const isActive = currentPath === item.path;
           return (
             <Link
@@ -210,7 +244,9 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
               <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3 min-w-0'}`}>
                 <item.icon size={18} className={isActive ? 'shrink-0' : 'text-slate-600 group-hover:text-white shrink-0'} />
                 {!isCollapsed && (
-                  <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>{item.label}</span>
+                  <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>
+                    {displayLabel}
+                  </span>
                 )}
               </div>
 
@@ -349,7 +385,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   return (
     <div className="min-h-screen flex bg-[#020617]">
       <aside className={`hidden md:flex flex-col fixed h-full z-30 bg-[#020617] border-r border-white/5 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-24' : 'w-72'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} isCollapsed={isSidebarCollapsed} />
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} isCollapsed={isSidebarCollapsed} logo={settings.logo} />
       </aside>
 
       {isMobileMenuOpen && (
@@ -413,7 +449,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#020617] transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} />
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} />
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>

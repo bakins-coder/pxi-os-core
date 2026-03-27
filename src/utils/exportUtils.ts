@@ -33,28 +33,29 @@ export const generateInvoicePDF = async (
 ) => {
     const doc = new jsPDF();
 
-    // FORCE ORANGE if brand color is arguably "Xquisite Green" or just default
-    // We want to ensure Xquisite always outputs Orange for this invoice style
+    // Force Indigo if brand color is arguably "Old" or just default
     let brandColor = settings.brandColor;
-    if (!brandColor || brandColor === '#00D084' || brandColor === '#00ff9d' || settings.name?.includes('Xquisite')) {
-        brandColor = '#F47C20'; // Force Xquisite Orange
+    const isCatering = settings.type === 'Catering' || settings.name?.toLowerCase().includes('xquisite');
+    if (!brandColor || brandColor === '#00D084' || brandColor === '#00ff9d' || isCatering) {
+        brandColor = '#4f46e5'; // Force Indigo
     }
 
     // Determine organization name based on invoice category
     // Fallback: Infer 'Cuisine' if service charge is 0 and it's a sales invoice
     const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Standard' : 'Custom');
-    const orgName = 'Wembley Cakes';
+    const orgName = settings.name || 'Smart Platform';
     const isProforma = invoice.status === InvoiceStatus.PROFORMA;
 
     // ---------------------------------------------------------
     // 1. Header & Brand Bar
     // ---------------------------------------------------------
 
-    // Logo Logic: Try settings.logo first, then try to fetch local file if Xquisite
+    // Logo Logic: Try settings.logo first
     let logoData = settings.logo;
-    if (!logoData && (settings.name?.includes('Xquisite') || orgName.includes('Xquisite'))) {
+    const isBakery = settings.type === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
+    if (!logoData && isBakery) {
         // Attempt to load the file from public/assets
-        logoData = await getBase64FromUrl('/xquisite-logo-full.png');
+        logoData = await getBase64FromUrl('/wembley_logo.jpg');
     }
 
     // Logo (Left)
@@ -215,16 +216,9 @@ export const generateInvoicePDF = async (
     let scCents = invoice.serviceChargeCents;
     let vatCents = invoice.vatCents;
 
-    // FORCE 0% CHECK
-    // If we are overriding for Xquisite / Cuisine transparency:
-    if (orgName.includes('Xquisite') || settings.name?.includes('Xquisite')) {
-        scCents = 0;
-        vatCents = 0;
-    } else {
-        // Default fallbacks if undefined
-        if (scCents === undefined) scCents = 0;
-        if (vatCents === undefined) vatCents = 0;
-    }
+    // Default fallbacks if undefined
+    if (scCents === undefined) scCents = 0;
+    if (vatCents === undefined) vatCents = 0;
 
     // Recalculate Total based on the (possibly overridden) values
     const totalCents = subtotalCents + scCents + vatCents;
@@ -295,7 +289,7 @@ export const generateInvoicePDF = async (
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
-    const payText = `Thank you for your patronage. Please make all payment transfers to:\nWEMBLEY CAKES`;
+    const payText = `Thank you for your patronage. Please make all payment transfers to:\n${orgName.toUpperCase()}`;
     doc.text(payText, 15, leftColY);
     leftColY += 12;
 
@@ -310,12 +304,9 @@ export const generateInvoicePDF = async (
     leftColY += 6;
 
     // Bank Grid (2x2)
-    const banks = [
-        { name: "Wembley Cakes", bank: "GT Bank", acc: "0210736266" },
-        { name: "Wembley Cakes", bank: "GT Bank", acc: "0396426845" },
-        { name: "Wembley Cakes", bank: "Zenith Bank", acc: "1010951007" },
-        { name: "Wembley Cakes", bank: "First Bank", acc: "2022655945" }
-    ];
+    const banks = settings.bankInfo && settings.bankInfo.bankName ? [
+        { name: settings.bankInfo.accountName || orgName, bank: settings.bankInfo.bankName, acc: settings.bankInfo.accountNumber }
+    ] : [];
 
     const startX = 15;
     const boxW = 55;
@@ -390,10 +381,11 @@ export const generateInvoicePDF = async (
     doc.setFillColor(brandColor);
     doc.rect(0, 280, 210, 17, 'F');
 
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold italic');
-    doc.setTextColor(255, 255, 255);
-    doc.text('Sweet treats for sweet moments. We look forward to serving you again soon.', 105, 291, { align: 'center' });
+    const isBakeryFooter = settings.type === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
+    const footerMsg = isBakeryFooter
+        ? 'Sweet treats for sweet moments. We look forward to serving you again soon.'
+        : 'Exceptional service for your special event. We look forward to serving you again soon.';
+    doc.text(footerMsg, 105, 291, { align: 'center' });
 
     if (options.save) {
         doc.save(`Invoice-${invoice.number}.pdf`);

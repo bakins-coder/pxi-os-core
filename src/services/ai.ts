@@ -1495,3 +1495,68 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
     const response = await result.response;
     return JSON.parse(response.text() || "{}");
 }
+
+/**
+ * Generates an AI image (sketch/concept) of a cake based on a text prompt.
+ * Uses a unique fingerprint for each request to avoid duplicates and ensures 
+ * high detail preservation via Gemini-optimized prompting.
+ */
+export async function generateCakeImage(prompt: string): Promise<string> {
+    if (useSettingsStore.getState().strictMode) return '';
+
+    let optimizedPrompt = prompt;
+    try {
+        const ai = getAIInstance();
+        const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' });
+        // Stricter instructions to preserve ALL user requested details
+        const result = await model.generateContent(`Act as an expert prompt engineer. Convert the user's cake request into a DESCRIBING image prompt. 
+            MANDATORY: 
+            1. Keep ALL details (tiers, characters, colors). 
+            2. If bipartite colors (e.g. half black, half white), describe the split design. 
+            3. Use 'detailed cake sketch, professional photography, white background'. 
+            4. Fix typos but keep meanings identical. 
+            Request: "${prompt}"`);
+        optimizedPrompt = result.response.text().trim();
+    } catch (err) {
+        console.warn('Prompt optimization failed, using refined original.', err);
+        optimizedPrompt = prompt;
+    }
+
+    const seed = Math.floor(Math.random() * 10000000);
+    // Add unique noise to the final prompt string to force the AI to innovate and break caches
+    const noise = ['unique', 'custom', 'distinct', 'special', 'bespoke'][Math.floor(Math.random() * 5)];
+    const finalPrompt = `${optimizedPrompt}, ${noise} composition, seed-${seed}`;
+    const encodedPrompt = encodeURIComponent(finalPrompt);
+    // Using image.pollinations.ai which often has more direct routing
+    // Try Endpoint A: Direct Image Endpoint
+    const urlA = `https://image.pollinations.ai/prompt/${encodedPrompt}/?seed=${seed}&width=800&height=1000&nologo=true`;
+    // Try Endpoint B: Standard Platform Endpoint
+    const urlB = `https://pollinations.ai/p/${encodedPrompt}?seed=${seed}&nologo=true`;
+
+    const tryFetch = async (url: string, timeout: number) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    };
+
+    try {
+        // Try Endpoint A first (usually faster/better CORS)
+        return await tryFetch(urlA, 15000);
+    } catch (err) {
+        console.warn('AI Endpoint A failed, trying Endpoint B:', err);
+        try {
+            return await tryFetch(urlB, 20000);
+        } catch (err2) {
+            console.error('All AI background fetches failed, using native img fallback (Endpoint A):', err2);
+            // Native fallback allows Chrome/Edge's own engines to attempt the load
+            return urlA;
+        }
+    }
+}

@@ -18,8 +18,8 @@ interface AuthState {
 
 // Mock users for now, mirroring the initial logic
 const MOCK_USERS: User[] = [
-    { id: 'sys-admin-1', name: 'Xquisite Admin', email: 'toxsyyb@yahoo.co.uk', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Xquisite', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6' },
-    { id: 'sys-admin-ore', name: 'Ore Braithwaite', email: 'oreoluwatomiwab@gmail.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=OreBraithwaite', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6' },
+    { id: 'sys-admin-1', name: 'System Admin', email: 'toxsyyb@yahoo.co.uk', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', companyId: '' },
+    { id: 'sys-admin-ore', name: 'Ore Braithwaite', email: 'oreoluwatomiwab@gmail.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=OreBraithwaite', companyId: '' },
     { id: 'super-admin-root', name: 'Platform Architect', email: 'root@paradigm-xi.com', role: Role.SUPER_ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Architect', companyId: 'platform-global' }
 ];
 
@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
                             // [FAILSAFE] If RPC fails but it looks like a Staff ID, try constructing the email
                             if (/^XQ-\d+$/i.test(emailOrId.trim())) {
                                 console.warn('[Auth] RPC lookup failed, attempting fallback construction for:', emailOrId);
-                                email = `${emailOrId.trim().toLowerCase()}@xquisite.local`;
+                                email = `${emailOrId.trim().toLowerCase()}@wembleycakes.com`;
                             } else {
                                 throw new Error(`Staff ID '${emailOrId}' not recognized.`);
                             }
@@ -276,15 +276,11 @@ export const useAuthStore = create<AuthState>()(
                 // [CRITICAL FIX] Ensure Company ID is never empty for staff
                 let targetOrgId = profile?.organization_id || metadata.company_id || metadata.organization_id;
 
-                const XQUISITE_ORG_ID = '10959119-72e4-4e57-ba54-923e36bba6a6';
-                const isXquisiteStaff = user.email?.toLowerCase().startsWith('xq-') || 
-                                        user.email?.includes('@xquisite') || 
-                                        targetOrgId === XQUISITE_ORG_ID;
+                const isXquisiteStaff = user.email?.toLowerCase().startsWith('xq-') ||
+                    user.email?.includes('@xquisite');
 
-                if (!targetOrgId && isXquisiteStaff) {
-                    console.log('[Auth] Recognized Xquisite context. Auto-mapping to Xquisite Workspace.');
-                    targetOrgId = XQUISITE_ORG_ID;
-                }
+                // [FIX] Ensure we don't force a context mapping that might be stale or incorrect.
+                // The profile should be the source of truth.
 
                 // [SELF-HEALING] Link Database Record
                 // If we haven't confirmed the DB link yet (no profile org_id), ensure the employee record is connected.
@@ -327,9 +323,7 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 // Final Fallback for recognized XQ admin emails if no org
-                if (!targetOrgId && isKnownAdmin) {
-                    targetOrgId = '10959119-72e4-4e57-ba54-923e36bba6a6';
-                }
+                // Removed hardcoded admin ID fallback to prevent data leaks.
 
                 // Fetch Permissions for this Org/Role
                 let permissionTags: string[] = isKnownAdmin ? ['*'] : [];

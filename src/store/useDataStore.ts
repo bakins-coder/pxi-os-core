@@ -199,12 +199,7 @@ export const useDataStore = create<DataState>()(
             chartOfAccounts: [],
             bankTransactions: [],
             bankStatementLines: [],
-            bankAccounts: [
-                { id: 'ba-gt-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Wembley Cakes', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                { id: 'ba-gt-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'GT Bank', accountName: 'Wembley Cakes', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                { id: 'ba-zenith-celebrations', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'Zenith Bank', accountName: 'Wembley Cakes', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                { id: 'ba-first-cuisine', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', bankName: 'First Bank', accountName: 'Wembley Cakes', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() }
-            ],
+            bankAccounts: [],
             leaveRequests: [],
             calendarEvents: [],
             socialInteractions: [],
@@ -242,7 +237,7 @@ export const useDataStore = create<DataState>()(
 
             addInventoryItem: async (item) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 const newItemId = item.id || crypto.randomUUID();
 
@@ -293,7 +288,7 @@ export const useDataStore = create<DataState>()(
             },
             updateInventoryItem: async (id, updates) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 // Optimistic Local Update
                 set((state) => ({
@@ -343,7 +338,7 @@ export const useDataStore = create<DataState>()(
             addRequisitionsBulk: async (reqs) => {
                 const state = get();
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 const sanitizeUUID = (id: any) => {
                     if (!id || id === 'sys' || id === '' || id === 'undefined') return null;
@@ -399,7 +394,7 @@ export const useDataStore = create<DataState>()(
                         // Post movement to ensure views update correctly
                         try {
                             const userRef = useAuthStore.getState().user;
-                            const companyId = userRef?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                            const companyId = userRef?.companyId || '';
 
                             let locationId: string | undefined;
 
@@ -468,7 +463,7 @@ export const useDataStore = create<DataState>()(
                         // 1. Create Bank Transaction Record
                         const newBankTx: BankTransaction = {
                             id: crypto.randomUUID(),
-                            companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+                            companyId: '',
                             bankAccountId: sourceAccountId,
                             date: new Date().toISOString().split('T')[0],
                             description: `Requisition Payment: ${req.itemName}`,
@@ -601,7 +596,7 @@ export const useDataStore = create<DataState>()(
                     // Fallback for tests if needed
                     if (!(globalThis as any).VITEST) return;
                 }
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
                 const userId = user?.id || 'sys';
 
                 // Optimistic Update
@@ -653,7 +648,7 @@ export const useDataStore = create<DataState>()(
 
                     // Logic: Find existing location for item, or default.
                     const userRef = useAuthStore.getState().user;
-                    const companyId = userRef?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                    const companyId = userRef?.companyId || '';
 
                     let locationId: string | undefined;
 
@@ -713,7 +708,7 @@ export const useDataStore = create<DataState>()(
                 if (!user || !user.companyId) {
                     if (!(globalThis as any).VITEST) return;
                 }
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
                 const userId = user?.id || 'sys';
 
                 // Optimistic
@@ -786,7 +781,7 @@ export const useDataStore = create<DataState>()(
                 if (!user || !user.companyId) {
                     if (!(globalThis as any).VITEST) return;
                 }
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
                 const userId = user?.id || 'sys';
 
                 const state = get();
@@ -875,7 +870,7 @@ export const useDataStore = create<DataState>()(
             }),
             addContact: async (contact) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 const contactId = contact.id || crypto.randomUUID();
 
@@ -920,7 +915,7 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
             addContactsBulk: (contacts) => set((state) => ({
-                contacts: [...contacts.map(c => ({ ...c, id: c.id || crypto.randomUUID(), companyId: c.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6' }) as Contact), ...state.contacts]
+                contacts: [...contacts.map(c => ({ ...c, id: c.id || crypto.randomUUID(), companyId: c.companyId || (useAuthStore.getState().user?.companyId || '') }) as Contact), ...state.contacts]
             })),
             deleteContact: (id) => set((state) => ({
                 contacts: state.contacts.filter(c => c.id !== id)
@@ -1006,7 +1001,7 @@ export const useDataStore = create<DataState>()(
 
             addBankAccount: async (account) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
                 const newAccount = {
                     ...account,
                     id: account.id || crypto.randomUUID(),
@@ -1037,7 +1032,7 @@ export const useDataStore = create<DataState>()(
 
             addEmployee: async (emp) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 const newEmp = {
                     ...emp,
@@ -1066,7 +1061,7 @@ export const useDataStore = create<DataState>()(
             },
             applyForLeave: async (req) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || (req as any).companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || (req as any).companyId || '';
 
                 // Optimistic Update
                 const tempId = req.id || crypto.randomUUID();
@@ -1131,7 +1126,7 @@ export const useDataStore = create<DataState>()(
 
             addPerformanceReview: async (review) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || (review as any).companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || (review as any).companyId || '';
 
                 const newReview = { ...review, id: review.id || `rev-${Date.now()}`, status: 'Draft', totalScore: 0, metrics: review.metrics || [] } as PerformanceReview;
 
@@ -1267,13 +1262,13 @@ export const useDataStore = create<DataState>()(
             },
 
             addMeetingTask: (t) => {
-                const newTask = { ...t, id: `task-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
+                const newTask = { ...t, id: `task-${Date.now()}`, companyId: useAuthStore.getState().user?.companyId || '', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
                 set((state) => ({ tasks: [newTask, ...state.tasks] }));
                 get().syncWithCloud();
             },
 
             addTask: (t) => {
-                const newTask = { ...t, id: t.id || `task-${Date.now()}`, companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
+                const newTask = { ...t, id: t.id || `task-${Date.now()}`, companyId: useAuthStore.getState().user?.companyId || '', status: t.status || 'Todo', priority: t.priority || 'Medium', createdDate: new Date().toISOString() } as Task;
                 set((state) => ({ tasks: [newTask, ...state.tasks] }));
                 get().syncWithCloud();
             },
@@ -1330,7 +1325,7 @@ export const useDataStore = create<DataState>()(
                 const newProject = {
                     ...proj,
                     id: proj.id || `proj-${Date.now()}`,
-                    companyId: useAuthStore.getState().user?.companyId || proj.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    companyId: useAuthStore.getState().user?.companyId || proj.companyId || '',
                     status: proj.status || 'Planning',
                     progress: proj.progress || 0,
                     tasks: proj.tasks || [],
@@ -1343,7 +1338,7 @@ export const useDataStore = create<DataState>()(
             addRequisition: async (req) => {
                 const state = get();
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 const sanitizeUUID = (id: any) => {
                     if (!id || id === 'sys' || id === '' || id === 'undefined') return null;
@@ -1383,7 +1378,7 @@ export const useDataStore = create<DataState>()(
             },
             addIngredient: async (ing) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
 
                 const cleanName = (ing.name || '').trim().toLowerCase();
                 const existing = get().ingredients.find(i => (i.name || '').trim().toLowerCase() === cleanName);
@@ -1503,13 +1498,13 @@ export const useDataStore = create<DataState>()(
 
 
             addMarketingPost: (p) => {
-                const post = { ...p, id: `mp-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', generatedByAI: p.generatedByAI || false } as MarketingPost;
+                const post = { ...p, id: `mp-${Date.now()}`, companyId: '', generatedByAI: p.generatedByAI || false } as MarketingPost;
                 set((state) => ({ marketingPosts: [post, ...state.marketingPosts] }));
                 get().syncWithCloud();
                 return post;
             },
             addAIAgent: (a) => {
-                const agent = { ...a, id: `a-${Date.now()}`, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', status: 'Deployed' } as AIAgent;
+                const agent = { ...a, id: `a-${Date.now()}`, companyId: '', status: 'Deployed' } as AIAgent;
                 set((state) => ({ aiAgents: [agent, ...state.aiAgents] }));
                 get().syncWithCloud();
             },
@@ -1520,7 +1515,7 @@ export const useDataStore = create<DataState>()(
             },
             addLead: async (lead) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
                 const newLeadId = lead.id || crypto.randomUUID();
                 const now = new Date().toISOString();
 
@@ -1556,7 +1551,7 @@ export const useDataStore = create<DataState>()(
 
             addMessage: async (message) => {
                 const user = useAuthStore.getState().user;
-                const orgId = message.organizationId || user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const orgId = message.organizationId || user?.companyId || '';
 
                 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                 const msgId = (message.id && uuidRegex.test(message.id)) ? message.id : crypto.randomUUID();
@@ -2035,82 +2030,85 @@ export const useDataStore = create<DataState>()(
 
             completeCateringEvent: (eventId) => get().completeEvent(eventId),
 
-            dispatchAssets: (eventId, assets) => set((state) => {
-                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
-                if (eventIndex === -1) return state;
+            dispatchAssets: (eventId, assets) => {
+                set((state) => {
+                    const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                    if (eventIndex === -1) return state;
 
-                const updatedInventory = [...state.inventory];
+                    const updatedInventory = [...state.inventory];
+                    assets.forEach(asset => {
+                        const itemIndex = updatedInventory.findIndex(i => i.id === asset.itemId);
+                        if (itemIndex > -1) {
+                            const currentQty = updatedInventory[itemIndex].stockQuantity;
+                            updatedInventory[itemIndex] = {
+                                ...updatedInventory[itemIndex],
+                                stockQuantity: Math.max(0, currentQty - asset.quantity)
+                            };
+                        }
+                    });
 
-                // Deduct stock
-                assets.forEach(asset => {
-                    const itemIndex = updatedInventory.findIndex(i => i.id === asset.itemId);
-                    if (itemIndex > -1) {
-                        const currentQty = updatedInventory[itemIndex].stockQuantity;
-                        updatedInventory[itemIndex] = {
-                            ...updatedInventory[itemIndex],
-                            stockQuantity: Math.max(0, currentQty - asset.quantity)
-                        };
-                    }
+                    const updatedEvents = [...state.cateringEvents];
+                    updatedEvents[eventIndex] = {
+                        ...updatedEvents[eventIndex],
+                        dispatchedAssets: assets
+                    };
+
+                    return {
+                        cateringEvents: updatedEvents,
+                        inventory: updatedInventory,
+                        ingredients: state.ingredients.map(ing => {
+                            const updatedItem = updatedInventory.find(i => i.id === ing.id);
+                            return updatedItem ? { ...ing, stockLevel: updatedItem.stockQuantity } as any : ing;
+                        })
+                    };
                 });
-
-                const updatedEvents = [...state.cateringEvents];
-                updatedEvents[eventIndex] = {
-                    ...updatedEvents[eventIndex],
-                    dispatchedAssets: assets
-                };
-
                 get().syncWithCloud();
-                return {
-                    cateringEvents: updatedEvents,
-                    inventory: updatedInventory,
-                    // CRITICAL: Also update the specialized tables to prevent syncWithCloud from overwriting
-                    ingredients: state.ingredients.map(ing => {
-                        const updatedItem = updatedInventory.find(i => i.id === ing.id);
-                        return updatedItem ? { ...ing, stockLevel: updatedItem.stockQuantity } as any : ing;
-                    })
-                };
-            }),
+            },
 
-            finalizeEventLogistics: (eventId, returns) => set((state) => {
-                const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
-                if (eventIndex === -1) return state;
+            finalizeEventLogistics: (eventId, returns) => {
+                set((state) => {
+                    const eventIndex = state.cateringEvents.findIndex(e => e.id === eventId);
+                    if (eventIndex === -1) return state;
 
-                const updatedInventory = [...state.inventory];
+                    const updatedInventory = [...state.inventory];
+                    returns.forEach(ret => {
+                        const itemIndex = updatedInventory.findIndex(i => i.id === ret.itemId);
+                        if (itemIndex > -1) {
+                            const currentQty = updatedInventory[itemIndex].stockQuantity;
+                            updatedInventory[itemIndex] = {
+                                ...updatedInventory[itemIndex],
+                                stockQuantity: currentQty + ret.returnedQty
+                            };
+                        }
+                    });
 
-                // Return stock
-                returns.forEach(ret => {
-                    const itemIndex = updatedInventory.findIndex(i => i.id === ret.itemId);
-                    if (itemIndex > -1) {
-                        const currentQty = updatedInventory[itemIndex].stockQuantity;
-                        updatedInventory[itemIndex] = {
-                            ...updatedInventory[itemIndex],
-                            stockQuantity: currentQty + ret.returnedQty
-                        };
-                    }
+                    const updatedEvents = [...state.cateringEvents];
+                    updatedEvents[eventIndex] = {
+                        ...updatedEvents[eventIndex],
+                        logisticsReturns: returns,
+                        status: 'Archived',
+                        currentPhase: 'PostEvent'
+                    };
+
+                    return {
+                        cateringEvents: updatedEvents,
+                        inventory: updatedInventory,
+                        ingredients: state.ingredients.map(ing => {
+                            const updatedItem = updatedInventory.find(i => i.id === ing.id);
+                            return updatedItem ? { ...ing, stockLevel: updatedItem.stockQuantity } as any : ing;
+                        })
+                    };
                 });
-
-                const updatedEvents = [...state.cateringEvents];
-                updatedEvents[eventIndex] = {
-                    ...updatedEvents[eventIndex],
-                    logisticsReturns: returns,
-                    status: 'Archived',
-                    currentPhase: 'PostEvent'
-                };
-
                 get().syncWithCloud();
-                return {
-                    cateringEvents: updatedEvents,
-                    inventory: updatedInventory,
-                    // CRITICAL: Also update the specialized tables to prevent syncWithCloud from overwriting
-                    ingredients: state.ingredients.map(ing => {
-                        const updatedItem = updatedInventory.find(i => i.id === ing.id);
-                        return updatedItem ? { ...ing, stockLevel: updatedItem.stockQuantity } as any : ing;
-                    })
-                };
-            }),
+            },
+
             createCateringOrder: async (d) => {
                 const user = useAuthStore.getState().user;
-                const companyId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
+                const companyId = user?.companyId || '';
+
+                if (!companyId) {
+                    throw new Error("Cannot create order without a valid organization context.");
+                }
 
                 // [CRITICAL] Ensure Contact exists in state before proceeding
                 const state = get();
@@ -2124,7 +2122,7 @@ export const useDataStore = create<DataState>()(
 
                     const newContact: Contact = {
                         id: validContactId,
-                        companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                        companyId: companyId,
                         name: d.customerName,
                         email: d.banquetDetails?.contactEmail || '',
                         phone: d.banquetDetails?.contactPhone || '',
@@ -2145,19 +2143,10 @@ export const useDataStore = create<DataState>()(
                 const isCuisine = (d.orderType || 'Banquet') === 'Cuisine';
 
                 // Determine taxable revenue (food items only) by excluding logistics, rentals, menu cards, etc.
-                const isNonFoodItem = (desc: string) => {
-                    if (!desc) return false;
-                    const ldesc = desc.toLowerCase();
-                    return ldesc.includes('transport') ||
-                        ldesc.includes('logistic') ||
-                        ldesc.includes('delivery') ||
-                        ldesc.includes('menu card') ||
-                        ldesc.includes('truck') ||
-                        ldesc.includes('rental');
-                };
-
                 const taxableRev = d.items.reduce((s: number, i: any) => {
-                    if (isNonFoodItem(i.name)) return s;
+                    const ldesc = i.name?.toLowerCase() || '';
+                    const isNonFood = ldesc.includes('transport') || ldesc.includes('logistic') || ldesc.includes('delivery') || ldesc.includes('menu card') || ldesc.includes('truck') || ldesc.includes('rental');
+                    if (isNonFood) return s;
                     return s + (i.priceCents * i.quantity);
                 }, 0 as number);
 
@@ -2167,7 +2156,7 @@ export const useDataStore = create<DataState>()(
 
                 const event: CateringEvent = {
                     id: evId,
-                    companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    companyId: companyId,
                     customerName: d.customerName,
                     eventDate: d.eventDate,
                     guestCount: d.guestCount,
@@ -2295,7 +2284,7 @@ export const useDataStore = create<DataState>()(
 
                 const project: Project = {
                     id: crypto.randomUUID(),
-                    companyId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                    companyId: useAuthStore.getState().user?.companyId || '',
                     name: `Event: ${d.customerName} (${d.eventDate})`,
                     clientContactId: validContactId,
                     status: 'Planning',
@@ -2406,7 +2395,7 @@ export const useDataStore = create<DataState>()(
                 const invoice: Invoice = {
                     id: crypto.randomUUID(),
                     number: `PURCH-${Date.now()}`,
-                    companyId: user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6', // Fallback only if no user (shouldn't happen)
+                    companyId: user?.companyId || '',
                     date: new Date().toISOString().split('T')[0],
                     dueDate: new Date().toISOString().split('T')[0],
                     status: InvoiceStatus.UNPAID,
@@ -3632,7 +3621,7 @@ export const useDataStore = create<DataState>()(
                     } else {
                         const newKB: KnowledgeBase = {
                             id: crypto.randomUUID(),
-                            organizationId: useAuthStore.getState().user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6',
+                            organizationId: useAuthStore.getState().user?.companyId || '',
                             agentId,
                             sources: [newSource],
                             lastUpdated: new Date().toISOString()

@@ -285,7 +285,7 @@ export const Settings = () => {
                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Account Name</label>
                            <input
                               className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 px-6 font-black text-sm text-white focus:border-[#00ff9d] outline-none transition-all placeholder:text-slate-600"
-                              placeholder="e.g. Xquisite Celebrations Ltd"
+                              placeholder="e.g. Your Organization Ltd"
                               value={profile.accountName}
                               onChange={e => setProfile({ ...profile, accountName: e.target.value })}
                            />

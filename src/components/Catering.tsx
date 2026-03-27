@@ -395,6 +395,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const cateringEvents = useDataStore(state => state.cateringEvents);
    const contact = contacts.find(c => c.id === invoice.contactId);
    const effectiveIsCuisine = isCuisine || invoice.category === 'Cuisine' || cateringEvents.find(e => e.id === eventId)?.orderType === 'Cuisine';
+   const isCustomCakeMode = !effectiveIsCuisine;
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
@@ -721,10 +722,10 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                   {/* Logo Area */}
                   <div className="w-64">
                      {/* Explicitly using the new uploaded branding asset */}
-                     <img src="/xquisite-logo-full.png" alt="Xquisite Celebrations" className="w-full object-contain" />
+                     <img src={org.logo || (org.type === 'Bakery' ? "/wembley_logo.jpg" : "/xquisite-logo.png")} alt={org.name || "Smart Platform"} className="w-full object-contain" />
                   </div>
                   <div className="text-right">
-                     <h2 className="text-sm font-bold text-slate-900">{isCuisine || invoice.category === 'Cuisine' ? 'Wembley Cakes' : (org.name || 'Wembley Cakes')}</h2>
+                     <h2 className="text-sm font-bold text-slate-900">{org.name || 'Smart Platform'}</h2>
                   </div>
                </div>
 
@@ -791,11 +792,11 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                         <p className="text-center text-sm text-slate-300 italic py-4">No items billed.</p>
                      ) : (
                         editableLines.map((line, idx) => {
-                           // Banquet Logic:
+                           // Custom Cake Logic:
                            const isHeader = line.description.startsWith('[SECTION] ');
 
-                           // Show Pricing IF: Not Banquet Mode OR It *IS* a Header row
-                           const showPricing = !isBanquetMode || isHeader;
+                           // Show Pricing IF: Not Custom Cake Mode OR It *IS* a Header row
+                           const showPricing = !isCustomCakeMode || isHeader;
 
                            return (
                               <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-slate-50 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''} `}>
@@ -809,7 +810,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                           >
                                              <Trash2 size={12} />
                                           </button>
-                                          {isBanquetMode && (
+                                          {isCustomCakeMode && (
                                              <button
                                                 onClick={() => toggleSection(idx)}
                                                 className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
@@ -819,7 +820,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                              </button>
                                           )}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isBanquetMode ? 'text-xs md:ml-8' : ''} `}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isCustomCakeMode ? 'text-xs md:ml-8' : ''} `}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -891,7 +892,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                        {/* View Mode (Non-Editable) */}
                                        <div className="w-full md:pr-4">
                                           {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-400 text-white rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1 shadow-sm">Section</span>}
-                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isBanquetMode ? 'text-xs md:ml-12 text-slate-600' : ''} `}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
+                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isCustomCakeMode ? 'text-xs md:ml-12 text-slate-600' : ''} `}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
                                        </div>
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
@@ -953,33 +954,33 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                         {/* Payment Section */}
                         <div>
                            <h3 className="font-bold text-slate-900 mb-2">Payment Information</h3>
-                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">XQUISITE CELEBRATIONS LIMITED</span></p>
+                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')).toUpperCase()}</span></p>
 
                            <p className="text-xs font-bold text-slate-900 underline mb-3">Bank Details:</p>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CUISINE</p>
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
                                  <div className="flex justify-between items-center mt-1">
                                     <span className="text-xs text-slate-500">GT Bank</span>
                                     <span className="text-xs font-bold text-slate-900 font-mono">0210736266</span>
                                  </div>
                               </div>
                               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CELEBRATIONS</p>
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
                                  <div className="flex justify-between items-center mt-1">
                                     <span className="text-xs text-slate-500">GT Bank</span>
                                     <span className="text-xs font-bold text-slate-900 font-mono">0396426845</span>
                                  </div>
                               </div>
                               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CELEBRATIONS</p>
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
                                  <div className="flex justify-between items-center mt-1">
                                     <span className="text-xs text-slate-500">Zenith Bank</span>
                                     <span className="text-xs font-bold text-slate-900 font-mono">1010951007</span>
                                  </div>
                               </div>
                               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">XQUISITE CUISINE</p>
+                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
                                  <div className="flex justify-between items-center mt-1">
                                     <span className="text-xs text-slate-500">First Bank</span>
                                     <span className="text-xs font-bold text-slate-900 font-mono">2022655945</span>
@@ -1025,15 +1026,15 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                            // 1. Calculate Standard Totals
                            const standardSubtotal = editableLines.reduce((acc, l) => {
-                              // Banquet Mode: ONLY lines marked as [SECTION] headers contribute to cost
-                              if (isBanquetMode) {
+                              // Custom Cake Mode: ONLY lines marked as [SECTION] headers contribute to cost
+                              if (isCustomCakeMode) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
 
                            const standardTaxableSubtotal = editableLines.reduce((acc, l) => {
-                              if (isBanquetMode) {
+                              if (isCustomCakeMode) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
                               if (isNonFoodItem(l.description)) return acc;
@@ -2538,7 +2539,10 @@ export const Catering = () => {
    }, [searchParams]);
 
    const cateringEvents = useDataStore(state => state.cateringEvents);
-   const user = useAuthStore(state => state.user);
+   const { user } = useAuthStore();
+   const { settings } = useSettingsStore();
+   const isBakery = settings.type === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
+   const isCatering = (settings.type === 'Catering' || settings.name?.toLowerCase().includes('xquisite')) && !isBakery;
    const syncStatus = useDataStore(state => state.syncStatus);
    const invoices = useDataStore(state => state.invoices);
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
@@ -2621,8 +2625,15 @@ export const Catering = () => {
             <div className="absolute top-0 right-0 w-96 h-96 bg-[#ff6b6b]/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
-                  <div><h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Cake Orders</h1><p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">Standard & Custom Cake Management Active</p></div>
+                  <div className="w-16 h-16 bg-[#f37021] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
+                  <div>
+                     <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">
+                        {isCatering ? 'Catering Ops' : 'Cake Orders'}
+                     </h1>
+                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
+                        {isCatering ? 'Cuisine & Banquet Management Active' : 'Standard & Custom Cake Management Active'}
+                     </p>
+                  </div>
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
@@ -2636,7 +2647,7 @@ export const Catering = () => {
                      <Share2 size={14} /> <span className="hidden md:inline">Share Booking Link</span><span className="md:hidden">Share</span>
                   </button>
                   <div className="w-px bg-white/10 my-2 shrink-0"></div>
-                  {[{ id: 'cuisine', label: 'Standard Cakes', icon: UtensilsCrossed }, { id: 'orders', label: 'Custom Cakes', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
+                  {[{ id: 'cuisine', label: isCatering ? 'Cuisine Orders' : 'Standard Cakes', icon: UtensilsCrossed }, { id: 'orders', label: isCatering ? 'Banquets Orders' : 'Custom Cakes', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
                      <button
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id as any); setSelectedEventId(null); }}
@@ -2656,13 +2667,13 @@ export const Catering = () => {
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'} `}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
                         <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">
-                           {viewMode} {activeTab === 'orders' ? 'Custom Cakes' : 'Standard Orders'} ({filteredEvents.length})
+                           {viewMode} {activeTab === 'orders' ? (isCatering ? 'Banquets' : 'Custom Cakes') : (isCatering ? 'Cuisine' : 'Standard Cakes')} ({filteredEvents.length})
                         </h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                            {activeTab === 'orders' ? (
-                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New Custom Order</button>
+                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New {isCatering ? 'Banquet' : 'Custom Cake'}</button>
                            ) : (
-                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New Standard Order</button>
+                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New {isCatering ? 'Cuisine' : 'Standard Cake'}</button>
                            )}
                         </div>
                      </div>

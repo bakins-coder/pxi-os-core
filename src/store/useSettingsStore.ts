@@ -19,13 +19,13 @@ interface SettingsState {
 
 const DEFAULT_SETTINGS: OrganizationSettings = {
     id: '',
-    name: 'Wembley Cakes',
-    type: 'Bakery',
+    name: 'Smart Platform',
+    type: 'General',
     currency: 'NGN',
     setupComplete: false,
     enabledModules: ['CRM', 'Finance', 'Reports', 'Catering'],
     agentMode: AIAgentMode.AI_AGENTIC,
-    brandColor: '#00ff9d',
+    brandColor: '#f37021',
     integrations: [],
     apiKeys: [],
     address: '',

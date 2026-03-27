@@ -103,8 +103,8 @@ export const Dashboard = () => {
 
   // [SYNC ENFORCEMENT] Ensure Settings are always fresh on Dashboard load
   useEffect(() => {
-    const orgId = user?.companyId || '10959119-72e4-4e57-ba54-923e36bba6a6';
-    if (orgId && (settings.name === 'My New Workspace' || !settings.id)) {
+    const orgId = user?.companyId;
+    if (orgId && (settings.name === 'Smart Platform' || !settings.id)) {
       console.log('[Dashboard] Forcing settings sync for:', orgId);
       fetchSettings(orgId);
     }

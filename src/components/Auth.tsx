@@ -65,7 +65,7 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
       console.error(err);
       let msg = err.message || 'Authentication failed.';
       // Smart Error for Staff IDs
-      const isStaffIdFormat = authIdentifier.endsWith('@xquisite.local') || /^XQ-\d+$/i.test(authIdentifier);
+      const isStaffIdFormat = /^[A-Z]{2}-\d+$/i.test(authIdentifier);
       if (msg.includes('Invalid login credentials') && isStaffIdFormat) {
         msg = 'Login failed. Account unactivated or invalid credentials. If first time, switch to "Join Team" mode to activate your Staff ID.';
       }
@@ -118,6 +118,7 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
                 <Building size={20} />
               </div>
               <div>
+                <p className="text-[10px] font-black text-slate-800 uppercase">{targetOrg || 'WORKSPACE'}</p>
                 <p className="text-[11px] font-black text-white uppercase tracking-tight">{targetOrg || 'Active Node'}</p>
                 <p className="text-[9px] font-bold text-slate-500 uppercase">Resuming Identity for {email}</p>
               </div>
@@ -164,7 +165,7 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
               type="text"
               required
               className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-[#00ff9d] outline-none font-bold transition-all placeholder:text-slate-700"
-              placeholder={isSignUp ? "name@company.com" : "e.g. XQ-8821"}
+              placeholder={isSignUp ? "name@company.com" : "e.g. AB-1234"}
               value={email}
               onChange={e => setEmail(e.target.value)}
             />
@@ -312,8 +313,8 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
 
   // Auto-detect employee mode based on input
   useEffect(() => {
-    const isStaffId = /^XQ-\d+/i.test(email);
-    const isCorporateEmail = email.includes('@xquisite.com'); // Or other known domains
+    const isStaffId = /^[A-Z]{2}-\d+/i.test(email);
+    const isCorporateEmail = email.includes('@') && !email.endsWith('.com') && !email.endsWith('.net'); // Simple heuristic
     if (isStaffId || isCorporateEmail) {
       setIsEmployeeMode(true);
     } else {
@@ -348,7 +349,7 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
       if (err.message?.includes('registered') || err.message?.includes('already exists')) {
         try {
           // Re-calculate authIdentifier for fallback if needed, or use a more stable scope
-          const fallbackIdentifier = email.includes('@') ? email.trim() : `${email.trim().toLowerCase()}@xquisite.local`;
+          const fallbackIdentifier = email.includes('@') ? email.trim() : email.trim().toLowerCase();
           await (useAuthStore.getState().login as any)(fallbackIdentifier, String(password || ''));
           onSuccess();
           return;
@@ -479,7 +480,7 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
                 required
                 type="text"
                 className="w-full pl-14 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:border-[#00ff9d] transition-all placeholder:text-slate-700 text-sm"
-                placeholder="e.g. XQ-8821 or name@xquisite.com"
+                placeholder="e.g. AB-1234 or email@company.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />

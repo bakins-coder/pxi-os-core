@@ -10,7 +10,7 @@ import { generateInvoicePDF } from '../utils/exportUtils';
 
 // Brand Colors
 // const BRAND_COLOR = '#D32F2F'; // Old Red
-const BRAND_COLOR = '#F47C20'; // Xquisite Orange
+const BRAND_COLOR = '#4f46e5'; // Brand Indigo
 const ACCENT_COLOR = '#FFB74D'; // Lighter Orange
 
 export const InvoicePrototype = () => {
@@ -89,11 +89,11 @@ export const InvoicePrototype = () => {
     // Organization Data
     // Determine organization name based on invoice category
     const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Cuisine' : 'Banquet');
-    const orgName = inferredCategory === 'Cuisine' ? 'Xquisite Cuisine Limited' : (settings.name || 'Xquisite Celebrations Limited');
+    const orgName = inferredCategory === 'Cuisine' ? (settings.name || 'Smart Platform') : (settings.name || 'Smart Platform');
     const orgAddress = settings.address || '';
     const orgPhone = settings.contactPhone;
     const orgTin = settings.firs_tin;
-    const orgLogo = settings.logo || "/xquisite-logo.png";
+    const orgLogo = settings.logo || "/wembley_logo.jpg";
     const activeBrandColor = settings.brandColor || BRAND_COLOR;
 
     // Use bank settings if available, otherwise fallback (or hide)
@@ -369,28 +369,28 @@ Link: ${window.location.href}
                             <p className="font-bold underline mb-2">Bank Details:</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Cuisine</span>
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-600 text-xs font-medium">GT Bank</span>
                                         <span className="font-mono font-bold text-slate-900">0210736266</span>
                                     </div>
                                 </div>
                                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Celebrations</span>
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-600 text-xs font-medium">GT Bank</span>
                                         <span className="font-mono font-bold text-slate-900">0396426845</span>
                                     </div>
                                 </div>
                                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Celebrations</span>
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-600 text-xs font-medium">Zenith Bank</span>
                                         <span className="font-mono font-bold text-slate-900">1010951007</span>
                                     </div>
                                 </div>
                                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">Xquisite Cuisine</span>
+                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
                                     <div className="flex justify-between items-center">
                                         <span className="text-slate-600 text-xs font-medium">First Bank</span>
                                         <span className="font-mono font-bold text-slate-900">2022655945</span>

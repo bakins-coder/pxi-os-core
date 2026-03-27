@@ -110,10 +110,13 @@ export interface Ingredient {
   id: string;
   companyId: string;
   name: string;
+  type: InventoryType;
   unit: string;
+  priceCents: number;
   currentCostCents: number;
   marketPriceCents?: number;
   stockLevel: number;
+  stockQuantity: number;
   category: string;
   lastUpdated: string;
   updatedBy?: string;
@@ -628,7 +631,7 @@ export interface EntityMedia {
   objectPath: string;
 }
 
-export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas';
+export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas' | 'Bakery';
 export type CompanySize = 'Micro (1-10)' | 'Small (11-50)' | 'Medium (51-250)' | 'Large (250+)';
 export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR';
 export type MarketingChannel = 'Blog' | 'Social' | 'Email' | 'Ads';

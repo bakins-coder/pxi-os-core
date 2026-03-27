@@ -681,7 +681,7 @@ const AddBankAccountModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Account Name</label>
                   <input
                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-900 outline-none focus:border-indigo-500 transition-all"
-                     placeholder="e.g. Wembley Cakes Operations"
+                     placeholder="e.g. Operations Account"
                      value={formData.accountName}
                      onChange={e => setFormData({ ...formData, accountName: e.target.value })}
                   />
@@ -921,8 +921,8 @@ export const Finance = () => {
 
       if ((bankAccounts || []).length === 0 || legacyAccounts.length > 0) {
          const defaults = [
-            { id: crypto.randomUUID(), bankName: 'Bank Account 1', accountName: org.name || 'Wembley Cakes', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
-            { id: crypto.randomUUID(), bankName: 'Bank Account 2', accountName: org.name || 'Wembley Cakes', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
+            { id: crypto.randomUUID(), bankName: 'Bank Account 1', accountName: org.name || 'Main Account', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
+            { id: crypto.randomUUID(), bankName: 'Bank Account 2', accountName: org.name || 'Main Account', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
          ];
 
          if (legacyAccounts.length > 0) {

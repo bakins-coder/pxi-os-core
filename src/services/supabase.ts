@@ -121,8 +121,6 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     return;
   }
 
-  const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
-
   const sanitizedData = data.filter(item => {
     if (tableName === 'reusable_items') return item.type === 'reusable';
     if (tableName === 'rental_items') return item.type === 'rental';
@@ -135,18 +133,15 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
 
     // 1. Initial Organization mapping
     if (!noOrgTables.includes(tableName)) {
-      if (newItem.companyId === 'org-xquisite') newItem.companyId = VALID_UUID;
-      if (newItem.organizationId === 'org-xquisite') newItem.organizationId = VALID_UUID;
-
       // Force organization_id mapping for tables that use it
       const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'categories', 'ingredient_stock_batches', 'leads'].includes(tableName);
       if (useOrgId) {
         if (!newItem.organization_id) {
-          newItem.organization_id = newItem.organizationId || newItem.companyId || newItem.company_id || VALID_UUID;
+          newItem.organization_id = newItem.organizationId || newItem.companyId || newItem.company_id;
         }
       } else {
         if (!newItem.company_id) {
-          newItem.company_id = newItem.companyId || newItem.organizationId || newItem.organization_id || VALID_UUID;
+          newItem.company_id = newItem.companyId || newItem.organizationId || newItem.organization_id;
         }
       }
     }
@@ -324,22 +319,17 @@ export const mapIncomingRow = (tableName: string, item: any) => {
 export const pullCloudState = async (tableName: string, companyId?: string) => {
   if (!supabase) return null;
   const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'job_roles', 'departments', 'leave_requests', 'categories', 'rental_stock', 'ingredient_stock_batches', 'performance_reviews', 'recipes', 'messages', 'leads'].includes(tableName);
-  const VALID_UUID = '10959119-72e4-4e57-ba54-923e36bba6a6';
-  const effectiveId = companyId === 'org-xquisite' ? VALID_UUID : companyId;
+  const effectiveId = companyId;
 
-  const isUUID = (id?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
-  const mapItem = (item: any) => mapIncomingRow(tableName, item);
-
-  let query = supabase.from(tableName).select('*');
-  if (effectiveId) {
-    const col = useOrgId ? 'organization_id' : 'company_id';
-    if (effectiveId === VALID_UUID) {
-      const { data: uuidData } = await supabase.from(tableName).select('*').eq(col, VALID_UUID);
-      return (uuidData || []).map(item => mapItem(item));
-    } else if (isUUID(effectiveId)) {
-      query = query.eq(col, effectiveId);
-    }
+  if (!effectiveId) {
+    console.warn(`[Supabase] pullCloudState called without companyId for table ${tableName}. This may leak data or return empty results.`);
+    return [];
   }
+
+  const mapItem = (item: any) => mapIncomingRow(tableName, item);
+  let query = supabase.from(tableName).select('*');
+  const col = useOrgId ? 'organization_id' : 'company_id';
+  query = query.eq(col, effectiveId);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -363,7 +353,7 @@ export const postRentalMovement = async (params: any) => {
 export const postIngredientMovement = async (params: any) => {
   if (!supabase) throw new Error("Supabase not initialized");
   const { data, error } = await supabase.rpc('post_ingredient_movement', {
-    p_org: params.orgId === 'org-xquisite' ? '10959119-72e4-4e57-ba54-923e36bba6a6' : params.orgId,
+    p_org: params.orgId,
     p_ingredient: params.itemId,
     p_delta: params.delta,
     p_unit: params.unitId,

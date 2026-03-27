@@ -488,7 +488,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 border-r-2 border-slate-100 pr-6"><Building2 size={24} /></div>
                                  <input
                                     className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] font-black outline-none focus:border-indigo-500 transition-all pl-24 text-2xl truncate shadow-inner focus:bg-white text-slate-900 placeholder:text-slate-400"
-                                    placeholder="e.g. Xquisite Celebrations Ltd"
+                                    placeholder="e.g. Your Organization Ltd"
                                     value={orgName}
                                     onChange={e => setOrgName(e.target.value)}
                                     onFocus={() => setActiveField('orgName')}
@@ -518,6 +518,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                     onChange={e => setOrgType(e.target.value as any)}
                                     onFocus={() => setActiveField('orgType')}
                                  >
+                                    <option value="Bakery">Cake Designer & Bakery</option>
                                     <option value="Catering">Banquet & Catering</option>
                                     <option value="Aviation">Aviation & Aerospace</option>
                                     <option value="Oil & Gas">Oil & Gas / Energy</option>
