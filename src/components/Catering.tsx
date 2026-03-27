@@ -9,7 +9,7 @@ import { CateringEvent, InventoryItem, ItemCosting, Invoice, InvoiceLine, Requis
 import { getLiveRecipeIngredientPrices } from '../services/ai';
 import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
-   Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown, Download, Link,
+   Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown, Download, Link, MessageSquare,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag, Search,
    ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward
 } from 'lucide-react';
@@ -512,7 +512,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const handleCopyShareText = async () => {
       const { settings } = useSettingsStore.getState();
       const subtotal = editableLines.reduce((acc, l) => {
-         if (isBanquetMode && !l.description.startsWith('[SECTION] ')) return acc;
+         if (isCustomCakeMode && !l.description.startsWith('[SECTION] ')) return acc;
          const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null) ? l.manualPriceCents : l.unitPriceCents;
          return acc + (l.quantity * price);
       }, 0);
