@@ -222,23 +222,24 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
           return true;
         }).map(item => {
-          let displayLabel = item.label;
-          if (displayLabel === 'Orders & Invoicing' || displayLabel === 'Catering Ops') {
-            const isBakery = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
-            displayLabel = isBakery ? 'Orders & Invoicing' : 'Catering Ops';
-          }
-
-          const isActive = currentPath === item.path;
+          const isBakery = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
           const isRetail = settings.type === 'Retail';
 
-          // Sanitize Label & Icon for Retail
           let displayLabel = item.label;
           let DisplayIcon = item.icon;
 
+          // Handle Bakery/Catering label
+          if (displayLabel === 'Orders & Invoicing' || displayLabel === 'Catering Ops') {
+            displayLabel = isBakery ? 'Orders & Invoicing' : 'Catering Ops';
+          }
+
+          // Handle Retail override
           if (isRetail && item.label === 'Orders & Invoicing') {
             displayLabel = 'Sales Orders';
             DisplayIcon = ShoppingCart;
           }
+
+          const isActive = currentPath === item.path;
 
           return (
             <Link

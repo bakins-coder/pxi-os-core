@@ -130,9 +130,6 @@ export interface Ingredient {
   lastPackCount?: number;
   lastPackSize?: number;
   lastPackType?: string;
-  type: 'ingredient' | 'raw_material';
-  priceCents: number;
-  stockQuantity: number;
   image?: string;
   unitId?: string;
 }
@@ -281,18 +278,6 @@ export interface ServingTable {
   servedItems: { itemId: string; name: string; quantity: number; servedAt: string }[];
   isLocked: boolean;
   seats: Seat[];
-}
-
-export interface PortionMonitor {
-  eventId: string;
-  tables: ServingTable[];
-  leftovers: { itemId: string; name: string; quantity: number; reason: string; loggedAt: string }[];
-  handoverEvidence: { url: string; note: string; timestamp: string }[];
-  handoverNotes?: string;
-  handoverSignedBySupervisor?: string;
-  handoverSignedByHost?: string;
-  handoverDate?: string;
-  waiterAccessToken?: string;
 }
 
 // REFACTOR: New Taxonomy
@@ -492,6 +477,8 @@ export interface BankAccount {
   balanceCents: number;
   isActive: boolean;
   lastUpdated: string;
+  name?: string;
+  institutionName?: string;
 }
 
 export enum InvoiceStatus { PAID = 'Paid', UNPAID = 'Unpaid', OVERDUE = 'Overdue', PROFORMA = 'Pro-forma' }
