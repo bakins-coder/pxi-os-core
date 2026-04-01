@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 // Mock Supabase to prevent real network calls during syncWithCloud
 vi.mock('../services/supabase', () => ({
@@ -24,6 +25,30 @@ vi.mock('../services/supabase', () => ({
         }))
     },
     syncTableToCloud: vi.fn(() => Promise.resolve({ success: true }))
+}));
+
+// Mock useAuthStore
+vi.mock('../store/useAuthStore', () => ({
+    useAuthStore: {
+        getState: vi.fn(() => ({
+            user: {
+                id: 'test-user-123',
+                companyId: 'test-company-456', // PROVIDE COMPANY ID
+                name: 'Test User'
+            }
+        }))
+    }
+}));
+
+// Mock useSettingsStore
+vi.mock('../store/useSettingsStore', () => ({
+    useSettingsStore: {
+        getState: vi.fn(() => ({
+            settings: {
+                type: 'Catering'
+            }
+        }))
+    }
 }));
 
 describe('Cuisine Orders', () => {

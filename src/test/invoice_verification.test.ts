@@ -2,6 +2,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 // Mock the syncWithCloud function to avoid network errors or access checks during tests
 (globalThis as any).VITEST = true;
@@ -26,6 +28,30 @@ vi.mock('../services/supabase', () => ({
     postIngredientMovement: vi.fn().mockResolvedValue({ success: true }),
     uploadEntityImage: vi.fn().mockResolvedValue({ path: 'test.jpg' }),
     saveEntityMedia: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+// Mock useAuthStore
+vi.mock('../store/useAuthStore', () => ({
+    useAuthStore: {
+        getState: vi.fn(() => ({
+            user: {
+                id: 'test-user-123',
+                companyId: 'test-company-456', // PROVIDE COMPANY ID
+                name: 'Test User'
+            }
+        }))
+    }
+}));
+
+// Mock useSettingsStore
+vi.mock('../store/useSettingsStore', () => ({
+    useSettingsStore: {
+        getState: vi.fn(() => ({
+            settings: {
+                type: 'Catering'
+            }
+        }))
+    }
 }));
 
 vi.mock('../store/useDataStore', async (importOriginal) => {
@@ -206,6 +232,6 @@ describe('Invoice Generation Verification', () => {
         expect(updatedInvoice?.discountCents).toBe(expectedDiscount);
 
         console.log(`[VERIFICATION SUCCESS] Line Item Discount Applied.`);
-        console.log(`[VERIFICATION SUCCESS] Standard: ${expectedStandard / 100}, Actual: ${updatedInvoice?.totalCents / 100}, Discount: ${updatedInvoice?.discountCents / 100}`);
+        console.log(`[VERIFICATION SUCCESS] Standard: ${expectedStandard / 100}, Actual: ${(updatedInvoice?.totalCents ?? 0) / 100}, Discount: ${(updatedInvoice?.discountCents ?? 0) / 100}`);
     });
 });

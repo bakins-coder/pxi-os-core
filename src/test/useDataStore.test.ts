@@ -1,6 +1,56 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+
+// Mock useAuthStore
+vi.mock('../store/useAuthStore', () => ({
+    useAuthStore: {
+        getState: vi.fn(() => ({
+            user: {
+                id: 'test-user-123',
+                companyId: 'test-company-456', // PROVIDE COMPANY ID
+                name: 'Test User'
+            }
+        }))
+    }
+}));
+
+// Mock useSettingsStore
+vi.mock('../store/useSettingsStore', () => ({
+    useSettingsStore: {
+        getState: vi.fn(() => ({
+            settings: {
+                type: 'Catering'
+            }
+        }))
+    }
+}));
+
+// Mock Supabase
+vi.mock('../services/supabase', () => ({
+    supabase: {
+        from: vi.fn(() => ({
+            upsert: vi.fn(() => ({
+                select: vi.fn(() => ({
+                    single: vi.fn(() => Promise.resolve({ data: {}, error: null }))
+                })),
+                error: null
+            })),
+            select: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                    order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+                }))
+            }))
+        })),
+        channel: vi.fn(() => ({
+            on: vi.fn().mockReturnThis(),
+            subscribe: vi.fn()
+        }))
+    },
+    syncTableToCloud: vi.fn(() => Promise.resolve({ success: true }))
+}));
 
 describe('useDataStore', () => {
     beforeEach(() => {
@@ -17,6 +67,12 @@ describe('useDataStore', () => {
             lastSyncError: null,
             realtimeStatus: 'Disconnected',
             realtimeChannel: null,
+            projects: [],
+            bankAccounts: [],
+            bankTransactions: [],
+            bookkeeping: [],
+            rentalLedger: [],
+            ingredients: []
         });
     });
 
