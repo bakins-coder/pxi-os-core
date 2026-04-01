@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Invoice, Contact, Employee, BookkeepingEntry, CateringEvent, PortionMonitor, InvoiceStatus } from '../types';
 import { useDataStore } from '../store/useDataStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 // Helper to convert URL to Base64
 const getBase64FromUrl = async (url: string): Promise<string> => {
@@ -33,17 +34,11 @@ export const generateInvoicePDF = async (
 ) => {
     const doc = new jsPDF();
 
-    // Force Indigo if brand color is arguably "Old" or just default
-    let brandColor = settings.brandColor;
-    const isCatering = settings.type === 'Catering' || settings.name?.toLowerCase().includes('xquisite');
-    if (!brandColor || brandColor === '#00D084' || brandColor === '#00ff9d' || isCatering) {
-        brandColor = '#4f46e5'; // Force Indigo
-    }
+    // Use brand color from settings, fallback to standard orange if missing
+    let brandColor = settings.brandColor || '#F47C20';
 
-    // Determine organization name based on invoice category
-    // Fallback: Infer 'Cuisine' if service charge is 0 and it's a sales invoice
-    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Standard' : 'Custom');
-    const orgName = settings.name || 'Smart Platform';
+    // Determine organization name from settings or fallback
+    const orgName = settings.name || 'Organization';
     const isProforma = invoice.status === InvoiceStatus.PROFORMA;
 
     // ---------------------------------------------------------
@@ -52,11 +47,6 @@ export const generateInvoicePDF = async (
 
     // Logo Logic: Try settings.logo first
     let logoData = settings.logo;
-    const isBakery = settings.type === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
-    if (!logoData && isBakery) {
-        // Attempt to load the file from public/assets
-        logoData = await getBase64FromUrl('/wembley_logo.jpg');
-    }
 
     // Logo (Left)
     if (logoData) {
@@ -216,7 +206,7 @@ export const generateInvoicePDF = async (
     let scCents = invoice.serviceChargeCents;
     let vatCents = invoice.vatCents;
 
-    // Default fallbacks if undefined
+    // Calculation checks
     if (scCents === undefined) scCents = 0;
     if (vatCents === undefined) vatCents = 0;
 
@@ -304,9 +294,15 @@ export const generateInvoicePDF = async (
     leftColY += 6;
 
     // Bank Grid (2x2)
-    const banks = settings.bankInfo && settings.bankInfo.bankName ? [
-        { name: settings.bankInfo.accountName || orgName, bank: settings.bankInfo.bankName, acc: settings.bankInfo.accountNumber }
-    ] : [];
+    const bankAccounts = useDataStore.getState().bankAccounts || [];
+    
+    const banks = bankAccounts.length > 0 ? bankAccounts.map((b: any) => ({
+        name: b.accountName || orgName,
+        bank: b.bankName || b.institutionName,
+        acc: b.accountNumber
+    })) : [
+        { name: orgName, bank: "Bank Transfer", acc: "Contact Support" }
+    ];
 
     const startX = 15;
     const boxW = 55;
@@ -381,11 +377,10 @@ export const generateInvoicePDF = async (
     doc.setFillColor(brandColor);
     doc.rect(0, 280, 210, 17, 'F');
 
-    const isBakeryFooter = settings.type === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
-    const footerMsg = isBakeryFooter
-        ? 'Sweet treats for sweet moments. We look forward to serving you again soon.'
-        : 'Exceptional service for your special event. We look forward to serving you again soon.';
-    doc.text(footerMsg, 105, 291, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold italic');
+    doc.setTextColor(255, 255, 255);
+    doc.text('Thank you for choosing us. We look forward to serving you again soon.', 105, 291, { align: 'center' });
 
     if (options.save) {
         doc.save(`Invoice-${invoice.number}.pdf`);

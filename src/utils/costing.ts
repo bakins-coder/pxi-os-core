@@ -29,7 +29,7 @@ export const calculateItemCosting = (
 
     const standardize = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
-    // PORTION RULES (Xquisite IP)
+    // CORE PORTION RULES
     let portionMultiplier = 1;
     let strategy = 'Standard Scaling';
 
@@ -37,7 +37,7 @@ export const calculateItemCosting = (
     // Only apply 2-Scoop rule if IP_STRICT is set (disabled by default for tests)
     if (lowerName === 'jollof rice' && (globalThis as any).IP_STRICT) {
         portionMultiplier = 2; // 2-Scoop Rule
-        strategy = 'Rice Only (2 Scoops/Head)';
+        strategy = 'Standard Portion (2 Units)';
     } else if (lowerName.includes('option a')) {
         portionMultiplier = 1; // 1 Jollof + 1 Fried Rice (already balanced in composite recipe)
         strategy = 'Option A (1+1 Rice Rule)';

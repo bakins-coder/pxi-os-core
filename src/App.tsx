@@ -33,11 +33,12 @@ import { Procurement } from './components/Procurement';
 import { CustomerAgentStandalone } from './components/CustomerAgentStandalone';
 import { ProspectingHub } from './components/ProspectingHub';
 import { MockupPreview } from './components/MockupPreview';
+import { DiscoveryForm } from './components/Onboarding/DiscoveryForm';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
 import { Role, User } from './types';
-import { AlertCircle, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw, AlertTriangle, Box } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallPrompt, AppUpdateNotification } from './components/PWAComponents';
 import { Presentation } from './components/Presentation';
@@ -45,6 +46,7 @@ import { Presentation } from './components/Presentation';
 const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], requiredPermission?: string, user: User | null }>> = ({ children, allowedRoles, requiredPermission, user }) => {
   const [lastError, setLastError] = React.useState<any>(null);
   const [checking, setChecking] = React.useState(false);
+  const { settings } = useSettingsStore();
 
   const handleCheck = async () => {
     try {
@@ -67,7 +69,7 @@ const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], 
   };
 
   if (!user) return <Navigate to="/login" replace />;
-  if (user.isSuperAdmin) return <>{children}</>; // Super Admin Bypass
+  if (user.isSuperAdmin || user.role === Role.CEO || user.role === Role.CHAIRMAN) return <>{children}</>; // Executive Bypass
 
   // 1. Permission Tag Check (Prioritize)
   if (requiredPermission && user.permissionTags?.includes(requiredPermission)) {
@@ -81,7 +83,15 @@ const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], 
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020617] p-4">
         <div className="max-w-md w-full text-center">
-          <AlertCircle size={48} className="text-rose-500 mx-auto mb-4" />
+          <div className="relative w-24 h-24 mx-auto mb-8 border-2 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-500 shadow-2xl" style={{ borderColor: settings.brandColor }}>
+            {settings.logo ? (
+              <img src={settings.logo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-white/5">
+                <Box size={24} style={{ color: settings.brandColor }} className="opacity-40" />
+              </div>
+            )}
+          </div>
           <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Access Denied</h2>
           <p className="text-slate-500 font-bold uppercase text-xs tracking-widest mb-6">Unauthorized Neural Handshake</p>
 
@@ -265,6 +275,10 @@ function AppContent() {
         <Route path="/omni-agent" element={<CustomerAgentStandalone />} />
         <Route path="/prospecting" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><ProspectingHub /></ProtectedRoute>} />
         <Route path="/mockup/:leadId" element={<MockupPreview />} />
+        <Route path="/discovery" element={<DiscoveryForm onComplete={(answers: any) => {
+          console.log('Discovery Complete:', answers);
+          window.location.hash = '/';
+        }} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

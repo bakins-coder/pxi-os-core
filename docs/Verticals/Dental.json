@@ -1,0 +1,48 @@
+{
+  "industry": "Dental Clinic",
+  "terminology": {
+    "products": "Treatment Materials",
+    "orders": "Appointment Records",
+    "customers": "Patient Registry",
+    "inventory": "Supplies & Instruments",
+    "units": "Stock Qty",
+    "price": "Procedure Cost",
+    "health_history": "Clinical Notes",
+    "radiology": "Imaging Archive",
+    "calendar": "Appointment Schedule",
+    "event_pipeline": "CLINIC SCHEDULE",
+    "procurement": "Supply Requests"
+  },
+  "icons": {
+    "products": "Stethoscope",
+    "orders": "Calendar",
+    "customers": "UserCircle",
+    "inventory": "Activity",
+    "health_history": "Clipboard",
+    "radiology": "Scan"
+  },
+  "modules": {
+    "inventory": true,
+    "crm": true,
+    "appointments": true,
+    "insurance_claims": true,
+    "kitchen": false
+  },
+  "ai_roster": {
+    "front_desk": "Snailee (Patient Coordinator)",
+    "operations": "Jimi (Clinic Manager)",
+    "compliance": "Sentinel (Health & Safety Audit)"
+  },
+  "guardrails": {
+    "allow_portions": false,
+    "allow_boq": false,
+    "hipaa_compliant": true,
+    "insurance_mandatory": true,
+    "consent_required": true,
+    "data_protection": {
+      "standard": "HIPAA",
+      "encryption": "AES-256",
+      "audit_logging": true
+    }
+  }
+}

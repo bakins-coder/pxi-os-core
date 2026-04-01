@@ -283,7 +283,9 @@ export const mapIncomingRow = (tableName: string, item: any) => {
     'pack_count': 'packCount',
     'pack_size': 'packSize',
     'pack_type': 'packType',
-    'requestor_name': 'requestorName'
+    'requestor_name': 'requestorName',
+    'account_number': 'accountNumber',
+    'institution_name': 'bankName'
   };
 
   Object.entries(mappings).forEach(([snake, camel]) => {
@@ -294,9 +296,9 @@ export const mapIncomingRow = (tableName: string, item: any) => {
   });
 
   if ('imageUrl' in newItem) newItem.image = newItem.imageUrl;
-  if (tableName === 'bank_accounts') {
-    if ('institutionName' in newItem) newItem.bankName = newItem.institutionName;
+  if (tableName === 'bank_accounts' || tableName === 'chart_of_accounts') {
     if ('name' in newItem) newItem.accountName = newItem.name;
+    if (tableName === 'bank_accounts' && 'bankName' in newItem) newItem.institutionName = newItem.bankName;
   }
   if ('stock_level' in item || 'stock_quantity' in item) {
     const val = item.stock_level ?? item.stock_quantity ?? 0;

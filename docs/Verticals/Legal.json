@@ -1,0 +1,41 @@
+{
+  "industry": "Legal Firm",
+  "terminology": {
+    "products": "Legal Services",
+    "orders": "Case Matters",
+    "customers": "Client Directory",
+    "inventory": "Document Archive",
+    "units": "Billable Units",
+    "price": "Hourly Rate",
+    "calendar": "Court & Filing Schedule",
+    "event_pipeline": "CASE TIMELINE"
+  },
+  "icons": {
+    "products": "Scale",
+    "orders": "Briefcase",
+    "customers": "Users",
+    "inventory": "FileText"
+  },
+  "modules": {
+    "inventory": true,
+    "crm": true,
+    "case_management": true,
+    "billing": true,
+    "kitchen": false
+  },
+  "ai_roster": {
+    "research": "Snailee (Case Researcher)",
+    "admin": "Jimi (Practice Manager)",
+    "security": "Sentinel (Privilege Guard)"
+  },
+  "guardrails": {
+    "allow_portions": false,
+    "allow_boq": false,
+    "conflict_of_interest_check": true,
+    "data_protection": {
+      "standard": "Legal Privilege / POPIA",
+      "encryption": "End-to-End",
+      "data_residency": "Local / Regional"
+    }
+  }
+}

@@ -111,7 +111,7 @@ export const Agent = () => {
                         <div className="w-10 h-10 bg-slate-200 rounded-xl shrink-0"></div>
                         <div className="space-y-2">
                            <div className="bg-white p-5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 max-w-sm">
-                              <p className="text-sm font-medium text-slate-700">"Hello Xquisite! Sending the venue photos via WhatsApp now. We need to accommodate 300 guests instead of 250."</p>
+                              <p className="text-sm font-medium text-slate-700">"Hello {settings.name || 'Team'}! We're reviewing the latest inventory stock levels."</p>
                            </div>
                            <div className="flex items-center gap-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl">
                               <Bot size={16} className="text-indigo-600" />

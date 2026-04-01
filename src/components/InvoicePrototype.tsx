@@ -9,14 +9,13 @@ import { generateInvoicePDF } from '../utils/exportUtils';
 
 
 // Brand Colors
-// const BRAND_COLOR = '#D32F2F'; // Old Red
-const BRAND_COLOR = '#4f46e5'; // Brand Indigo
-const ACCENT_COLOR = '#FFB74D'; // Lighter Orange
+const BRAND_COLOR = '#4F46E5'; // Default Indigo
+const ACCENT_COLOR = '#EEF2FF'; // Light Indigo
 
 export const InvoicePrototype = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
-    const { invoices, contacts } = useDataStore();
+    const { invoices, contacts, bankAccounts } = useDataStore();
     const { settings } = useSettingsStore();
 
     const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -87,19 +86,18 @@ export const InvoicePrototype = () => {
     const customerEmail = customer?.email || '';
 
     // Organization Data
-    // Determine organization name based on invoice category
-    const inferredCategory = invoice.category || (invoice.serviceChargeCents === 0 && invoice.type === 'Sales' ? 'Cuisine' : 'Banquet');
-    const orgName = inferredCategory === 'Cuisine' ? (settings.name || 'Smart Platform') : (settings.name || 'Smart Platform');
+    const inferredCategory = invoice.category;
+    const orgName = settings.name || 'Every Woman';
     const orgAddress = settings.address || '';
     const orgPhone = settings.contactPhone;
     const orgTin = settings.firs_tin;
-    const orgLogo = settings.logo || "/wembley_logo.jpg";
+    const orgLogo = settings.logo || "https://raw.githubusercontent.com/lucide-react/lucide/main/icons/shopping-bag.svg";
     const activeBrandColor = settings.brandColor || BRAND_COLOR;
 
-    // Use bank settings if available, otherwise fallback (or hide)
-    const bankName = settings.bankInfo?.bankName;
-    const accName = settings.bankInfo?.accountName;
-    const accNum = settings.bankInfo?.accountNumber;
+    const activeBank = bankAccounts.find(a => a.accountName?.toLowerCase().includes('main') || a.name?.toLowerCase().includes('main')) || bankAccounts[0];
+    const bankName = activeBank?.bankName || settings.bankInfo?.bankName;
+    const accName = activeBank?.accountName || settings.bankInfo?.accountName;
+    const accNum = activeBank?.accountNumber || settings.bankInfo?.accountNumber;
 
     const handleDownloadPDF = async () => {
         if (!invoice) return;
@@ -148,10 +146,7 @@ VAT: ₦${vat.toLocaleString()}
 *TOTAL DUE: ₦${totalAmount.toLocaleString()}*
 
 *BANK DETAILS:*
-Xquisite Cuisine (GTB): 0210736266
-Xquisite Celebrations (GTB): 0396426845
-Xquisite Celebrations (Zenith): 1010951007
-Xquisite Cuisine (First Bank): 2022655945
+${bankAccounts.map(a => `${a.bankName} (${a.accountName}): ${a.accountNumber}`).join('\n')}
 
 Link: ${window.location.href}
         `.trim();
@@ -368,48 +363,30 @@ Link: ${window.location.href}
 
                             <p className="font-bold underline mb-2">Bank Details:</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-600 text-xs font-medium">GT Bank</span>
-                                        <span className="font-mono font-bold text-slate-900">0210736266</span>
+                                {bankAccounts.length > 0 ? bankAccounts.map((acc, idx) => (
+                                    <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <span className="font-bold block text-slate-800 text-[10px] uppercase mb-1">{acc.name || acc.accountName || 'Bank Account'}</span>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-slate-600 text-[10px] font-medium">{acc.institutionName || acc.bankName || 'Standard Bank'}</span>
+                                            <span className="font-mono font-bold text-slate-900 text-xs">{acc.accountNumber}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-600 text-xs font-medium">GT Bank</span>
-                                        <span className="font-mono font-bold text-slate-900">0396426845</span>
+                                )) : (
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg col-span-2">
+                                        <p className="text-center text-slate-400 text-xs uppercase font-black">No bank details listed</p>
                                     </div>
-                                </div>
-                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-600 text-xs font-medium">Zenith Bank</span>
-                                        <span className="font-mono font-bold text-slate-900">1010951007</span>
-                                    </div>
-                                </div>
-                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="font-bold block text-slate-800 text-xs uppercase mb-1">{orgName}</span>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-600 text-xs font-medium">First Bank</span>
-                                        <span className="font-mono font-bold text-slate-900">2022655945</span>
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
-                            <p className="font-bold mb-1">Terms and Conditions:</p>
-                            <p className="mb-4">Initial deposit of 70% is to be paid before the event and balance payable immediately after the event. Cancellation of order will result to only a 70% refund of initial deposit made.</p>
+                            <p className="mb-4">All goods remain the property of the vendor until full payment is received. Payment is required within the stated due date.</p>
 
-                            <p className="font-bold mb-1">Disclaimer:</p>
-                            <p>In the event of cancellation of order, it should be communicated to our contact person 48 hours before the event. Failure to do so will mean that initial deposit made has been forfeited.</p>
+                            <p>Thank you for your business. For any inquiries, please contact our support team.</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Bottom Bar */}
                 <div className="p-4 text-white text-center print:hidden" style={{ backgroundColor: activeBrandColor }}>
-                    <p className="font-serif italic font-bold text-lg">Bon Apetit. We look forward to serving you again soon.</p>
+                    <p className="font-sans font-bold uppercase tracking-widest text-sm">Thank You For Your Patronage</p>
                 </div>
                 {/* Print-only footer to ensure color bar appears if background graphics enabled */}
                 <div className="hidden print:block p-2 text-white text-center text-xs mt-4 -mx-12 -mb-12" style={{ backgroundColor: activeBrandColor }}>

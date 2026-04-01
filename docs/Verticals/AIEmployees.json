@@ -1,0 +1,39 @@
+{
+  "available_agents": [
+    {
+      "role": "Patient Coordinator",
+      "departments": ["Front Desk", "Reception"],
+      "verticals": ["Dental Clinic", "Optician", "Healthcare"],
+      "expertise": "Scheduling, Insurance Verification, Patient Follow-ups",
+      "base_profile": "Snailee"
+    },
+    {
+      "role": "Case Researcher",
+      "departments": ["Operations", "Legal Analysis"],
+      "verticals": ["Legal Firm", "Consulting"],
+      "expertise": "Precedent Analysis, Document Review, Discovery",
+      "base_profile": "Snailee"
+    },
+    {
+      "role": "Ledger Architect",
+      "departments": ["Finance", "Accounting"],
+      "verticals": ["Accounting Firm", "Consulting", "General"],
+      "expertise": "Automated Bookkeeping, Profit Analysis, Proforma Generation",
+      "base_profile": "Atlas"
+    },
+    {
+      "role": "Practice Manager",
+      "departments": ["Executive", "Operations"],
+      "verticals": ["General", "Professional Services"],
+      "expertise": "Workflow Oversight, Resource Allocation, Department Coordination",
+      "base_profile": "Jimi"
+    },
+    {
+      "role": "Compliance Guard",
+      "departments": ["Security", "Compliance"],
+      "verticals": ["Legal", "Healthcare", "Aviation"],
+      "expertise": "Privacy Audits, RDO Monitoring, Protocol Enforcement",
+      "base_profile": "Sentinel"
+    }
+  ]
+}

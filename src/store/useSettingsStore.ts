@@ -82,8 +82,12 @@ export const useSettingsStore = create<SettingsState>()(
                                 name: data.name,
                                 brandColor: data.brand_color || state.settings.brandColor,
                                 logo: data.logo || state.settings.logo,
+                                type: data.type || state.settings.type,
                                 setupComplete: true,
-                                enabledModules: data.enabled_modules || state.settings.enabledModules
+                                enabledModules: data.enabled_modules || state.settings.enabledModules,
+                                address: data.address || state.settings.address,
+                                contactPhone: data.contact_phone || state.settings.contactPhone,
+                                currency: data.currency || state.settings.currency
                             }
                         }));
                     } else if (error) {

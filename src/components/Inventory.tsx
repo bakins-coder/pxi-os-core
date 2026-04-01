@@ -14,6 +14,57 @@ import {
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
 
+const INDUSTRY_MAP = {
+   Retail: {
+      productsIcon: ShoppingBag,
+      productsLabel: 'Product Catalog',
+      ingredientsLabel: 'Bulk Stock',
+      recipeLabel: null,
+      priceLabel: 'Unit Price',
+      stockLabel: 'Stock Level',
+      showBOQ: false,
+      boqLabel: 'Inventory Analysis',
+      cardImageHeight: 'h-72',
+      defaultCategories: ['Clothing', 'Accessories', 'Footwear', 'Beauty', 'Home']
+   },
+   Catering: {
+      productsIcon: Utensils,
+      productsLabel: 'Offerings',
+      ingredientsLabel: 'Raw Materials',
+      recipeLabel: 'Neural Recipes',
+      priceLabel: 'Portion Rate',
+      stockLabel: 'Set Portions',
+      showBOQ: true,
+      boqLabel: 'Analyze Bill of Quantities',
+      cardImageHeight: 'h-96',
+      defaultCategories: ["Hors D'Oeuvres", "Starters", "Salads", "Nigerian Cuisine", "Oriental", "Continental", "Hot Plates", "Desserts"]
+   },
+   Aviation: {
+      productsIcon: Zap,
+      productsLabel: 'Component List',
+      ingredientsLabel: 'Line Items',
+      recipeLabel: 'Assembly Guide',
+      priceLabel: 'Part Cost',
+      stockLabel: 'In Stock',
+      showBOQ: true,
+      boqLabel: 'BOM Analysis',
+      cardImageHeight: 'h-96',
+      defaultCategories: ['Engine', 'Avionics', 'Airframe', 'Interior', 'Fasteners']
+   },
+   General: {
+      productsIcon: Package,
+      productsLabel: 'Stock Items',
+      ingredientsLabel: 'Materials',
+      recipeLabel: 'Manifest',
+      priceLabel: 'Price',
+      stockLabel: 'Quantity',
+      showBOQ: true,
+      boqLabel: 'Stock Analysis',
+      cardImageHeight: 'h-96',
+      defaultCategories: ['General', 'Office', 'Maintenance']
+   }
+};
+
 const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: InventoryItem, portions: number, onClose: () => void, onPortionChange: (val: number) => void }) => {
    const [isGrounding, setIsGrounding] = useState(false);
    const [costing, setCosting] = useState<ItemCosting | null>(null);
@@ -1212,8 +1263,11 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 };
 
 const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean, onClose: () => void, editItem: InventoryItem | null }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = INDUSTRY_MAP[settings.type as keyof typeof INDUSTRY_MAP] || INDUSTRY_MAP.General;
+
    const [name, setName] = useState(editItem?.name || '');
-   const [category, setCategory] = useState(editItem?.category || 'Appetizer');
+   const [category, setCategory] = useState(editItem?.category || industryConfig.defaultCategories[0]);
    const [type, setType] = useState(editItem?.type || 'product');
    const [price, setPrice] = useState(editItem?.priceCents ? editItem.priceCents / 100 : 0);
    const [stock, setStock] = useState(editItem?.stockQuantity || 0);
@@ -1360,7 +1414,9 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Category</label>
                      <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={category} onChange={e => setCategory(e.target.value)}>
-                        <option>Hors D'Oeuvres</option><option>Starters</option><option>Salads</option><option>Nigerian Cuisine</option><option>Oriental</option><option>Continental</option><option>Hot Plates</option><option>Desserts</option>
+                        {industryConfig.defaultCategories.map(cat => (
+                           <option key={cat}>{cat}</option>
+                        ))}
                      </select>
                   </div>
                   <div>
@@ -1435,7 +1491,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                   className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin text-white" /> : null}
-                  {isSubmitting ? 'Saving...' : 'Save Product'}
+                  {isSubmitting ? 'Saving...' : `Save ${industryConfig.productsLabel.split(' ')[0]}`}
                </button>
             </div>
          </div>
@@ -1475,17 +1531,19 @@ export const Inventory = () => {
 
    const { settings } = useSettingsStore();
    const isAviation = settings.type === 'Aviation';
-
    const isCatering = settings.type === 'Catering' || settings.enabledModules?.includes('Catering');
+   const isRetail = settings.type === 'Retail';
+
+   const industryConfig = INDUSTRY_MAP[settings.type as keyof typeof INDUSTRY_MAP] || INDUSTRY_MAP.General;
 
    // Set default tab based on industry
    useEffect(() => {
       if (isAviation && activeTab === 'products') {
          setActiveTab('hardware');
-      } else if (!isCatering && ['products', 'ingredients', 'rentals'].includes(activeTab)) {
-         setActiveTab('hardware');
+      } else if (!isCatering && ['ingredients', 'rentals', 'recipes'].includes(activeTab)) {
+         if (activeTab !== 'products') setActiveTab('hardware');
       }
-   }, [isAviation, isCatering]);
+   }, [isAviation, isCatering, isRetail]);
 
    const { inventory, ingredients: storeIngredients, requisitions, rentalLedger, cateringEvents: events, recipes, approveRequisition, addIngredient, deleteIngredient, checkOverdueAssets, addRecipe, updateRecipe, deleteRecipe, deleteRecipeIngredient } = useDataStore();
 
@@ -1604,11 +1662,11 @@ export const Inventory = () => {
                </div>
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
                   {[
-                     { id: 'products', label: 'Offerings', icon: Utensils, active: true, perm: 'access:inventory_offerings' },
-                     { id: 'ingredients', label: 'Raw Materials', icon: Box, active: isCatering, perm: 'access:inventory_ingredients' },
-                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true, perm: 'access:inventory_all' }, // Or generic?
+                     { id: 'products', label: industryConfig.productsLabel, icon: industryConfig.productsIcon, active: true, perm: 'access:inventory_offerings' },
+                     { id: 'ingredients', label: industryConfig.ingredientsLabel, icon: Box, active: isCatering || isRetail || isAviation, perm: 'access:inventory_ingredients' },
+                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true, perm: 'access:inventory_all' },
                      { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering, perm: 'access:inventory_rentals' },
-                     { id: 'recipes', label: 'Neural Recipes', icon: Coffee, active: isCatering, perm: 'access:inventory_offerings' },
+                     { id: 'recipes', label: industryConfig.recipeLabel, icon: Coffee, active: !!industryConfig.recipeLabel, perm: 'access:inventory_offerings' },
                      { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true, perm: 'access:inventory_reusables' },
                      { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true, perm: 'access:inventory_fixed_assets' },
                      { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true, perm: 'access:inventory_fixtures' }
@@ -1623,8 +1681,11 @@ export const Inventory = () => {
             <div className="space-y-10">
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                   {products.map(p => (
-                     <div key={p.id} className="bg-white rounded-[3.5rem] border-2 border-slate-100 shadow-xl overflow-hidden flex flex-col group hover:border-indigo-200 transition-all h-full">
-                        <div className="h-56 w-full relative overflow-hidden">
+                     <div
+                        key={p.id}
+                        className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col h-full"
+                     >
+                        <div className={`relative ${industryConfig.cardImageHeight} group overflow-hidden`}>
                            <img src={p.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={p.name} />
                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
                            <div className="absolute top-4 right-4"><button onClick={() => { setSelectedEditItem(p); setIsEditModalOpen(true); }} className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg"><Edit3 size={16} /></button></div>
@@ -1637,28 +1698,27 @@ export const Inventory = () => {
 
                            <div className="mt-auto space-y-6">
                               <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                 <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portion Rate</p><span className="text-lg font-black text-indigo-600">₦{(p.priceCents / 100).toLocaleString()}</span></div>
+                                 <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{industryConfig.priceLabel}</span>
+                                    <span className="text-2xl font-black text-indigo-600 tracking-tighter">₦{(p.priceCents / 100).toLocaleString()}</span>
+                                 </div>
                                  <div className="flex flex-col items-end">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Set Portions</p>
-                                    <div className="flex items-center gap-2">
-                                       <button onClick={() => updatePortions(p.id, Math.max(1, (portionCounts[p.id] || 100) - 50))} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:text-rose-500 transition-colors"><Minus size={12} /></button>
-                                       <input
-                                          type="number"
-                                          className="w-16 bg-white border-2 border-slate-200 rounded-lg py-1 text-center text-xs font-black text-slate-950 outline-none focus:border-indigo-500 shadow-inner"
-                                          value={portionCounts[p.id] || 100}
-                                          onChange={(e) => updatePortions(p.id, Math.max(1, parseInt(e.target.value) || 0))}
-                                       />
-                                       <button onClick={() => updatePortions(p.id, (portionCounts[p.id] || 100) + 50)} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:text-emerald-500 transition-colors"><Plus size={12} /></button>
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{industryConfig.stockLabel}</span>
+                                    <div className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-900 text-lg">
+                                       {p.stockQuantity}
                                     </div>
                                  </div>
                               </div>
 
-                              <button
-                                 onClick={() => setSelectedBoQItem(p)}
-                                 className="w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-3 bg-slate-900 text-white hover:bg-slate-800 shadow-lg active:scale-95"
-                              >
-                                 <RefreshCw size={14} /> Analyze Bill of Quantities
-                              </button>
+                              {industryConfig.showBOQ && (
+                                 <button
+                                    onClick={() => setSelectedBoQItem(p)}
+                                    className="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group/btn shadow-xl shadow-slate-200"
+                                 >
+                                    <RotateCcw size={14} className="opacity-0 group-hover/btn:opacity-100 transition-all -ml-4 group-hover/btn:ml-0" />
+                                    {industryConfig.boqLabel}
+                                 </button>
+                              )}
                            </div>
                         </div>
                      </div>

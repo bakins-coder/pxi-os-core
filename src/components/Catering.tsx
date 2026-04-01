@@ -389,12 +389,10 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisine, eventId }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number, isCuisine?: boolean, eventId?: string }) => {
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
-   const contacts = useDataStore(state => state.contacts);
-   const finalizeInvoice = useDataStore(state => state.finalizeInvoice);
-   const updateInvoiceLines = useDataStore(state => state.updateInvoiceLines);
-   const cateringEvents = useDataStore(state => state.cateringEvents);
+   const { contacts, bankAccounts, finalizeInvoice, updateInvoiceLines, cateringEvents } = useDataStore();
    const contact = contacts.find(c => c.id === invoice.contactId);
    const effectiveIsCuisine = isCuisine || invoice.category === 'Cuisine' || cateringEvents.find(e => e.id === eventId)?.orderType === 'Cuisine';
+   const isBanquetMode = org.type === 'Catering' || org.type === 'Bakery';
    const isCustomCakeMode = !effectiveIsCuisine;
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
@@ -523,6 +521,10 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const total = subtotal + sc + vat;
       const finalTotal = manualTotalOverride ?? total;
 
+      const bankDetailsText = bankAccounts.length > 0 
+         ? bankAccounts.map(acc => `${acc.institutionName || acc.bankName}: ${acc.accountNumber}`).join('\n')
+         : "Contact Finance for payment details.";
+
       const summary = `
 *INVOICE SUMMARY: ${invoice.number}*
 Customer: ${contact?.name || 'Valued Customer'}
@@ -536,10 +538,7 @@ VAT: ₦${(vat / 100).toLocaleString()}
 *TOTAL DUE: ₦${(finalTotal / 100).toLocaleString()}*
 
 *BANK DETAILS:*
-Xquisite Cuisine (GTB): 0210736266
-Xquisite Celebrations (GTB): 0396426845
-Xquisite Celebrations (Zenith): 1010951007
-Xquisite Cuisine (First Bank): 2022655945
+${bankDetailsText}
 
 Link: ${window.location.origin}/#/invoice/${invoice.id}
       `.trim();
@@ -720,12 +719,17 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                {/* 1. Header */}
                <div className="flex justify-between items-start mb-6">
                   {/* Logo Area */}
-                  <div className="w-64">
-                     {/* Explicitly using the new uploaded branding asset */}
-                     <img src={org.logo || (org.type === 'Bakery' ? "/wembley_logo.jpg" : "/xquisite-logo.png")} alt={org.name || "Smart Platform"} className="w-full object-contain" />
+
+                  <div className="w-48">
+                     {org.logo ? (
+                        <img src={org.logo} alt={org.name} className="w-full object-contain max-h-20" />
+                     ) : (
+                        <h1 className="text-2xl font-black tracking-tighter text-slate-900 italic">{org.name || 'PX-I'}</h1>
+                     )}
                   </div>
                   <div className="text-right">
-                     <h2 className="text-sm font-bold text-slate-900">{org.name || 'Smart Platform'}</h2>
+                     <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{org.name || 'Organization'}</h2>
+                     <p className="text-[10px] text-slate-400 font-medium">Official Invoice</p>
                   </div>
                </div>
 
@@ -954,39 +958,27 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                         {/* Payment Section */}
                         <div>
                            <h3 className="font-bold text-slate-900 mb-2">Payment Information</h3>
-                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')).toUpperCase()}</span></p>
 
-                           <p className="text-xs font-bold text-slate-900 underline mb-3">Bank Details:</p>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
-                                 <div className="flex justify-between items-center mt-1">
-                                    <span className="text-xs text-slate-500">GT Bank</span>
-                                    <span className="text-xs font-bold text-slate-900 font-mono">0210736266</span>
+                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(org.name || 'The Organization').toUpperCase()}</span></p>
+                           
+                           {bankAccounts && bankAccounts.length > 0 ? (
+                              <>
+                                 <p className="text-xs font-bold text-slate-900 underline mb-3">Bank Details:</p>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {bankAccounts.map((acc, bidx) => (
+                                       <div key={bidx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                          <p className="text-[10px] font-black text-slate-800 uppercase">{acc.accountName || org.name}</p>
+                                          <div className="flex justify-between items-center mt-1">
+                                             <span className="text-xs text-slate-500">{acc.bankName}</span>
+                                             <span className="text-xs font-bold text-slate-900 font-mono">{acc.accountNumber}</span>
+                                          </div>
+                                       </div>
+                                    ))}
                                  </div>
-                              </div>
-                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
-                                 <div className="flex justify-between items-center mt-1">
-                                    <span className="text-xs text-slate-500">GT Bank</span>
-                                    <span className="text-xs font-bold text-slate-900 font-mono">0396426845</span>
-                                 </div>
-                              </div>
-                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
-                                 <div className="flex justify-between items-center mt-1">
-                                    <span className="text-xs text-slate-500">Zenith Bank</span>
-                                    <span className="text-xs font-bold text-slate-900 font-mono">1010951007</span>
-                                 </div>
-                              </div>
-                              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                 <p className="text-[10px] font-black text-slate-800 uppercase">{org.name || (org.type === 'Bakery' ? 'Wembley Cakes' : 'Xquisite Celebrations')}</p>
-                                 <div className="flex justify-between items-center mt-1">
-                                    <span className="text-xs text-slate-500">First Bank</span>
-                                    <span className="text-xs font-bold text-slate-900 font-mono">2022655945</span>
-                                 </div>
-                              </div>
-                           </div>
+                              </>
+                           ) : (
+                                 <p className="text-xs text-slate-400 italic">Please contact us for bank transfer details.</p>
+                           )}
                         </div>
 
                         {/* Terms & Disclaimer */}
@@ -2183,7 +2175,9 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"><UtensilsCrossed size={20} /></div>
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Standard Cake Order Portal</h2>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                        {useSettingsStore.getState().settings.type === 'Retail' ? 'Product Order Portal' : 'Standard Cake Order Portal'}
+                     </h2>
                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Select products for immediate fulfillment</p>
                   </div>
                </div>
@@ -2625,13 +2619,16 @@ export const Catering = () => {
             <div className="absolute top-0 right-0 w-96 h-96 bg-[#ff6b6b]/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-[#f37021] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><ChefHat size={36} className="text-white" /></div>
+
+                  <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float">
+                     {(useSettingsStore.getState().settings.type === 'Retail') ? <ShoppingCart size={36} className="text-white" /> : <ChefHat size={36} className="text-white" />}
+                  </div>
                   <div>
                      <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">
-                        {isCatering ? 'Catering Ops' : 'Cake Orders'}
+                        {(useSettingsStore.getState().settings.type === 'Retail') ? 'Sales Orders' : 'Cake Orders'}
                      </h1>
                      <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
-                        {isCatering ? 'Cuisine & Banquet Management Active' : 'Standard & Custom Cake Management Active'}
+                        {(useSettingsStore.getState().settings.type === 'Retail') ? 'Retail Order & Fulfillment Active' : 'Standard & Custom Cake Management Active'}
                      </p>
                   </div>
                </div>
@@ -2647,7 +2644,12 @@ export const Catering = () => {
                      <Share2 size={14} /> <span className="hidden md:inline">Share Booking Link</span><span className="md:hidden">Share</span>
                   </button>
                   <div className="w-px bg-white/10 my-2 shrink-0"></div>
-                  {[{ id: 'cuisine', label: isCatering ? 'Cuisine Orders' : 'Standard Cakes', icon: UtensilsCrossed }, { id: 'orders', label: isCatering ? 'Banquets Orders' : 'Custom Cakes', icon: ShoppingBag }, { id: 'matrix', label: 'Matrix', icon: Grid3X3 }].map(tab => (
+
+                  {[
+                     { id: 'cuisine', label: (useSettingsStore.getState().settings.type === 'Retail') ? 'In-Store Sales' : 'Standard Cakes', icon: (useSettingsStore.getState().settings.type === 'Retail') ? ShoppingCart : UtensilsCrossed },
+                     { id: 'orders', label: (useSettingsStore.getState().settings.type === 'Retail') ? 'Online Orders' : 'Custom Cakes', icon: ShoppingBag },
+                     { id: 'matrix', label: 'Matrix', icon: Grid3X3 }
+                  ].map(tab => (
                      <button
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id as any); setSelectedEventId(null); }}
@@ -2667,13 +2669,14 @@ export const Catering = () => {
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'} `}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
                         <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">
-                           {viewMode} {activeTab === 'orders' ? (isCatering ? 'Banquets' : 'Custom Cakes') : (isCatering ? 'Cuisine' : 'Standard Cakes')} ({filteredEvents.length})
+
+                           {viewMode} {activeTab === 'orders' ? (useSettingsStore.getState().settings.type === 'Retail' ? 'Online Orders' : 'Custom Cakes') : (useSettingsStore.getState().settings.type === 'Retail' ? 'In-Store Sales' : 'Standard Orders')} ({filteredEvents.length})
                         </h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                            {activeTab === 'orders' ? (
-                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New {isCatering ? 'Banquet' : 'Custom Cake'}</button>
+                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New {useSettingsStore.getState().settings.type === 'Retail' ? 'Online Order' : 'Custom Order'}</button>
                            ) : (
-                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New {isCatering ? 'Cuisine' : 'Standard Cake'}</button>
+                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New {useSettingsStore.getState().settings.type === 'Retail' ? 'Sale Record' : 'Standard Order'}</button>
                            )}
                         </div>
                      </div>
@@ -2893,3 +2896,4 @@ export const Catering = () => {
       </div >
    );
 };
+

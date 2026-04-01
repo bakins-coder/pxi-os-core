@@ -2104,11 +2104,14 @@ export const useDataStore = create<DataState>()(
 
             createCateringOrder: async (d) => {
                 const user = useAuthStore.getState().user;
+                const settings = useSettingsStore.getState().settings;
                 const companyId = user?.companyId || '';
 
                 if (!companyId) {
                     throw new Error("Cannot create order without a valid organization context.");
                 }
+
+                const isFoodIndustry = settings.type === 'Bakery' || settings.type === 'Catering';
 
                 // [CRITICAL] Ensure Contact exists in state before proceeding
                 const state = get();
@@ -2150,8 +2153,8 @@ export const useDataStore = create<DataState>()(
                     return s + (i.priceCents * i.quantity);
                 }, 0 as number);
 
-                const serviceChargeCents = isCuisine ? 0 : Math.round(taxableRev * 0.15);
-                const vatCents = isCuisine ? 0 : Math.round((taxableRev + serviceChargeCents) * 0.075);
+                const serviceChargeCents = isCuisine || !isFoodIndustry ? 0 : Math.round(taxableRev * 0.15);
+                const vatCents = isCuisine || !isFoodIndustry ? 0 : Math.round((taxableRev + serviceChargeCents) * 0.075);
                 const totalCents = totalRev + serviceChargeCents + vatCents;
 
                 const event: CateringEvent = {
@@ -2252,6 +2255,22 @@ export const useDataStore = create<DataState>()(
                     }
                 ];
 
+                // Remove catering-specific tasks for non-food industries
+                const finalTaskList = isFoodIndustry ? taskList : [
+                    {
+                        id: crypto.randomUUID(), companyId: companyId,
+                        title: 'Order Processing',
+                        description: 'Prepare items for dispatch.',
+                        dueDate: d.eventDate, priority: 'High' as const, status: 'Todo' as const
+                    },
+                    {
+                        id: crypto.randomUUID(), companyId: companyId,
+                        title: 'Fulfillment & Dispatch',
+                        description: 'Handover order to logistics/customer.',
+                        dueDate: d.eventDate, priority: 'Critical' as const, status: 'Todo' as const
+                    }
+                ];
+
                 // Conditional Tasks
                 // Mock logic: If guest count > 50, assume vehicle hire needed
                 if (d.guestCount > 50) {
@@ -2293,7 +2312,7 @@ export const useDataStore = create<DataState>()(
                     budgetCents: totalRev,
                     progress: 0,
                     referenceId: evId,
-                    tasks: taskList,
+                    tasks: finalTaskList,
                     aiAlerts: []
                 };
 
@@ -2421,6 +2440,10 @@ export const useDataStore = create<DataState>()(
             },
 
             deductStockFromCooking: async (eventId) => {
+                const settings = useSettingsStore.getState().settings;
+                const isFoodIndustry = settings.type === 'Bakery' || settings.type === 'Catering';
+                if (!isFoodIndustry) return;
+
                 // 1. Mark production as confirmed
                 set((state) => ({
                     cateringEvents: state.cateringEvents.map(e => {
@@ -2859,7 +2882,7 @@ export const useDataStore = create<DataState>()(
                     // Parallel fetching of base tables and inventory views
                     const [
                         // Core Tables
-                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, leaveRequests, performanceReviews, interactionLogs, messages, entityMedia, leads,
+                        contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, bankAccounts, leaveRequests, performanceReviews, interactionLogs, messages, entityMedia, leads,
                         // Inventory Base Tables
                         // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
@@ -2887,6 +2910,7 @@ export const useDataStore = create<DataState>()(
                         safePull('messages', companyId),
                         safePull('entity_media', companyId),
                         safePull('leads', companyId),
+                        safePull('bank_accounts', companyId),
 
 
                         safePull('reusable_items', companyId),
@@ -2918,6 +2942,7 @@ export const useDataStore = create<DataState>()(
                     if (interactionLogs !== null) set({ interactionLogs });
                     if (messages !== null) set({ messages });
                     if (leads !== null) set({ leads });
+                    if (bankAccounts !== null) set({ bankAccounts });
 
                     console.log(`[Hydration] Sync complete for ${companyId}`);
 

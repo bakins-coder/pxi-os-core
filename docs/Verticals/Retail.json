@@ -1,0 +1,37 @@
+{
+  "industry": "Retail",
+  "name": "Every Woman",
+  "terminology": {
+    "products": "Product Catalog",
+    "orders": "Sales Orders",
+    "customers": "CRM",
+    "inventory": "Inventory",
+    "units": "Stock Level",
+    "price": "Unit Price",
+    "calendar": "Promotional Schedule",
+    "event_pipeline": "RETAIL OPS"
+  },
+  "icons": {
+    "products": "ShoppingBag",
+    "orders": "ShoppingCart",
+    "customers": "Users",
+    "inventory": "Package"
+  },
+  "modules": {
+    "inventory": true,
+    "crm": true,
+    "orders": true,
+    "kitchen": false,
+    "service_hub": false
+  },
+  "ai_roster": {
+    "sales": "Snailee (Retail Specialist)",
+    "operations": "Jimi (HR Manager)",
+    "finance": "Atlas (Ledger Architect)"
+  },
+  "guardrails": {
+    "allow_portions": false,
+    "allow_boq": false,
+    "allow_banquets": false
+  }
+}

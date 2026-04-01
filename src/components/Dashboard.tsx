@@ -26,6 +26,7 @@ import {
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { Role, Invoice, Requisition, CateringEvent } from '../types';
 import { EventCalendar } from './EventCalendar';
+import { getTerm } from '../utils/terminology';
 
 
 const SummaryList = ({ title, items, type, onItemClick }: { title: string; items: any[]; type: string; onItemClick?: (item: any) => void }) => {
@@ -256,8 +257,8 @@ export const Dashboard = () => {
         <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm min-h-[350px] md:min-h-[400px]">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-black text-slate-800 tracking-tight leading-none">
-                {(settings.type === 'Catering' || settings.type === 'General') ? 'EVENT PIPELINE' : 'PROJECT TIMELINE'}
+              <h3 className="text-lg font-black text-slate-800 tracking-tight leading-none uppercase">
+                {getTerm(settings.type, 'event_pipeline', 'OPERATIONAL PIPELINE')}
               </h3>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Real-time scheduling \ 30 Days Forecast</p>
             </div>
@@ -272,25 +273,19 @@ export const Dashboard = () => {
           <div className="space-y-6">
             <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" onItemClick={(inv) => setSelectedItem({ type: 'receivable', data: inv })} />
             <SummaryList title="Accounts Payable" items={dataState.accountsPayable} type="payable" onItemClick={(inv) => setSelectedItem({ type: 'payable-invoice', data: inv })} />
-            <SummaryList title="Pending Procurement" items={dataState.payables} type="payable" onItemClick={(req) => setSelectedItem({ type: 'payable', data: req })} />
+            <SummaryList title={getTerm(settings.type, 'procurement', 'Pending Procurement')} items={dataState.payables} type="payable" onItemClick={(req) => setSelectedItem({ type: 'payable', data: req })} />
           </div>
         )}
       </div>
 
       <div className="col-span-12 lg:col-span-4 space-y-6">
         <div className="min-h-[300px]">
-          {(settings.type === 'Catering') ? (
-            <SummaryList title="Upcoming Catering" items={dataState.upcomingEvents} type="event" onItemClick={(ev) => navigate(`/catering?id=${ev.id}`)} />
-          ) : (
-            (settings.type === 'General') ? (
-              <SummaryList title="Upcoming Events" items={dataState.upcomingEvents} type="event" onItemClick={(ev) => navigate(`/catering?id=${ev.id}`)} />
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center h-full p-6 text-center">
-                <Plane size={32} className="text-slate-300 mb-2" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Industry Module Active</p>
-              </div>
-            )
-          )}
+          <SummaryList 
+            title={getTerm(settings.type, 'upcoming_events', 'UPCOMING EVENTS')} 
+            items={dataState.upcomingEvents} 
+            type="event" 
+            onItemClick={(ev) => navigate(`/${settings.type === 'Catering' ? 'catering' : 'dashboard'}?id=${ev.id}`)} 
+          />
         </div>
       </div>
 

@@ -51,33 +51,18 @@ const SyncIndicator = () => {
 };
 
 const ParadigmLogo = ({ brandColor, orgName, isCollapsed, logo }: { brandColor: string, orgName: string, isCollapsed?: boolean, logo?: string }) => {
-  const isXquisite = orgName?.toLowerCase().includes('xquisite');
-  const isWembley = orgName?.toLowerCase().includes('wembley');
-
-  if (isXquisite) {
-    return (
-      <div className={`flex items-center transition-all duration-500 ${isCollapsed ? 'justify-center px-1' : 'w-full px-4'}`}>
-        <div className={`relative ${isCollapsed ? 'w-12 h-12' : 'w-full h-16'} transition-all duration-500`}>
-          <img
-            src="/xquisite-logo.png"
-            className={`w-full h-full ${isCollapsed ? 'object-cover object-left scale-[1.35]' : 'object-contain'} brightness-110 drop-shadow-2xl transition-all duration-500`}
-            alt="Xquisite"
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center gap-3">
       <div className={`relative ${isCollapsed ? 'w-10 h-10' : 'w-10 h-10'} group shrink-0 transition-all duration-300`}>
         <div className="absolute inset-0 opacity-20 blur-xl group-hover:opacity-40 transition-opacity" style={{ backgroundColor: brandColor }}></div>
-        <div className={`relative w-full h-full border-2 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-500 group-hover:scale-105 shadow-2xl bg-slate-900/50`} style={{ borderColor: brandColor }}>
-          {logo || isWembley ? (
-            <img src={logo || '/wembley_logo.jpg'} alt={orgName} className="w-full h-full object-cover" />
+
+        <div className="relative w-full h-full border-2 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-500 group-hover:scale-105 group-hover:rotate-3 shadow-2xl" style={{ borderColor: brandColor }}>
+          {logo ? (
+            <img src={logo} alt="Logo" className="w-full h-full object-cover" />
           ) : (
-            <div className="flex items-center justify-center w-full h-full font-black text-xs" style={{ color: brandColor }}>
-              {orgName?.charAt(0).toUpperCase()}
+            <div className="w-full h-full flex items-center justify-center bg-white/5">
+              <Box size={20} style={{ color: brandColor }} className="opacity-40" />
             </div>
           )}
         </div>
@@ -109,7 +94,7 @@ const NAV_ITEMS = [
   { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
 
   // Industry Specific
-  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General', 'Retail'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
   { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -173,7 +158,8 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
       <div className={`p-8 mb-4 flex ${isCollapsed ? 'justify-center px-4' : ''}`}>
-        <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={logo} />
+
+        <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={settings.logo} />
       </div>
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
@@ -187,15 +173,27 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
             if (hiddenForMD.includes(i.label)) return false;
           }
 
-          const isWembley = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
-          if (isWembley) {
-            const allowedForBakery = ['Dashboard', 'CRM', 'Orders & Invoicing', 'Finance', 'User Guides', 'Settings'];
-            if (!allowedForBakery.includes(i.label)) return false;
-          }
 
           // Strict Administrative Check - ONLY for verified Admins
-          // [REMOVED] Industry-specific hiding for Bakery/Catering to restore visibility
-          // Previously blocked modules like Inventory, HR, etc. for these types.
+          // Industry-specific hiding for Bakery/Catering (Wembley Cakes)
+          const isBakeryOrCatering = settings.type === 'Bakery' || settings.type === 'Catering';
+          const isRetail = settings.type === 'Retail';
+
+          if (isBakeryOrCatering) {
+            const irrelevantModules = [
+              'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Project Hub', 'Inventory',
+              'Human Resources', 'Automation', 'Reporting', 'Team Messages', 'Analytics',
+              'Procurement'
+            ];
+            if (irrelevantModules.includes(i.label)) return false;
+          }
+
+          if (isRetail) {
+            const irrelevantModules = [
+              'Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub'
+            ];
+            if (irrelevantModules.includes(i.label)) return false;
+          }
 
           if (i.label === 'Super Admin' || i.label === 'IT Console') {
             // Use currentUser from hook for reactivity
@@ -231,6 +229,17 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
           }
 
           const isActive = currentPath === item.path;
+          const isRetail = settings.type === 'Retail';
+
+          // Sanitize Label & Icon for Retail
+          let displayLabel = item.label;
+          let DisplayIcon = item.icon;
+
+          if (isRetail && item.label === 'Orders & Invoicing') {
+            displayLabel = 'Sales Orders';
+            DisplayIcon = ShoppingCart;
+          }
+
           return (
             <Link
               key={item.path}
@@ -242,11 +251,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
               style={isActive ? { borderColor: brandColor, color: brandColor } : {}}
             >
               <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3 min-w-0'}`}>
-                <item.icon size={18} className={isActive ? 'shrink-0' : 'text-slate-600 group-hover:text-white shrink-0'} />
+                <DisplayIcon size={18} className={isActive ? 'shrink-0' : 'text-slate-600 group-hover:text-white shrink-0'} />
                 {!isCollapsed && (
-                  <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>
-                    {displayLabel}
-                  </span>
+
+                  <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>{displayLabel}</span>
                 )}
               </div>
 
@@ -306,13 +314,14 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = ({ children, userRole }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
   const { settings, strictMode } = useSettingsStore();
   const { user: currentUser, logout } = useAuthStore();
 
   const brandColor = settings.brandColor || '#00ff9d';
   const orgName = settings.name || 'Paradigm-Xi';
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -572,3 +581,4 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
     </div>
   );
 };
+

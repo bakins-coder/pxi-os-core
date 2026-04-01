@@ -915,17 +915,20 @@ export const Finance = () => {
    // Auto-seed bank accounts if missing (Recover state)
    useEffect(() => {
       const legacyAccounts = (bankAccounts || []).filter(acc =>
-         acc.accountName.includes('Xquisite') ||
+         acc.accountName.toLowerCase().includes('xquisite') ||
+         acc.accountName.toLowerCase().includes('wembley') ||
+         acc.bankName.includes('Bank Account') ||
          ['0210736266', '0396426845', '1010951007', '2022655945'].includes(acc.accountNumber)
       );
 
       if ((bankAccounts || []).length === 0 || legacyAccounts.length > 0) {
          const defaults = [
-            { id: crypto.randomUUID(), bankName: 'Bank Account 1', accountName: org.name || 'Main Account', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
-            { id: crypto.randomUUID(), bankName: 'Bank Account 2', accountName: org.name || 'Main Account', accountNumber: 'XXXXXXXXXX', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
+            { id: crypto.randomUUID(), bankName: 'Main Operations', accountName: org.name || 'Every Woman', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
+            { id: crypto.randomUUID(), bankName: 'Reserve Account', accountName: org.name || 'Every Woman', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
          ];
 
          if (legacyAccounts.length > 0) {
+            // Delete legacy and add defaults
             useDataStore.setState({ bankAccounts: defaults });
             useDataStore.getState().syncWithCloud();
          } else if ((bankAccounts || []).length === 0) {
@@ -1118,7 +1121,7 @@ export const Finance = () => {
          {activeTab === 'collections' && (
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom-4">
                <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                  <div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Accounts Receivable</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Tracking outstanding banquet node payments</p></div>
+                  <div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Accounts Receivable</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Tracking outstanding customer payments</p></div>
                   <button onClick={handleSendReminders} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Bot size={16} /> AI Reminders</button>
                   <button onClick={() => { setInvoiceModalType('Sales'); setIsManualInvoiceModalOpen(true); }} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
                </div>

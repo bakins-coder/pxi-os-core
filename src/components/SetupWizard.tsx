@@ -375,7 +375,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
                      <p className="text-[10px] font-bold text-[#00ff9d] uppercase flex items-center gap-2 tracking-tighter">
                         <div className="w-2 h-2 rounded-full bg-[#00ff9d] animate-pulse"></div>
-                        Initializing Node {Math.round((step / 6) * 100)}%
+                        Initialising Node {Math.round((step / 6) * 100)}%
                      </p>
                   </div>
                </div>

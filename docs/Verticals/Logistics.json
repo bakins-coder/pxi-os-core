@@ -1,0 +1,42 @@
+{
+  "industry": "Logistics",
+  "terminology": {
+    "products": "Freight Items",
+    "orders": "Shipment Orders",
+    "customers": "Consignee Directory",
+    "inventory": "Warehouse Stock",
+    "units": "Pallets/Units",
+    "price": "Freight Charge",
+    "tracking": "Waybill Trace",
+    "manifest": "Loading List",
+    "calendar": "Delivery Schedule",
+    "event_pipeline": "FLEET STATUS"
+  },
+  "icons": {
+    "products": "Package",
+    "orders": "Truck",
+    "customers": "Users",
+    "inventory": "Warehouse",
+    "tracking": "Map",
+    "manifest": "ClipboardList"
+  },
+  "modules": {
+    "inventory": true,
+    "crm": true,
+    "fleet_management": true,
+    "tracking": true,
+    "dispatch": true,
+    "kitchen": false
+  },
+  "ai_roster": {
+    "logistics": "Snailee (Route Optimizer)",
+    "operations": "Jimi (Fleet Manager)",
+    "finance": "Atlas (Tariff Analyst)"
+  },
+  "guardrails": {
+    "allow_portions": false,
+    "allow_boq": false,
+    "transit_timeout_alert": true,
+    "proof_of_delivery_mandatory": true
+  }
+}

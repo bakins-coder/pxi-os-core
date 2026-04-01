@@ -847,7 +847,7 @@ const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
                   className="flex-2 py-4 bg-slate-950 text-[#00ff9d] rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all min-w-[200px]"
                >
                   {isSubmitting ? <Activity className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
-                  {isSubmitting ? 'Initializing...' : 'Authorize Cycle'}
+                  {isSubmitting ? 'Initialising...' : 'Authorize Cycle'}
                </button>
             </div>
          </div>
