@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { OrganizationSettings, AIAgentMode } from '../types';
+import { OrganizationSettings, AIAgentMode, IndustryType, AppModule } from '../types';
+import { supabase } from '../services/supabase';
 
 interface SettingsState {
     settings: OrganizationSettings;
@@ -19,8 +20,9 @@ interface SettingsState {
 
 const DEFAULT_SETTINGS: OrganizationSettings = {
     id: '',
-    name: 'Smart Platform',
+    name: 'Paradigm-Xi',
     type: 'General',
+    secondaryTypes: [],
     currency: 'NGN',
     setupComplete: false,
     enabledModules: ['CRM', 'Finance', 'Reports', 'Catering'],
@@ -46,11 +48,22 @@ const INITIAL_SYSTEM_FLAGS = {
     partialSetupData: null
 };
 
-import { supabase } from '../services/supabase';
+const BRANDING_OVERRIDES: Record<string, Partial<OrganizationSettings>> = {
+    'Xquisite Celebrations Limited': {
+        name: 'Xquisite Celebrations Limited',
+        brandColor: '#00ff9d',
+        logo: '/xquisite-logo.png'
+    },
+    'Wembley Cakes': {
+        name: 'Wembley Cakes',
+        brandColor: '#f37021',
+        logo: '/wembley_logo.jpg'
+    }
+};
 
 export const useSettingsStore = create<SettingsState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             settings: DEFAULT_SETTINGS,
             ...INITIAL_SYSTEM_FLAGS,
             updateSettings: (newSettings) =>
@@ -62,10 +75,25 @@ export const useSettingsStore = create<SettingsState>()(
                 }),
             updatePartialSetup: (data) => set({ partialSetupData: data }),
             completeSetup: (newSettings) =>
-                set((state) => ({
-                    settings: { ...state.settings, ...newSettings, setupComplete: true },
-                    partialSetupData: null
-                })),
+                set((state) => {
+                    const finalSettings = { ...state.settings, ...newSettings };
+                    const override = finalSettings.name ? BRANDING_OVERRIDES[finalSettings.name] : null;
+
+                    const merged = {
+                        ...finalSettings,
+                        ...(override || {}),
+                        setupComplete: true
+                    };
+
+                    if (merged.brandColor) {
+                        document.documentElement.style.setProperty('--brand-primary', merged.brandColor);
+                    }
+
+                    return {
+                        settings: merged,
+                        partialSetupData: null
+                    };
+                }),
             toggleStrictMode: () => set((state) => ({ strictMode: !state.strictMode })),
             reset: () => set({ settings: DEFAULT_SETTINGS, ...INITIAL_SYSTEM_FLAGS }),
             fetchSettings: async (orgId: string) => {
@@ -75,21 +103,31 @@ export const useSettingsStore = create<SettingsState>()(
                     const { data, error } = await supabase.from('organizations').select('*').eq('id', orgId).single();
                     if (data) {
                         console.log('[Settings] Fetched:', data.name);
-                        set((state) => ({
-                            settings: {
-                                ...state.settings,
-                                id: data.id,
-                                name: data.name,
-                                brandColor: data.brand_color || state.settings.brandColor,
-                                logo: data.logo || state.settings.logo,
-                                type: data.type || state.settings.type,
-                                setupComplete: true,
-                                enabledModules: data.enabled_modules || state.settings.enabledModules,
-                                address: data.address || state.settings.address,
-                                contactPhone: data.contact_phone || state.settings.contactPhone,
-                                currency: data.currency || state.settings.currency
+                        const override = BRANDING_OVERRIDES[data.name] || {};
+
+                        set((state) => {
+                            const brandColor = override.brandColor || data.brand_color || state.settings.brandColor;
+                            if (brandColor) {
+                                document.documentElement.style.setProperty('--brand-primary', brandColor);
                             }
-                        }));
+
+                            return {
+                                settings: {
+                                    ...state.settings,
+                                    id: data.id,
+                                    name: data.name,
+                                    brandColor,
+                                    logo: override.logo || data.logo || state.settings.logo,
+                                    type: data.type || state.settings.type,
+                                    secondaryTypes: data.secondary_types || state.settings.secondaryTypes || [],
+                                    setupComplete: true,
+                                    enabledModules: data.enabled_modules || state.settings.enabledModules,
+                                    address: data.address || state.settings.address,
+                                    contactPhone: data.contact_phone || state.settings.contactPhone,
+                                    currency: data.currency || state.settings.currency
+                                }
+                            };
+                        });
                     } else if (error) {
                         console.error('[Settings] Fetch error:', error);
                     }

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { CustomerAgentStandalone } from './CustomerAgentStandalone';
 import { 
   AlertCircle, ExternalLink, ShieldCheck, 
@@ -12,6 +13,7 @@ import {
 export const MockupPreview: React.FC = () => {
     const { leadId } = useParams();
     const { leads } = useDataStore();
+    const { settings } = useSettingsStore();
     const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [iframeLoaded, setIframeLoaded] = useState(false);
     
@@ -41,7 +43,7 @@ export const MockupPreview: React.FC = () => {
                         <h1 className="font-bold text-lg text-white">Live AI Prototype: {lead.company}</h1>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                             <ShieldCheck className="w-3 h-3 text-[#00ff9d]" />
-                            <span>Powered by Paradigm-Xi OmniAgent Intelligence</span>
+                            <span>Powered by {settings.name || 'Platform'} OmniAgent Intelligence</span>
                         </div>
                     </div>
                 </div>

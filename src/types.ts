@@ -1,5 +1,6 @@
 export enum Role {
   SUPER_ADMIN = 'Super Admin',
+  SYSTEM_ADMIN = 'system_admin',
   CEO = 'Chief Executive Officer',
   ADMIN = 'Admin',
   MANAGER = 'Manager',
@@ -28,6 +29,7 @@ export enum Role {
   CHAIRMAN = 'Chairman',
   CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager'
 }
+export type IndustryType = 'Retail' | 'Catering' | 'Bakery' | 'Aviation' | 'General';
 
 export enum AIAgentMode {
   HUMAN_FIRST = 'Human-First',
@@ -232,6 +234,7 @@ export interface CateringEvent {
   location?: string;
   guestCount: number;
   status: 'Draft' | 'Confirmed' | 'In Transit' | 'Setting Up' | 'Serving' | 'Completed' | 'Archived' | 'Cancelled';
+  vertical?: IndustryType;
   currentPhase: CateringPhase;
   readinessScore: number;
   items: DealItem[];
@@ -385,7 +388,7 @@ export interface Contact {
   documentLinks?: DocumentLink[];
 }
 export interface DealItem { inventoryItemId: string; name: string; quantity: number; priceCents: number; costCents: number; }
-export interface OrganizationSettings { id: string; name: string; type: string; currency: string; setupComplete: boolean; enabledModules: string[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; terminology?: Record<string, string>; }
+export interface OrganizationSettings { id: string; name: string; type: IndustryType; secondaryTypes?: IndustryType[]; currency: string; setupComplete: boolean; enabledModules: AppModule[]; agentMode: AIAgentMode; brandColor: string; firs_tin?: string; annual_turnover_cents?: number; integrations: string[]; apiKeys: { label: string; key: string }[]; logo?: string; address?: string; contactPhone?: string; contactPerson?: { name: string; firstName?: string; middleName?: string; lastName?: string; title?: string; gender?: 'Male' | 'Female'; email: string; jobTitle: string }; size?: string; bankInfo?: { bankName: string; accountName: string; accountNumber: string; }; terminology?: Record<string, string>; }
 export interface User { id: string; name: string; email: string; role: Role; avatar: string; companyId?: string; isSuperAdmin?: boolean; permissionTags?: string[]; staffId?: string; }
 export interface BookkeepingEntry { id: string; date: string; type: 'Inflow' | 'Outflow'; category: string; description: string; amountCents: number; referenceId?: string; contactId?: string; paymentMethod?: string; }
 
@@ -623,7 +626,7 @@ export interface EntityMedia {
 
 export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas' | 'Bakery';
 export type CompanySize = 'Micro (1-10)' | 'Small (11-50)' | 'Medium (51-250)' | 'Large (250+)';
-export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR';
+export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR' | 'Bakery';
 export type MarketingChannel = 'Blog' | 'Social' | 'Email' | 'Ads';
 
 export interface AgenticLog {

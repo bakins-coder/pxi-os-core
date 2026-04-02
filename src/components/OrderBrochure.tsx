@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { InventoryItem, Invoice, CateringEvent, DealItem, BanquetDetails, Contact } from '../types';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { INDUSTRY_PROFILES, IndustryType } from '../config/industryProfiles';
 import {
     ShoppingBag, X, RefreshCw, ArrowRight, Trash2, Plus, Minus,
     Users, Palette, AlertCircle, ShoppingCart, CheckCircle2, Check, Edit3, Layers
@@ -9,7 +11,7 @@ import {
 import { MenuCard } from './MenuCard';
 import { CakeDesigner } from './CakeDesigner';
 
-export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType: propOrderType }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent, orderType?: string }) => {
+export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType: propOrderType, vertical }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent, orderType?: string, vertical?: IndustryType }) => {
     const orderType = propOrderType || initialEvent?.orderType || 'Custom';
     const isCuisine = orderType === 'Standard' || orderType === 'Cuisine';
     const [menuItems, setMenuItems] = useState<InventoryItem[]>([]);
@@ -67,7 +69,12 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
     const [isBasketOpen, setIsBasketOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'details' | 'menu'>('details');
 
-    const standardCategories = ["Wedding Cakes", "Birthday Cakes", "Anniversary Cakes", "Cupcakes", "Cookies & Brownies", "Pastries", "Custom Designs"];
+    const { settings } = useSettingsStore();
+    const activeVertical = vertical || (settings.type as IndustryType);
+    const industryProfile = useMemo(() => INDUSTRY_PROFILES[activeVertical] || INDUSTRY_PROFILES.General, [activeVertical]);
+    const { nomenclature, features } = industryProfile;
+
+    const standardCategories = nomenclature.fulfillment.categories;
     const mandatoryLockCategories: string[] = [];
     const [activeCategory, setActiveCategory] = useState("All");
 
@@ -81,7 +88,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
     // [DRAFT LOGIC]
     useEffect(() => {
-        const savedDraft = localStorage.getItem('cake_custom_draft');
+        const draftKey = `order_draft_${settings.id || 'general'}`;
+        const savedDraft = localStorage.getItem(draftKey);
         if (savedDraft) {
             try {
                 const draft = JSON.parse(savedDraft);
@@ -121,7 +129,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     selected, customItems,
                     timestamp: Date.now()
                 };
-                localStorage.setItem('cake_custom_draft', JSON.stringify(draftData));
+                localStorage.setItem(`order_draft_${settings.id || 'general'}`, JSON.stringify(draftData));
             }
         }, 2000);
 
@@ -207,8 +215,11 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
         const customRevenue = Object.values(customItems).reduce((sum, it) => sum + (it.priceCents * it.quantity), 0);
         const revenue = costings.reduce((sum, c) => sum + (c.revenueCents || 0), 0) + customRevenue;
 
-        const sc = isCuisine ? 0 : Math.round(revenue * 0.15);
-        const vat = isCuisine ? 0 : Math.round((revenue + sc) * 0.075);
+        const scRate = features.taxConfig.serviceChargeRate;
+        const vatRate = features.taxConfig.vatRate;
+
+        const sc = Math.round(revenue * scRate);
+        const vat = Math.round((revenue + sc) * vatRate);
         const totalWithTaxes = revenue + sc + vat;
 
         return { totalRevenue: totalWithTaxes, margin: 60 };
@@ -216,16 +227,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, InventoryItem[]> = {};
-        const catMap: Record<string, string> = {
-            "Wedding": "Wedding Cakes",
-            "Birthday": "Birthday Cakes",
-            "Anniversary": "Anniversary Cakes",
-            "Cupcake": "Cupcakes",
-            "Cookies": "Cookies & Brownies",
-            "Brownies": "Cookies & Brownies",
-            "Pastry": "Pastries",
-            "Custom": "Custom Designs"
-        };
+        const catMap = nomenclature.fulfillment.categoryMap;
 
         menuItems.forEach(item => {
             let catName = item.category || "General Selections";
@@ -306,7 +308,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     banquetDetails
                 });
                 setIsSubmitting(false);
-                localStorage.removeItem('cake_custom_draft');
+                localStorage.removeItem(`order_draft_${settings.id || 'general'}`);
                 if (invoice) onFinalize(invoice); else onComplete();
             } else {
                 let targetContactId = user?.id;
@@ -339,7 +341,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     banquetDetails
                 });
                 setIsSubmitting(false);
-                localStorage.removeItem('cake_custom_draft');
+                localStorage.removeItem(`order_draft_${settings.id || 'general'}`);
                 onFinalize(invoice);
             }
         } catch (err: any) {
@@ -356,7 +358,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     <div className="flex justify-between items-center px-1">
                         <div className="flex items-center gap-2 md:gap-4 shrink-0">
                             <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} className="md:w-5 md:h-5" /></div>
-                            <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">{isCuisine ? 'Standard Order' : 'Custom Cake Order'}</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">{isCuisine ? 'New Standard Order Node' : 'New Custom Cake Node'}</p></div>
+                            <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">{nomenclature.fulfillment.orderTitle}</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">{nomenclature.fulfillment.nodeSubtitle}</p></div>
                         </div>
                         <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} className="md:w-5 md:h-5" /></button>
                     </div>
@@ -382,10 +384,12 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             ))}
                         </div>
                         <button onClick={() => setShowCustomModal(true)} className="px-3 py-2 bg-emerald-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-1 shrink-0"><Plus size={10} /> Custom</button>
-                        <button onClick={() => setIsDesignerOpen(true)} className="px-3 py-2 bg-indigo-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md flex items-center gap-1 shrink-0">
-                            <Layers size={10} /> 3D Designer
-                            {designUrl && <Check size={10} className="ml-1 text-emerald-300" />}
-                        </button>
+                        {features.showVisualizer && (
+                            <button onClick={() => setIsDesignerOpen(true)} className="px-3 py-2 bg-indigo-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md flex items-center gap-1 shrink-0">
+                                <Layers size={10} /> 3D Designer
+                                {designUrl && <Check size={10} className="ml-1 text-emerald-300" />}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -394,8 +398,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Users size={16} className="text-indigo-600" /><h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3></div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Customer Name *' : 'Client Name *'}</label>
-                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder={isCuisine ? "Customer Name" : "Client Name"} value={customerName} onChange={e => handleHostChange(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.clientLabel} *</label>
+                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder={nomenclature.fulfillment.clientLabel} value={customerName} onChange={e => handleHostChange(e.target.value)} />
                                 <datalist id="contacts-list-b">{contacts.map(c => <option key={c.id} value={c.name} />)}</datalist>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -416,23 +420,23 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Palette size={16} className="text-indigo-600" /><h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Logistics & Timing' : 'Atmosphere & Coordination'}</h3></div>
-                            {!isCuisine && (
+                             {features.showCustomFields && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Cake Category</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Category</label>
                                         <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
-                                            <option>Wedding</option><option>Birthday</option><option>Anniversary</option><option>Baby Shower</option><option>Corporate Event</option><option>Other Celebration</option>
+                                            {nomenclature.fulfillment.categories.map(c => <option key={c}>{c}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Icing Colour</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Theme Colour</label>
                                         <div className="flex items-center gap-3 p-3 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
                                             <input type="color" className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
                                             <span className="font-mono text-xs font-black uppercase text-slate-950">{themeColor}</span>
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                             )}
 
                             {!isCuisine && (
                                 <div className="p-4 bg-slate-950 rounded-2xl border border-white/10 flex items-center justify-between gap-4">
@@ -449,13 +453,13 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Date *' : 'Delivery/Collection Date *'}</label>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.dateLabel} *</label>
                                     <input type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Total Units *' : 'Servings / Units *'}</label>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.unitsLabel} *</label>
                                     <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                                 </div>
                             </div>
@@ -466,7 +470,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                 </div>
                             )}
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Delivery Address *' : 'Delivery/Pickup Address *'}</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.locationLabel} *</label>
                                 <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm" rows={2} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
                             </div>
                         </section>
@@ -498,7 +502,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                         {isBasketOpen && (
                             <div className="absolute inset-x-0 bottom-0 z-50 bg-slate-950 text-white p-6 md:p-10 border-t-2 border-[#00ff9d]/20 rounded-t-[2rem] max-h-[70%] overflow-y-auto">
                                 <div className="flex justify-between items-center mb-10">
-                                    <div className="flex items-center gap-4"><div className="w-10 h-10 bg-[#00ff9d] rounded-xl flex items-center justify-center text-slate-950"><ShoppingCart size={20} /></div><h3 className="text-xl font-black uppercase tracking-tighter">Cake Selection</h3></div>
+                                    <div className="flex items-center gap-4"><div className="w-10 h-10 bg-[#00ff9d] rounded-xl flex items-center justify-center text-slate-950"><ShoppingCart size={20} /></div><h3 className="text-xl font-black uppercase tracking-tighter">Your Selection</h3></div>
                                     <button onClick={() => setIsBasketOpen(false)} className="p-3 bg-white/10 hover:bg-rose-500 rounded-xl transition-all"><X size={20} /></button>
                                 </div>
                                 <div className="space-y-10">

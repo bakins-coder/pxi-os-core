@@ -11,9 +11,9 @@ import {
    ChefHat, CheckCircle2, Truck, X, Plus, RefreshCw, ArrowRight, Trash2, Calculator, Loader2, Globe, Sparkles,
    Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown, Download, Link, MessageSquare,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag, Search,
-   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward
+   ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward,
+   ArrowUpRight as LucideArrowUpRight
 } from 'lucide-react';
-import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport, generateInvoicePDF } from '../utils/exportUtils';
@@ -21,8 +21,10 @@ import { ManualInvoiceModal } from './Finance';
 import { RequisitionTracker } from './RequisitionTracker';
 
 import { PREDEFINED_CUISINE_PRODUCTS, CuisineProduct } from '../data/cuisineProducts';
-
-const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEvent, onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
+import { PREDEFINED_BAKERY_PRODUCTS } from '../data/bakeryProducts';
+import { IndustryType } from '../types';
+import { getIndustryConfig, INDUSTRY_PROFILES } from '../config/industryProfiles';
+const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent, onClose: () => void, onFinish: (inv: Invoice) => void }) => {
    const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
    const [waiterRate, setWaiterRate] = useState(10000);
    const [vanRate, setVanRate] = useState(30000);
@@ -99,7 +101,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Truck size={20} className="md:w-6 md:h-6" /></div>
                   <div>
                      <h2 className="text-xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter">Procurement Engine</h2>
-                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 md:mt-1">Project: {event.customerName} • Material Fulfillment Plan</p>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 md:mt-1">Project: {event.customerName} â€¢ Material Fulfillment Plan</p>
                   </div>
                </div>
                <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
@@ -108,17 +110,17 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-slate-50 p-5 md:p-8 rounded-2xl md:rounded-[2rem] border border-slate-100">
                   <div className="space-y-1.5 md:space-y-2">
                      <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Waiter Ratio</label>
-                     <select className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold outline-none text-slate-950 text-xs md:text-base" value={waiterRatio} onChange={e => setWaiterRatio(parseInt(e.target.value) || 10 as any)}>
+                     <select className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold outline-none text-slate-950 text-xs md:text-base" value={waiterRatio} onChange={e => setWaiterRatio(parseInt(e.target.value) as 10 | 20)}>
                         <option value={10}>1 Waiter : 10 Guests</option>
                         <option value={20}>1 Waiter : 20 Guests</option>
                      </select>
                   </div>
                   <div className="space-y-1.5 md:space-y-2">
-                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Waiter Rate (₦)</label>
+                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Waiter Rate (â‚¦)</label>
                      <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={waiterRate} onChange={e => setWaiterRate(parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-1.5 md:space-y-2">
-                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Van Rental (₦)</label>
+                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Van Rental (â‚¦)</label>
                      <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanRate} onChange={e => setVanRate(parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-1.5 md:space-y-2">
@@ -137,7 +139,7 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                            <div className="flex-1 space-y-1">
                               <input className="w-full bg-transparent font-black text-slate-800 uppercase outline-none focus:text-indigo-600 text-sm md:text-base" value={req.itemName} onChange={e => updateReq(idx, { itemName: e.target.value })} />
                               <div className="flex items-center gap-4">
-                                 <span className="text-[8px] md:text-[9px] font-black uppercase text-slate-400">{req.type} • {req.category}</span>
+                                 <span className="text-[8px] md:text-[9px] font-black uppercase text-slate-400">{req.type} â€¢ {req.category}</span>
                               </div>
                            </div>
                            <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-50">
@@ -146,12 +148,12 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                                  <input type="number" className="w-full md:w-20 p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-center text-slate-950" value={req.quantity} onChange={e => updateReq(idx, { quantity: parseInt(e.target.value) || 0 })} />
                               </div>
                               <div className="space-y-1">
-                                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Price (₦)</p>
+                                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Price (â‚¦)</p>
                                  <input type="number" className="w-full md:w-28 p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-right text-slate-950" value={(req.pricePerUnitCents || 0) / 100} onChange={e => updateReq(idx, { pricePerUnitCents: (parseFloat(e.target.value) || 0) * 100 })} />
                               </div>
                               <div className="col-span-2 md:col-span-1 md:w-32 text-right flex md:block justify-between items-end border-t border-slate-50 pt-3 md:pt-0 md:border-0 mt-2 md:mt-0">
                                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Row Total</p>
-                                 <p className="text-sm md:text-base font-black text-slate-900">₦{((req.totalAmountCents || 0) / 100).toLocaleString()}</p>
+                                 <p className="text-sm md:text-base font-black text-slate-900">â‚¦{((req.totalAmountCents || 0) / 100).toLocaleString()}</p>
                               </div>
                               <button onClick={() => removeReq(idx)} className="absolute top-2 right-2 md:static p-2.5 bg-rose-50 md:bg-transparent text-rose-500 md:text-slate-300 hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100 rounded-lg transition-all"><Trash2 size={16} /></button>
                            </div>
@@ -162,10 +164,10 @@ const ProcurementWizard = ({ event, onClose, onFinalize }: { event: CateringEven
                <div className="bg-slate-950 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-2xl gap-6 md:gap-0">
                   <div>
                      <p className="text-[10px] md:text-xs font-black uppercase text-slate-500 tracking-widest mb-1">Total Fulfillment Estimate</p>
-                     <h4 className="text-2xl md:text-4xl font-black text-white tracking-tighter">₦{(totalEstimate / 100).toLocaleString()}</h4>
+                     <h4 className="text-2xl md:text-4xl font-black text-white tracking-tighter">â‚¦{(totalEstimate / 100).toLocaleString()}</h4>
                   </div>
                   <div className="text-left md:text-right w-full md:w-auto">
-                     <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: ₦{(event.financials.revenueCents / 100).toLocaleString()}</p>
+                     <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: â‚¦{(event.financials.revenueCents / 100).toLocaleString()}</p>
                      <div className="flex flex-col md:flex-row gap-3 md:gap-4">
                         <button onClick={onClose} className="order-2 md:order-1 px-8 py-3.5 md:py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Cancel Plan</button>
                         <button onClick={handleFinalizePlan} className="order-1 md:order-2 px-8 py-4 md:px-12 md:py-5 bg-[#00ff9d] text-slate-950 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 w-full md:w-auto">Submit for Approval <ArrowRight size={16} /></button>
@@ -231,7 +233,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
             if (ing) {
                updateIngredientPrice(ing.id, price, {
                   marketPriceCents: price,
-                  groundedSummary: `Live Market Price via Google Grounding: ₦${(price / 100).toLocaleString()}`,
+                  groundedSummary: `Live Market Price via Google Grounding: â‚¦${(price / 100).toLocaleString()}`,
                   sources: [{ title: 'Google Search Market Data', uri: 'https://google.com' }]
                });
             }
@@ -255,7 +257,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
                   <div>
                      <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
-                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} â€¢ Intelligence Node</p>
                   </div>
                </div>
                <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
@@ -302,7 +304,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                     <th className="px-4 py-3 md:px-8 md:py-4">Ingredient</th>
                                     <th className="px-4 py-3 md:px-8 md:py-4 text-center">Net Req.</th>
                                     <th className="px-4 py-3 md:px-8 md:py-4 text-right hidden md:table-cell">Unit Rate</th>
-                                    <th className="px-4 py-3 md:px-8 md:py-4 text-right">Value (₦)</th>
+                                    <th className="px-4 py-3 md:px-8 md:py-4 text-right">Value (â‚¦)</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
@@ -320,8 +322,8 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                              {ing.qtyRequired.toFixed(2)} <span className="text-[8px] md:text-[10px] opacity-50">{ing.unit}</span>
                                           </span>
                                        </td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-slate-900 text-xs md:text-sm">₦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">â‚¦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-slate-900 text-xs md:text-sm">â‚¦{(ing.totalCostCents / 100).toLocaleString()}</td>
                                     </tr>
                                  ))}
                               </tbody>
@@ -341,7 +343,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                               <tr>
                                  <th className="px-4 py-3 md:px-8 md:py-4">Component</th>
                                  <th className="px-4 py-3 md:px-8 md:py-4 text-center">Net Requirement</th>
-                                 <th className="px-4 py-3 md:px-8 md:py-4 text-right">Cost (₦)</th>
+                                 <th className="px-4 py-3 md:px-8 md:py-4 text-right">Cost (â‚¦)</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-800">
@@ -349,7 +351,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                  <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
                                     <td className="px-4 py-3 md:px-8 md:py-4 font-black text-slate-200 uppercase">{agg.name}</td>
                                     <td className="px-4 py-3 md:px-8 md:py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} <span className="text-[9px] opacity-50 uppercase">{agg.unit}</span></td>
-                                    <td className="px-4 py-3 md:px-8 md:py-4 text-right font-black text-emerald-400 text-xs md:text-sm">₦{(agg.cost / 100).toLocaleString()}</td>
+                                    <td className="px-4 py-3 md:px-8 md:py-4 text-right font-black text-emerald-400 text-xs md:text-sm">â‚¦{(agg.cost / 100).toLocaleString()}</td>
                                  </tr>
                               ))}
                            </tbody>
@@ -361,11 +363,11 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="p-8 bg-slate-950 rounded-[2rem] text-white">
                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Aggregate Cost</p>
-                     <h5 className="text-2xl font-black">₦{((costing?.totalIngredientCostCents || 0) / 100).toLocaleString()}</h5>
+                     <h5 className="text-2xl font-black">â‚¦{((costing?.totalIngredientCostCents || 0) / 100).toLocaleString()}</h5>
                   </div>
                   <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100">
                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Projected Revenue</p>
-                     <h5 className="text-2xl font-black text-indigo-900">₦{((costing?.revenueCents || 0) / 100).toLocaleString()}</h5>
+                     <h5 className="text-2xl font-black text-indigo-900">â‚¦{((costing?.revenueCents || 0) / 100).toLocaleString()}</h5>
                   </div>
                   <div className="p-8 bg-white border-2 border-slate-100 rounded-[2rem]">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Margin</p>
@@ -408,7 +410,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const [manualTotalOverride, setManualTotalOverride] = useState<number | undefined>(invoice.manualSetPriceCents);
 
    // Helper for currency formatting
-   const formatCurrency = (cents: number) => `₦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} `;
+   const formatCurrency = (cents: number) => `â‚¦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} `;
 
    const handlePrint = (capturedContent?: string) => {
       const win = window.open('', '_blank');
@@ -532,10 +534,10 @@ Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 Due: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString('en-GB')}
 
 *FEES:*
-Subtotal: ₦${(subtotal / 100).toLocaleString()}
-Service Charge: ₦${(sc / 100).toLocaleString()}
-VAT: ₦${(vat / 100).toLocaleString()}
-*TOTAL DUE: ₦${(finalTotal / 100).toLocaleString()}*
+Subtotal: â‚¦${(subtotal / 100).toLocaleString()}
+Service Charge: â‚¦${(sc / 100).toLocaleString()}
+VAT: â‚¦${(vat / 100).toLocaleString()}
+*TOTAL DUE: â‚¦${(finalTotal / 100).toLocaleString()}*
 
 *BANK DETAILS:*
 ${bankDetailsText}
@@ -848,7 +850,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Unit Price</label>
                                              {showPricing ? (
                                                 <div className="flex items-center bg-slate-50 rounded px-2 py-1 md:ml-auto">
-                                                   <span className="text-[10px] text-slate-400 mr-1">₦</span>
+                                                   <span className="text-[10px] text-slate-400 mr-1">â‚¦</span>
                                                    <input
                                                       type="number"
                                                       className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}"
@@ -865,7 +867,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                                 <label className="md:hidden text-[8px] font-black text-orange-400 uppercase mb-1">Discount Price</label>
                                                 {showPricing ? (
                                                    <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 md:ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
-                                                      <span className="text-[10px] text-orange-300 mr-1">₦</span>
+                                                      <span className="text-[10px] text-orange-300 mr-1">â‚¦</span>
                                                       <input
                                                          type="number"
                                                          className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
@@ -1106,7 +1108,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                     <div className="flex justify-between items-center text-[10px] font-bold text-orange-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 mb-2 mt-4">
                                        <span className="uppercase tracking-widest pl-2 font-black">Override Overall Total (Discounted)</span>
                                        <div className="flex items-center bg-white px-3 py-1 rounded border border-orange-200 shadow-sm">
-                                          <span className="mr-1 text-orange-300">₦</span>
+                                          <span className="mr-1 text-orange-300">â‚¦</span>
                                           <input
                                              type="number"
                                              className="w-40 bg-transparent border-none text-right font-black focus:ring-0 p-0 text-xs text-orange-600"
@@ -1606,6 +1608,10 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
    onOpenRequisitions: (event: CateringEvent) => void,
    onOpenMonitor: (eventId: string) => void
 }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = getIndustryConfig(settings.type);
+   const terms = industryConfig.nomenclature;
+
    const invoices = useDataStore(state => state.invoices);
    const financials = useMemo(() => getEventFinancials(event, invoices), [event, invoices]);
    const { revenue, salesInvoice, estimatedCost, estimatedNet } = financials;
@@ -1624,9 +1630,9 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
    };
 
    const handleCook = () => {
-      if (confirm("Confirm Cake Production Phase?\n\nThis will assume production is in progress. You can then launch the Portion Monitor.")) {
+      if (confirm(`Confirm ${terms.productionLabel} Phase?\n\nThis will assume production is in progress. You can then launch the ${terms.fulfillmentHub} Monitor.`)) {
          deductStockFromCooking(event.id);
-         alert("Production Confirmed. Launch Portion Monitor to track service.");
+         alert("Production Confirmed. Launch Monitor to track status.");
       }
    };
 
@@ -1698,7 +1704,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                   <div className="flex flex-wrap items-center gap-3">
                      <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} `}>{event.status}</span>
                      <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">
-                        {event.eventDate} • {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
+                        {event.eventDate} â€¢ {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
                      </p>
                   </div>
                </div>
@@ -1712,22 +1718,22 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Revenue</p>
-               <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">₦{(revenue / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">â‚¦{(revenue / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Est. Direct Costs</p>
-               <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">₦{(estimatedCost / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">â‚¦{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest">Projected Net</p>
-               <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">₦{(estimatedNet / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">â‚¦{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <section>
                <div className="flex items-center gap-4 mb-8">
-                  <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">{event.orderType === 'Cuisine' ? 'Ordered Items' : 'Custom Cake Details'}</h4>
+                  <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">{event.orderType === 'Cuisine' ? terms.standardOrders : terms.customOrders} Details</h4>
                   <div className="h-px flex-1 bg-slate-100"></div>
                </div>
                <div className="grid grid-cols-1 gap-4">
@@ -1832,11 +1838,11 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                      </button>
                      {event.banquetDetails?.productionConfirmed ? (
                         <div className="bg-orange-50 text-orange-600 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-orange-100 flex items-center gap-3">
-                           <Flame size={18} className="animate-pulse" /> Cake In Production
+                           <Flame size={18} className="animate-pulse" /> {terms.productionLabel} In Progress
                         </div>
                      ) : (
                         <button onClick={handleCook} className="bg-orange-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
-                           <Flame size={18} /> Confirm Cake Production
+                           <Flame size={18} /> Confirm {terms.productionLabel}
                         </button>
                      )}
                   </>
@@ -1923,9 +1929,9 @@ const CostingMatrix = () => {
                      {costings.map((c, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 transition-all">
                            <td className="px-8 py-5 font-black text-slate-800 uppercase text-xs">{c.name}</td>
-                           <td className="px-8 py-5 text-right font-black text-slate-900">₦{(c.revenueCents / 100).toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right font-black text-rose-500">₦{(c.totalIngredientCostCents / 100).toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right font-black text-emerald-600">₦{(c.grossMarginCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-slate-900">â‚¦{(c.revenueCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-rose-500">â‚¦{(c.totalIngredientCostCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-emerald-600">â‚¦{(c.grossMarginCents / 100).toLocaleString()}</td>
                            <td className="px-8 py-5">
                               <div className="flex flex-col items-center gap-1">
                                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -1944,7 +1950,11 @@ const CostingMatrix = () => {
    );
 };
 
-const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFinalize: (inv: Invoice) => void }) => {
+const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => void, onFinalize: (inv: Invoice) => void, vertical: IndustryType }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = getIndustryConfig(vertical);
+   const terms = industryConfig.nomenclature;
+
    const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string, discountCents?: number }[]>([]);
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -1956,7 +1966,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    const dropdownRef = useRef<HTMLDivElement>(null);
 
    const [deliveryLocation, setDeliveryLocation] = useState('');
-   const [packaging, setPackaging] = useState('Cake Box (Standard)');
+   const [packaging, setPackaging] = useState(vertical === 'Bakery' ? 'Pastry Box' : (vertical === 'Catering' ? 'Chafing Dish / Foil Tray' : 'Standard Packaging'));
 
    const [customProductName, setCustomProductName] = useState('');
    const [customProductPrice, setCustomProductPrice] = useState(0);
@@ -1977,7 +1987,8 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
    }, []);
 
    useEffect(() => {
-      const savedDraft = localStorage.getItem('cake_standard_draft');
+      const draftKey = `fulfillment_${vertical.toLowerCase()}_standard_draft`;
+      const savedDraft = localStorage.getItem(draftKey);
       if (savedDraft) {
          try {
             const draft = JSON.parse(savedDraft);
@@ -1988,7 +1999,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                setInvoiceDate(draft.invoiceDate || new Date().toISOString().split('T')[0]);
                setItems(draft.items || []);
             } else {
-               localStorage.removeItem('cake_standard_draft');
+               localStorage.removeItem(`fulfillment_${vertical.toLowerCase()}_standard_draft`);
             }
          } catch (e) {
             console.error(e);
@@ -2009,21 +2020,23 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                items,
                timestamp: Date.now()
             };
-            localStorage.setItem('cake_standard_draft', JSON.stringify(draft));
-            console.log("[CuisineOrderModal] Draft auto-saved.");
+            localStorage.setItem(`fulfillment_${vertical.toLowerCase()}_standard_draft`, JSON.stringify(draft));
+            console.log(`[FulfillmentHub] ${vertical} Draft auto-saved.`);
          }
       }, 2000);
 
       return () => clearTimeout(timer);
    }, [customerName, selectedContact, eventDate, invoiceDate, items]);
 
+   const currentProducts = vertical === 'Bakery' ? PREDEFINED_BAKERY_PRODUCTS : PREDEFINED_CUISINE_PRODUCTS;
+
    const filteredProducts = useMemo(() => {
-      if (!searchQuery) return PREDEFINED_CUISINE_PRODUCTS;
-      return PREDEFINED_CUISINE_PRODUCTS.filter(p =>
+      if (!searchQuery) return currentProducts;
+      return currentProducts.filter(p =>
          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
          p.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
-   }, [searchQuery]);
+   }, [searchQuery, currentProducts]);
 
    const filteredContacts = useMemo(() => {
       if (!searchTerm) return [];
@@ -2141,7 +2154,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
       try {
          const { invoice } = await createCateringOrder(payload);
-         localStorage.removeItem('cake_standard_draft');
+         localStorage.removeItem(`fulfillment_${vertical.toLowerCase()}_standard_draft`);
          onFinalize(invoice);
          onClose();
       } catch (err) {
@@ -2155,7 +2168,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
             items,
             timestamp: Date.now()
          };
-         localStorage.setItem('cake_standard_draft', JSON.stringify(draft));
+         localStorage.setItem(`fulfillment_${vertical.toLowerCase()}_standard_draft`, JSON.stringify(draft));
 
          alert("Failed to create standard order. Your data has been saved as a draft. Reload to restore.");
       }
@@ -2163,7 +2176,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
    const handleCancel = () => {
       if (confirm("Are you sure you want to cancel? Any unsaved changes will be lost.")) {
-         localStorage.removeItem('cake_standard_draft');
+         localStorage.removeItem(`fulfillment_${vertical.toLowerCase()}_standard_draft`);
          onClose();
       }
    };
@@ -2176,7 +2189,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20"><UtensilsCrossed size={20} /></div>
                   <div>
                      <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
-                        {useSettingsStore.getState().settings.type === 'Retail' ? 'Product Order Portal' : 'Standard Cake Order Portal'}
+                        {terms.standardOrders} Portal
                      </h2>
                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Select products for immediate fulfillment</p>
                   </div>
@@ -2246,10 +2259,27 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                  value={packaging}
                                  onChange={e => setPackaging(e.target.value)}
                               >
-                                 <option>Cake Box (Standard)</option>
-                                 <option>Individual Cupcake Box</option>
-                                 <option>Tiered Cake Carrier</option>
-                                 <option>Luxury Gift Wrap</option>
+                                 {vertical === 'Bakery' ? (
+                                    <>
+                                       <option>Pastry Box (Standard)</option>
+                                       <option>Individual Cake Box</option>
+                                       <option>Tiered Cake Carrier</option>
+                                       <option>Gift Packaging</option>
+                                    </>
+                                 ) : vertical === 'Catering' ? (
+                                    <>
+                                       <option>Chafing Dish / Foil Tray</option>
+                                       <option>Cooler Bag / Thermal Box</option>
+                                       <option>Plastic Disposable Tray</option>
+                                       <option>Buffet Setup Provided</option>
+                                    </>
+                                 ) : (
+                                    <>
+                                       <option>Standard Packaging</option>
+                                       <option>Eco-Friendly Wrap</option>
+                                       <option>Premium Box</option>
+                                    </>
+                                 )}
                                  <option>Custom Packaging</option>
                               </select>
                            </div>
@@ -2291,7 +2321,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                        <div className="flex-1 mr-4">
                                           <p className="font-bold text-slate-800 text-sm group-hover/item:text-emerald-700">{product.name}</p>
                                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                             ₦{product.price.toLocaleString()}
+                                             â‚¦{product.price.toLocaleString()}
                                           </p>
                                        </div>
                                        <span className="text-[8px] font-black uppercase text-slate-300 group-hover/item:text-emerald-500 bg-slate-50 px-2 py-1 rounded-md transition-all group-hover/item:bg-emerald-100">{product.category}</span>
@@ -2314,7 +2344,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                  onChange={e => setCustomProductName(e.target.value)}
                               />
                               <div className="relative md:col-span-1">
-                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
+                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">â‚¦</span>
                                  <input
                                     type="number"
                                     placeholder="Price"
@@ -2399,7 +2429,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                        </div>
 
                                        <div className="flex-1 lg:w-28 lg:shrink-0 relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">â‚¦</span>
                                           <input
                                              type="number"
                                              className="w-full bg-slate-50 border border-slate-100 rounded-lg pl-7 pr-3 py-2 text-right text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
@@ -2409,7 +2439,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                                        </div>
 
                                        <div className="flex-1 lg:w-28 lg:shrink-0 relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-[10px] font-bold">₦</span>
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-[10px] font-bold">â‚¦</span>
                                           <input
                                              type="number"
                                              className="w-full bg-orange-50 border border-orange-100 rounded-lg pl-6 pr-3 py-2 text-right text-sm font-bold text-orange-600 placeholder-orange-300 focus:border-orange-300 outline-none"
@@ -2469,7 +2499,7 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
                         <p className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">Total Amount</p>
                         <div className="flex items-baseline justify-center gap-1">
-                           <span className="text-xl font-bold text-slate-600">₦</span>
+                           <span className="text-xl font-bold text-slate-600">â‚¦</span>
                            <span className="text-3xl md:text-4xl font-black text-white tracking-tight">{(totalCents / 100).toLocaleString()}</span>
                         </div>
                      </div>
@@ -2501,7 +2531,12 @@ const CuisineOrderModal = ({ onClose, onFinalize }: { onClose: () => void, onFin
 
 
 
-export const Catering = () => {
+export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
+   const { settings } = useSettingsStore();
+   const activeVertical = vertical || (settings.type as IndustryType);
+   const industryConfig = getIndustryConfig(activeVertical);
+   const terms = industryConfig.nomenclature?.fulfillment || (INDUSTRY_PROFILES.Catering.nomenclature.fulfillment as any);
+
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
    const [amendEventId, setAmendEventId] = useState<string | null>(null);
@@ -2534,9 +2569,8 @@ export const Catering = () => {
 
    const cateringEvents = useDataStore(state => state.cateringEvents);
    const { user } = useAuthStore();
-   const { settings } = useSettingsStore();
-   const isBakery = settings.type === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
-   const isCatering = (settings.type === 'Catering' || settings.name?.toLowerCase().includes('xquisite')) && !isBakery;
+   const isBakery = activeVertical === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
+   const isCatering = (activeVertical === 'Catering' || settings.name?.toLowerCase().includes('xquisite')) && !isBakery;
    const syncStatus = useDataStore(state => state.syncStatus);
    const invoices = useDataStore(state => state.invoices);
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
@@ -2544,6 +2578,16 @@ export const Catering = () => {
    const filteredEvents = useMemo(() => {
       // Filter out Cancelled events entirely from the dashboard as per user request ("remove totally")
       let base = cateringEvents.filter(e => e.status !== 'Cancelled');
+      
+      // Vertical filtering: each route shows only its own orders.
+      // Untagged events (no vertical set) are treated as belonging to Catering (the primary vertical).
+      // The Bakery route only shows events explicitly tagged as 'Bakery'.
+      if (vertical === 'Bakery') {
+         base = base.filter(e => e.vertical === 'Bakery');
+      } else if (vertical === 'Catering') {
+         base = base.filter(e => e.vertical === 'Catering' || !e.vertical);
+      }
+      // For any other vertical (or no vertical prop), show all unfiltered
 
       return base.filter(ev => {
          // Robust derivation of Cuisine status for filtering
@@ -2580,7 +2624,7 @@ export const Catering = () => {
 
          return true;
       });
-   }, [cateringEvents, invoices, viewMode, activeTab]);
+   }, [cateringEvents, invoices, viewMode, activeTab, vertical]);
 
    const selectedEvent = useMemo(() => selectedEventId ? (cateringEvents.find(e => e.id === selectedEventId) || null) : null, [cateringEvents, selectedEventId]);
 
@@ -2621,14 +2665,14 @@ export const Catering = () => {
                <div className="flex items-center gap-6">
 
                   <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float">
-                     {(useSettingsStore.getState().settings.type === 'Retail') ? <ShoppingCart size={36} className="text-white" /> : <ChefHat size={36} className="text-white" />}
+                     <industryConfig.ui.fulfillmentIcon size={36} className="text-white" />
                   </div>
                   <div>
                      <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">
-                        {(useSettingsStore.getState().settings.type === 'Retail') ? 'Sales Orders' : 'Cake Orders'}
+                        {terms.fulfillmentHub}
                      </h1>
                      <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
-                        {(useSettingsStore.getState().settings.type === 'Retail') ? 'Retail Order & Fulfillment Active' : 'Standard & Custom Cake Management Active'}
+                        {industryConfig.label} Fulfillment & Operations Active
                      </p>
                   </div>
                </div>
@@ -2646,8 +2690,8 @@ export const Catering = () => {
                   <div className="w-px bg-white/10 my-2 shrink-0"></div>
 
                   {[
-                     { id: 'cuisine', label: (useSettingsStore.getState().settings.type === 'Retail') ? 'In-Store Sales' : 'Standard Cakes', icon: (useSettingsStore.getState().settings.type === 'Retail') ? ShoppingCart : UtensilsCrossed },
-                     { id: 'orders', label: (useSettingsStore.getState().settings.type === 'Retail') ? 'Online Orders' : 'Custom Cakes', icon: ShoppingBag },
+                     { id: 'cuisine', label: terms.standardOrdersLabel, icon: industryConfig.ui.standardIcon || UtensilsCrossed },
+                     { id: 'orders', label: terms.customOrdersLabel, icon: industryConfig.ui.customIcon || ShoppingBag },
                      { id: 'matrix', label: 'Matrix', icon: Grid3X3 }
                   ].map(tab => (
                      <button
@@ -2669,14 +2713,13 @@ export const Catering = () => {
                   <div className={`flex flex-col gap-4 px-4 ${selectedEvent ? 'lg:px-0' : 'lg:col-span-3 xl:col-span-4'} `}>
                      <div className="flex flex-col md:flex-row justify-between md:items-center items-start gap-4">
                         <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em]">
-
-                           {viewMode} {activeTab === 'orders' ? (useSettingsStore.getState().settings.type === 'Retail' ? 'Online Orders' : 'Custom Cakes') : (useSettingsStore.getState().settings.type === 'Retail' ? 'In-Store Sales' : 'Standard Orders')} ({filteredEvents.length})
+                           {viewMode} {activeTab === 'orders' ? terms.customOrders : terms.standardOrders} ({filteredEvents.length})
                         </h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
                            {activeTab === 'orders' ? (
-                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New {useSettingsStore.getState().settings.type === 'Retail' ? 'Online Order' : 'Custom Order'}</button>
+                              <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New {terms.customOrders}</button>
                            ) : (
-                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New {useSettingsStore.getState().settings.type === 'Retail' ? 'Sale Record' : 'Standard Order'}</button>
+                              <button onClick={() => setShowCuisineOrder(true)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-all"><FileText size={16} /> New {terms.standardOrders}</button>
                            )}
                         </div>
                      </div>
@@ -2741,7 +2784,7 @@ export const Catering = () => {
                                     ? 'text-emerald-500'
                                     : (isSelected ? 'text-slate-500' : 'text-rose-400')
                                     } `}>
-                                    ₦{(displayRevenue / 100).toLocaleString()}
+                                    â‚¦{(displayRevenue / 100).toLocaleString()}
                                  </p>
                               </div>
                            </div>
@@ -2779,6 +2822,7 @@ export const Catering = () => {
             orderBrochureEvent && createPortal(
                <OrderBrochure
                   initialEvent={orderBrochureEvent || undefined}
+                  vertical={activeVertical}
                   onComplete={() => {
                      setOrderBrochureEvent(null);
                      setAmendEventId(null);
@@ -2798,6 +2842,7 @@ export const Catering = () => {
                <CuisineOrderModal
                   onClose={() => setShowCuisineOrder(false)}
                   onFinalize={handleFinalizePush}
+                  vertical={activeVertical}
                />,
                document.body
             )

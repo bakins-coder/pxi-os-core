@@ -374,7 +374,8 @@ export const postIngredientMovement = async (params: any) => {
 export const pullInventoryViews = async (viewName: any, orgId: string) => {
   if (!supabase) return [];
   const { data, error } = await supabase.from(viewName).select('*').eq('organization_id', orgId);
-  return data || [];
+  if (error) throw error;
+  return (data || []).map(item => mapIncomingRow(viewName, item));
 };
 
 export const uploadEntityImage = async (orgId: string, entityType: string, entityId: string, base64Data: string) => {

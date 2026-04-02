@@ -7,33 +7,25 @@ export interface CuisineProduct {
 }
 
 export const PREDEFINED_CUISINE_PRODUCTS: CuisineProduct[] = [
-    // WEDDING CAKES
-    { name: '3-Tier Luxury Wedding Cake', price: 150000, category: 'Wedding Cakes', minPortions: 1 },
-    { name: '2-Tier Classic Wedding Cake', price: 85000, category: 'Wedding Cakes', minPortions: 1 },
-    { name: 'Traditional Engagement Cake', price: 65000, category: 'Wedding Cakes', minPortions: 1 },
-    { name: 'Pillar Wedding Cake', price: 120000, category: 'Wedding Cakes', minPortions: 1 },
-    { name: 'Lustre Design Wedding Cake', price: 95000, category: 'Wedding Cakes', minPortions: 1 },
+    // NIGERIAN CUISINE
+    { name: 'Smokey Party Jollof Rice (Bulk)', price: 45000, category: 'Nigerian Cuisine', minPortions: 1, unit: 'Cooler (S)' },
+    { name: 'Special Fried Rice', price: 50000, category: 'Nigerian Cuisine', minPortions: 1, unit: 'Cooler (S)' },
+    { name: 'Village Native Rice', price: 48000, category: 'Nigerian Cuisine', minPortions: 1, unit: 'Cooler (S)' },
+    { name: 'Ofada Rice & Ayamase Sauce', price: 55000, category: 'Nigerian Cuisine', minPortions: 1, unit: 'Cooler (S)' },
 
-    // BIRTHDAY CAKES
-    { name: 'Character Theme Cake (7")', price: 45000, category: 'Birthday Cakes', minPortions: 1 },
-    { name: 'Whipped Cream Celebration Cake', price: 25000, category: 'Birthday Cakes', minPortions: 1 },
-    { name: 'Luxury Fondant Birthday Cake', price: 55000, category: 'Birthday Cakes', minPortions: 1 },
-    { name: 'Drip Cake with Toppers', price: 35000, category: 'Birthday Cakes', minPortions: 1 },
-    { name: 'Number Cake (Single)', price: 30000, category: 'Birthday Cakes', minPortions: 1 },
-    { name: 'Chocolate Ganache Birthday Cake', price: 45000, category: 'Birthday Cakes', minPortions: 1 },
+    // PROTEINS
+    { name: 'Fried Spicy Chicken (Large)', price: 2500, category: 'Proteins', minPortions: 10, unit: 'Pieces' },
+    { name: 'Grilled Peppered Fish (Croaker)', price: 4500, category: 'Proteins', minPortions: 5, unit: 'Portions' },
+    { name: 'Assorted Meat (Peppered)', price: 3500, category: 'Proteins', minPortions: 10, unit: 'Pieces' },
+    { name: 'Gizzard & Dodo (Gizdodo)', price: 15000, category: 'Proteins', minPortions: 1, unit: 'Small Bowl' },
 
-    // CUPCAKES & SWEETS
-    { name: 'Box of 12 Gourmet Cupcakes', price: 18000, category: 'Cupcakes & Sweets', minPortions: 1 },
-    { name: 'Box of 6 Celebration Cupcakes', price: 10000, category: 'Cupcakes & Sweets', minPortions: 1 },
-    { name: 'Red Velvet Cupcake Box (12)', price: 20000, category: 'Cupcakes & Sweets', minPortions: 1 },
-    { name: 'Assorted Brownies Box (9pcs)', price: 15000, category: 'Cupcakes & Sweets', minPortions: 1 },
-    { name: 'Giant Chocolate Chip Cookie', price: 8000, category: 'Cupcakes & Sweets', minPortions: 1 },
-    { name: 'Mini Tartlet Box (12pcs)', price: 12000, category: 'Cupcakes & Sweets', minPortions: 1 },
+    // STARTERS & SMALL CHOPS
+    { name: 'Mixed Small Chops (Standard)', price: 2500, category: 'Starters', minPortions: 20, unit: 'Packs' },
+    { name: 'Spring Rolls & Samosas', price: 1800, category: 'Starters', minPortions: 20, unit: 'Pieces' },
+    { name: 'Puff Puff (Party Box)', price: 8000, category: 'Starters', minPortions: 1, unit: 'Large Case' },
 
-    // SPECIALS
-    { name: 'Fruit Cake Loaf (Premium)', price: 15000, category: 'Specials', minPortions: 1 },
-    { name: 'Sponge Cake Bundle', price: 12000, category: 'Specials', minPortions: 1 },
-    { name: 'Cake Tasting Box', price: 10000, category: 'Specials', minPortions: 1 },
-    { name: 'Custom Cake Topper (Gold/Silver)', price: 3500, category: 'Specials', minPortions: 1 },
-    { name: 'Personalized Message Card', price: 1500, category: 'Specials', minPortions: 1 },
+    // CONTINENTAL & SIDES
+    { name: 'Creamy Coleslaw (Bulk)', price: 12000, category: 'Sides', minPortions: 1, unit: 'Medium Bowl' },
+    { name: 'Moin Moin (Leaf Wrapped)', price: 1200, category: 'Sides', minPortions: 15, unit: 'Pieces' },
+    { name: 'Green Salad with Dressing', price: 15000, category: 'Sides', minPortions: 1, unit: 'Large Bowl' }
 ];

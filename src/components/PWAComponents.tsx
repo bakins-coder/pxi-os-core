@@ -128,9 +128,12 @@ export const PWAInstallPrompt: React.FC = () => {
     );
 };
 
+import { useSettingsStore } from '../store/useSettingsStore';
+
 export const AppUpdateNotification: React.FC = () => {
     const [showUpdate, setShowUpdate] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const { settings } = useSettingsStore();
 
     useEffect(() => {
         if ('serviceWorker' in navigator) {
@@ -166,7 +169,7 @@ export const AppUpdateNotification: React.FC = () => {
                     </div>
 
                     <p className="text-xs text-white/90 leading-relaxed mb-4">
-                        A new version of Paradigm-Xi is available. Refresh to get the latest features and improvements.
+                        A new version of {settings.name || 'Platform'} is available. Refresh to get the latest features and improvements.
                     </p>
 
                     <button

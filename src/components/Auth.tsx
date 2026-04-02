@@ -23,6 +23,9 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
   const [sysStatus, setSysStatus] = useState<{ status: string, error?: string } | null>(null);
 
   useEffect(() => {
+    // Set document title
+    document.title = `Paradigm-Xi OS`;
+    
     // Check cloud connection immediately
     import('../services/supabase').then(({ checkCloudHealth }) => {
       checkCloudHealth().then(setSysStatus);
@@ -212,7 +215,7 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
             </button>
           )}
           <div className="h-px bg-white/5 w-full my-2"></div>
-          <button type="button" onClick={() => login('guest@paradigm-xi.com').then(onSuccess)} className="w-full py-4 bg-white/5 rounded-2xl font-black text-[#00ff9d] uppercase text-[11px] border border-white/10 flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
+          <button type="button" onClick={() => login(settings.name === 'Xquisite Celebrations Limited' ? 'guest@xquisite.com' : 'guest@paradigm-xi.com').then(onSuccess)} className="w-full py-4 bg-white/5 rounded-2xl font-black text-[#00ff9d] uppercase text-[11px] border border-white/10 flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
             <Sparkles size={14} /> Explore Guest Demo
           </button>
         </div>
@@ -645,29 +648,33 @@ export const UpdatePassword = ({ onSuccess }: { onSuccess: () => void }) => {
 
 export const AuthPage = ({ initialView = 'login' }: { initialView?: 'login' | 'signup' | 'forgot' | 'update-password' }) => {
   const [view, setView] = useState<'login' | 'signup' | 'forgot' | 'update-password'>(initialView);
+  
+  // Hardcoded platform branding for login screen
+  const platformName = 'Paradigm-Xi';
+  const platformColor = '#f37021'; // Paradigm-Xi Signature Orange
 
   return (
     <div className="min-h-screen bg-[#020617] flex">
       <div className="hidden lg:flex w-3/5 bg-slate-950 text-white p-24 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2000')] opacity-10 bg-cover bg-center"></div>
         <div className="relative z-10">
-          <div className="flex items-center gap-5 mb-20">
-            <Box size={40} className="text-[#00ff9d] animate-pulse" />
-            <h1 className="text-4xl font-black uppercase tracking-tighter">Paradigm-Xi</h1>
+          <div className="flex items-center gap-5 mb-20 transition-all duration-1000 animate-in fade-in slide-in-from-left-8">
+            <Box size={40} className="animate-pulse" style={{ color: platformColor }} />
+            <h1 className="text-4xl font-black uppercase tracking-tighter">{platformName}</h1>
           </div>
-          <h2 className="text-8xl font-black tracking-tighter uppercase leading-[0.85]">Smart<br /><span className="text-[#00ff9d]">Operations.</span></h2>
+          <h2 className="text-8xl font-black tracking-tighter uppercase leading-[0.85]">Smart<br /><span style={{ color: platformColor }}>{platformName}.</span></h2>
           <div className="mt-12 flex flex-wrap gap-4">
             <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2">
-              <ShieldCheck size={16} className="text-[#00ff9d]" />
+              <ShieldCheck size={16} style={{ color: platformColor }} />
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Secure Data Isolation</span>
             </div>
             <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2">
-              <ShieldCheck size={16} className="text-[#00ff9d]" />
+              <ShieldCheck size={16} style={{ color: platformColor }} />
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Automated Operations</span>
             </div>
           </div>
         </div>
-        <div className="relative z-10 text-[10px] font-black uppercase tracking-[0.5em] text-slate-600">© 2025 PARADIGM-XI • BUSINESS OPERATING SYSTEM</div>
+        <div className="relative z-10 text-[10px] font-black uppercase tracking-[0.5em] text-slate-600">© 2025 {platformName.toUpperCase()} • BUSINESS OPERATING SYSTEM</div>
       </div>
       <div className="w-full lg:w-2/5 flex flex-col items-center justify-center p-12 bg-[#020617] border-l border-white/5 shadow-2xl">
         {view === 'login' && (

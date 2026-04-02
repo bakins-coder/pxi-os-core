@@ -12,7 +12,7 @@ import { Reports } from './components/Reports';
 import { CustomerPortal } from './components/CustomerPortal';
 import { Automation } from './components/Automation';
 import { Inventory } from './components/Inventory';
-import { Catering } from './components/Catering';
+import { FulfillmentHub } from './components/FulfillmentHub';
 import { HR } from './components/HR';
 import { Settings } from './components/Settings';
 import { InvoicePrototype } from './components/InvoicePrototype';
@@ -28,10 +28,11 @@ import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PortionMonitor } from './components/PortionMonitor';
 import { PublicBrochure } from './components/PublicBrochure';
 import { ExternalMonitor } from './components/ExternalMonitor';
-import { RequisitionsHub } from './components/RequisitionsHub';
 import { Procurement } from './components/Procurement';
-import { CustomerAgentStandalone } from './components/CustomerAgentStandalone';
 import { ProspectingHub } from './components/ProspectingHub';
+import { RequisitionsHub } from './components/RequisitionsHub';
+import { Presentation } from './components/Presentation';
+import { CustomerAgentStandalone } from './components/CustomerAgentStandalone';
 import { MockupPreview } from './components/MockupPreview';
 import { DiscoveryForm } from './components/Onboarding/DiscoveryForm';
 import { useAuthStore } from './store/useAuthStore';
@@ -41,7 +42,6 @@ import { Role, User } from './types';
 import { AlertCircle, Loader2, RefreshCw, AlertTriangle, Box } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallPrompt, AppUpdateNotification } from './components/PWAComponents';
-import { Presentation } from './components/Presentation';
 
 const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], requiredPermission?: string, user: User | null }>> = ({ children, allowedRoles, requiredPermission, user }) => {
   const [lastError, setLastError] = React.useState<any>(null);
@@ -136,6 +136,7 @@ function AppContent() {
   const user = useAuthStore((state) => state.user);
   const { settings, setBrandColor } = useSettingsStore();
   const [isInitializing, setIsInitializing] = useState(true);
+  const location = useLocation();
 
   // ... (Keep existing effects for hydration/online status - no changes needed here)
   useEffect(() => {
@@ -158,21 +159,15 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    // ... (Keep existing hydration logic - no changes needed here)
     const hydrate = async () => {
       if (settings.brandColor) {
         document.documentElement.style.setProperty('--brand-primary', settings.brandColor);
       }
-      if (user?.companyId && !settings.setupComplete) {
-        // ... (Keep existing auto-repair logic)
-        const { supabase } = await import('./services/supabase');
-        if (supabase) {
-          // ...
-        }
+      if (user?.companyId && (user.companyId !== settings.id || !settings.setupComplete)) {
+        console.log('[App] Company ID mismatch or incomplete setup. Fetching settings...');
+        useSettingsStore.getState().fetchSettings(user.companyId);
       }
-      if (user && !user.companyId) {
-        // ...
-      }
+      
       await new Promise(r => setTimeout(r, 600));
       if (user) {
         useAuthStore.getState().refreshSession();
@@ -180,7 +175,7 @@ function AppContent() {
       setIsInitializing(false);
     };
     hydrate();
-  }, [settings.brandColor, user?.id]);
+  }, [settings.brandColor, user?.id, settings.id]);
 
   useEffect(() => {
     const { subscribeToRealtimeUpdates, unsubscribeFromRealtimeUpdates, hydrateFromCloud } = useDataStore.getState();
@@ -210,7 +205,6 @@ function AppContent() {
 
   // [RECOVERY FIX] Allow authenticated users (who just clicked reset link) to see the update password screen
   // instead of being redirected to Dashboard.
-  const location = useLocation();
   if (user && location.pathname === '/update-password') {
     return <AuthPage initialView="update-password" />;
   }
@@ -249,12 +243,14 @@ function AppContent() {
         {/* Public/Special Routes */}
         <Route path="/presentation" element={<Presentation />} />
 
-        <Route path="/super-admin" element={<ProtectedRoute user={user} allowedRoles={[Role.SUPER_ADMIN]}><SuperAdmin /></ProtectedRoute>} />
-        <Route path="/executive-hub" element={<ProtectedRoute user={user} requiredPermission="access:finance_all" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES]}><AgentHub /></ProtectedRoute>} />
-        <Route path="/crm" element={<ProtectedRoute user={user} requiredPermission="access:crm" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><CRM /></ProtectedRoute>} />
-        <Route path="/projects" element={<ProtectedRoute user={user} requiredPermission="access:projects" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.CATERING_OPERATIONS_MANAGER]}><ProjectManagement /></ProtectedRoute>} />
-        <Route path="/inventory" element={<ProtectedRoute user={user} requiredPermission="access:inventory" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><Inventory /></ProtectedRoute>} />
-        <Route path="/catering" element={<ProtectedRoute user={user} requiredPermission="access:catering" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><Catering /></ProtectedRoute>} />
+        <Route path="/super-admin" element={<ProtectedRoute user={user} allowedRoles={[Role.SUPER_ADMIN, Role.SYSTEM_ADMIN]}><SuperAdmin /></ProtectedRoute>} />
+        <Route path="/executive-hub" element={<ProtectedRoute user={user} requiredPermission="access:finance_all" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.SYSTEM_ADMIN]}><AgentHub /></ProtectedRoute>} />
+        <Route path="/crm" element={<ProtectedRoute user={user} requiredPermission="access:crm" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER, Role.SYSTEM_ADMIN]}><CRM /></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute user={user} requiredPermission="access:projects" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.CATERING_OPERATIONS_MANAGER, Role.SYSTEM_ADMIN]}><ProjectManagement /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute user={user} requiredPermission="access:inventory" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER, Role.SYSTEM_ADMIN]}><Inventory /></ProtectedRoute>} />
+        <Route path="/catering" element={<ProtectedRoute user={user} requiredPermission="access:catering" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><FulfillmentHub vertical="Catering" /></ProtectedRoute>} />
+258:         <Route path="/bakery" element={<ProtectedRoute user={user} requiredPermission="access:catering" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><FulfillmentHub vertical="Bakery" /></ProtectedRoute>} />
+259:         <Route path="/retail" element={<ProtectedRoute user={user} requiredPermission="access:catering" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.SALES, Role.CATERING_OPERATIONS_MANAGER]}><FulfillmentHub vertical="Retail" /></ProtectedRoute>} />
         <Route path="/portion-monitor" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.SUPERVISOR, Role.CATERING_OPERATIONS_MANAGER]}><PortionMonitor /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute user={user} requiredPermission="access:finance" allowedRoles={[Role.ADMIN, Role.FINANCE, Role.MANAGER]}><Finance /></ProtectedRoute>} />
         <Route path="/hr" element={<ProtectedRoute user={user} requiredPermission="access:hr" allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><HR /></ProtectedRoute>} />

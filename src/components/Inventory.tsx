@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { INDUSTRY_PROFILES, IndustryType } from '../config/industryProfiles';
 import { supabase, syncTableToCloud, pullCloudState, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage } from '../services/supabase';
-import { Ingredient, InventoryItem, Recipe, Requisition, InventoryMovement, RentalRecord, ItemCosting } from '../types';
+import { Role, Ingredient, InventoryItem, Recipe, Requisition, InventoryMovement, RentalRecord, ItemCosting } from '../types';
 import { performAgenticMarketResearch, getLiveRecipeIngredientPrices } from '../services/ai';
 import { calculateItemCosting } from '../utils/costing';
 import {
@@ -14,55 +15,24 @@ import {
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
 
-const INDUSTRY_MAP = {
-   Retail: {
-      productsIcon: ShoppingBag,
-      productsLabel: 'Product Catalog',
-      ingredientsLabel: 'Bulk Stock',
-      recipeLabel: null,
-      priceLabel: 'Unit Price',
-      stockLabel: 'Stock Level',
-      showBOQ: false,
-      boqLabel: 'Inventory Analysis',
-      cardImageHeight: 'h-72',
-      defaultCategories: ['Clothing', 'Accessories', 'Footwear', 'Beauty', 'Home']
-   },
-   Catering: {
-      productsIcon: Utensils,
-      productsLabel: 'Offerings',
-      ingredientsLabel: 'Raw Materials',
-      recipeLabel: 'Neural Recipes',
-      priceLabel: 'Portion Rate',
-      stockLabel: 'Set Portions',
-      showBOQ: true,
-      boqLabel: 'Analyze Bill of Quantities',
-      cardImageHeight: 'h-96',
-      defaultCategories: ["Hors D'Oeuvres", "Starters", "Salads", "Nigerian Cuisine", "Oriental", "Continental", "Hot Plates", "Desserts"]
-   },
-   Aviation: {
-      productsIcon: Zap,
-      productsLabel: 'Component List',
-      ingredientsLabel: 'Line Items',
-      recipeLabel: 'Assembly Guide',
-      priceLabel: 'Part Cost',
-      stockLabel: 'In Stock',
-      showBOQ: true,
-      boqLabel: 'BOM Analysis',
-      cardImageHeight: 'h-96',
-      defaultCategories: ['Engine', 'Avionics', 'Airframe', 'Interior', 'Fasteners']
-   },
-   General: {
-      productsIcon: Package,
-      productsLabel: 'Stock Items',
-      ingredientsLabel: 'Materials',
-      recipeLabel: 'Manifest',
-      priceLabel: 'Price',
-      stockLabel: 'Quantity',
-      showBOQ: true,
-      boqLabel: 'Stock Analysis',
-      cardImageHeight: 'h-96',
-      defaultCategories: ['General', 'Office', 'Maintenance']
-   }
+const getImageUrl = (path?: string) => {
+   if (!path) return null;
+   if (path.startsWith('http')) return path;
+   if (path.startsWith('blob:')) return path;
+   if (path.startsWith('data:')) return path;
+   
+   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+   return `${supabaseUrl}/storage/v1/object/public/assets/${path}`;
+};
+
+// [INDUSTRY-AGNOSTIC FRAMEWORK] Local mapping removed in favor of global profiles in src/config/industryProfiles.ts
+const getIndustryConfig = (type: string) => {
+   const profile = INDUSTRY_PROFILES[type as IndustryType] || INDUSTRY_PROFILES.General;
+   return {
+      ...profile.ui,
+      ...profile.nomenclature.inventory,
+      showBOQ: profile.features.showBOQ
+   };
 };
 
 const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: InventoryItem, portions: number, onClose: () => void, onPortionChange: (val: number) => void }) => {
@@ -441,6 +411,9 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
 };
 
 const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[], events: any[] }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
+
    const [selectedIngId, setSelectedIngId] = useState('');
    const [selectedEventId, setSelectedEventId] = useState('');
    const [qty, setQty] = useState(0);
@@ -485,7 +458,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
             className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <h2 className="text-xl font-black text-slate-900 uppercase">Kitchen Release Request</h2>
+               <h2 className="text-xl font-black text-slate-900 uppercase">{industryConfig.releaseLabel} Request</h2>
                <div className="flex gap-2">
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-rose-50 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -494,7 +467,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Ingredient Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select Ingredient...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
+               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">{industryConfig.substanceLabel.singular} Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select {industryConfig.substanceLabel.singular}...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Tie to Event/Order</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}><option value="">General / Casual Order</option>{events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}</select></div>
                <div className="grid grid-cols-1 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Quantity</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g., Replacement for spoiled batch..." /></div>
@@ -512,6 +485,9 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
 };
 
 const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
+
    const [selectedIngId, setSelectedIngId] = useState('');
    const [isManualInput, setIsManualInput] = useState(false);
    const [newItemName, setNewItemName] = useState('');
@@ -638,7 +614,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
                         value={selectedIngId}
                         onChange={e => setSelectedIngId(e.target.value)}
                      >
-                        <option value="">Choose Raw Material...</option>
+                        <option value="">Choose {industryConfig.substanceLabel.singular}...</option>
                         {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Current: {i.stockLevel} {i.unit})</option>)}
                      </select>
                   )}
@@ -678,6 +654,9 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
 };
 
 const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, onClose: () => void, ingredients: Ingredient[] }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
+
    const [mode, setMode] = useState<'Direct' | 'FromRequest'>('Direct');
    const [inputStrategy, setInputStrategy] = useState<'Total' | 'Bulk'>('Total');
    const [selectedIngId, setSelectedIngId] = useState('');
@@ -765,8 +744,8 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
                <div>
-                  <h2 className="text-xl font-black text-slate-900 uppercase">Inward Procurement Entry</h2>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Inventory Stock Receipt</p>
+                  <h2 className="text-xl font-black text-slate-900 uppercase">{industryConfig.receiveLabel} Entry</h2>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">{industryConfig.substanceLabel.singular} Stock Receipt</p>
                </div>
                <div className="flex gap-2">
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
@@ -809,7 +788,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                      {isManualInput ? (
                         <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                            <div>
-                              <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">New Item Name</label>
+                              <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">New {industryConfig.substanceLabel.singular} Name</label>
                               <input
                                  type="text"
                                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
@@ -831,13 +810,13 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                         </div>
                      ) : (
                         <div>
-                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select Ingredient</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Select {industryConfig.substanceLabel.singular}</label>
                            <select
                               className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
                               value={selectedIngId}
                               onChange={e => setSelectedIngId(e.target.value)}
                            >
-                              <option value="">Choose item...</option>
+                              <option value="">Choose {industryConfig.substanceLabel.singular}...</option>
                               {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
                            </select>
                         </div>
@@ -1062,7 +1041,7 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
                   {assets.map((asset, index) => (
                      <tr key={asset.id} className="hover:bg-indigo-50/10 transition-all group">
                         <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
-                        <td className="px-10 py-4"><div className="w-16 h-16 rounded-xl border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-sm transition-transform group-hover:scale-110">{asset.image ? (<img src={asset.image} className="w-full h-full object-cover" alt={asset.name} />) : (<div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={20} /></div>)}</div></td>
+                        <td className="px-10 py-4"><div className="w-16 h-16 rounded-xl border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-sm transition-transform group-hover:scale-110">{(asset.image || (asset as any).image_url) ? (<img src={getImageUrl((asset.image || (asset as any).image_url) as string) || undefined} className="w-full h-full object-cover" alt={asset.name} />) : (<div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={20} /></div>)}</div></td>
                         <td className="px-10 py-6"><div className="font-black text-slate-800 uppercase text-sm tracking-tight leading-tight">{asset.name}</div></td>
                         <td className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">{asset.category}</td>
                         <td className="px-10 py-6"><div className="flex items-center gap-3"><span className="font-black text-slate-900 text-xl tracking-tighter">{asset.stockQuantity}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units</span></div></td>
@@ -1082,6 +1061,9 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
 };
 
 const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean, onClose: () => void, editItem: Ingredient | null }) => {
+   const { settings } = useSettingsStore();
+   const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
+
    const [name, setName] = useState(editItem?.name || '');
    const [category, setCategory] = useState(editItem?.category || 'Dry Goods');
    const [unit, setUnit] = useState(editItem?.unit || 'kg');
@@ -1147,7 +1129,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
             className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-t-[2rem] md:rounded-[3rem] h-full md:h-auto md:max-h-[90vh]'}`}
          >
             <div className="p-6 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
-               <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter">{editItem ? 'Refine Substance' : 'Ingest Substance'}</h2>
+               <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter">{editItem ? `Refine ${industryConfig.substanceLabel.singular}` : `Ingest ${industryConfig.substanceLabel.singular}`}</h2>
                <div className="flex gap-2">
                   <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -1264,7 +1246,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 
 const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean, onClose: () => void, editItem: InventoryItem | null }) => {
    const { settings } = useSettingsStore();
-   const industryConfig = INDUSTRY_MAP[settings.type as keyof typeof INDUSTRY_MAP] || INDUSTRY_MAP.General;
+   const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
 
    const [name, setName] = useState(editItem?.name || '');
    const [category, setCategory] = useState(editItem?.category || industryConfig.defaultCategories[0]);
@@ -1530,11 +1512,15 @@ export const Inventory = () => {
    const [isProcessingScan, setIsProcessingScan] = useState(false);
 
    const { settings } = useSettingsStore();
-   const isAviation = settings.type === 'Aviation';
-   const isCatering = settings.type === 'Catering' || settings.enabledModules?.includes('Catering');
-   const isRetail = settings.type === 'Retail';
+   const { user: currentUser } = useAuthStore();
+   const userRole = currentUser?.role?.toUpperCase();
+   const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM ADMIN' || userRole === 'SUPER ADMIN' || currentUser?.role === Role.SYSTEM_ADMIN || currentUser?.role === Role.SUPER_ADMIN;
 
-   const industryConfig = INDUSTRY_MAP[settings.type as keyof typeof INDUSTRY_MAP] || INDUSTRY_MAP.General;
+   const isAviation = settings.type === 'Aviation';
+   const isCatering = isAdmin || settings.type === 'Catering' || settings.enabledModules?.includes('Catering') || settings.secondaryTypes?.includes('Catering');
+   const isRetail = isAdmin || settings.type === 'Retail' || settings.secondaryTypes?.includes('Retail');
+
+   const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
 
    // Set default tab based on industry
    useEffect(() => {
@@ -1629,12 +1615,13 @@ export const Inventory = () => {
       setPortionCounts(prev => ({ ...prev, [id]: val }));
    };
 
-   const { user: currentUser } = useAuthStore();
+
    const { departmentMatrix } = useDataStore();
 
    const hasPermission = (tag: string) => {
-      // 1. Super Admin / Admin Bypass
-      if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Manager' || currentUser?.role === 'CEO' as any) return true;
+      // 1. Super Admin / Admin Bypass (Case-Insensitive)
+      const userRole = currentUser?.role?.toUpperCase();
+      if (userRole === 'SUPER ADMIN' || userRole === 'ADMIN' || userRole === 'MANAGER' || userRole === 'CEO' || userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM ADMIN') return true;
 
       // 2. Matrix Check
       const matrixRole = departmentMatrix.flatMap(d => d.roles).find(r => r.title === currentUser?.role);
@@ -1756,16 +1743,16 @@ export const Inventory = () => {
             <div className="space-y-6 animate-in slide-in-from-bottom-4">
                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Food Ingredient Pipeline</h2>
-                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Movement Inward (Procurement) & Current Inventory Levels</p>
+                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{industryConfig.pipelineLabel}</h2>
+                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{industryConfig.pipelineSubtitle}</p>
                   </div>
                   <div className="flex gap-4">
-                     <button onClick={() => setIsReleaseModalOpen(true)} className="px-6 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Flame size={16} /> Release</button>
+                     <button onClick={() => setIsReleaseModalOpen(true)} className="px-6 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Flame size={16} /> {industryConfig.releaseLabel}</button>
                      <button onClick={() => setIsPurchaseRequestModalOpen(true)} className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ClipboardList size={16} /> Request Purchase</button>
-                     <button onClick={() => setIsReceiveModalOpen(true)} className="px-6 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={16} className="text-[#00ff9d]" /> Inward Stock</button>
+                     <button onClick={() => setIsReceiveModalOpen(true)} className="px-6 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={16} className="text-[#00ff9d]" /> {industryConfig.receiveLabel}</button>
                   </div>
                </div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">Ingredient</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8">
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">{industryConfig.substanceLabel.singular}</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8">
                   <p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p>

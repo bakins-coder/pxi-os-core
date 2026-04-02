@@ -963,7 +963,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
     try {
         const response = await callWithRetry(async () => {
             const systemInstructions = `
-                Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
+                Role: You are the intelligent assistant for the ${useSettingsStore.getState().settings.name || 'Platform'} workspace.
                 User Role: ${userRole}.
                 Operational Summary: ${operationalContextSummary}
                 
@@ -1144,7 +1144,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     const userRole = currentUser?.role || 'Guest';
 
     const systemInstruction = `
-        Role: You are P-Xi, the intelligent assistant for the Paradigm-Xi platform.
+        Role: You are the intelligent assistant for the ${useSettingsStore.getState().settings.name || 'Platform'} workspace.
         User Role: ${userRole}.
         Operational Summary: ${operationalContextSummary}
         
@@ -1255,7 +1255,7 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
 
             const result = await model.generateContent([
                 { inlineData: { data: base64Audio, mimeType } },
-                { text: `Voice command for Xquisite OS.Context: ${context}. Return JSON intent.` }
+                { text: `Voice command for ${useSettingsStore.getState().settings.name || 'Platform'} OS.Context: ${context}. Return JSON intent.` }
             ]);
             const resp = await result.response;
             return JSON.parse(resp.text() || "{}");
@@ -1352,7 +1352,7 @@ export async function runBankingChat(history: any[], message: string): Promise<s
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
         model: 'gemini-2.0-flash-lite-001',
-        systemInstruction: "Financial assistant for Xquisite portal. ALWAYS use Markdown for structure."
+        systemInstruction: `Financial assistant for the ${useSettingsStore.getState().settings.name || 'Platform'} portal. ALWAYS use Markdown for structure.`
     });
 
     // Convert history format if needed, simplistic mapping here

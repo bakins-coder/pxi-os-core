@@ -485,8 +485,9 @@ export const exportComprehensiveReport = (data: {
     const wb = XLSX.utils.book_new();
 
     // Summary sheet
+    const orgName = useSettingsStore.getState().settings.name || 'Platform';
     const summaryData = [
-        ['Paradigm-Xi Platform Report'],
+        [`${orgName} System Report`],
         ['Generated:', new Date().toLocaleString()],
         [''],
         ['Metric', 'Value'],
@@ -525,7 +526,7 @@ export const exportComprehensiveReport = (data: {
     })));
     XLSX.utils.book_append_sheet(wb, contactsWS, 'Contacts');
 
-    XLSX.writeFile(wb, `Paradigm-Xi-Report-${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `${orgName.replace(/\s/g, '-')}-Report-${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
 /**

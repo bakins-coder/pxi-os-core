@@ -201,7 +201,7 @@ export const ITPortal = () => {
                             <Shield className="absolute -right-10 -bottom-10 text-indigo-800 opacity-50" size={200} />
                             <div className="relative z-10">
                                 <h2 className="text-3xl font-black mb-2">Access Control</h2>
-                                <p className="text-indigo-200 max-w-lg">Grant or revoke access to the Paradigm-Xi workspace. Users listed here can log in to your organization's environment.</p>
+                                <p className="text-indigo-200 max-w-lg">Grant or revoke access to the {settings.name || 'Platform'} workspace. Users listed here can log in to your organization's environment.</p>
                             </div>
                         </div>
 

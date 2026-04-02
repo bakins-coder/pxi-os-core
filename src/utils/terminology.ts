@@ -1,56 +1,26 @@
+import { INDUSTRY_PROFILES, IndustryType } from '../config/industryProfiles';
 
 export const getIndustryTerminology = (industry: string): Record<string, string> => {
-  const common = {
-    calendar: 'Operational Schedule',
-    event_pipeline: 'EVENT PIPELINE',
-    upcoming_events: 'Upcoming Events',
-    project_timeline: 'PROJECT TIMELINE'
-  };
+  // Map internal industry strings to IndustryType
+  let type: IndustryType = 'General';
+  if (['Catering', 'Hospitality'].includes(industry)) type = 'Catering';
+  else if (['Bakery', 'Cake', 'Confectionery'].includes(industry)) type = 'Bakery';
+  else if (['Retail', 'Store', 'E-commerce'].includes(industry)) type = 'Retail';
+  else if (['Aviation', 'Flight Ops'].includes(industry)) type = 'Aviation';
 
-  const verticals: Record<string, Record<string, string>> = {
-    'Dental Clinic': {
-      calendar: 'Appointment Schedule',
-      event_pipeline: 'CLINIC SCHEDULE',
-      upcoming_events: 'Patient Appointments',
-      procurement: 'Supply Requests'
-    },
-    'Dental': {
-      calendar: 'Appointment Schedule',
-      event_pipeline: 'CLINIC SCHEDULE',
-      upcoming_events: 'Patient Appointments',
-      procurement: 'Supply Requests'
-    },
-    'Retail': {
-      calendar: 'Promotional Schedule',
-      event_pipeline: 'RETAIL OPS',
-      upcoming_events: 'Upcoming Sales',
-      procurement: 'Restock Requests'
-    },
-    'Legal Firm': {
-      calendar: 'Court & Filing Schedule',
-      event_pipeline: 'CASE TIMELINE',
-      upcoming_events: 'Legal Deadlines',
-      procurement: 'Resource Requests'
-    },
-    'Legal': {
-      calendar: 'Court & Filing Schedule',
-      event_pipeline: 'CASE TIMELINE',
-      upcoming_events: 'Legal Deadlines',
-      procurement: 'Resource Requests'
-    },
-    'Logistics': {
-      calendar: 'Delivery Schedule',
-      event_pipeline: 'FLEET STATUS',
-      upcoming_events: 'Shipment Tracking'
-    },
-    'Catering': {
-      calendar: 'Event Schedule',
-      event_pipeline: 'EVENT PIPELINE',
-      upcoming_events: 'Upcoming Catering'
-    }
-  };
-
-  return { ...common, ...(verticals[industry] || {}) };
+  const profile = INDUSTRY_PROFILES[type];
+  
+  // Flatten profile nomenclature for backward compatibility with getTerm
+  return {
+    calendar: profile.nomenclature.fulfillment.dateLabel || 'Schedule',
+    event_pipeline: profile.nomenclature.inventory.pipelineLabel || 'PIPELINE',
+    upcoming_events: profile.nomenclature.fulfillment.orderTitle || 'Upcoming Events',
+    procurement: profile.nomenclature.inventory.ingredientsLabel || 'Procurement',
+    project_timeline: 'TIMELINE',
+    type,
+    ...profile.nomenclature.inventory,
+    ...profile.nomenclature.fulfillment
+  } as unknown as Record<string, string>;
 };
 
 export const getTerm = (industry: string | undefined, key: string, fallback: string): string => {
@@ -58,3 +28,4 @@ export const getTerm = (industry: string | undefined, key: string, fallback: str
   const terms = getIndustryTerminology(industry);
   return terms[key] || fallback;
 };
+

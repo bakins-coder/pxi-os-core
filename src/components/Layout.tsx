@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Banknote,
@@ -13,6 +13,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Role } from '../types';
 import { processVoiceCommand } from '../services/ai';
 import { useDataStore } from '../store/useDataStore';
+import { INDUSTRY_PROFILES } from '../config/industryProfiles';
+import { IndustryType } from '../types';
 import { ChatWidget } from './ChatWidget';
 
 const SyncIndicator = () => {
@@ -109,13 +111,18 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
-const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string }) => {
-  const { strictMode, settings } = useSettingsStore();
-  const { departmentMatrix, messages } = useDataStore();
+const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean }) => {
+  const { settings } = useSettingsStore();
   const { user: currentUser } = useAuthStore();
+  const industryProfiles = useMemo(() => {
+    const primary = INDUSTRY_PROFILES[settings.type] || INDUSTRY_PROFILES.General;
+    const secondaries = (settings.secondaryTypes || []).map(t => INDUSTRY_PROFILES[t]).filter(Boolean);
+    const all = [primary, ...secondaries];
+    // De-duplicate by type
+    return Array.from(new Map(all.map(p => [p.type, p])).values());
+  }, [settings.type, settings.secondaryTypes]);
 
-  const isBakery = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
-  const bakeryAllowedLabels = ['Dashboard', 'CRM', 'Orders & Invoicing', 'Finance'];
+  const { departmentMatrix, messages } = useDataStore();
 
   const unreadMessagesCount = messages.filter(m =>
     m.recipientId === currentUser?.id && !m.readAt && m.status !== 'read'
@@ -135,8 +142,8 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     if (isSuperAdmin) return true;
 
     // 2. Legacy Role Check (Keep existing logic if no permission tag)
-    if (allowedRoles && allowedRoles.includes(userRole)) return true;
-    if (!required) return true; // Public if no requirement? Or default deny? Let's say public.
+    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) return false;
+    if (!required) return true;
 
     // 3. Permission Tag Check (Prioritize explicit tags from DB)
     const userPermissions = useAuthStore.getState().user?.permissionTags || [];
@@ -163,7 +170,19 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       </div>
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
-        {NAV_ITEMS.filter(i => {
+        {NAV_ITEMS.flatMap(item => {
+          // If it's an industry-specific item (like Orders & Invoicing), expand it for all active verticals
+          if (item.label === 'Orders & Invoicing') {
+            return industryProfiles.map(profile => ({
+              ...item,
+              label: profile.nomenclature.fulfillment.navLabel,
+              icon: profile.type === 'Retail' ? ShoppingCart : (profile.type === 'Catering' ? ChefHat : (profile.type === 'Bakery' ? Box : item.icon)),
+              path: profile.type === 'Catering' ? '/catering' : (profile.type === 'Bakery' ? '/bakery' : (profile.type === 'Retail' ? '/retail' : item.path)),
+              profile // Attach profile for easier rendering
+            }));
+          }
+          return [item];
+        }).filter(i => {
           // Simplify View for MD - PRIORITY CHECK
           const isMD = ['toksyyb@yahoo.co.uk', 'toxsyyb@yahoo.co.uk'].includes(currentUser?.email?.toLowerCase() || '') ||
             ['SQ-0001', 'XQ-0001'].includes(currentUser?.staffId?.toUpperCase() || '');
@@ -173,77 +192,21 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
             if (hiddenForMD.includes(i.label)) return false;
           }
 
+          // Dynamic Feature Check
+          if (i.label === 'Flight Ops' && settings.type !== 'Aviation') return false;
 
-          // Strict Administrative Check - ONLY for verified Admins
-          // Industry-specific hiding for Bakery/Catering (Wembley Cakes)
-          const isBakeryOrCatering = settings.type === 'Bakery' || settings.type === 'Catering';
-          const isRetail = settings.type === 'Retail';
-
-          if (isBakeryOrCatering) {
-            const irrelevantModules = [
-              'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Project Hub', 'Inventory',
-              'Human Resources', 'Automation', 'Reporting', 'Team Messages', 'Analytics',
-              'Procurement'
-            ];
-            if (irrelevantModules.includes(i.label)) return false;
-          }
-
-          if (isRetail) {
-            const irrelevantModules = [
-              'Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub'
-            ];
-            if (irrelevantModules.includes(i.label)) return false;
-          }
-
-          if (i.label === 'Super Admin' || i.label === 'IT Console') {
-            // Use currentUser from hook for reactivity
-            const isSuper = !!currentUser?.isSuperAdmin;
-            const isAdmin = currentUser?.role === Role.ADMIN || currentUser?.role === Role.SUPER_ADMIN;
-
-            if (i.label === 'Super Admin') return isSuper;
-            if (i.label === 'IT Console') return isSuper || isAdmin;
-          }
-
+          // Role Check
           if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
-
-          if (i.label === 'Requisitions') {
-            const isSuper = !!currentUser?.isSuperAdmin || currentUser?.role === Role.SUPER_ADMIN;
-            const isManager = currentUser?.role === Role.MANAGER || currentUser?.role === Role.CATERING_OPERATIONS_MANAGER;
-            // MD check reused from above
-            if (!isMD && !isSuper && !isManager) return false;
-          }
-
-          if (i.allowedIndustries) {
-            const industryMatch = i.allowedIndustries.includes(settings.type as any);
-            const moduleEnabled = (i.label === 'Orders & Invoicing' || i.label === 'Catering Ops') && settings.enabledModules?.includes('Catering');
-
-            if (!industryMatch && !moduleEnabled) return false;
-          }
 
           return true;
         }).map(item => {
-          const isBakery = settings.type === 'Bakery' || orgName?.toLowerCase().includes('wembley');
-          const isRetail = settings.type === 'Retail';
-
-          let displayLabel = item.label;
-          let DisplayIcon = item.icon;
-
-          // Handle Bakery/Catering label
-          if (displayLabel === 'Orders & Invoicing' || displayLabel === 'Catering Ops') {
-            displayLabel = isBakery ? 'Orders & Invoicing' : 'Catering Ops';
-          }
-
-          // Handle Retail override
-          if (isRetail && item.label === 'Orders & Invoicing') {
-            displayLabel = 'Sales Orders';
-            DisplayIcon = ShoppingCart;
-          }
-
           const isActive = currentPath === item.path;
+          const DisplayIcon = item.icon;
+          const displayLabel = item.label;
 
           return (
             <Link
-              key={item.path}
+              key={`${item.path}-${item.label}`}
               to={item.path}
               className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isActive
                 ? 'bg-white/5 border-l-2'
@@ -254,7 +217,6 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
               <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3 min-w-0'}`}>
                 <DisplayIcon size={18} className={isActive ? 'shrink-0' : 'text-slate-600 group-hover:text-white shrink-0'} />
                 {!isCollapsed && (
-
                   <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>{displayLabel}</span>
                 )}
               </div>
@@ -319,7 +281,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   const { user: currentUser, logout } = useAuthStore();
 
   const brandColor = settings.brandColor || '#00ff9d';
-  const orgName = settings.name || 'Paradigm-Xi';
+  const orgName = settings.name || 'Platform';
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -394,9 +356,21 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
 
   return (
     <div className="min-h-screen flex bg-[#020617]">
-      <aside className={`hidden md:flex flex-col fixed h-full z-30 bg-[#020617] border-r border-white/5 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-24' : 'w-72'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} isCollapsed={isSidebarCollapsed} logo={settings.logo} />
-      </aside>
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {!isIframe && (
+          <aside className={`hidden md:flex flex-col bg-[#020617] border-r border-white/5 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-24' : 'w-72'} fixed inset-y-0 left-0 z-50`}>
+            <NavContent
+              userRole={userRole}
+              brandColor={brandColor}
+              orgName={orgName}
+              handleLogout={handleLogout}
+              currentPath={location.pathname}
+              isCollapsed={isSidebarCollapsed}
+              logo={settings.logo}
+              strictMode={strictMode}
+            />
+          </aside>
+        )}
 
       {isMobileMenuOpen && (
         <div
@@ -459,7 +433,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#020617] transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} />
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} strictMode={strictMode} />
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
@@ -578,8 +552,9 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
           <div className="max-w-[1600px] mx-auto w-full">{children}</div>
         </main>
       </div>
-      <ChatWidget />
     </div>
-  );
+    <ChatWidget />
+  </div>
+);
 };
 

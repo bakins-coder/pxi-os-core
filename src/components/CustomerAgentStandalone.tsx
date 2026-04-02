@@ -17,7 +17,7 @@ interface Message {
    timestamp: number;
 }
 
-export const CustomerAgentStandalone = ({ organizationName = "Xquisite Catering" }) => {
+export const CustomerAgentStandalone = ({ organizationName = "Smart Concierge" }) => {
    const [messages, setMessages] = useState<Message[]>([
       { 
          id: '1', 
@@ -166,7 +166,7 @@ export const CustomerAgentStandalone = ({ organizationName = "Xquisite Catering"
             </div>
             <div className="mt-4 flex justify-center items-center gap-2 opacity-30">
                <ShieldCheck size={12} />
-               <p className="text-[9px] font-black uppercase tracking-widest">Secured by Paradigm-Xi Neural Guardrails</p>
+               <p className="text-[9px] font-black uppercase tracking-widest">Secured by {organizationName} Neural Guardrails</p>
             </div>
          </div>
       </div>
