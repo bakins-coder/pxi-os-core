@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { OrganizationType, CompanySize, AppModule, Role } from '../types';
+import { OrganizationType, CompanySize, AppModule, Role, IndustryType } from '../types';
 import { FormAssistant } from './FormAssistant';
 import {
    Building2, Utensils, ShoppingBag, Briefcase,
@@ -222,7 +222,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
          completeSetup({
             id: newCompanyId, // Use the real ID
             name: orgName,
-            type: orgType,
+            type: orgType as IndustryType,
             size: orgSize,
             brandColor,
             logo,
@@ -522,7 +522,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                     <option value="Catering">Banquet & Catering</option>
                                     <option value="Aviation">Aviation & Aerospace</option>
                                     <option value="Oil & Gas">Oil & Gas / Energy</option>
-                                    <option value="Logistics">Supply Chain & Logistics</option>
+                                    <option value="General">Supply Chain & Logistics</option>
                                     <option value="Retail">Commercial Retail</option>
                                     <option value="Services">Professional Services</option>
                                     <option value="General">Multi-Industry Conglomerate</option>

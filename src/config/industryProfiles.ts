@@ -47,6 +47,10 @@ export interface IndustryProfile {
             navLabel: string;
             standardOrdersLabel: string;
             customOrdersLabel: string;
+            fulfillmentHub: string;
+            productionLabel: string;
+            standardOrders: string;
+            customOrders: string;
             categories: string[];
             categoryMap: Record<string, string>;
         };
@@ -104,6 +108,10 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 navLabel: 'Stock & Dispatch',
                 standardOrdersLabel: 'Restock Pipeline',
                 customOrdersLabel: 'Client Orders',
+                fulfillmentHub: 'Fulfillment Node',
+                productionLabel: 'Fulfillment',
+                standardOrders: 'Catalog Order',
+                customOrders: 'Special Request',
                 categories: ['Apparel', 'Accessories', 'Footwear', 'Limited Edition', 'General Stock'],
                 categoryMap: {}
             }
@@ -159,6 +167,10 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 navLabel: 'Catering Ops',
                 standardOrdersLabel: 'Cuisine Orders',
                 customOrdersLabel: 'Banquet Orders',
+                fulfillmentHub: 'Fulfillment Hub',
+                productionLabel: 'Production',
+                standardOrders: 'Standard Orders',
+                customOrders: 'Custom Orders',
                 categories: ["Hors D'Oeuvres", "Starters", "Salads", "Nigerian Cuisine", "Oriental", "Continental", "Hot Plates", "Desserts"],
                 categoryMap: {
                     "Wedding": "Hors D'Oeuvres",
@@ -219,6 +231,10 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 navLabel: 'Bakery Ops',
                 standardOrdersLabel: 'Standard Orders',
                 customOrdersLabel: 'Custom Orders',
+                fulfillmentHub: 'Bakery Hub',
+                productionLabel: 'Baking',
+                standardOrders: 'Standard Products',
+                customOrders: 'Custom Designs',
                 categories: ['Cakes', 'Pastries', 'Bread', 'Cookies'],
                 categoryMap: {
                     "Wedding": "Wedding Cakes",
@@ -283,6 +299,10 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 navLabel: 'Mission Supplies',
                 standardOrdersLabel: 'Standard Orders',
                 customOrdersLabel: 'Custom Requests',
+                fulfillmentHub: 'Operations Hub',
+                productionLabel: 'Logistics',
+                standardOrders: 'Mission Pack',
+                customOrders: 'Unscheduled Need',
                 categories: ['Engine Parts', 'Avionics', 'Consumables', 'Hydraulics', 'Safety Gear'],
                 categoryMap: {}
             }
@@ -338,6 +358,10 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 navLabel: 'Fulfillment',
                 standardOrdersLabel: 'Standard Orders',
                 customOrdersLabel: 'Custom Requests',
+                fulfillmentHub: 'Fulfillment Center',
+                productionLabel: 'Processing',
+                standardOrders: 'Standard Flow',
+                customOrders: 'Custom Flow',
                 categories: ['Standard'],
                 categoryMap: {}
             }

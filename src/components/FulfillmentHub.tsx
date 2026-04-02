@@ -1610,7 +1610,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
 }) => {
    const { settings } = useSettingsStore();
    const industryConfig = getIndustryConfig(settings.type);
-   const terms = industryConfig.nomenclature;
+   const terms = industryConfig.nomenclature.fulfillment;
 
    const invoices = useDataStore(state => state.invoices);
    const financials = useMemo(() => getEventFinancials(event, invoices), [event, invoices]);
@@ -1953,7 +1953,7 @@ const CostingMatrix = () => {
 const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => void, onFinalize: (inv: Invoice) => void, vertical: IndustryType }) => {
    const { settings } = useSettingsStore();
    const industryConfig = getIndustryConfig(vertical);
-   const terms = industryConfig.nomenclature;
+   const terms = industryConfig.nomenclature.fulfillment;
 
    const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string, discountCents?: number }[]>([]);
    const [searchTerm, setSearchTerm] = useState('');
@@ -2529,13 +2529,11 @@ const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => v
    );
 };
 
-
-
 export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const { settings } = useSettingsStore();
    const activeVertical = vertical || (settings.type as IndustryType);
    const industryConfig = getIndustryConfig(activeVertical);
-   const terms = industryConfig.nomenclature?.fulfillment || (INDUSTRY_PROFILES.Catering.nomenclature.fulfillment as any);
+   const terms = industryConfig.nomenclature?.fulfillment || (INDUSTRY_PROFILES.Catering.nomenclature.fulfillment);
 
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
@@ -2871,7 +2869,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                <ProcurementWizard
                   event={procurementWizardEvent}
                   onClose={() => setProcurementWizardEvent(null)}
-                  onFinalize={handleFinalizePush}
+                  onFinish={handleFinalizePush}
                />,
                document.body
             )
