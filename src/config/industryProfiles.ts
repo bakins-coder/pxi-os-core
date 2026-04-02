@@ -235,7 +235,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 productionLabel: 'Baking',
                 standardOrders: 'Standard Products',
                 customOrders: 'Custom Designs',
-                categories: ['Cakes', 'Pastries', 'Bread', 'Cookies'],
+                categories: ['Wedding Cakes', 'Cakes', 'Pastries', 'Bread', 'Cookies'],
                 categoryMap: {
                     "Wedding": "Wedding Cakes",
                     "Birthday": "Birthday Cakes",
