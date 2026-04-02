@@ -152,7 +152,13 @@ export const useAuthStore = create<AuthState>()(
                         ) as any;
 
                         const { data: roleData } = response;
-                        if (roleData?.permissions) permissionTags = roleData.permissions;
+                        if (roleData?.permissions) {
+                            permissionTags = roleData.permissions;
+                        } else if (targetRole === Role.CEO || targetRole === Role.ADMIN || targetRole === Role.SUPER_ADMIN) {
+                            // [FALLBACK] If role exists but has no perms, or fetch failed for CEO/Admin, grant *
+                            console.warn(`[Auth] No permissions found for ${targetRole} in Org ${targetOrgId}. Applying executive fallback.`);
+                            permissionTags = ['*'];
+                        }
                     } catch (permErr) {
                         console.warn('[Auth] Perms fetch failed, defaulting to basic:', permErr);
                     }
@@ -335,7 +341,12 @@ export const useAuthStore = create<AuthState>()(
                             .eq('organization_id', targetOrgId)
                             .eq('title', safeRole)
                             .maybeSingle();
-                        if (roleData?.permissions) permissionTags = roleData.permissions;
+                        if (roleData?.permissions) {
+                            permissionTags = roleData.permissions;
+                        } else if (safeRole === Role.CEO || safeRole === Role.ADMIN || safeRole === Role.SUPER_ADMIN) {
+                            // [FALLBACK] Safety for executives if roles table is desynced
+                            permissionTags = ['*'];
+                        }
                     } catch (e) { console.warn("[Auth] Permission fetch failed:", e); }
                 }
 

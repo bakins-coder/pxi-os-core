@@ -212,6 +212,53 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             if (userError) console.warn('Failed to link user profile:', userError);
          }
 
+         // 3. Seed Default Departments and Roles for the new Organization
+         try {
+            const { data: deptData, error: deptError } = await supabase
+               .from('departments')
+               .insert([
+                  { organization_id: newCompanyId, name: 'Executive' },
+                  { organization_id: newCompanyId, name: 'Operations' }
+               ])
+               .select();
+
+            if (deptError) throw deptError;
+
+            const executiveDept = deptData?.find(d => d.name === 'Executive');
+            
+            if (executiveDept) {
+               const { error: roleError } = await supabase
+                  .from('job_roles')
+                  .insert([
+                     {
+                        organization_id: newCompanyId,
+                        department_id: executiveDept.id,
+                        title: 'Chief Executive Officer',
+                        band: 6,
+                        permissions: ['*'],
+                        salary_min: 0,
+                        salary_mid: 0,
+                        salary_max: 0
+                     },
+                     {
+                        organization_id: newCompanyId,
+                        department_id: executiveDept.id,
+                        title: 'Admin',
+                        band: 5,
+                        permissions: ['*'],
+                        salary_min: 0,
+                        salary_mid: 0,
+                        salary_max: 0
+                     }
+                  ]);
+
+               if (roleError) throw roleError;
+            }
+         } catch (seedErr) {
+            console.error('Failed to seed organization defaults:', seedErr);
+            // Non-blocking but warn
+         }
+
          // 3. Update Local User State with new Company ID
          useAuthStore.getState().setUser({
             ...currentUser!,
