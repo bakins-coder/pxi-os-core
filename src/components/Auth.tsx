@@ -67,8 +67,8 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
     } catch (err: any) {
       console.error(err);
       let msg = err.message || 'Authentication failed.';
-      // Smart Error for Staff IDs
-      const isStaffIdFormat = /^[A-Z]{2}-\d+$/i.test(authIdentifier);
+      // Smart Error for Staff IDs (Supports both raw ID and derived emails)
+      const isStaffIdFormat = /^[A-Z]{2}-\d+$/i.test(authIdentifier) || /^[a-z]{2}-\d+@.*\.local$/i.test(authIdentifier);
       if (msg.includes('Invalid login credentials') && isStaffIdFormat) {
         msg = 'Login failed. Account unactivated or invalid credentials. If first time, switch to "Join Team" mode to activate your Staff ID.';
       }
@@ -91,9 +91,15 @@ export const Login = ({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void
 
     if (!email.includes('@')) {
       // Check if it looks like a Staff ID (e.g. XQ-1234)
-      if (/^XQ-\d+$/i.test(email)) return { text: 'Valid Staff ID Format', color: 'text-[#00ff9d]' };
+      if (/^[A-Z]{2}-\d+$/i.test(email)) return { text: 'Valid Staff ID Format', color: 'text-[#00ff9d]' };
       return { text: 'Enter email or Staff ID (XQ-xxxx)', color: 'text-yellow-500' };
     }
+
+    // Check for derived staff emails (e.g. xq-0012@xquisite.local)
+    if (/^[a-z]{2}-\d+@.*\.local$/i.test(email)) {
+      return { text: 'Company Staff Identity Detected', color: 'text-[#00ff9d]' };
+    }
+
     if (!email.includes('.')) return { text: 'Enter a valid domain (missing .com, .ng, etc)', color: 'text-yellow-500' };
 
     return { text: 'Valid Email Format Detected', color: 'text-[#00ff9d]' };
