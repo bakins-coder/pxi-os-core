@@ -13,7 +13,9 @@ export const getIndustryTerminology = (industry: string): Record<string, string>
   // Flatten profile nomenclature for backward compatibility with getTerm
   return {
     calendar: profile.nomenclature.fulfillment.dateLabel || 'Schedule',
-    event_pipeline: profile.nomenclature.inventory.pipelineLabel || 'PIPELINE',
+    event_pipeline: profile.nomenclature.fulfillment.fulfillmentTerm 
+      ? `${profile.nomenclature.fulfillment.fulfillmentTerm.toUpperCase()} PIPELINE` 
+      : (profile.nomenclature.inventory.pipelineLabel || 'PIPELINE'),
     upcoming_events: profile.nomenclature.fulfillment.orderTitle || 'Upcoming Events',
     procurement: profile.nomenclature.inventory.ingredientsLabel || 'Procurement',
     project_timeline: 'TIMELINE',

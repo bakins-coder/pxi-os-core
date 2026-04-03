@@ -1256,13 +1256,17 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
    const [price, setPrice] = useState(editItem?.priceCents ? editItem.priceCents / 100 : 0);
    const [stock, setStock] = useState(editItem?.stockQuantity || 0);
    const [description, setDescription] = useState(editItem?.description || '');
-   const [image, setImage] = useState(editItem?.image || '');
+   const [image, setImage] = useState(editItem?.image || (editItem as any)?.image_url || '');
    const [isUploading, setIsUploading] = useState(false);
 
    const [uploadStatus, setUploadStatus] = useState<string>('');
    const fileInputRef = useRef<HTMLInputElement>(null);
 
    const { user } = useAuthStore();
+
+   // Determine labels based on item type
+   const isReusable = type === 'reusable';
+   const entityLabel = isReusable ? 'Reusable' : 'Product';
 
    // Direct file upload handler - bypasses DocumentCapture
    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1299,7 +1303,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
       setShowCamera(false);
       try {
          const tempId = editItem?.id || `new-${Date.now()}`;
-         const entityType = type === 'raw_material' ? 'ingredient' : 'product';
+         const entityType = type === 'raw_material' ? 'ingredient' : (isReusable ? 'asset' : 'product');
          setUploadStatus('Uploading to Cloud...');
 
          const { bucket, path } = await uploadEntityImage(user.companyId, entityType, tempId, imgData);
@@ -1335,7 +1339,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
       if (!name) return;
       setIsSubmitting(true);
       try {
-         console.log('Saving product with image:', image ? image.substring(0, 50) : 'no image');
+         console.log(`Saving ${entityLabel} with image:`, image ? image.substring(0, 50) : 'no image');
          if (editItem) {
             await updateInventoryItem(editItem.id, { name, category, type: type as any, priceCents: price * 100, stockQuantity: stock, description, image });
          } else {
@@ -1358,17 +1362,17 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
          setPrice(editItem.priceCents / 100);
          setStock(editItem.stockQuantity);
          setDescription(editItem.description || '');
-         setImage(editItem.image || '');
+         setImage(editItem.image || (editItem as any).image_url || '');
       } else {
          setName('');
-         setCategory('Appetizer');
+         setCategory(industryConfig.defaultCategories[0] || 'Appetizer');
          setType('product');
          setPrice(0);
          setStock(0);
          setDescription('');
          setImage('');
       }
-   }, [editItem]);
+   }, [editItem, industryConfig]);
 
    if (!isOpen) return null;
 
@@ -1379,7 +1383,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
             className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-lg rounded-t-[2rem] md:rounded-[3rem] h-full md:h-auto md:max-h-[90vh]'}`}
          >
             <div className="p-6 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
-               <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter">{editItem ? 'Refine Logic' : 'Provision Entity'}</h2>
+               <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tighter">{editItem ? `Refine ${entityLabel}` : `Provision ${entityLabel}`}</h2>
                <div className="flex gap-2">
                   <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-2 hover:bg-slate-100 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -1390,8 +1394,8 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 
             <div className="p-6 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto pb-32 md:pb-10">
                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Name</label>
-                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Grilled Chicken" />
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">{entityLabel} Name</label>
+                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder={`e.g. ${isReusable ? 'Ceramic Plate' : 'Grilled Chicken'}`} />
                </div>
 
                <div className="grid grid-cols-2 gap-4">
@@ -1406,7 +1410,9 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                   <div>
                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Type</label>
                      <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={type} onChange={e => setType(e.target.value as any)}>
-                        <option value="product">Product</option><option value="raw_material">Raw Material</option>
+                        <option value="product">Product</option>
+                        <option value="reusable">Reusable</option>
+                        <option value="raw_material">Raw Material</option>
                      </select>
                   </div>
                </div>
@@ -1424,15 +1430,15 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Description</label>
-                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={description} onChange={e => setDescription(e.target.value)} placeholder="Product description" rows={3} />
+                  <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={description} onChange={e => setDescription(e.target.value)} placeholder={`${entityLabel} description`} rows={3} />
                </div>
 
                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Product Image</label>
+                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">{entityLabel} Image</label>
                   <div className="flex gap-4">
                      {image ? (
                         <div className="relative w-24 h-24 rounded-2xl overflow-hidden group">
-                           <img src={image} className="w-full h-full object-cover" alt="Product" />
+                           <img src={getImageUrl(image) || ''} className="w-full h-full object-cover" alt={entityLabel} />
                            <button onClick={() => setImage('')} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-all"><Trash2 size={20} /></button>
                            {isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 size={20} className="animate-spin text-white" /></div>}
                         </div>
@@ -1444,7 +1450,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 
                      <div className="flex-1 flex flex-col gap-2 justify-center">
                         <button
-                           onClick={() => { console.log('Opening camera for inventory'); setShowCamera(true); }}
+                           onClick={() => { console.log(`Opening camera for ${entityLabel}`); setShowCamera(true); }}
                            className="py-3 px-4 bg-indigo-50 text-indigo-600 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 hover:bg-indigo-100 transition-all"
                         >
                            <ScanLine size={14} /> Camera
@@ -1475,14 +1481,14 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
                   className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin text-white" /> : null}
-                  {isSubmitting ? 'Saving...' : `Save ${industryConfig.productsLabel.split(' ')[0]}`}
+                  {isSubmitting ? 'Saving...' : `Save ${entityLabel}`}
                </button>
             </div>
          </div>
 
          {showCamera && (
             <DocumentCapture
-               title="Capture Product Image"
+               title={`Capture ${entityLabel} Image`}
                mode="general"
                onCapture={(img) => { handleImageCapture(img); }}
                onCancel={() => setShowCamera(false)}

@@ -106,7 +106,7 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Truck size={20} className="md:w-6 md:h-6" /></div>
                   <div>
                      <h2 className="text-xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter">Procurement Engine</h2>
-                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 md:mt-1">Project: {event.customerName} â€¢ Material Fulfillment Plan</p>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 md:mt-1">Project: {event.customerName} • Material Fulfillment Plan</p>
                   </div>
                </div>
                <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
@@ -1709,7 +1709,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                   <div className="flex flex-wrap items-center gap-3">
                      <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border transform -translate-y-0.5 ${event.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} `}>{event.status}</span>
                      <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest">
-                        {event.eventDate} â€¢ {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
+                        {event.eventDate} • {event.orderType === 'Cuisine' ? (event.cuisineDetails?.deliveryLocation || 'Delivery Address TBD') : (event.location || 'Venue TBD')}
                      </p>
                   </div>
                </div>
@@ -2433,7 +2433,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                        </div>
 
                                        <div className="flex-1 lg:w-28 lg:shrink-0 relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">â‚¦</span>
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
                                           <input
                                              type="number"
                                              className="w-full bg-slate-50 border border-slate-100 rounded-lg pl-7 pr-3 py-2 text-right text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
@@ -2443,7 +2443,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                        </div>
 
                                        <div className="flex-1 lg:w-28 lg:shrink-0 relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-[10px] font-bold">â‚¦</span>
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-[10px] font-bold">₦</span>
                                           <input
                                              type="number"
                                              className="w-full bg-orange-50 border border-orange-100 rounded-lg pl-6 pr-3 py-2 text-right text-sm font-bold text-orange-600 placeholder-orange-300 focus:border-orange-300 outline-none"
@@ -2538,15 +2538,17 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const activeVertical = vertical || (settings.type as IndustryType);
    const industryConfig = getIndustryConfig(activeVertical);
    const terms = industryConfig.nomenclature?.fulfillment || (INDUSTRY_PROFILES.Catering.nomenclature.fulfillment);
+   const features = industryConfig.features;
 
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
    const [amendEventId, setAmendEventId] = useState<string | null>(null);
    const [showBrochure, setShowBrochure] = useState(false);
    const [showStandardOrder, setShowStandardOrder] = useState(false);
+   const [showCuisineOrder, setShowCuisineOrder] = useState(false);
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
    const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
-   const [activeTab, setActiveTab] = useState<'orders' | 'fulfillment' | 'matrix'>(features.showBOQ ? 'fulfillment' : 'orders');
+   const [activeTab, setActiveTab] = useState<'orders' | 'fulfillment' | 'matrix' | 'cuisine'>(features.showBOQ ? 'fulfillment' : 'orders');
    const [showProcurement, setShowProcurement] = useState(false);
    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
@@ -2763,8 +2765,8 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                               : 'bg-white border-slate-100 hover:border-blue-400 text-slate-800'
                               } `}
                         >
-                           <div className="flex justify-between items-start mb-4">
-                              <h3 className={`font-black text-sm md:text-base uppercase line-clamp-2 tracking-tighter leading-tight flex-1 mr-4 ${isSelected ? 'text-white' : 'text-slate-900'} `}>
+                           <div className="flex justify-between items-start mb-4 gap-2">
+                              <h3 className={`font-black text-sm md:text-base uppercase break-words tracking-tighter leading-tight flex-1 ${isSelected ? 'text-white' : 'text-slate-900'} `}>
                                  {ev.customerName || 'No Name'}
                               </h3>
                               <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 whitespace-nowrap ${ev.status === 'Confirmed'
@@ -2775,7 +2777,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                               </span>
                            </div>
 
-                           <div className="flex justify-between items-end">
+                           <div className="flex justify-between items-end mt-auto">
                               <div className="flex flex-col gap-1">
                                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Guests</p>
                                  <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'} `}>{ev.guestCount || 0}</p>
@@ -2786,7 +2788,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                                     ? 'text-emerald-500'
                                     : (isSelected ? 'text-slate-500' : 'text-rose-400')
                                     } `}>
-                                    {NAIRA_SYMBOL}{(displayRevenue / 100).toLocaleString()}
+                                    <span className="opacity-70 mr-0.5">{NAIRA_SYMBOL}</span>{(displayRevenue / 100).toLocaleString()}
                                  </p>
                               </div>
                            </div>
@@ -2840,9 +2842,9 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
          }
 
          {
-            showStandardOrder && createPortal(
+            showCuisineOrder && createPortal(
                <StandardOrderModal
-                  onClose={() => setShowStandardOrder(false)}
+                  onClose={() => setShowCuisineOrder(false)}
                   onFinalize={handleFinalizePush}
                   vertical={activeVertical}
                   industryConfig={industryConfig}
