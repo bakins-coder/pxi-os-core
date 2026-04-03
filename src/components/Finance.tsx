@@ -13,7 +13,7 @@ import {
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { CustomerStatementModal } from './CustomerStatementModal';
 import { getCFOAdvice, suggestCOAForTransaction, generateAIResponse, parseFinancialDocument } from '../services/ai';
-import { getRunwayMonths, getNetBurnRate } from '../utils/finance';
+import { getRunwayMonths, getNetBurnRate, NAIRA_SYMBOL } from '../utils/finance';
 import { FinancialReports } from './FinancialReports';
 
 const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose: () => void, onAdd: (e: Partial<BookkeepingEntry>) => void }) => {
@@ -155,9 +155,9 @@ const ManualEntryModal = ({ isOpen, onClose, onAdd }: { isOpen: boolean, onClose
                      </select>
                   </div>
                   <div>
-                     <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Transaction Amount (₦)</label>
+                     <label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Transaction Amount ({NAIRA_SYMBOL})</label>
                      <div className="relative">
-                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xl">₦</span>
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xl">{NAIRA_SYMBOL}</span>
                         <input
                            type="number"
                            className="w-full pl-12 pr-6 py-6 bg-slate-50 border-2 border-slate-200 rounded-[2rem] font-black text-4xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner"
@@ -439,7 +439,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales', orderType 
                                  />
                                  <datalist id={`inventory-list-${line.id}`}>
                                     {productInventory.map(item => (
-                                       <option key={item.id} value={item.name}>{item.category} - ₦{(item.priceCents / 100).toLocaleString()}</option>
+                                       <option key={item.id} value={item.name}>{item.category} - {NAIRA_SYMBOL}{(item.priceCents / 100).toLocaleString()}</option>
                                     ))}
                                  </datalist>
                               </div>
@@ -456,7 +456,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales', orderType 
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase text-slate-300 pointer-events-none md:hidden transition-opacity opacity-0 group-focus-within:opacity-100">Qty</span>
                                  </div>
                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{NAIRA_SYMBOL}</span>
                                     <input
                                        type="number"
                                        className="w-full pl-7 md:p-3 p-4 bg-white md:bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 text-right text-slate-900"
@@ -466,7 +466,7 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales', orderType 
                                     />
                                  </div>
                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-xs font-bold">₦</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-xs font-bold">{NAIRA_SYMBOL}</span>
                                     <input
                                        type="number"
                                        className="w-full pl-7 md:p-3 p-4 bg-orange-50/50 md:bg-orange-50/30 border border-orange-100 rounded-xl text-sm font-bold outline-none focus:border-orange-500 text-right text-orange-600 placeholder:text-orange-200"
@@ -494,11 +494,11 @@ export const ManualInvoiceModal = ({ isOpen, onClose, type = 'Sales', orderType 
                         <div className="text-right">
                            {hasDiscount && (
                               <div className="flex flex-col items-end mb-1">
-                                 <span className="text-[10px] text-slate-500 line-through decoration-slate-500/50">₦{standardTotal.toLocaleString()}</span>
-                                 <span className="text-[10px] text-[#00ff9d] font-bold uppercase tracking-wide">You Save ₦{discount.toLocaleString()}</span>
+                                 <span className="text-[10px] text-slate-500 line-through decoration-slate-500/50">{NAIRA_SYMBOL}{standardTotal.toLocaleString()}</span>
+                                 <span className="text-[10px] text-[#00ff9d] font-bold uppercase tracking-wide">You Save {NAIRA_SYMBOL}{discount.toLocaleString()}</span>
                               </div>
                            )}
-                           <span className="text-xl md:text-2xl font-black">₦{totalAmount.toLocaleString()}</span>
+                           <span className="text-xl md:text-2xl font-black">{NAIRA_SYMBOL}{totalAmount.toLocaleString()}</span>
                         </div>
                      </div>
                   </div>
@@ -584,7 +584,7 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
             <div className="p-10 space-y-8 overflow-y-auto">
                <div className="p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100/50">
                   <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1 text-center">Current Total Valuation</p>
-                  <p className="text-4xl font-black text-indigo-600 text-center tracking-tighter">₦{(qty * price).toLocaleString()}</p>
+                  <p className="text-4xl font-black text-indigo-600 text-center tracking-tighter">{NAIRA_SYMBOL}{(qty * price).toLocaleString()}</p>
                </div>
 
                <div className="space-y-6">
@@ -598,9 +598,9 @@ const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen: boolea
                   </div>
 
                   <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Unit Cost Rate (₦)</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Unit Cost Rate ({NAIRA_SYMBOL})</label>
                      <div className="relative">
-                        <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-lg">₦</span>
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-lg">{NAIRA_SYMBOL}</span>
                         <input type="number" className="w-full p-5 pl-12 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-2xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} />
                      </div>
                   </div>
@@ -704,7 +704,7 @@ const AddBankAccountModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                         value={formData.currency}
                         onChange={e => setFormData({ ...formData, currency: e.target.value as any })}
                      >
-                        <option value="NGN">NGN (₦)</option>
+                        <option value="NGN">NGN ({NAIRA_SYMBOL})</option>
                         <option value="USD">USD ($)</option>
                         <option value="GBP">GBP (£)</option>
                         <option value="EUR">EUR (€)</option>
@@ -716,7 +716,7 @@ const AddBankAccountModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2 ml-2">Opening Balance</label>
                   <div className="relative">
                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black">
-                        {formData.currency === 'NGN' ? '₦' : formData.currency === 'USD' ? '$' : formData.currency === 'GBP' ? '£' : '€'}
+                        {formData.currency === 'NGN' ? NAIRA_SYMBOL : formData.currency === 'USD' ? '$' : formData.currency === 'GBP' ? '£' : '€'}
                      </span>
                      <input
                         type="number"
@@ -786,7 +786,7 @@ const BankAccountHistoryModal = ({ accountId, isOpen, onClose }: { accountId: st
                <div className="text-right">
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Current Balance</p>
                   <p className="text-2xl font-black text-slate-900 tracking-tighter">
-                     {account.currency === 'NGN' ? '₦' : account.currency === 'USD' ? '$' : account.currency === 'GBP' ? '£' : '€'}
+                     {account.currency === 'NGN' ? NAIRA_SYMBOL : account.currency === 'USD' ? '$' : account.currency === 'GBP' ? '£' : '€'}
                      {(account.balanceCents / 100).toLocaleString()}
                   </p>
                </div>
@@ -842,7 +842,7 @@ export const PaymentNoticeModal = ({ isOpen, onClose, invoice }: { isOpen: boole
    const contact = contacts.find(c => c.id === invoice.contactId);
    const [copied, setCopied] = useState(false);
 
-   const noticeText = `Dear ${contact?.name || 'Customer'},\n\nThis is a friendly reminder regarding Invoice #${invoice.number} for ₦${(invoice.totalCents / 100).toLocaleString()}. \n\nBalance Outstanding: ₦${((invoice.totalCents - invoice.paidAmountCents) / 100).toLocaleString()}\nDue Date: ${invoice.dueDate}\n\nPlease ensure payment is made at your earliest convenience to avoid service interruption.\n\nBest regards,\nAccounts Receivable Team`;
+   const noticeText = `Dear ${contact?.name || 'Customer'},\n\nThis is a friendly reminder regarding Invoice #${invoice.number} for ${NAIRA_SYMBOL}${(invoice.totalCents / 100).toLocaleString()}. \n\nBalance Outstanding: ${NAIRA_SYMBOL}${((invoice.totalCents - invoice.paidAmountCents) / 100).toLocaleString()}\nDue Date: ${invoice.dueDate}\n\nPlease ensure payment is made at your earliest convenience to avoid service interruption.\n\nBest regards,\nAccounts Receivable Team`;
 
    const handleCopy = () => {
       navigator.clipboard.writeText(noticeText);
@@ -1137,7 +1137,7 @@ export const Finance = () => {
                               </span>
                            </div>
                         </td>
-                        <td className="px-8 py-6 text-right font-black text-indigo-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : inv.status === InvoiceStatus.PROFORMA ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
+                        <td className="px-8 py-6 text-right font-black text-indigo-600">{NAIRA_SYMBOL}{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : inv.status === InvoiceStatus.PROFORMA ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
                            <button onClick={() => setNoticeInvoice(inv)} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all" title="Generate Notice"><Bell size={16} /></button>
                            <button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View formatted invoice"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
                   </table>
@@ -1163,7 +1163,7 @@ export const Finance = () => {
                               </span>
                            </div>
                         </td>
-                        <td className="px-8 py-6 text-right font-black text-rose-600">₦{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
+                        <td className="px-8 py-6 text-right font-black text-rose-600">{NAIRA_SYMBOL}{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
                            <button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-950 hover:text-white transition-all" title="View details"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-950 hover:text-white transition-all" title="Record Payment"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
                   </table>
                </div>
@@ -1182,7 +1182,7 @@ export const Finance = () => {
                            <span className="bg-[#00ff9d]/20 text-[#00ff9d] px-2 py-0.5 rounded text-[8px] font-black uppercase border border-[#00ff9d]/20">Live Vault</span>
                         </div>
                         <h2 className="text-5xl font-black tracking-tighter text-white">
-                           ₦{((cashAtHandCents + bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) - bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0)) / 100).toLocaleString()}
+                           {NAIRA_SYMBOL}{((cashAtHandCents + bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) - bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0)) / 100).toLocaleString()}
                         </h2>
                         <p className="text-xs text-slate-400 font-bold mt-2">Available Liquid Cash (At Hand)</p>
                      </div>
@@ -1194,7 +1194,7 @@ export const Finance = () => {
                         </div>
                         {isEditingCash ? (
                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-black text-slate-500">₦</span>
+                              <span className="text-lg font-black text-slate-500">{NAIRA_SYMBOL}</span>
                               <input
                                  autoFocus
                                  type="number"
@@ -1214,7 +1214,7 @@ export const Finance = () => {
                               />
                            </div>
                         ) : (
-                           <div className="text-2xl font-black text-white">₦{(cashAtHandCents / 100).toLocaleString()}</div>
+                           <div className="text-2xl font-black text-white">{NAIRA_SYMBOL}{(cashAtHandCents / 100).toLocaleString()}</div>
                         )}
                         <p className="text-[9px] text-slate-500 mt-2 font-medium">Starting cash before transactions</p>
                      </div>
@@ -1222,8 +1222,8 @@ export const Finance = () => {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Inflows</p><h3 className="text-3xl font-black text-emerald-600">₦{(bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><TrendingUp size={24} /></div></div>
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Outflows</p><h3 className="text-3xl font-black text-rose-600">₦{(bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600"><TrendingDown size={24} /></div></div>
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Inflows</p><h3 className="text-3xl font-black text-emerald-600">{NAIRA_SYMBOL}{(bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><TrendingUp size={24} /></div></div>
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Outflows</p><h3 className="text-3xl font-black text-rose-600">{NAIRA_SYMBOL}{(bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600"><TrendingDown size={24} /></div></div>
                </div>
                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                   <div className="p-8 border-b border-slate-50 flex justify-between items-center"><div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Manual Ledger</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{org.name} Centralized Cash Book</p></div><button onClick={() => setIsEntryModalOpen(true)} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"><Plus size={16} /> Record Entry</button></div>
@@ -1231,7 +1231,7 @@ export const Finance = () => {
                      const isSensitive = ['Salaries', 'Payroll', 'Bonus'].some(k => (entry.category || '').includes(k));
                      if (isSensitive && !canViewSensitive) return null;
                      return (
-                        <tr key={entry.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.date}</td><td className="px-8 py-6 font-black text-slate-800 uppercase">{entry.description}</td><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.category}</td><td className={`px-8 py-6 text-right font-black ${entry.type === 'Inflow' ? 'text-emerald-600' : 'text-rose-600'}`}>{entry.type === 'Inflow' ? '+' : '-'} ₦{(entry.amountCents / 100).toLocaleString()}</td><td className="px-8 py-6 text-right">{entry.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === entry.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>
+                        <tr key={entry.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.date}</td><td className="px-8 py-6 font-black text-slate-800 uppercase">{entry.description}</td><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.category}</td><td className={`px-8 py-6 text-right font-black ${entry.type === 'Inflow' ? 'text-emerald-600' : 'text-rose-600'}`}>{entry.type === 'Inflow' ? '+' : '-'} {NAIRA_SYMBOL}{(entry.amountCents / 100).toLocaleString()}</td><td className="px-8 py-6 text-right">{entry.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === entry.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>
                      );
                   })}</tbody></table></div>
                </div>
@@ -1261,7 +1261,7 @@ export const Finance = () => {
                               </div>
                               <div className="flex items-center gap-6">
                                  <div className="text-right">
-                                    <p className="font-black text-slate-900">₦{(req.totalAmountCents / 100).toLocaleString()}</p>
+                                    <p className="font-black text-slate-900">{NAIRA_SYMBOL}{(req.totalAmountCents / 100).toLocaleString()}</p>
                                     <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
                                        {req.status}
                                     </span>
@@ -1280,7 +1280,7 @@ export const Finance = () => {
                         ))}
                      </div>
                   </div>
-                  <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden h-fit"><div className="absolute top-0 right-0 w-32 h-32 bg-[#ff6b6b]/10 rounded-full blur-2xl"></div><h3 className="text-[10px] font-black text-[#ff6b6b] uppercase tracking-[0.3em] mb-8">Internal Budget Guard</h3><div className="space-y-6"><div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pending Authorization</p><p className="text-3xl font-black text-white">₦{(requisitions.filter(r => r.status === 'Pending').reduce((s, r) => s + r.totalAmountCents, 0) / 100).toLocaleString()}</p></div><div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Approved Fulfillment</p><p className="text-3xl font-black text-emerald-400">₦{(requisitions.filter(r => r.status === 'Approved').reduce((s, r) => s + r.totalAmountCents, 0) / 100).toLocaleString()}</p></div></div></div>
+                  <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden h-fit"><div className="absolute top-0 right-0 w-32 h-32 bg-[#ff6b6b]/10 rounded-full blur-2xl"></div><h3 className="text-[10px] font-black text-[#ff6b6b] uppercase tracking-[0.3em] mb-8">Internal Budget Guard</h3><div className="space-y-6"><div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pending Authorization</p><p className="text-3xl font-black text-white">{NAIRA_SYMBOL}{(requisitions.filter(r => r.status === 'Pending').reduce((s, r) => s + r.totalAmountCents, 0) / 100).toLocaleString()}</p></div><div className="p-6 bg-white/5 border border-white/10 rounded-[2rem]"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Approved Fulfillment</p><p className="text-3xl font-black text-emerald-400">{NAIRA_SYMBOL}{(requisitions.filter(r => r.status === 'Approved').reduce((s, r) => s + r.totalAmountCents, 0) / 100).toLocaleString()}</p></div></div></div>
                </div>
             </div>
          )}
@@ -1291,7 +1291,7 @@ export const Finance = () => {
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                      <div className="p-8 border-b border-slate-50 flex justify-between items-center"><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Chart of Accounts</h2><button className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Plus size={14} /> New Account</button></div>
                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Code / Account</th><th className="px-8 py-4">Type</th><th className="px-8 py-4 text-right">Balance</th></tr></thead><tbody className="divide-y divide-slate-50">{coa.map(account => (<tr key={account.id} className="hover:bg-indigo-50/20 transition-all group"><td className="px-8 py-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-50 font-mono text-xs">{account.code}</div><div className="font-black text-slate-800 uppercase text-sm">{account.name}</div></div></td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${account.type === 'Asset' ? 'bg-blue-50 text-blue-600' : account.type === 'Revenue' ? 'bg-emerald-50 text-emerald-600' : account.type === 'Expense' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>{account.type}</span></td><td className="px-8 py-6 text-right font-black text-slate-900">{account.currency === 'USD' ? '$' : '₦'}{(account.balanceCents / 100).toLocaleString()}</td></tr>))}</tbody></table>
+                        <table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Code / Account</th><th className="px-8 py-4">Type</th><th className="px-8 py-4 text-right">Balance</th></tr></thead><tbody className="divide-y divide-slate-50">{coa.map(account => (<tr key={account.id} className="hover:bg-indigo-50/20 transition-all group"><td className="px-8 py-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-50 font-mono text-xs">{account.code}</div><div className="font-black text-slate-800 uppercase text-sm">{account.name}</div></div></td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${account.type === 'Asset' ? 'bg-blue-50 text-blue-600' : account.type === 'Revenue' ? 'bg-emerald-50 text-emerald-600' : account.type === 'Expense' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>{account.type}</span></td><td className="px-8 py-6 text-right font-black text-slate-900">{account.currency === 'USD' ? '$' : NAIRA_SYMBOL}{(account.balanceCents / 100).toLocaleString()}</td></tr>))}</tbody></table>
                      </div>
                   </div>
 
@@ -1324,9 +1324,9 @@ export const Finance = () => {
                                  <p className="text-xs font-medium text-slate-500 mb-6">{account.accountName} • {account.accountNumber}</p>
 
                                  <div>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Current Balance</p>
+                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Current Balance</p>
                                     <p className="text-2xl font-black text-slate-900 tracking-tighter">
-                                       {account.currency === 'NGN' ? '₦' : account.currency === 'USD' ? '$' : account.currency === 'GBP' ? '£' : '€'}
+                                       {account.currency === 'NGN' ? NAIRA_SYMBOL : account.currency === 'USD' ? '$' : account.currency === 'GBP' ? '£' : '€'}
                                        {(account.balanceCents / 100).toLocaleString()}
                                     </p>
                                  </div>
@@ -1345,7 +1345,7 @@ export const Finance = () => {
                   <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#00ff9d]/10 rounded-full blur-2xl"></div>
                      <h3 className="text-[10px] font-black text-[#00ff9d] uppercase tracking-[0.3em] mb-6">Financial Vitality</h3>
-                     <div className="space-y-6"><div><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Estimated Runway</p><h4 className="text-4xl font-black text-white tracking-tighter">{getRunwayMonths(0, 0)} Months</h4></div><div className="pt-6 border-t border-white/10"><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Burn Rate (Monthly)</p><h4 className="text-xl font-bold text-rose-400">₦{(getNetBurnRate(bookkeeping || []) / 100).toLocaleString()}</h4></div></div>
+                     <div className="space-y-6"><div><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Estimated Runway</p><h4 className="text-4xl font-black text-white tracking-tighter">{getRunwayMonths(0, 0)} Months</h4></div><div className="pt-6 border-t border-white/10"><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Burn Rate (Monthly)</p><h4 className="text-xl font-bold text-rose-400">{NAIRA_SYMBOL}{(getNetBurnRate(bookkeeping || []) / 100).toLocaleString()}</h4></div></div>
                   </div>
                </div>
             </div >
@@ -1380,12 +1380,12 @@ export const Finance = () => {
                   <div className="w-full md:w-96 bg-slate-50 border-r border-slate-100 flex flex-col">
                      <div className="p-8 border-b border-slate-200"><h3 className="font-black text-xl text-slate-800 uppercase tracking-tight mb-1">Bank Feed</h3><p className="text-xs text-slate-500 font-bold uppercase">Mono API Linked</p></div>
                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {bankLines.filter((l: any) => !l.isMatched).map((line: any) => (<div key={line.id} onClick={() => setSelectedLine(line)} className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${selectedLine?.id === line.id ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-white border-white hover:border-indigo-100 shadow-sm'}`}><div className="flex justify-between items-start mb-3"><span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${line.type === 'Credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{line.type}</span><span className="text-[10px] text-slate-400 font-bold">{line.date}</span></div><h4 className="font-black text-sm uppercase leading-tight mb-4">{line.description}</h4><div className="text-xl font-black">₦{(line.amountCents / 100).toLocaleString()}</div></div>))}
+                        {bankLines.filter((l: any) => !l.isMatched).map((line: any) => (<div key={line.id} onClick={() => setSelectedLine(line)} className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${selectedLine?.id === line.id ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-white border-white hover:border-indigo-100 shadow-sm'}`}><div className="flex justify-between items-start mb-3"><span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${line.type === 'Credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{line.type}</span><span className="text-[10px] text-slate-400 font-bold">{line.date}</span></div><h4 className="font-black text-sm uppercase leading-tight mb-4">{line.description}</h4><div className="text-xl font-black">{NAIRA_SYMBOL}{(line.amountCents / 100).toLocaleString()}</div></div>))}
                      </div>
                   </div>
                   <div className="flex-1 flex flex-col bg-white">
                      {selectedLine ? (
-                        <div className="p-12 space-y-12 animate-in slide-in-from-right-4"><h3 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Reconciliation Center</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div className="p-8 bg-slate-900 text-white rounded-[2.5rem]"><Landmark className="text-[#00ff9d] mb-4" size={24} /><h4 className="text-xl font-bold mb-2">{selectedLine.description}</h4><div className="text-3xl font-black">₦{(selectedLine.amountCents / 100).toLocaleString()}</div><button onClick={() => runMatchAI(selectedLine)} className="mt-8 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2">{isSyncing ? <RefreshCw className="animate-spin" size={14} /> : <Bot size={14} />} Ask Advisor for Match</button></div><div className="space-y-4">{coa.filter(a => ['Revenue', 'Expense'].includes(a.type)).map(acc => (<button key={acc.id} onClick={() => handleMatch(selectedLine.id, acc.id)} className={`w-full p-6 rounded-3xl border-2 text-left flex justify-between items-center ${aiMatchId === acc.id ? 'border-[#00ff9d] bg-[#00ff9d]/5' : 'border-slate-50 bg-slate-50'}`}><div><div className="text-sm font-black text-slate-800 uppercase">{acc.name}</div><div className="text-[10px] text-slate-400 font-bold uppercase">{acc.code}</div></div><ChevronRight className="text-slate-300" /></button>))}</div></div></div>
+                        <div className="p-12 space-y-12 animate-in slide-in-from-right-4"><h3 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Reconciliation Center</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div className="p-8 bg-slate-900 text-white rounded-[2.5rem]"><Landmark className="text-[#00ff9d] mb-4" size={24} /><h4 className="text-xl font-bold mb-2">{selectedLine.description}</h4><div className="text-3xl font-black">{NAIRA_SYMBOL}{(selectedLine.amountCents / 100).toLocaleString()}</div><button onClick={() => runMatchAI(selectedLine)} className="mt-8 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2">{isSyncing ? <RefreshCw className="animate-spin" size={14} /> : <Bot size={14} />} Ask Advisor for Match</button></div><div className="space-y-4">{coa.filter(a => ['Revenue', 'Expense'].includes(a.type)).map(acc => (<button key={acc.id} onClick={() => handleMatch(selectedLine.id, acc.id)} className={`w-full p-6 rounded-3xl border-2 text-left flex justify-between items-center ${aiMatchId === acc.id ? 'border-[#00ff9d] bg-[#00ff9d]/5' : 'border-slate-50 bg-slate-50'}`}><div><div className="text-sm font-black text-slate-800 uppercase">{acc.name}</div><div className="text-[10px] text-slate-400 font-bold uppercase">{acc.code}</div></div><ChevronRight className="text-slate-300" /></button>))}</div></div></div>
                      ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-300 p-20"><Activity size={80} className="mb-6 opacity-10" /><p className="text-xl font-bold uppercase tracking-widest">Select a transaction to begin reconciliation</p></div>
                      )}
@@ -1427,7 +1427,7 @@ export const Finance = () => {
                      </div>
                      <div className="p-10 space-y-8 overflow-y-auto max-h-[70vh]">
                         {selectedInvoice.status === InvoiceStatus.PAID ? (
-                           <div className="space-y-8"><div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 text-center space-y-2"><p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Payment Status</p><p className="text-4xl font-black text-emerald-700 uppercase tracking-tighter">Fully Settled</p><p className="text-xs text-emerald-600 font-bold">Ref: {selectedInvoice.id}</p></div><div className="space-y-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Line Items Breakdown</p>{selectedInvoice.lines.map((line, idx) => (<div key={idx} className="flex justify-between items-center py-3 border-b border-slate-50"><div><p className="text-sm font-black text-slate-800 uppercase">{line.description}</p><p className="text-[10px] text-slate-400 font-bold uppercase">{line.quantity} Unit(s) @ ₦{(line.unitPriceCents / 100).toLocaleString()}</p></div><p className="text-sm font-black text-slate-900">₦{((line.quantity * line.unitPriceCents) / 100).toLocaleString()}</p></div>))}</div><div className="flex justify-between items-center pt-4"><p className="text-lg font-black text-slate-900 uppercase">Total Received</p><p className="text-3xl font-black text-indigo-600">₦{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div></div>
+                           <div className="space-y-8"><div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 text-center space-y-2"><p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Payment Status</p><p className="text-4xl font-black text-emerald-700 uppercase tracking-tighter">Fully Settled</p><p className="text-xs text-emerald-600 font-bold">Ref: {selectedInvoice.id}</p></div><div className="space-y-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Line Items Breakdown</p>{selectedInvoice.lines.map((line, idx) => (<div key={idx} className="flex justify-between items-center py-3 border-b border-slate-50"><div><p className="text-sm font-black text-slate-800 uppercase">{line.description}</p><p className="text-[10px] text-slate-400 font-bold uppercase">{line.quantity} Unit(s) @ {NAIRA_SYMBOL}{(line.unitPriceCents / 100).toLocaleString()}</p></div><p className="text-sm font-black text-slate-900">{NAIRA_SYMBOL}{((line.quantity * line.unitPriceCents) / 100).toLocaleString()}</p></div>))}</div><div className="flex justify-between items-center pt-4"><p className="text-lg font-black text-slate-900 uppercase">Total Received</p><p className="text-3xl font-black text-indigo-600">{NAIRA_SYMBOL}{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div></div>
                         ) : (
                            <div className="space-y-8">
                               {org.bankInfo && org.bankInfo.accountNumber && (
@@ -1445,8 +1445,8 @@ export const Finance = () => {
                                  </div>
                               )}
                               <div className="grid grid-cols-2 gap-6">
-                                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Due</p><p className="text-xl font-black text-slate-900">₦{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div>
-                                 <div className="p-6 bg-rose-50 rounded-3xl border border-rose-100"><p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Balance Remaining</p><p className="text-xl font-black text-rose-600">₦{((selectedInvoice.totalCents - selectedInvoice.paidAmountCents) / 100).toLocaleString()}</p></div>
+                                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Due</p><p className="text-xl font-black text-slate-900">{NAIRA_SYMBOL}{(selectedInvoice.totalCents / 100).toLocaleString()}</p></div>
+                                 <div className="p-6 bg-rose-50 rounded-3xl border border-rose-100"><p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Balance Remaining</p><p className="text-xl font-black text-rose-600">{NAIRA_SYMBOL}{((selectedInvoice.totalCents - selectedInvoice.paidAmountCents) / 100).toLocaleString()}</p></div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                  <div>
@@ -1476,7 +1476,7 @@ export const Finance = () => {
                                     </select>
                                  </div>
                               </div>
-                              <div><label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Payment Amount (₦)</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">₦</span><input type="number" className="w-full pl-14 pr-8 py-8 bg-slate-50 border-2 border-slate-200 rounded-[2.5rem] font-black text-4xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="0.00" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div></div></div>
+                              <div><label className="text-[11px] font-black uppercase text-slate-600 tracking-widest ml-2 mb-3 block">Payment Amount ({NAIRA_SYMBOL})</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">{NAIRA_SYMBOL}</span><input type="number" className="w-full pl-14 pr-8 py-8 bg-slate-50 border-2 border-slate-200 rounded-[2.5rem] font-black text-4xl text-slate-900 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="0.00" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div></div></div>
                         )}
                      </div>
                      <div className="p-8 border-t border-slate-100 bg-white flex gap-4">

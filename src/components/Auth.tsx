@@ -314,16 +314,13 @@ export const Signup = ({ onSuccess, onSwitch }: { onSuccess: () => void, onSwitc
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Auto-detect employee mode based on input
+  // Auto-detect employee mode based on input (Made non-intrusive to prevent state-fighting)
   useEffect(() => {
     const isStaffId = /^[A-Z]{2}-\d+/i.test(email);
-    const isCorporateEmail = email.includes('@') && !email.endsWith('.com') && !email.endsWith('.net'); // Simple heuristic
-    if (isStaffId || isCorporateEmail) {
+    if (isStaffId && !isEmployeeMode) {
       setIsEmployeeMode(true);
-    } else {
-      setIsEmployeeMode(false);
     }
-  }, [email]);
+  }, [email, isEmployeeMode]);
 
   const [confirmPassword, setConfirmPassword] = useState('');
 

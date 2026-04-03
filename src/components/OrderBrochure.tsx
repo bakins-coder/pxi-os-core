@@ -8,6 +8,7 @@ import {
     ShoppingBag, X, RefreshCw, ArrowRight, Trash2, Plus, Minus,
     Users, Palette, AlertCircle, ShoppingCart, CheckCircle2, Check, Edit3, Layers
 } from 'lucide-react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 import { MenuCard } from './MenuCard';
 import { CakeDesigner } from './CakeDesigner';
 
@@ -549,7 +550,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             <div className="text-left"><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0">Basket</p><p className="text-sm font-black text-slate-950 uppercase">{Object.values(selected).filter(q => Number(q) > 0).length + Object.keys(customItems).length} Items</p></div>
                         </button>
                         <div className="h-6 w-px bg-slate-100"></div>
-                        <div className="text-right"><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0">Total</p><span className="text-2xl font-black text-slate-950">₦{(projections.totalRevenue / 100).toLocaleString()}</span></div>
+                        <div className="text-right"><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0">Total</p><span className="text-2xl font-black text-slate-950">{NAIRA_SYMBOL}{(projections.totalRevenue / 100).toLocaleString()}</span></div>
                     </div>
                     <div className="flex gap-4">
                         <button onClick={onComplete} className="px-6 py-3 font-black uppercase text-xs text-slate-400 hover:text-rose-500 transition-all">Cancel</button>
@@ -567,7 +568,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             <div className="space-y-4">
                                 <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Product Name</label><input className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomName} onChange={e => setNewCustomName(e.target.value)} /></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Price (₦)</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomPriceCents / 100} onChange={e => setNewCustomPriceCents(parseFloat(e.target.value) * 100)} /></div>
+                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Price ({NAIRA_SYMBOL})</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomPriceCents / 100} onChange={e => setNewCustomPriceCents(parseFloat(e.target.value) * 100)} /></div>
                                     <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Qty</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomQty} onChange={e => setNewCustomQty(parseInt(e.target.value))} /></div>
                                 </div>
                                 <div className="flex gap-3 pt-4">

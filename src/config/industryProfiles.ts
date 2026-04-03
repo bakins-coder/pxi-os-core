@@ -53,6 +53,10 @@ export interface IndustryProfile {
             customOrders: string;
             categories: string[];
             categoryMap: Record<string, string>;
+            staffLabel: string;
+            logisticsUnitLabel: string;
+            portalSlogan: string;
+            fulfillmentTerm: string;
         };
     };
     features: {
@@ -62,6 +66,7 @@ export interface IndustryProfile {
         showBOQ: boolean;
         showRequisitions: boolean;
         showProjections: boolean;
+        showStaffProcurement: boolean;
         taxConfig: {
             serviceChargeRate: number;
             vatRate: number;
@@ -113,7 +118,11 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 standardOrders: 'Catalog Order',
                 customOrders: 'Special Request',
                 categories: ['Apparel', 'Accessories', 'Footwear', 'Limited Edition', 'General Stock'],
-                categoryMap: {}
+                categoryMap: {},
+                staffLabel: 'Support Personnel',
+                logisticsUnitLabel: 'Delivery Unit',
+                portalSlogan: 'Quality fashion, delivered to your door.',
+                fulfillmentTerm: 'delivery'
             }
         },
         features: {
@@ -123,6 +132,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             showBOQ: false,
             showRequisitions: true,
             showProjections: true,
+            showStaffProcurement: false,
             taxConfig: {
                 serviceChargeRate: 0,
                 vatRate: 0.075
@@ -177,7 +187,11 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                     "Birthday": "Nigerian Cuisine",
                     "Anniversary": "Continental",
                     "Corporate": "Oriental"
-                }
+                },
+                staffLabel: 'Wait Staff',
+                logisticsUnitLabel: 'Logistics Van',
+                portalSlogan: 'Exquisite tastes for unforgettable moments.',
+                fulfillmentTerm: 'event'
             }
         },
         features: {
@@ -187,6 +201,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             showBOQ: true,
             showRequisitions: true,
             showProjections: true,
+            showStaffProcurement: true,
             taxConfig: {
                 serviceChargeRate: 0.15,
                 vatRate: 0.075
@@ -245,7 +260,11 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                     "Brownies": "Cookies & Brownies",
                     "Pastry": "Pastries",
                     "Custom": "Custom Designs"
-                }
+                },
+                staffLabel: 'Delivery Staff',
+                logisticsUnitLabel: 'Delivery Van',
+                portalSlogan: 'Freshly baked, crafted with love.',
+                fulfillmentTerm: 'order'
             }
         },
         features: {
@@ -255,6 +274,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             showBOQ: true,
             showRequisitions: true,
             showProjections: true,
+            showStaffProcurement: true,
             taxConfig: {
                 serviceChargeRate: 0.10,
                 vatRate: 0.075
@@ -304,7 +324,11 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 standardOrders: 'Mission Pack',
                 customOrders: 'Unscheduled Need',
                 categories: ['Engine Parts', 'Avionics', 'Consumables', 'Hydraulics', 'Safety Gear'],
-                categoryMap: {}
+                categoryMap: {},
+                staffLabel: 'Ground Crew',
+                logisticsUnitLabel: 'Service Truck',
+                portalSlogan: 'Precision parts for mission success.',
+                fulfillmentTerm: 'mission'
             }
         },
         features: {
@@ -314,6 +338,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             showBOQ: true,
             showRequisitions: true,
             showProjections: true,
+            showStaffProcurement: false,
             taxConfig: {
                 serviceChargeRate: 0,
                 vatRate: 0
@@ -363,7 +388,11 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 standardOrders: 'Standard Flow',
                 customOrders: 'Custom Flow',
                 categories: ['Standard'],
-                categoryMap: {}
+                categoryMap: {},
+                staffLabel: 'Operations Staff',
+                logisticsUnitLabel: 'Logistics Unit',
+                portalSlogan: 'Streamlining your operations.',
+                fulfillmentTerm: 'request'
             }
         },
         features: {
@@ -373,6 +402,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             showBOQ: false,
             showRequisitions: true,
             showProjections: true,
+            showStaffProcurement: false,
             taxConfig: {
                 serviceChargeRate: 0,
                 vatRate: 0.075

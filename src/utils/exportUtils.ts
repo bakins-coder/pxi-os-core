@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { Invoice, Contact, Employee, BookkeepingEntry, CateringEvent, PortionMonitor, InvoiceStatus } from '../types';
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { NAIRA_SYMBOL } from './finance';
 
 // Helper to convert URL to Base64
 const getBase64FromUrl = async (url: string): Promise<string> => {
@@ -158,8 +159,8 @@ export const generateInvoicePDF = async (
         return [
             line.description,
             line.quantity.toString(),
-            `N${(price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
-            `N${(line.quantity * price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+            `${NAIRA_SYMBOL}${(price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+            `${NAIRA_SYMBOL}${(line.quantity * price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
         ];
     });
 
@@ -231,19 +232,19 @@ export const generateInvoicePDF = async (
     };
 
     // PRINT SUMMARY (CLEAN - No Duplicates)
-    addSummaryRow('SUBTOTAL', `N${subtotalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+    addSummaryRow('SUBTOTAL', `${NAIRA_SYMBOL}${subtotalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
 
     // Display 0% lines explicitly as requested previously, or real values if they exist (and weren't overridden)
     if (scRef > 0) {
-        addSummaryRow('SERVICE CHARGE (15%)', `N${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+        addSummaryRow('SERVICE CHARGE (15%)', `${NAIRA_SYMBOL}${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
     } else {
-        addSummaryRow('SERVICE CHARGE (0%)', `N0.00`);
+        addSummaryRow('SERVICE CHARGE (0%)', `${NAIRA_SYMBOL}0.00`);
     }
 
     if (vatRef > 0) {
-        addSummaryRow('VAT (7.5%)', `N${vatRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+        addSummaryRow('VAT (7.5%)', `${NAIRA_SYMBOL}${vatRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
     } else {
-        addSummaryRow('VAT (0%)', `N0.00`);
+        addSummaryRow('VAT (0%)', `${NAIRA_SYMBOL}0.00`);
     }
 
     currentY += 5;
@@ -259,7 +260,7 @@ export const generateInvoicePDF = async (
 
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
-    doc.text(`N${totalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 167.5, currentY + 18, { align: 'center' });
+    doc.text(`${NAIRA_SYMBOL}${totalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 167.5, currentY + 18, { align: 'center' });
 
     const boxBottomY = currentY + 30;
 
@@ -407,9 +408,9 @@ export const exportFinancialDataToExcel = (
         'Due Date': inv.dueDate,
         'Type': inv.type,
         'Status': inv.status,
-        'Total (₦)': inv.totalCents / 100,
-        'Paid (₦)': inv.paidAmountCents / 100,
-        'Balance (₦)': (inv.totalCents - inv.paidAmountCents) / 100,
+        [`Total (${NAIRA_SYMBOL})`]: inv.totalCents / 100,
+        [`Paid (${NAIRA_SYMBOL})`]: inv.paidAmountCents / 100,
+        [`Balance (${NAIRA_SYMBOL})`]: (inv.totalCents - inv.paidAmountCents) / 100,
     }));
     const invoicesWS = XLSX.utils.json_to_sheet(invoicesData);
     XLSX.utils.book_append_sheet(wb, invoicesWS, 'Invoices');
@@ -420,7 +421,7 @@ export const exportFinancialDataToExcel = (
         'Type': entry.type,
         'Category': entry.category,
         'Description': entry.description,
-        'Amount (₦)': entry.amountCents / 100,
+        [`Amount (${NAIRA_SYMBOL})`]: entry.amountCents / 100,
         'Reference': entry.referenceId || '',
     }));
     const bookkeepingWS = XLSX.utils.json_to_sheet(bookkeepingData);
@@ -443,7 +444,7 @@ export const exportEmployeesToExcel = (employees: Employee[], filename: string =
         'Role': emp.role,
         'Status': emp.status,
         'Date of Employment': emp.dateOfEmployment,
-        'Salary (₦)': emp.salaryCents / 100,
+        [`Salary (${NAIRA_SYMBOL})`]: emp.salaryCents / 100,
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -492,7 +493,7 @@ export const exportComprehensiveReport = (data: {
         [''],
         ['Metric', 'Value'],
         ['Total Invoices', data.invoices.length],
-        ['Total Revenue (₦)', data.invoices.reduce((sum, inv) => sum + inv.totalCents, 0) / 100],
+        [`Total Revenue (${NAIRA_SYMBOL})`, data.invoices.reduce((sum, inv) => sum + inv.totalCents, 0) / 100],
         ['Total Employees', data.employees.length],
         ['Total Contacts', data.contacts.length],
         ['Bookkeeping Entries', data.bookkeeping.length],
@@ -506,7 +507,7 @@ export const exportComprehensiveReport = (data: {
         'Date': inv.date,
         'Type': inv.type,
         'Status': inv.status,
-        'Total (₦)': inv.totalCents / 100,
+        [`Total (${NAIRA_SYMBOL})`]: inv.totalCents / 100,
     })));
     XLSX.utils.book_append_sheet(wb, invoicesWS, 'Invoices');
 
@@ -514,7 +515,7 @@ export const exportComprehensiveReport = (data: {
         'Name': `${emp.firstName} ${emp.lastName}`,
         'Role': emp.role,
         'Status': emp.status,
-        'Salary (₦)': emp.salaryCents / 100,
+        [`Salary (${NAIRA_SYMBOL})`]: emp.salaryCents / 100,
     })));
     XLSX.utils.book_append_sheet(wb, employeesWS, 'Employees');
 

@@ -12,6 +12,7 @@ import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 export const FinancialReports = () => {
     const {
@@ -87,29 +88,29 @@ export const FinancialReports = () => {
             headers = ['Account', 'Subtype', 'Balance'];
             data = [
                 ['ASSETS', '', ''],
-                ...generateReport.balanceSheet.assets.map(a => [a.name, a.subtype, `N${(a.balanceCents / 100).toLocaleString()}`]),
-                ['TOTAL ASSETS', '', `N${(generateReport.balanceSheet.totalAssets / 100).toLocaleString()}`],
+                ...generateReport.balanceSheet.assets.map(a => [a.name, a.subtype, `${NAIRA_SYMBOL}${(a.balanceCents / 100).toLocaleString()}`]),
+                ['TOTAL ASSETS', '', `${NAIRA_SYMBOL}${(generateReport.balanceSheet.totalAssets / 100).toLocaleString()}`],
                 ['', '', ''],
                 ['LIABILITIES', '', ''],
-                ...generateReport.balanceSheet.liabilities.map(a => [a.name, a.subtype, `N${(a.balanceCents / 100).toLocaleString()}`]),
-                ['TOTAL LIABILITIES', '', `N${(generateReport.balanceSheet.totalLiabilities / 100).toLocaleString()}`],
+                ...generateReport.balanceSheet.liabilities.map(a => [a.name, a.subtype, `${NAIRA_SYMBOL}${(a.balanceCents / 100).toLocaleString()}`]),
+                ['TOTAL LIABILITIES', '', `${NAIRA_SYMBOL}${(generateReport.balanceSheet.totalLiabilities / 100).toLocaleString()}`],
                 ['', '', ''],
                 ['EQUITY', '', ''],
-                ...generateReport.balanceSheet.equity.map(a => [a.name, a.subtype, `N${(a.balanceCents / 100).toLocaleString()}`]),
-                ['TOTAL EQUITY', '', `N${(generateReport.balanceSheet.totalEquity / 100).toLocaleString()}`],
+                ...generateReport.balanceSheet.equity.map(a => [a.name, a.subtype, `${NAIRA_SYMBOL}${(a.balanceCents / 100).toLocaleString()}`]),
+                ['TOTAL EQUITY', '', `${NAIRA_SYMBOL}${(generateReport.balanceSheet.totalEquity / 100).toLocaleString()}`],
             ];
         } else if (reportType === 'income-statement') {
             headers = ['Account', 'Type', 'Amount'];
             data = [
                 ['REVENUE', '', ''],
-                ...generateReport.incomeStatement.revenue.map(a => [a.name, a.subtype, `N${(a.balanceCents / 100).toLocaleString()}`]),
-                ['TOTAL REVENUE', '', `N${(generateReport.incomeStatement.totalRevenue / 100).toLocaleString()}`],
+                ...generateReport.incomeStatement.revenue.map(a => [a.name, a.subtype, `${NAIRA_SYMBOL}${(a.balanceCents / 100).toLocaleString()}`]),
+                ['TOTAL REVENUE', '', `${NAIRA_SYMBOL}${(generateReport.incomeStatement.totalRevenue / 100).toLocaleString()}`],
                 ['', '', ''],
                 ['EXPENSES', '', ''],
-                ...generateReport.incomeStatement.expenses.map(a => [a.name, a.subtype, `(N${(a.balanceCents / 100).toLocaleString()})`]),
-                ['TOTAL EXPENSES', '', `(N${(generateReport.incomeStatement.totalExpenses / 100).toLocaleString()})`],
+                ...generateReport.incomeStatement.expenses.map(a => [a.name, a.subtype, `(${NAIRA_SYMBOL}${(a.balanceCents / 100).toLocaleString()})`]),
+                ['TOTAL EXPENSES', '', `(${NAIRA_SYMBOL}${(generateReport.incomeStatement.totalExpenses / 100).toLocaleString()})`],
                 ['', '', ''],
-                ['NET INCOME', '', `N${(generateReport.incomeStatement.netIncome / 100).toLocaleString()}`],
+                ['NET INCOME', '', `${NAIRA_SYMBOL}${(generateReport.incomeStatement.netIncome / 100).toLocaleString()}`],
             ];
         }
 
@@ -177,12 +178,12 @@ export const FinancialReports = () => {
                                 {generateReport.balanceSheet.assets.map(a => (
                                     <div key={a.id} className="flex justify-between items-center text-sm group">
                                         <span className="font-medium text-slate-600 group-hover:text-indigo-600 transition-colors">{a.name}</span>
-                                        <span className="font-bold text-slate-900">₦{(a.balanceCents / 100).toLocaleString()}</span>
+                                        <span className="font-bold text-slate-900">{NAIRA_SYMBOL}{(a.balanceCents / 100).toLocaleString()}</span>
                                     </div>
                                 ))}
                                 <div className="pt-4 border-t-2 border-slate-100 flex justify-between items-center text-lg">
                                     <span className="font-black text-slate-800 uppercase">Total Assets</span>
-                                    <span className="font-black text-indigo-600">₦{(generateReport.balanceSheet.totalAssets / 100).toLocaleString()}</span>
+                                    <span className="font-black text-indigo-600">{NAIRA_SYMBOL}{(generateReport.balanceSheet.totalAssets / 100).toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -192,12 +193,12 @@ export const FinancialReports = () => {
                                     {generateReport.balanceSheet.liabilities.map(a => (
                                         <div key={a.id} className="flex justify-between items-center text-sm group">
                                             <span className="font-medium text-slate-600 group-hover:text-rose-500 transition-colors">{a.name}</span>
-                                            <span className="font-bold text-slate-900">₦{(a.balanceCents / 100).toLocaleString()}</span>
+                                            <span className="font-bold text-slate-900">{NAIRA_SYMBOL}{(a.balanceCents / 100).toLocaleString()}</span>
                                         </div>
                                     ))}
                                     <div className="pt-4 border-t-2 border-slate-100 flex justify-between items-center">
                                         <span className="font-black text-slate-800 uppercase text-xs">Total Liabilities</span>
-                                        <span className="font-black text-rose-600">₦{(generateReport.balanceSheet.totalLiabilities / 100).toLocaleString()}</span>
+                                        <span className="font-black text-rose-600">{NAIRA_SYMBOL}{(generateReport.balanceSheet.totalLiabilities / 100).toLocaleString()}</span>
                                     </div>
                                 </div>
 
@@ -206,18 +207,18 @@ export const FinancialReports = () => {
                                     {generateReport.balanceSheet.equity.map(a => (
                                         <div key={a.id} className="flex justify-between items-center text-sm group">
                                             <span className="font-medium text-slate-600 group-hover:text-emerald-600 transition-colors">{a.name}</span>
-                                            <span className="font-bold text-slate-900">₦{(a.balanceCents / 100).toLocaleString()}</span>
+                                            <span className="font-bold text-slate-900">{NAIRA_SYMBOL}{(a.balanceCents / 100).toLocaleString()}</span>
                                         </div>
                                     ))}
                                     <div className="pt-4 border-t-2 border-slate-100 flex justify-between items-center">
                                         <span className="font-black text-slate-800 uppercase text-xs">Total Equity</span>
-                                        <span className="font-black text-emerald-600">₦{(generateReport.balanceSheet.totalEquity / 100).toLocaleString()}</span>
+                                        <span className="font-black text-emerald-600">{NAIRA_SYMBOL}{(generateReport.balanceSheet.totalEquity / 100).toLocaleString()}</span>
                                     </div>
                                 </div>
 
                                 <div className="p-4 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-200">
                                     <span className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Total Liabilities & Equity</span>
-                                    <span className="font-black text-slate-900">₦{((generateReport.balanceSheet.totalLiabilities + generateReport.balanceSheet.totalEquity) / 100).toLocaleString()}</span>
+                                    <span className="font-black text-slate-900">{NAIRA_SYMBOL}{((generateReport.balanceSheet.totalLiabilities + generateReport.balanceSheet.totalEquity) / 100).toLocaleString()}</span>
                                 </div>
                             </div>
                         </div>
@@ -237,12 +238,12 @@ export const FinancialReports = () => {
                                 {generateReport.incomeStatement.revenue.map(a => (
                                     <div key={a.id} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
                                         <span className="font-medium text-slate-700">{a.name}</span>
-                                        <span className="font-bold text-slate-900">₦{(a.balanceCents / 100).toLocaleString()}</span>
+                                        <span className="font-bold text-slate-900">{NAIRA_SYMBOL}{(a.balanceCents / 100).toLocaleString()}</span>
                                     </div>
                                 ))}
                                 <div className="flex justify-between items-center py-4 text-lg">
                                     <span className="font-black text-emerald-700 uppercase">Total Revenue</span>
-                                    <span className="font-black text-emerald-700">₦{(generateReport.incomeStatement.totalRevenue / 100).toLocaleString()}</span>
+                                    <span className="font-black text-emerald-700">{NAIRA_SYMBOL}{(generateReport.incomeStatement.totalRevenue / 100).toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -251,12 +252,12 @@ export const FinancialReports = () => {
                                 {generateReport.incomeStatement.expenses.map(a => (
                                     <div key={a.id} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
                                         <span className="font-medium text-slate-700">{a.name}</span>
-                                        <span className="font-bold text-slate-900">(₦{(a.balanceCents / 100).toLocaleString()})</span>
+                                        <span className="font-bold text-slate-900">({NAIRA_SYMBOL}{(a.balanceCents / 100).toLocaleString()})</span>
                                     </div>
                                 ))}
                                 <div className="flex justify-between items-center py-4 text-lg">
                                     <span className="font-black text-rose-600 uppercase">Total Expenses</span>
-                                    <span className="font-black text-rose-600">(₦{(generateReport.incomeStatement.totalExpenses / 100).toLocaleString()})</span>
+                                    <span className="font-black text-rose-600">({NAIRA_SYMBOL}{(generateReport.incomeStatement.totalExpenses / 100).toLocaleString()})</span>
                                 </div>
                             </div>
 
@@ -264,7 +265,7 @@ export const FinancialReports = () => {
                                 <div>
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Net Income</p>
                                     <h2 className={`text-4xl font-black ${generateReport.incomeStatement.netIncome >= 0 ? 'text-[#00ff9d]' : 'text-rose-400'}`}>
-                                        ₦{(generateReport.incomeStatement.netIncome / 100).toLocaleString()}
+                                        {NAIRA_SYMBOL}{(generateReport.incomeStatement.netIncome / 100).toLocaleString()}
                                     </h2>
                                 </div>
                                 <div className={`p-4 rounded-full ${generateReport.incomeStatement.netIncome >= 0 ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'bg-rose-500/10 text-rose-500'}`}>
@@ -285,25 +286,25 @@ export const FinancialReports = () => {
                             <div className="p-6 bg-slate-50 rounded-2xl flex justify-between items-center">
                                 <span className="font-bold text-slate-700 uppercase text-xs tracking-widest">Net Cash from Operating Activities</span>
                                 <span className={`font-black text-xl ${generateReport.cashFlow.netOperating >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    ₦{(generateReport.cashFlow.netOperating / 100).toLocaleString()}
+                                    {NAIRA_SYMBOL}{(generateReport.cashFlow.netOperating / 100).toLocaleString()}
                                 </span>
                             </div>
                             <div className="p-6 bg-slate-50 rounded-2xl flex justify-between items-center">
                                 <span className="font-bold text-slate-700 uppercase text-xs tracking-widest">Net Cash from Investing Activities</span>
                                 <span className={`font-black text-xl ${generateReport.cashFlow.netInvesting >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    ₦{(generateReport.cashFlow.netInvesting / 100).toLocaleString()}
+                                    {NAIRA_SYMBOL}{(generateReport.cashFlow.netInvesting / 100).toLocaleString()}
                                 </span>
                             </div>
                             <div className="p-6 bg-slate-50 rounded-2xl flex justify-between items-center">
                                 <span className="font-bold text-slate-700 uppercase text-xs tracking-widest">Net Cash from Financing Activities</span>
                                 <span className={`font-black text-xl ${generateReport.cashFlow.netFinancing >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    ₦{(generateReport.cashFlow.netFinancing / 100).toLocaleString()}
+                                    {NAIRA_SYMBOL}{(generateReport.cashFlow.netFinancing / 100).toLocaleString()}
                                 </span>
                             </div>
                             <div className="mt-8 pt-8 border-t border-slate-200 flex justify-between items-center">
                                 <span className="font-black text-slate-900 uppercase">Net Increase / (Decrease) in Cash</span>
                                 <span className={`font-black text-3xl ${generateReport.cashFlow.netChange >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-                                    ₦{(generateReport.cashFlow.netChange / 100).toLocaleString()}
+                                    {NAIRA_SYMBOL}{(generateReport.cashFlow.netChange / 100).toLocaleString()}
                                 </span>
                             </div>
                         </div>

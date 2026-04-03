@@ -3,6 +3,7 @@ import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Requisition } from '../types';
 import { ShoppingCart, Plus, CheckCircle2, Clock, Info, Box, Trash2, Send } from 'lucide-react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 export const Procurement: React.FC = () => {
     const { requisitions, addRequisitionsBulk } = useDataStore();
@@ -154,7 +155,7 @@ export const Procurement: React.FC = () => {
                                     </select>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Est. Unit Price (₦)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Est. Unit Price ({NAIRA_SYMBOL})</label>
                                     <input
                                         type="number"
                                         min="0"
@@ -269,7 +270,7 @@ export const Procurement: React.FC = () => {
                                                 </select>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[9px] font-bold uppercase text-slate-500">Cost / {bulkPackType.slice(0, -1) || 'Pack'} (₦)</label>
+                                                <label className="text-[9px] font-bold uppercase text-slate-500">Cost / {bulkPackType.slice(0, -1) || 'Pack'} ({NAIRA_SYMBOL})</label>
                                                 <input
                                                     type="number"
                                                     min="0"
@@ -291,8 +292,8 @@ export const Procurement: React.FC = () => {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-[9px] font-black uppercase text-indigo-400 mb-0.5">Unit Price</p>
-                                                    <p className="text-base font-black text-white">₦{effectiveUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                                    <p className="text-[8px] font-bold text-indigo-300 uppercase">Total: ₦{effectiveTotalCost.toLocaleString()}</p>
+                                                    <p className="text-base font-black text-white">{NAIRA_SYMBOL}{effectiveUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                    <p className="text-[8px] font-bold text-indigo-300 uppercase">Total: {NAIRA_SYMBOL}{effectiveTotalCost.toLocaleString()}</p>
                                                 </div>
                                             </div>
                                         )}
@@ -313,7 +314,7 @@ export const Procurement: React.FC = () => {
                             <div className="pt-4 mt-6 border-t border-white/5">
                                 <div className="flex justify-between items-center mb-6">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Item Est. Total</span>
-                                    <span className="text-lg font-black text-white">₦{effectiveTotalCost.toLocaleString()}</span>
+                                    <span className="text-lg font-black text-white">{NAIRA_SYMBOL}{effectiveTotalCost.toLocaleString()}</span>
                                 </div>
 
                                 <button
@@ -346,7 +347,7 @@ export const Procurement: React.FC = () => {
                             </div>
                             <div className="text-right">
                                 <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Batch Total</span>
-                                <span className="text-xl font-black text-[#00ff9d]">₦{(batchTotalCents / 100).toLocaleString()}</span>
+                                <span className="text-xl font-black text-[#00ff9d]">{NAIRA_SYMBOL}{(batchTotalCents / 100).toLocaleString()}</span>
                             </div>
                         </div>
 
@@ -389,7 +390,7 @@ export const Procurement: React.FC = () => {
                                                     )}
                                                     <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                        ₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} ea
+                                                        {NAIRA_SYMBOL}{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} ea
                                                     </span>
                                                 </div>
                                             </div>
@@ -397,7 +398,7 @@ export const Procurement: React.FC = () => {
                                         <div className="flex items-center justify-between md:justify-end gap-6 mt-3 md:mt-0 pl-10 md:pl-0 w-full md:w-auto">
                                             <div className="text-left md:text-right">
                                                 <p className="text-base font-black text-white leading-none">
-                                                    ₦{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}
+                                                    {NAIRA_SYMBOL}{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}
                                                 </p>
                                             </div>
                                             <button
@@ -508,10 +509,10 @@ export const Procurement: React.FC = () => {
 
                                         <div className="text-left md:text-right mt-4 md:mt-0 pl-[60px] md:pl-0">
                                             <p className="text-lg font-black text-white leading-none mb-1">
-                                                ₦{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}
+                                                {NAIRA_SYMBOL}{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}
                                             </p>
                                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                                Est: ₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit
+                                                Est: {NAIRA_SYMBOL}{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit
                                             </p>
                                         </div>
                                     </div>

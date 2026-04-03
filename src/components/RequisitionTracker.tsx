@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { Requisition } from '../types';
 import { RequisitionEditModal } from './RequisitionsHub';
+import { NAIRA_SYMBOL } from '../utils/finance';
 import { CheckCircle2, Clock, XCircle, Edit3, X, AlertCircle } from 'lucide-react';
 
 interface RequisitionTrackerProps {
@@ -73,7 +74,7 @@ export const RequisitionTracker: React.FC<RequisitionTrackerProps> = ({ eventId 
                                     <div className="flex items-center gap-2 mt-1">
                                         {req.type !== 'Release' && (
                                             <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                                ₦{(req.totalAmountCents / 100).toLocaleString()}
+                                                {NAIRA_SYMBOL}{(req.totalAmountCents / 100).toLocaleString()}
                                             </span>
                                         )}
                                         {req.createdAt && (

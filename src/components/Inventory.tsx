@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { DocumentCapture } from './DocumentCapture';
 import { parseInventoryList } from '../services/ocrService';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 const getImageUrl = (path?: string) => {
    if (!path) return null;
@@ -111,7 +112,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
             if (ing) {
                updateIngredientPrice(ing.id, price * 100, {
                   marketPriceCents: price * 100,
-                  groundedSummary: `AIGrounded: ${price} NGN`,
+                  groundedSummary: `AIGrounded: ${price} ${NAIRA_SYMBOL}`,
                   sources: []
                });
             }
@@ -185,7 +186,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                               <th className="px-4 py-3 md:px-8 md:py-5 text-center hidden md:table-cell">MD Scaling</th>
                               <th className="px-4 py-3 md:px-8 md:py-5 text-center">Net Req.</th>
                               <th className="px-4 py-3 md:px-8 md:py-5 text-right hidden md:table-cell">Unit Rate</th>
-                              <th className="px-4 py-3 md:px-8 md:py-5 text-right">Value (₦)</th>
+                              <th className="px-4 py-3 md:px-8 md:py-5 text-right">Value ({NAIRA_SYMBOL})</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-indigo-50">
@@ -242,10 +243,10 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                              {ing.qtyRequired.toFixed(2)} <span className="text-[8px] md:text-[10px] opacity-50">{ing.unit}</span>
                                           </span>
                                        </td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">₦{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">{NAIRA_SYMBOL}{(ing.unitCostCents / 100).toLocaleString()}</td>
                                        <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-xs md:text-sm">
                                           <span className={ing.hasError ? 'text-rose-600' : 'text-slate-900'}>
-                                             ₦{(ing.totalCostCents / 100).toLocaleString()}
+                                             {NAIRA_SYMBOL}{(ing.totalCostCents / 100).toLocaleString()}
                                           </span>
                                        </td>
                                     </tr>
@@ -294,7 +295,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                            )}
                            <tr className="bg-slate-50 border-t-2 border-slate-100">
                               <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
-                              <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
+                              <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">{NAIRA_SYMBOL}{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
                            </tr>
                         </tbody>
                      </table>
@@ -311,7 +312,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                         <tr>
                            <th className="px-8 py-4">Total Component</th>
                            <th className="px-8 py-4 text-center">Combined Guest Need</th>
-                           <th className="px-8 py-4 text-right">Aggregate Cost (₦)</th>
+                           <th className="px-8 py-4 text-right">Aggregate Cost ({NAIRA_SYMBOL})</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-800">
@@ -319,7 +320,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                            <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
                               <td className="px-8 py-4 font-black text-slate-200 uppercase">{agg.name}</td>
                               <td className="px-8 py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
-                              <td className="px-8 py-4 text-right font-black text-emerald-400">₦{(agg.cost / 100).toLocaleString()}</td>
+                              <td className="px-8 py-4 text-right font-black text-emerald-400">{NAIRA_SYMBOL}{(agg.cost / 100).toLocaleString()}</td>
                            </tr>
                         ))}
                      </tbody>
@@ -330,7 +331,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex justify-between items-center">
                      <div>
                         <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Projected Revenue</p>
-                        <h5 className="text-2xl font-black text-indigo-900">₦{(costing?.revenueCents! / 100).toLocaleString()}</h5>
+                        <h5 className="text-2xl font-black text-indigo-900">{NAIRA_SYMBOL}{(costing?.revenueCents! / 100).toLocaleString()}</h5>
                      </div>
                      <div className="text-right">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Gross Margin</p>
@@ -342,7 +343,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   <div className="p-8 bg-slate-950 rounded-[2rem] text-white flex justify-between items-center">
                      <div>
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Aggregate Cost</p>
-                        <h5 className="text-2xl font-black">₦{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
+                        <h5 className="text-2xl font-black">{NAIRA_SYMBOL}{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
                      </div>
                      <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center"><TrendingUp size={24} className={costing?.grossMarginPercentage! > 50 ? 'text-emerald-400' : 'text-amber-400'} /></div>
                   </div>
@@ -394,7 +395,7 @@ const RentalReturnModal = ({ isOpen, onClose, rental }: { isOpen: boolean, onClo
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
-               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-6"><p className="text-[10px] font-black uppercase text-amber-600 mb-1">Active Liability</p><p className="text-sm font-bold text-amber-900">Est. replacement: ₦{(rental.estimatedReplacementValueCents / 100).toLocaleString()}</p></div>
+               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-6"><p className="text-[10px] font-black uppercase text-amber-600 mb-1">Active Liability</p><p className="text-sm font-bold text-amber-900">Est. replacement: {NAIRA_SYMBOL}{(rental.estimatedReplacementValueCents / 100).toLocaleString()}</p></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Return Status</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={status} onChange={e => setStatus(e.target.value as any)}><option value="Returned">Safely Returned</option><option value="Damaged">Damaged / Broken</option><option value="Lost">Lost / Unaccounted</option></select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Discrepancy Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain damages or loss details..." /></div>
             </div>
@@ -626,7 +627,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Est. Total Cost (₦)</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Est. Total Cost ({NAIRA_SYMBOL})</label>
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={estimatedCost} onChange={e => setEstimatedCost(parseFloat(e.target.value) || 0)} />
                   </div>
                </div>
@@ -767,7 +768,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                      {approvedRequests.length > 0 ? (
                         <select className="w-full p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-black outline-none text-emerald-900" value={selectedReqId} onChange={e => setSelectedReqId(e.target.value)}>
                            <option value="">Select an approved order...</option>
-                           {approvedRequests.map(r => <option key={r.id} value={r.id}>{r.itemName} - {r.quantity} units (₦{(r.totalAmountCents / 100).toLocaleString()})</option>)}
+                           {approvedRequests.map(r => <option key={r.id} value={r.id}>{r.itemName} - {r.quantity} units ({NAIRA_SYMBOL}{(r.totalAmountCents / 100).toLocaleString()})</option>)}
                         </select>
                      ) : (
                         <div className="p-4 bg-slate-100 rounded-2xl text-center text-xs text-slate-500 font-bold">No approved requests found.</div>
@@ -837,7 +838,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                         <input type="number" min="0" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} />
                      </div>
                      <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Total Purchase Value (₦)</label>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Total Purchase Value ({NAIRA_SYMBOL})</label>
                         <input type="number" min="0" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
                      </div>
                   </div>
@@ -860,7 +861,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                         </div>
                      </div>
                      <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Cost per Pack (₦)</label>
+                        <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Cost per Pack ({NAIRA_SYMBOL})</label>
                         <input type="number" min="0" placeholder="e.g. 16000" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={bulkPackCost || ''} onChange={e => setBulkPackCost(parseFloat(e.target.value) || 0)} />
                      </div>
 
@@ -871,8 +872,8 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                         </div>
                         <div className="text-right">
                            <p className="text-[9px] font-black uppercase text-indigo-400 block mb-1">Unit Price Preview</p>
-                           <p className="text-xl font-black text-indigo-900">₦{(effectiveCost / (effectiveQty || 1)).toLocaleString()} / {isManualInput && mode === 'Direct' ? newItemUnit : 'unit'}</p>
-                           <p className="text-[8px] font-bold text-indigo-300 uppercase">Total: ₦{effectiveCost.toLocaleString()}</p>
+                           <p className="text-xl font-black text-indigo-900">{NAIRA_SYMBOL}{(effectiveCost / (effectiveQty || 1)).toLocaleString()} / {isManualInput && mode === 'Direct' ? newItemUnit : 'unit'}</p>
+                           <p className="text-[8px] font-bold text-indigo-300 uppercase">Total: {NAIRA_SYMBOL}{effectiveCost.toLocaleString()}</p>
                         </div>
                      </div>
                   </div>
@@ -988,7 +989,7 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
    const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
    const [showScanModal, setShowScanModal] = useState(false);
    const [isProcessing, setIsProcessing] = useState(false);
-   const addInventoryItem = useDataStore(state => state.addInventoryItem);
+   const { addInventoryItem, cateringEvents } = useDataStore();
 
    const handleScanAssets = async (imageSrc: string) => {
       setIsProcessing(true);
@@ -1045,7 +1046,7 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
                         <td className="px-10 py-6"><div className="font-black text-slate-800 uppercase text-sm tracking-tight leading-tight">{asset.name}</div></td>
                         <td className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">{asset.category}</td>
                         <td className="px-10 py-6"><div className="flex items-center gap-3"><span className="font-black text-slate-900 text-xl tracking-tighter">{asset.stockQuantity}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units</span></div></td>
-                        <td className="px-10 py-6 text-right font-black text-slate-900 tracking-tight">₦{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
+                        <td className="px-10 py-6 text-right font-black text-slate-900 tracking-tight">{NAIRA_SYMBOL}{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
                         <td className="px-10 py-6 text-right"><button onClick={() => { setSelectedEditItem(asset); setIsEditModalOpen(true); }} className="p-2.5 bg-indigo-600 text-white rounded-xl hover:scale-110 transition-all shadow-md"><Edit3 size={16} /></button></td>
                      </tr>
                   ))}
@@ -1056,6 +1057,7 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
 
          <AddEditInventoryModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} editItem={null} />
          <AddEditInventoryModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} editItem={selectedEditItem} />
+         <AssetIssueModal isOpen={isIssueModalOpen} onClose={() => setIsIssueModalOpen(false)} assets={assets} events={cateringEvents} />
       </>
    );
 };
@@ -1165,7 +1167,7 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={stock} onChange={e => setStock(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit Cost (₦)</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit Cost ({NAIRA_SYMBOL})</label>
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)} />
                   </div>
                </div>
@@ -1411,7 +1413,7 @@ const AddEditInventoryModal = ({ isOpen, onClose, editItem }: { isOpen: boolean,
 
                <div className="grid grid-cols-2 gap-4">
                   <div>
-                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Price (₦)</label>
+                     <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Price ({NAIRA_SYMBOL})</label>
                      <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={price} onChange={e => setPrice(parseFloat(e.target.value) || 0)} />
                   </div>
                   <div>
@@ -1687,7 +1689,7 @@ export const Inventory = () => {
                               <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl border border-slate-100">
                                  <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{industryConfig.priceLabel}</span>
-                                    <span className="text-2xl font-black text-indigo-600 tracking-tighter">₦{(p.priceCents / 100).toLocaleString()}</span>
+                                    <span className="text-2xl font-black text-indigo-600 tracking-tighter">{NAIRA_SYMBOL}{(p.priceCents / 100).toLocaleString()}</span>
                                  </div>
                                  <div className="flex flex-col items-end">
                                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{industryConfig.stockLabel}</span>
@@ -1732,10 +1734,10 @@ export const Inventory = () => {
                   </div>
                   <div className="bg-rose-50 p-8 rounded-[3rem] border border-rose-100 shadow-sm flex flex-col justify-center">
                      <div className="flex items-center gap-2 mb-1 text-rose-600"><ShieldAlert size={14} /><span className="text-[10px] font-black uppercase tracking-widest">Active Liability</span></div>
-                     <h3 className="text-2xl font-black text-rose-700 leading-none">₦{(totalLiability / 100).toLocaleString()}</h3>
+                     <h3 className="text-2xl font-black text-rose-700 leading-none">{NAIRA_SYMBOL}{(totalLiability / 100).toLocaleString()}</h3>
                   </div>
                </div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center">S/N</th><th className="p-8">Item & Event Reference</th><th className="p-8">Qty</th><th className="p-8">Est. Liability</th><th className="p-8">Status</th><th className="p-8 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-50">{rentals.map((rent, index) => (<tr key={rent.id} className="hover:bg-indigo-50/10 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{rent.itemName}</p><p className="text-[9px] text-indigo-500 font-black uppercase tracking-tighter">Event: {events.find(e => e.id === rent.eventId)?.customerName || 'Project Node'}</p></td><td className="p-8 font-black text-slate-900">{rent.quantity}</td><td className="p-8 font-black text-rose-600">₦{(rent.estimatedReplacementValueCents / 100).toLocaleString()}</td><td className="p-8"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${rent.status === 'Issued' ? 'bg-amber-50 text-amber-700 border-amber-100' : rent.status === 'Returned' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>{rent.status}</span></td><td className="p-8 text-right">{rent.status === 'Issued' && (<button onClick={() => setSelectedRental(rent)} className="p-2.5 bg-slate-900 text-[#00ff9d] rounded-xl hover:scale-110 transition-all shadow-md"><RotateCcw size={16} /></button>)}</td></tr>))}</tbody></table></div></div>
+               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center">S/N</th><th className="p-8">Item & Event Reference</th><th className="p-8">Qty</th><th className="p-8">Est. Liability</th><th className="p-8">Status</th><th className="p-8 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-50">{rentals.map((rent, index) => (<tr key={rent.id} className="hover:bg-indigo-50/10 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{rent.itemName}</p><p className="text-[9px] text-indigo-500 font-black uppercase tracking-tighter">Event: {events.find(e => e.id === rent.eventId)?.customerName || 'Project Node'}</p></td><td className="p-8 font-black text-slate-900">{rent.quantity}</td><td className="p-8 font-black text-rose-600">{NAIRA_SYMBOL}{(rent.estimatedReplacementValueCents / 100).toLocaleString()}</td><td className="p-8"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${rent.status === 'Issued' ? 'bg-amber-50 text-amber-700 border-amber-100' : rent.status === 'Returned' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>{rent.status}</span></td><td className="p-8 text-right">{rent.status === 'Issued' && (<button onClick={() => setSelectedRental(rent)} className="p-2.5 bg-slate-900 text-[#00ff9d] rounded-xl hover:scale-110 transition-all shadow-md"><RotateCcw size={16} /></button>)}</td></tr>))}</tbody></table></div></div>
             </div>
          )}
 
@@ -1763,7 +1765,7 @@ export const Inventory = () => {
                         </>
                      )}
                   </div>
-               </td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">₦{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">₦{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
+               </td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">{NAIRA_SYMBOL}{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">{NAIRA_SYMBOL}{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
             </div>
          )}
 

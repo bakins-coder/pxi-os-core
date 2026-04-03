@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { runBankingChat } from '../services/ai';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 export const CustomerPortal = () => {
    const { user: currentUser } = useAuthStore();
@@ -85,7 +86,7 @@ export const CustomerPortal = () => {
 
                <div className="text-center mb-6">
                   <p className="text-indigo-300 text-sm mb-1">Outstanding Balance</p>
-                  <h1 className="text-4xl font-bold tracking-tight">₦{customerBalance.toLocaleString()}</h1>
+                  <h1 className="text-4xl font-bold tracking-tight">{NAIRA_SYMBOL}{customerBalance.toLocaleString()}</h1>
                </div>
 
                <div className="flex justify-between px-4 pb-2">
@@ -124,7 +125,7 @@ export const CustomerPortal = () => {
                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><Receipt size={18} /></div>
                         <div><h4 className="font-bold text-sm text-slate-800">{tx.description}</h4><p className="text-xs text-slate-400">{tx.date}</p></div>
                      </div>
-                     <div className={`font-bold text-sm ${tx.type === 'Credit' ? 'text-green-600' : 'text-slate-800'}`}>₦{(tx.amountCents / 100).toLocaleString()}</div>
+                     <div className={`font-bold text-sm ${tx.type === 'Credit' ? 'text-green-600' : 'text-slate-800'}`}>{NAIRA_SYMBOL}{(tx.amountCents / 100).toLocaleString()}</div>
                   </div>
                )) : (
                   <p className="text-xs text-slate-400 text-center py-10 italic">No recent transactions found.</p>

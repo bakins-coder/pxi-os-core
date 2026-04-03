@@ -13,6 +13,7 @@ import {
 import { uploadEntityDocument, saveEntityMedia, supabase } from '../services/supabase';
 import { InvoiceStatus } from '../types';
 import { useRef } from 'react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 interface Customer360ModalProps {
     contactId: string;
@@ -45,7 +46,7 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({ contactId, o
         // Combine for timeline
         const timeline = [
             ...customerEvents.map(e => ({ type: 'Event', date: e.eventDate, summary: `Event: ${e.status}`, id: e.id })),
-            ...customerInvoices.map(i => ({ type: 'Invoice', date: i.date, summary: `Invoice #${i.number} - ₦${(i.totalCents / 100).toLocaleString()}`, id: i.id })),
+            ...customerInvoices.map(i => ({ type: 'Invoice', date: i.date, summary: `Invoice #${i.number} - ${NAIRA_SYMBOL}${(i.totalCents / 100).toLocaleString()}`, id: i.id })),
             ...customerLogs.map(l => ({ type: l.type, date: l.createdAt, summary: l.summary, id: l.id })),
             ...customerMessages.map(m => ({ type: 'Message', date: new Date().toISOString(), summary: `Message: ${m.content.substring(0, 30)}...`, id: m.id }))
         ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -174,7 +175,7 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({ contactId, o
                                 <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-4">Lifetime Revenue</p>
-                                    <p className="text-4xl font-black tracking-tighter">₦{(relatedData.totalRevenue / 100).toLocaleString()}</p>
+                                    <p className="text-4xl font-black tracking-tighter">{NAIRA_SYMBOL}{(relatedData.totalRevenue / 100).toLocaleString()}</p>
                                     <div className="mt-6 flex items-center gap-2 text-xs font-bold text-indigo-300">
                                         <TrendingUp size={16} /> Top 10% Clientele
                                     </div>
@@ -359,7 +360,7 @@ export const Customer360Modal: React.FC<Customer360ModalProps> = ({ contactId, o
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{inv.date}</span>
                                             </div>
                                             <h5 className="text-sm font-black uppercase tracking-tight mb-1">Invoice #{inv.number}</h5>
-                                            <p className="text-lg font-black text-slate-900 mb-2">₦{(inv.totalCents / 100).toLocaleString()}</p>
+                                            <p className="text-lg font-black text-slate-900 mb-2">{NAIRA_SYMBOL}{(inv.totalCents / 100).toLocaleString()}</p>
                                             <div className="flex justify-between items-center">
                                                 <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-emerald-100 text-emerald-700' :
                                                     inv.status === InvoiceStatus.PROFORMA ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'

@@ -1,5 +1,11 @@
 import { BookkeepingEntry } from '../types';
 
+export const NAIRA_SYMBOL = '\u20A6';
+
+export const formatNaira = (amountInCents: number) => {
+    return `${NAIRA_SYMBOL}${(amountInCents / 100).toLocaleString()}`;
+};
+
 export const getNetBurnRate = (entries: BookkeepingEntry[]): number => {
     const now = new Date();
     const currentMonth = now.getMonth();

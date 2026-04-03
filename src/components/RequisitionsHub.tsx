@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Requisition } from '../types';
+import { NAIRA_SYMBOL } from '../utils/finance';
 import {
     ClipboardList, CheckCircle2, XCircle, Clock,
     Search, Filter, ChevronRight, Edit3,
@@ -146,10 +147,10 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 appearance-none"
                                 >
                                     <option value="">-- Select Payment Source --</option>
-                                    <option value="cash">Cash at Hand (₦{(cashAtHandCents / 100).toLocaleString()})</option>
+                                    <option value="cash">Cash at Hand ({NAIRA_SYMBOL}{(cashAtHandCents / 100).toLocaleString()})</option>
                                     {activeBankAccounts.map(account => (
                                         <option key={account.id} value={account.id}>
-                                            {account.bankName} - {account.accountNumber} (₦{(account.balanceCents / 100).toLocaleString()})
+                                            {account.bankName} - {account.accountNumber} ({NAIRA_SYMBOL}{(account.balanceCents / 100).toLocaleString()})
                                         </option>
                                     ))}
                                 </select>
@@ -267,7 +268,7 @@ export const RequisitionsHub: React.FC = () => {
                     </div>
                     <div className="bg-[#00ff9d] rounded-2xl p-4 min-w-[140px] shadow-[0_0_20px_rgba(0,255,157,0.1)]">
                         <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest mb-1">Total Volume</p>
-                        <p className="text-xl font-black text-slate-950">₦{stats.totalVolume.toLocaleString()}</p>
+                        <p className="text-xl font-black text-slate-950">{NAIRA_SYMBOL}{stats.totalVolume.toLocaleString()}</p>
                     </div>
                 </div>
             </div>
@@ -376,7 +377,7 @@ export const RequisitionsHub: React.FC = () => {
                                                     })()}
                                                     <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                        Total: ₦{group.totalAmount.toLocaleString()}
+                                                        Total: {NAIRA_SYMBOL}{group.totalAmount.toLocaleString()}
                                                     </span>
                                                 </div>
                                             </div>
@@ -431,8 +432,8 @@ export const RequisitionsHub: React.FC = () => {
                                                     <div className="flex items-center justify-between md:justify-end gap-10 mt-3 md:mt-0">
                                                         {req.type !== 'Release' && (
                                                             <div className="text-right">
-                                                                <p className="text-base font-black text-white leading-none mb-1">₦{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}</p>
-                                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">₦{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit</p>
+                                                                <p className="text-base font-black text-white leading-none mb-1">{NAIRA_SYMBOL}{((Number(req.totalAmountCents) || 0) / 100).toLocaleString()}</p>
+                                                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{NAIRA_SYMBOL}{((Number(req.pricePerUnitCents) || 0) / 100).toLocaleString()} / unit</p>
                                                             </div>
                                                         )}
                                                         <ChevronRight size={16} className="text-slate-700 group-hover:text-indigo-400 transition-all" />

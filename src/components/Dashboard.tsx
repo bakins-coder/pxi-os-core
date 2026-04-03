@@ -27,6 +27,7 @@ import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { Role, Invoice, Requisition, CateringEvent } from '../types';
 import { EventCalendar } from './EventCalendar';
 import { getTerm } from '../utils/terminology';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 
 const SummaryList = ({ title, items, type, onItemClick }: { title: string; items: any[]; type: string; onItemClick?: (item: any) => void }) => {
@@ -78,7 +79,7 @@ const SummaryList = ({ title, items, type, onItemClick }: { title: string; items
                 {(item.totalCents !== undefined || item.amountCents !== undefined || item.totalAmountCents !== undefined) && (
                   <div className="text-right shrink-0 ml-3">
                     <p className="text-[11px] font-black text-slate-800 whitespace-nowrap">
-                      <span className="text-[9px] text-slate-400 mr-0.5 font-bold">₦</span>{((
+                      <span className="text-[9px] text-slate-400 mr-0.5 font-bold">{NAIRA_SYMBOL}</span>{((
                         (type === 'receivable' && item.totalCents !== undefined && item.paidAmountCents !== undefined)
                           ? (item.totalCents - item.paidAmountCents)
                           : (item.totalCents || item.amountCents || item.totalAmountCents || 0)
@@ -235,7 +236,7 @@ export const Dashboard = () => {
                 </div>
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{kpi.label}</p>
                 <div className="flex items-baseline gap-1">
-                  {kpi.label !== 'Net Profit Margin' && <span className="text-sm font-black text-slate-400">₦</span>}
+                  {kpi.label !== 'Net Profit Margin' && <span className="text-sm font-black text-slate-400">{NAIRA_SYMBOL}</span>}
                   <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter leading-none">{kpi.value}</h2>
                 </div>
               </div>
@@ -340,7 +341,7 @@ const GenericDetailModal = ({ item, onClose, onUpdate }: { item: { type: string;
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Amount</p>
-              <p className="text-sm font-black text-slate-900">₦{((data.totalCents || data.totalAmountCents || 0) / 100).toLocaleString()}</p>
+              <p className="text-sm font-black text-slate-900">{NAIRA_SYMBOL}{((data.totalCents || data.totalAmountCents || 0) / 100).toLocaleString()}</p>
             </div>
           </div>
 

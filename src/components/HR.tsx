@@ -9,6 +9,7 @@ import {
    Users, Briefcase, Plus, ShieldCheck, Receipt, LayoutGrid, TrendingUp, ChevronRight,
    Activity, AlertTriangle, CheckCircle2, Wallet, Banknote, Landmark, Grid3X3, Layers, DollarSign, Info, X, UserPlus, Mail, Shield, User as UserIcon, ArrowRight, LogOut, ShieldAlert, Phone, Calendar as CalendarIcon, FileText, Upload, Mic, Square, Sparkles, MapPin, Loader2, Image as ImageIcon, Download, Printer, QrCode, Search, GripHorizontal, HeartPulse, Plane, Check, Clock, Globe, Send, RefreshCw, Trash2, Maximize2, Minimize2, Lock
 } from 'lucide-react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 const generatePayslip = (item: PayrollItem, employee: Employee) => {
    // Placeholder for PDF generation
@@ -416,8 +417,8 @@ const HireStaffModal = ({ isOpen, onClose, editingEmployee }: { isOpen: boolean,
                      <div className="p-8 md:p-10 bg-slate-950 rounded-[3rem] text-white space-y-6 md:space-y-8 relative overflow-hidden ring-4 ring-slate-100">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-[#00ff9d]/5 rounded-full blur-3xl"></div>
                         <div className="flex justify-between items-center relative z-10 border-b border-white/10 pb-4"><h4 className="text-[9px] md:text-[11px] font-black uppercase text-[#00ff9d] tracking-widest">Salary Band</h4><span className="px-3 py-1 bg-[#00ff9d]/10 border border-[#00ff9d]/20 text-[#00ff9d] rounded-xl text-[9px] font-black uppercase tracking-wider">Band {selectedRole.band}</span></div>
-                        <div className="grid grid-cols-3 gap-4 md:gap-8 relative z-10 text-center"><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Min</p><p className="text-sm md:text-lg font-black">₦{formatSalary(selectedRole.salaryRange.low)}</p></div><div className="border-x border-white/10"><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Mid</p><p className="text-sm md:text-lg font-black text-indigo-400">₦{formatSalary(selectedRole.salaryRange.mid)}</p></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Max</p><p className="text-sm md:text-lg font-black">₦{formatSalary(selectedRole.salaryRange.high)}</p></div></div>
-                        <div className="space-y-3 relative z-10"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Monthly Gross (₦)</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 font-black text-xl md:text-2xl">₦</span><input type="number" required className="w-full pl-12 pr-6 py-5 md:py-6 bg-white/5 border border-white/10 rounded-[2rem] text-white font-black text-2xl md:text-4xl outline-none focus:border-[#00ff9d] transition-all" value={salaryNGN || ''} onChange={e => setSalaryNGN(parseInt(e.target.value) || 0)} /></div></div>
+                        <div className="grid grid-cols-3 gap-4 md:gap-8 relative z-10 text-center"><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Min</p><p className="text-sm md:text-lg font-black">{NAIRA_SYMBOL}{formatSalary(selectedRole.salaryRange.low)}</p></div><div className="border-x border-white/10"><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Mid</p><p className="text-sm md:text-lg font-black text-indigo-400">{NAIRA_SYMBOL}{formatSalary(selectedRole.salaryRange.mid)} Mid</p></div><div><p className="text-[8px] text-slate-500 uppercase font-black mb-1">Max</p><p className="text-sm md:text-lg font-black">{NAIRA_SYMBOL}{formatSalary(selectedRole.salaryRange.high)}</p></div></div>
+                        <div className="space-y-3 relative z-10"><label className="text-[10px] md:text-[11px] font-black uppercase text-slate-400 tracking-widest ml-2 block">Monthly Gross ({NAIRA_SYMBOL})</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 font-black text-xl md:text-2xl">{NAIRA_SYMBOL}</span><input type="number" required className="w-full pl-12 pr-6 py-5 md:py-6 bg-white/5 border border-white/10 rounded-[2rem] text-white font-black text-2xl md:text-4xl outline-none focus:border-[#00ff9d] transition-all" value={salaryNGN || ''} onChange={e => setSalaryNGN(parseInt(e.target.value) || 0)} /></div></div>
                      </div>
                   )}
                </div>
@@ -645,7 +646,7 @@ const MatrixTab = ({ matrix }: { matrix: DepartmentMatrix[] }) => {
                                  </button>
                               </div>
                            </div>
-                           <div className="space-y-2"><div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-indigo-600 opacity-50 shadow-[0_0_10px_rgba(79,70,229,0.5)]" style={{ width: `${(role.band / 6) * 100}%` }}></div></div><div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter gap-1"><span>₦{formatSalary(role.salaryRange.low)}</span><span className="text-indigo-400/80 truncate">₦{formatSalary(role.salaryRange.mid)} Mid</span><span>₦{formatSalary(role.salaryRange.high)}</span></div></div>
+                           <div className="space-y-2"><div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-indigo-600 opacity-50 shadow-[0_0_10px_rgba(79,70,229,0.5)]" style={{ width: `${(role.band / 6) * 100}%` }}></div></div><div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter gap-1"><span>{NAIRA_SYMBOL}{formatSalary(role.salaryRange.low)}</span><span className="text-indigo-400/80 truncate">{NAIRA_SYMBOL}{formatSalary(role.salaryRange.mid)} Mid</span><span>{NAIRA_SYMBOL}{formatSalary(role.salaryRange.high)}</span></div></div>
                         </div>
                      ))}
                   </div>
@@ -725,7 +726,7 @@ const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
       if (roleStr.includes('chef') || roleStr.includes('kitchen') || roleStr.includes('cook')) {
          roleSpecific = [
             { name: 'Cooking Quality & Taste', weight: 30, description: 'Ensuring consistent flavor profiles and presentation.' },
-            { name: 'Food Safety & Hygiene', weight: 30, description: 'Maintaining station cleanliness and food storage standards.' }
+            { name: 'Food Safety & Hygiene', weight: 30, description: 'Ensuring consistent flavor profiles and presentation.' }
          ];
       } else if (roleStr.includes('finance') || roleStr.includes('cfo')) {
          roleSpecific = [
@@ -1068,7 +1069,7 @@ const LoanRequestModal = ({ isOpen, onClose, employeeId }: { isOpen: boolean, on
             </div>
             <div className="space-y-4">
                <div>
-                  <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required (₦)</label>
+                  <label className="text-[9px] md:text-[10px] font-black uppercase text-slate-500 tracking-widest ml-2 mb-2 block">Amount Required ({NAIRA_SYMBOL})</label>
                   <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-xl md:text-2xl text-slate-900 outline-none focus:border-indigo-500" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
                </div>
                <div>
@@ -1280,7 +1281,7 @@ export const HR = () => {
                                     <div className="flex flex-col min-w-[140px]">
                                        <span className="font-black text-slate-800 uppercase text-[10px] md:text-[11px] truncate">{emp.role}</span>
                                        <div className="flex items-center gap-2 mt-1">
-                                          <span className="text-[10px] font-black text-indigo-600 uppercase">₦{(emp.salaryCents / 100).toLocaleString()}</span>
+                                          <span className="text-[10px] font-black text-indigo-600 uppercase">{NAIRA_SYMBOL}{(emp.salaryCents / 100).toLocaleString()}</span>
                                           <span className="text-[8px] font-bold text-slate-300 uppercase">/ Month</span>
                                        </div>
                                     </div>
@@ -1514,7 +1515,7 @@ export const HR = () => {
                                        </div>
                                     </div>
                                     <div className="flex items-center gap-6 w-full md:w-auto shrink-0">
-                                       <div className="font-black text-2xl text-slate-900">₦{(req.totalAmountCents / 100).toLocaleString()}</div>
+                                       <div className="font-black text-2xl text-slate-900">{NAIRA_SYMBOL}{(req.totalAmountCents / 100).toLocaleString()}</div>
                                        <div className="flex gap-2">
                                           <button onClick={() => useDataStore.getState().approveRequisition(req.id)} className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200">Approve</button>
                                           <button onClick={() => {/* Reject logic could be added */ }} className="px-6 py-3 bg-slate-200 text-slate-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-300 transition-colors">Reject</button>
@@ -1543,13 +1544,13 @@ export const HR = () => {
                               <tbody className="divide-y divide-slate-50">
                                  {payrollItems.map(item => (
                                     <tr key={item.id} className="hover:bg-indigo-50/20 transition-all group">
-                                       <td className="px-8 md:px-10 py-6 md:py-8"><div className="font-black text-slate-900 uppercase text-xs md:text-sm tracking-tight truncate">{item.employeeName}</div><p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mt-1">Ref: {item.employeeId.slice(-4)}</p></td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-slate-700 whitespace-nowrap">₦{(item.grossCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-rose-500 whitespace-nowrap">₦{(item.taxCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-emerald-600 text-base md:text-lg tracking-tighter whitespace-nowrap">₦{(item.netCents / 100).toLocaleString()}</td>
+                                       <td className="px-8 md:px-10 py-6 md:py-8"><div className="font-black text-slate-900 uppercase text-xs md:text-sm tracking-tight truncate">{item.employeeName}</div><p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase mt-1">Ref: {item.employeeId.slice(-4)}</p></td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-slate-700 whitespace-nowrap">{NAIRA_SYMBOL}{(item.grossCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-rose-500 whitespace-nowrap">{NAIRA_SYMBOL}{(item.taxCents / 100).toLocaleString()}</td><td className="px-8 md:px-10 py-6 md:py-8 font-black text-emerald-600 text-base md:text-lg tracking-tighter whitespace-nowrap">{NAIRA_SYMBOL}{(item.netCents / 100).toLocaleString()}</td>
 
                                        {/* Sanction Control Column */}
                                        <td className="px-8 md:px-10 py-6 md:py-8">
                                           {item.punishmentDeductionCents > 0 ? (
                                              <div className="flex items-center gap-3">
-                                                <span className="font-black text-rose-500">₦{(item.punishmentDeductionCents / 100).toLocaleString()}</span>
+                                                <span className="font-black text-rose-500">{NAIRA_SYMBOL}{(item.punishmentDeductionCents / 100).toLocaleString()}</span>
                                                 <button onClick={() => {
                                                    const emp = employees.find(e => e.id === item.employeeId);
                                                    if (emp) {
@@ -1586,7 +1587,7 @@ export const HR = () => {
                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-inner mb-6 backdrop-blur-sm border border-white/10"><Banknote size={32} /></div>
                            <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px] mb-2">Monthly Net Pay</p>
                            <h2 className="text-5xl md:text-6xl font-black tracking-tighter text-white mb-6">
-                              {payrollItems[0] ? `₦${(payrollItems[0].netCents / 100).toLocaleString()}` : '---'}
+                              {payrollItems[0] ? `${NAIRA_SYMBOL}${(payrollItems[0].netCents / 100).toLocaleString()}` : '---'}
                            </h2>
 
                            {/* Download Payslip Button */}
@@ -1597,11 +1598,11 @@ export const HR = () => {
                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                               <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
                                  <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Gross</p>
-                                 <p className="text-lg font-black">{payrollItems[0] ? `₦${(payrollItems[0].grossCents / 100).toLocaleString()}` : '-'}</p>
+                                 <p className="text-lg font-black">{payrollItems[0] ? `${NAIRA_SYMBOL}${(payrollItems[0].grossCents / 100).toLocaleString()}` : '-'}</p>
                               </div>
                               <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
                                  <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Tax</p>
-                                 <p className="text-lg font-black text-rose-400">{payrollItems[0] ? `₦${(payrollItems[0].taxCents / 100).toLocaleString()}` : '-'}</p>
+                                 <p className="text-lg font-black text-rose-400">{payrollItems[0] ? `${NAIRA_SYMBOL}${(payrollItems[0].taxCents / 100).toLocaleString()}` : '-'}</p>
                               </div>
                            </div>
                         </div>
@@ -1625,11 +1626,11 @@ export const HR = () => {
                         <div className="space-y-4">
                            <div className="flex justify-between items-center text-sm">
                               <span className="font-bold text-slate-600">Pension (8%)</span>
-                              <span className="font-black text-slate-900">₦{(payrollItems[0]?.pensionEmployeeCents / 100 || 0).toLocaleString()}</span>
+                              <span className="font-black text-slate-900">{NAIRA_SYMBOL}{(payrollItems[0]?.pensionEmployeeCents / 100 || 0).toLocaleString()}</span>
                            </div>
                            <div className="flex justify-between items-center text-sm">
                               <span className="font-bold text-slate-600">NHF (2.5%)</span>
-                              <span className="font-black text-slate-900">₦{(payrollItems[0]?.nhfCents / 100 || 0).toLocaleString()}</span>
+                              <span className="font-black text-slate-900">{NAIRA_SYMBOL}{(payrollItems[0]?.nhfCents / 100 || 0).toLocaleString()}</span>
                            </div>
 
                            {/* Conditional Punishment Deduction */}
@@ -1639,14 +1640,14 @@ export const HR = () => {
                                     <AlertTriangle size={14} />
                                     <span className="font-black uppercase text-[10px] tracking-widest">Disciplinary Deduction</span>
                                  </div>
-                                 <span className="font-black text-rose-700">-₦{(payrollItems[0]?.punishmentDeductionCents / 100).toLocaleString()}</span>
+                                 <span className="font-black text-rose-700">-{NAIRA_SYMBOL}{(payrollItems[0]?.punishmentDeductionCents / 100).toLocaleString()}</span>
                               </div>
                            )}
 
                            <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
                               <span className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Total Deductions</span>
                               <span className="font-black text-rose-500 text-lg">
-                                 -₦{(((payrollItems[0]?.pensionEmployeeCents || 0) + (payrollItems[0]?.nhfCents || 0) + (payrollItems[0]?.taxCents || 0) + (payrollItems[0]?.punishmentDeductionCents || 0)) / 100).toLocaleString()}
+                                 -{NAIRA_SYMBOL}{(((payrollItems[0]?.pensionEmployeeCents || 0) + (payrollItems[0]?.nhfCents || 0) + (payrollItems[0]?.taxCents || 0) + (payrollItems[0]?.punishmentDeductionCents || 0)) / 100).toLocaleString()}
                               </span>
                            </div>
                         </div>

@@ -33,6 +33,33 @@ const withTimeout = async <T>(promise: PromiseLike<T>, ms: number = 5000, errorM
     ]);
 };
 
+// Private helper for audit logging
+const logAuditEvent = async (
+    eventType: 'LOGIN' | 'SIGNUP' | 'LOGOUT' | 'ACTIVATION_SYNC' | 'FAILURE' | 'PASSWORD_RESET',
+    status: 'SUCCESS' | 'FAILURE',
+    metadata: any = {},
+    userId?: string,
+    orgId?: string
+) => {
+    if (!supabase) return;
+    try {
+        await supabase.rpc('log_system_event', {
+            p_event_type: eventType,
+            p_status: status,
+            p_metadata: {
+                ...metadata,
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            },
+            p_user_id: userId,
+            p_org_id: orgId,
+            p_user_agent: navigator.userAgent
+        });
+    } catch (e) {
+        console.warn('[Audit] Failed to log event:', e);
+    }
+};
+
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
@@ -47,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
                 // [LOOKUP] Resolve Staff ID
                 if (!email.includes('@')) {
                     try {
+                        console.log('[Auth] Attempting Staff ID resolution for:', emailOrId);
                         const response = await withTimeout(
                             supabase.rpc('get_email_by_staff_id', { lookup_id: emailOrId.trim() }),
                             3000, 'Staff ID lookup timed out'
@@ -55,36 +83,27 @@ export const useAuthStore = create<AuthState>()(
                         const resolvedEmail = response.data;
 
                         if (resolvedEmail) {
+                            console.log('[Auth] Staff ID resolved to:', resolvedEmail);
                             email = resolvedEmail;
                         } else {
-                            // [FAILSAFE] If RPC fails but it looks like a Staff ID, try constructing the email
-                            if (/^XQ-\d+$/i.test(emailOrId.trim())) {
-                                console.warn('[Auth] RPC lookup failed, attempting fallback construction for:', emailOrId);
-                                email = `${emailOrId.trim().toLowerCase()}@wembleycakes.com`;
-                            } else {
-                                throw new Error(`Staff ID '${emailOrId}' not recognized.`);
-                            }
+                            throw new Error(`Staff ID '${emailOrId}' not recognized. Please check with your administrator.`);
                         }
-                    } catch (e) {
-                        // If it matches the format, try the fallback even if RPC errored
-                        if (/^XQ-\d+$/i.test(emailOrId.trim())) {
-                            console.warn('[Auth] RPC Error, using fallback for:', emailOrId);
-                            email = `${emailOrId.trim().toLowerCase()}@xquisite.local`;
-                        } else {
-                            console.warn('[Auth] Staff ID lookup failed:', e);
-                            throw e;
-                        }
+                    } catch (e: any) {
+                        console.error('[Auth] Staff ID lookup failed:', e);
+                        throw new Error(e.message || `Could not resolve Staff ID '${emailOrId}'.`);
                     }
                 }
 
-                console.log('[Auth] Signing in...');
                 // Authenticate
                 const { data, error } = await withTimeout(
                     supabase.auth.signInWithPassword({ email, password }),
                     8000, 'Supabase Sign-In timed out'
                 );
 
-                if (error) throw error;
+                if (error) {
+                    await logAuditEvent('LOGIN', 'FAILURE', { email, error: error.message });
+                    throw error;
+                }
                 if (!data.user) throw new Error('No user returned from Supabase.');
 
                 // 1. Fetch Profile
@@ -214,9 +233,14 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 console.log('[Auth] Login complete.');
+                await logAuditEvent('LOGIN', 'SUCCESS', { method: emailOrId.includes('@') ? 'email' : 'staff_id' }, data.user.id, targetOrgId);
             },
             logout: async () => {
-                if (supabase) await supabase.auth.signOut();
+                const current = get().user;
+                if (supabase) {
+                    await logAuditEvent('LOGOUT', 'SUCCESS', {}, current?.id, current?.companyId);
+                    await supabase.auth.signOut();
+                }
                 set({ user: null });
                 useSettingsStore.getState().reset();
             },
@@ -229,6 +253,7 @@ export const useAuthStore = create<AuthState>()(
                 });
                 if (error) throw error;
                 if (data.user) {
+                    await logAuditEvent('SIGNUP', 'SUCCESS', { role, name }, data.user.id);
                     useSettingsStore.getState().reset();
                     set({ user: { id: data.user.id, name, email, role, avatar: '', companyId: '', permissionTags: [] } });
                 }
@@ -309,6 +334,11 @@ export const useAuthStore = create<AuthState>()(
                         if (lostEmployee) {
                             console.log('[Auth] Linking Staff ID:', lostEmployee.staff_id);
                             await supabase.from('employees').update({ user_id: user.id }).eq('id', lostEmployee.id);
+                            
+                            await logAuditEvent('ACTIVATION_SYNC', 'SUCCESS', { 
+                                staff_id: lostEmployee.staff_id,
+                                previous_id: 'NONE'
+                            }, user.id, lostEmployee.organization_id);
 
                             // If we auto-mapped above, this confirms it. If not, this sets it.
                             if (!targetOrgId) targetOrgId = lostEmployee.organization_id;

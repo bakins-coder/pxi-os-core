@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { InventoryItem } from '../types';
 import { CheckCircle2, Info, X, Minus, Plus } from 'lucide-react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 interface MenuCardProps {
     item: InventoryItem;
@@ -89,7 +90,7 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
 
                 <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-1 p-2 md:p-3 bg-slate-50 rounded-lg md:rounded-xl border border-slate-100">
                     <div className="flex justify-between items-center mb-1 md:mb-0">
-                        <p className="text-xs md:text-xs font-black text-slate-950">₦{(item.priceCents / 100).toLocaleString()}</p>
+                        <p className="text-xs md:text-xs font-black text-slate-950">{NAIRA_SYMBOL}{(item.priceCents / 100).toLocaleString()}</p>
                         <input
                             type="number"
                             className="w-12 md:w-16 bg-white border border-slate-200 rounded md:rounded-lg py-0.5 md:py-0.5 text-center text-[10px] md:text-[10px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"

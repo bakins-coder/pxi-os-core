@@ -14,6 +14,7 @@ import {
    ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward,
    ArrowUpRight as LucideArrowUpRight
 } from 'lucide-react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
 import { generateHandoverReport, generateInvoicePDF } from '../utils/exportUtils';
@@ -23,34 +24,38 @@ import { RequisitionTracker } from './RequisitionTracker';
 import { PREDEFINED_CUISINE_PRODUCTS, CuisineProduct } from '../data/cuisineProducts';
 import { PREDEFINED_BAKERY_PRODUCTS } from '../data/bakeryProducts';
 import { IndustryType } from '../types';
-import { getIndustryConfig, INDUSTRY_PROFILES } from '../config/industryProfiles';
-const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent, onClose: () => void, onFinish: (inv: Invoice) => void }) => {
-   const [waiterRatio, setWaiterRatio] = useState<10 | 20>(10);
-   const [waiterRate, setWaiterRate] = useState(10000);
+import { getIndustryConfig, INDUSTRY_PROFILES, IndustryProfile } from '../config/industryProfiles';
+const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event: CateringEvent, onClose: () => void, onFinish: (inv: Invoice) => void, industryConfig: IndustryProfile }) => {
+   const [staffRatio, setStaffRatio] = useState<10 | 20>(10);
+   const [staffRate, setStaffRate] = useState(10000);
    const [vanRate, setVanRate] = useState(30000);
    const [vanCount, setVanCount] = useState(1);
    const [requisitions, setRequisitions] = useState<Partial<Requisition>[]>([]);
 
+   const terms = industryConfig.nomenclature.fulfillment;
+   const invTerms = industryConfig.nomenclature.inventory;
+   const features = industryConfig.features;
+
    useEffect(() => {
       const initialReqs: Partial<Requisition>[] = [];
-      const isCuisine = event.orderType === 'Cuisine' || event.banquetDetails?.eventType?.toUpperCase().includes('CUISINE');
+      const isStandardFlow = event.orderType === 'Cuisine' || event.banquetDetails?.eventType?.toUpperCase().includes('CUISINE');
 
-      if (!isCuisine) {
-         const staffNeeded = Math.ceil(event.guestCount / waiterRatio);
+      if (!isStandardFlow && features.showStaffProcurement) {
+         const staffNeeded = Math.ceil(event.guestCount / staffRatio);
          initialReqs.push({
             type: 'Hiring',
             category: 'Service',
-            itemName: `Wait Staff(${staffNeeded} heads)`,
+            itemName: `${terms.staffLabel}(${staffNeeded} heads)`,
             quantity: staffNeeded,
-            pricePerUnitCents: waiterRate * 100,
-            totalAmountCents: staffNeeded * waiterRate * 100,
-            notes: `Target ratio 1:${waiterRatio} for ${event.guestCount} guests.`
+            pricePerUnitCents: staffRate * 100,
+            totalAmountCents: staffNeeded * staffRate * 100,
+            notes: `Target ratio 1:${staffRatio} for ${event.guestCount} ${terms.unitsLabel.toLowerCase()}.`
          });
       }
       initialReqs.push({
          type: 'Rental',
          category: 'Hardware',
-         itemName: 'Logistics Van & Driver',
+         itemName: `${terms.logisticsUnitLabel} & Driver`,
          quantity: vanCount,
          pricePerUnitCents: vanRate * 100,
          totalAmountCents: vanCount * vanRate * 100,
@@ -58,7 +63,7 @@ const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent,
       event.items?.forEach(item => {
          initialReqs.push({
             type: 'Purchase',
-            category: 'Food',
+            category: invTerms.substanceLabel.plural as any,
             itemName: item.name,
             quantity: item.quantity,
             pricePerUnitCents: item.priceCents * 0.4,
@@ -66,7 +71,7 @@ const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent,
          });
       });
       setRequisitions(initialReqs);
-   }, [event, waiterRatio, waiterRate, vanRate, vanCount]);
+   }, [event, staffRatio, staffRate, vanRate, vanCount, industryConfig]);
 
    const updateReq = (idx: number, updates: Partial<Requisition>) => {
       const newReqs = [...requisitions];
@@ -108,23 +113,27 @@ const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent,
             </div>
             <div className="flex-1 overflow-y-auto p-5 md:p-12 space-y-8 md:space-y-12 pb-32 md:pb-12">
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-slate-50 p-5 md:p-8 rounded-2xl md:rounded-[2rem] border border-slate-100">
+                  {features.showStaffProcurement && (
+                     <>
+                        <div className="space-y-1.5 md:space-y-2">
+                           <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.staffLabel} Ratio</label>
+                           <select className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold outline-none text-slate-950 text-xs md:text-base" value={staffRatio} onChange={e => setStaffRatio(parseInt(e.target.value) as 10 | 20)}>
+                              <option value={10}>1 {terms.staffLabel} : 10 {terms.unitsLabel}</option>
+                              <option value={20}>1 {terms.staffLabel} : 20 {terms.unitsLabel}</option>
+                           </select>
+                        </div>
+                        <div className="space-y-1.5 md:space-y-2">
+                           <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.staffLabel} Rate ({NAIRA_SYMBOL})</label>
+                           <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={staffRate} onChange={e => setStaffRate(parseInt(e.target.value) || 0)} />
+                        </div>
+                     </>
+                  )}
                   <div className="space-y-1.5 md:space-y-2">
-                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Waiter Ratio</label>
-                     <select className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold outline-none text-slate-950 text-xs md:text-base" value={waiterRatio} onChange={e => setWaiterRatio(parseInt(e.target.value) as 10 | 20)}>
-                        <option value={10}>1 Waiter : 10 Guests</option>
-                        <option value={20}>1 Waiter : 20 Guests</option>
-                     </select>
-                  </div>
-                  <div className="space-y-1.5 md:space-y-2">
-                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Waiter Rate (â‚¦)</label>
-                     <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={waiterRate} onChange={e => setWaiterRate(parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div className="space-y-1.5 md:space-y-2">
-                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Van Rental (â‚¦)</label>
+                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.logisticsUnitLabel} Rental ({NAIRA_SYMBOL})</label>
                      <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanRate} onChange={e => setVanRate(parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-1.5 md:space-y-2">
-                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">Van Count</label>
+                     <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.logisticsUnitLabel} Count</label>
                      <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanCount} onChange={e => setVanCount(parseInt(e.target.value) || 0)} />
                   </div>
                </div>
@@ -139,7 +148,7 @@ const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent,
                            <div className="flex-1 space-y-1">
                               <input className="w-full bg-transparent font-black text-slate-800 uppercase outline-none focus:text-indigo-600 text-sm md:text-base" value={req.itemName} onChange={e => updateReq(idx, { itemName: e.target.value })} />
                               <div className="flex items-center gap-4">
-                                 <span className="text-[8px] md:text-[9px] font-black uppercase text-slate-400">{req.type} â€¢ {req.category}</span>
+                                 <span className="text-[8px] md:text-[9px] font-black uppercase text-slate-400">{req.type} • {req.category}</span>
                               </div>
                            </div>
                            <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-50">
@@ -148,12 +157,12 @@ const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent,
                                  <input type="number" className="w-full md:w-20 p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-center text-slate-950" value={req.quantity} onChange={e => updateReq(idx, { quantity: parseInt(e.target.value) || 0 })} />
                               </div>
                               <div className="space-y-1">
-                                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Price (â‚¦)</p>
+                                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Price ({NAIRA_SYMBOL})</p>
                                  <input type="number" className="w-full md:w-28 p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-right text-slate-950" value={(req.pricePerUnitCents || 0) / 100} onChange={e => updateReq(idx, { pricePerUnitCents: (parseFloat(e.target.value) || 0) * 100 })} />
                               </div>
                               <div className="col-span-2 md:col-span-1 md:w-32 text-right flex md:block justify-between items-end border-t border-slate-50 pt-3 md:pt-0 md:border-0 mt-2 md:mt-0">
                                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Row Total</p>
-                                 <p className="text-sm md:text-base font-black text-slate-900">â‚¦{((req.totalAmountCents || 0) / 100).toLocaleString()}</p>
+                                 <p className="text-sm md:text-base font-black text-slate-900">{NAIRA_SYMBOL}{((req.totalAmountCents || 0) / 100).toLocaleString()}</p>
                               </div>
                               <button onClick={() => removeReq(idx)} className="absolute top-2 right-2 md:static p-2.5 bg-rose-50 md:bg-transparent text-rose-500 md:text-slate-300 hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100 rounded-lg transition-all"><Trash2 size={16} /></button>
                            </div>
@@ -164,10 +173,10 @@ const ProcurementWizard = ({ event, onClose, onFinish }: { event: CateringEvent,
                <div className="bg-slate-950 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-2xl gap-6 md:gap-0">
                   <div>
                      <p className="text-[10px] md:text-xs font-black uppercase text-slate-500 tracking-widest mb-1">Total Fulfillment Estimate</p>
-                     <h4 className="text-2xl md:text-4xl font-black text-white tracking-tighter">â‚¦{(totalEstimate / 100).toLocaleString()}</h4>
+                     <h4 className="text-2xl md:text-4xl font-black text-white tracking-tighter">{NAIRA_SYMBOL}{(totalEstimate / 100).toLocaleString()}</h4>
                   </div>
                   <div className="text-left md:text-right w-full md:w-auto">
-                     <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: â‚¦{(event.financials.revenueCents / 100).toLocaleString()}</p>
+                     <p className="text-[10px] font-black text-[#00ff9d] uppercase tracking-widest mb-4">Event Revenue: {NAIRA_SYMBOL}{(event.financials.revenueCents / 100).toLocaleString()}</p>
                      <div className="flex flex-col md:flex-row gap-3 md:gap-4">
                         <button onClick={onClose} className="order-2 md:order-1 px-8 py-3.5 md:py-4 font-black uppercase text-[10px] text-slate-400 bg-slate-900 rounded-xl md:bg-transparent text-center">Cancel Plan</button>
                         <button onClick={handleFinalizePlan} className="order-1 md:order-2 px-8 py-4 md:px-12 md:py-5 bg-[#00ff9d] text-slate-950 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 w-full md:w-auto">Submit for Approval <ArrowRight size={16} /></button>
@@ -233,7 +242,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
             if (ing) {
                updateIngredientPrice(ing.id, price, {
                   marketPriceCents: price,
-                  groundedSummary: `Live Market Price via Google Grounding: â‚¦${(price / 100).toLocaleString()}`,
+                  groundedSummary: `Live Market Price via Google Grounding: ${NAIRA_SYMBOL}${(price / 100).toLocaleString()}`,
                   sources: [{ title: 'Google Search Market Data', uri: 'https://google.com' }]
                });
             }
@@ -257,7 +266,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
                   <div>
                      <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
-                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} â€¢ Intelligence Node</p>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
                   </div>
                </div>
                <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
@@ -304,7 +313,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                     <th className="px-4 py-3 md:px-8 md:py-4">Ingredient</th>
                                     <th className="px-4 py-3 md:px-8 md:py-4 text-center">Net Req.</th>
                                     <th className="px-4 py-3 md:px-8 md:py-4 text-right hidden md:table-cell">Unit Rate</th>
-                                    <th className="px-4 py-3 md:px-8 md:py-4 text-right">Value (â‚¦)</th>
+                                    <th className="px-4 py-3 md:px-8 md:py-4 text-right">Value ({NAIRA_SYMBOL})</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
@@ -322,8 +331,8 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                              {ing.qtyRequired.toFixed(2)} <span className="text-[8px] md:text-[10px] opacity-50">{ing.unit}</span>
                                           </span>
                                        </td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">â‚¦{(ing.unitCostCents / 100).toLocaleString()}</td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-slate-900 text-xs md:text-sm">â‚¦{(ing.totalCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">{NAIRA_SYMBOL}{(ing.unitCostCents / 100).toLocaleString()}</td>
+                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-slate-900 text-xs md:text-sm">{NAIRA_SYMBOL}{(ing.totalCostCents / 100).toLocaleString()}</td>
                                     </tr>
                                  ))}
                               </tbody>
@@ -343,7 +352,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                               <tr>
                                  <th className="px-4 py-3 md:px-8 md:py-4">Component</th>
                                  <th className="px-4 py-3 md:px-8 md:py-4 text-center">Net Requirement</th>
-                                 <th className="px-4 py-3 md:px-8 md:py-4 text-right">Cost (â‚¦)</th>
+                                 <th className="px-4 py-3 md:px-8 md:py-4 text-right">Cost ({NAIRA_SYMBOL})</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-800">
@@ -351,7 +360,7 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                                  <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
                                     <td className="px-4 py-3 md:px-8 md:py-4 font-black text-slate-200 uppercase">{agg.name}</td>
                                     <td className="px-4 py-3 md:px-8 md:py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} <span className="text-[9px] opacity-50 uppercase">{agg.unit}</span></td>
-                                    <td className="px-4 py-3 md:px-8 md:py-4 text-right font-black text-emerald-400 text-xs md:text-sm">â‚¦{(agg.cost / 100).toLocaleString()}</td>
+                                    <td className="px-4 py-3 md:px-8 md:py-4 text-right font-black text-emerald-400 text-xs md:text-sm">{NAIRA_SYMBOL}{(agg.cost / 100).toLocaleString()}</td>
                                  </tr>
                               ))}
                            </tbody>
@@ -363,11 +372,11 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="p-8 bg-slate-950 rounded-[2rem] text-white">
                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Aggregate Cost</p>
-                     <h5 className="text-2xl font-black">â‚¦{((costing?.totalIngredientCostCents || 0) / 100).toLocaleString()}</h5>
+                     <h5 className="text-2xl font-black">{NAIRA_SYMBOL}{((costing?.totalIngredientCostCents || 0) / 100).toLocaleString()}</h5>
                   </div>
                   <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100">
                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Projected Revenue</p>
-                     <h5 className="text-2xl font-black text-indigo-900">â‚¦{((costing?.revenueCents || 0) / 100).toLocaleString()}</h5>
+                     <h5 className="text-2xl font-black text-indigo-900">{NAIRA_SYMBOL}{((costing?.revenueCents || 0) / 100).toLocaleString()}</h5>
                   </div>
                   <div className="p-8 bg-white border-2 border-slate-100 rounded-[2rem]">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Margin</p>
@@ -388,14 +397,15 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
 
 
 
-const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisine, eventId }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number, isCuisine?: boolean, eventId?: string }) => {
+const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStandardFlow, eventId, industryConfig }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number, isStandardFlow?: boolean, eventId?: string, industryConfig: IndustryProfile }) => {
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
    const { contacts, bankAccounts, finalizeInvoice, updateInvoiceLines, cateringEvents } = useDataStore();
    const contact = contacts.find(c => c.id === invoice.contactId);
-   const effectiveIsCuisine = isCuisine || invoice.category === 'Cuisine' || cateringEvents.find(e => e.id === eventId)?.orderType === 'Cuisine';
+   const effectiveIsStandardFlow = isStandardFlow || invoice.category === 'Cuisine' || cateringEvents.find(e => e.id === eventId)?.orderType === 'Cuisine';
    const isBanquetMode = org.type === 'Catering' || org.type === 'Bakery';
-   const isCustomCakeMode = !effectiveIsCuisine;
+   const isCustomFlow = !effectiveIsStandardFlow;
+   const taxFeatures = industryConfig.features.taxConfig;
 
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
@@ -410,7 +420,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const [manualTotalOverride, setManualTotalOverride] = useState<number | undefined>(invoice.manualSetPriceCents);
 
    // Helper for currency formatting
-   const formatCurrency = (cents: number) => `â‚¦${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} `;
+   const formatCurrency = (cents: number) => `${NAIRA_SYMBOL}${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} `;
 
    const handlePrint = (capturedContent?: string) => {
       const win = window.open('', '_blank');
@@ -472,7 +482,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
       const { contacts } = useDataStore.getState();
       const customer = contacts.find(c => c.id === invoice.contactId);
 
-      const pdfInvoice = { ...invoice, category: isCuisine ? 'Cuisine' : (invoice.category || 'Custom') };
+      const pdfInvoice = { ...invoice, category: isStandardFlow ? (industryConfig.nomenclature.fulfillment.standardOrders) : (invoice.category || 'Custom') };
       await generateInvoicePDF(pdfInvoice, customer, settings, { save: true });
       setIsShareMenuOpen(false);
    };
@@ -483,7 +493,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
          const { contacts } = useDataStore.getState();
          const customer = contacts.find(c => c.id === invoice.contactId);
 
-         const pdfInvoice = { ...invoice, category: isCuisine ? 'Standard' : (invoice.category || 'Custom') };
+         const pdfInvoice = { ...invoice, category: isStandardFlow ? 'Standard' : (invoice.category || 'Custom') };
          const doc = await generateInvoicePDF(pdfInvoice, customer, settings, { save: false, returnDoc: true }) as any;
          const pdfBlob = doc.output('blob');
          const file = new File([pdfBlob], `Invoice - ${invoice.number}.pdf`, { type: 'application/pdf' });
@@ -512,14 +522,14 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isCuisin
    const handleCopyShareText = async () => {
       const { settings } = useSettingsStore.getState();
       const subtotal = editableLines.reduce((acc, l) => {
-         if (isCustomCakeMode && !l.description.startsWith('[SECTION] ')) return acc;
+         if (isCustomFlow && !l.description.startsWith('[SECTION] ')) return acc;
          const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null) ? l.manualPriceCents : l.unitPriceCents;
          return acc + (l.quantity * price);
       }, 0);
 
-      const isCuisine = effectiveIsCuisine;
-      const sc = isCuisine ? 0 : Math.round(subtotal * 0.15);
-      const vat = isCuisine ? 0 : Math.round((subtotal + sc) * 0.075);
+      const isStandard = effectiveIsStandardFlow;
+      const sc = isStandard ? 0 : Math.round(subtotal * (taxFeatures.serviceChargeRate / 100));
+      const vat = isStandard ? 0 : Math.round((subtotal + sc) * (taxFeatures.vatRate / 100));
       const total = subtotal + sc + vat;
       const finalTotal = manualTotalOverride ?? total;
 
@@ -534,10 +544,10 @@ Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 Due: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString('en-GB')}
 
 *FEES:*
-Subtotal: â‚¦${(subtotal / 100).toLocaleString()}
-Service Charge: â‚¦${(sc / 100).toLocaleString()}
-VAT: â‚¦${(vat / 100).toLocaleString()}
-*TOTAL DUE: â‚¦${(finalTotal / 100).toLocaleString()}*
+Subtotal: ${NAIRA_SYMBOL}${(subtotal / 100).toLocaleString()}
+Service Charge: ${NAIRA_SYMBOL}${(sc / 100).toLocaleString()}
+VAT: ${NAIRA_SYMBOL}${(vat / 100).toLocaleString()}
+*TOTAL DUE: ${NAIRA_SYMBOL}${(finalTotal / 100).toLocaleString()}*
 
 *BANK DETAILS:*
 ${bankDetailsText}
@@ -703,7 +713,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
    const handleSaveEdits = async () => {
       try {
-         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, isCuisine, eventId);
+         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, effectiveIsStandardFlow, eventId);
          // Update storage and notify parent if needed, but for now we just persist to cloud
       } catch (err) {
          console.error("Failed to save edits", err);
@@ -802,7 +812,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                            const isHeader = line.description.startsWith('[SECTION] ');
 
                            // Show Pricing IF: Not Custom Cake Mode OR It *IS* a Header row
-                           const showPricing = !isCustomCakeMode || isHeader;
+                           const showPricing = !isCustomFlow || isHeader;
 
                            return (
                               <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-slate-50 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''} `}>
@@ -816,7 +826,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                           >
                                              <Trash2 size={12} />
                                           </button>
-                                          {isCustomCakeMode && (
+                                          {isCustomFlow && (
                                              <button
                                                 onClick={() => toggleSection(idx)}
                                                 className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
@@ -826,7 +836,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                              </button>
                                           )}
                                           <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isCustomCakeMode ? 'text-xs md:ml-8' : ''} `}
+                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isCustomFlow ? 'text-xs md:ml-8' : ''} `}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -850,7 +860,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">Unit Price</label>
                                              {showPricing ? (
                                                 <div className="flex items-center bg-slate-50 rounded px-2 py-1 md:ml-auto">
-                                                   <span className="text-[10px] text-slate-400 mr-1">â‚¦</span>
+                                                   <span className="text-[10px] text-slate-400 mr-1">{NAIRA_SYMBOL}</span>
                                                    <input
                                                       type="number"
                                                       className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}"
@@ -867,7 +877,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                                 <label className="md:hidden text-[8px] font-black text-orange-400 uppercase mb-1">Discount Price</label>
                                                 {showPricing ? (
                                                    <div className="flex items-center bg-orange-50/50 rounded px-2 py-1 md:ml-auto border border-orange-100 focus-within:ring-1 focus-within:ring-orange-400">
-                                                      <span className="text-[10px] text-orange-300 mr-1">â‚¦</span>
+                                                      <span className="text-[10px] text-orange-300 mr-1">{NAIRA_SYMBOL}</span>
                                                       <input
                                                          type="number"
                                                          className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
@@ -898,7 +908,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                        {/* View Mode (Non-Editable) */}
                                        <div className="w-full md:pr-4">
                                           {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-400 text-white rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1 shadow-sm">Section</span>}
-                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isCustomCakeMode ? 'text-xs md:ml-12 text-slate-600' : ''} `}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
+                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isCustomFlow ? 'text-xs md:ml-12 text-slate-600' : ''} `}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
                                        </div>
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
@@ -988,14 +998,14 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                            <div>
                               <h4 className="font-bold text-slate-900 text-xs mb-1">Terms and Conditions:</h4>
                               <p className="text-[10px] text-slate-500 leading-relaxed">
-                                 Initial deposit of 70% is to be paid before the event and balance payable immediately after the event.
-                                 Cancellation of order will result to only a 70% refund of initial deposit made.
+                                 Initial deposit of 70% is to be paid before the {industryConfig.nomenclature.fulfillment.fulfillmentTerm} and balance payable immediately after the {industryConfig.nomenclature.fulfillment.fulfillmentTerm}.
+                                 Cancellation of {industryConfig.nomenclature.fulfillment.fulfillmentTerm} will result to only a 70% refund of initial deposit made.
                               </p>
                            </div>
                            <div>
                               <h4 className="font-bold text-slate-900 text-xs mb-1">Disclaimer:</h4>
                               <p className="text-[10px] text-slate-500 leading-relaxed">
-                                 In the event of cancellation of order, it should be communicated to our contact person 48 hours before the event. Failure to do so will mean that initial deposit made has been forfeited.
+                                 In the event of cancellation of {industryConfig.nomenclature.fulfillment.fulfillmentTerm}, it should be communicated to our contact person 48 hours before the {industryConfig.nomenclature.fulfillment.fulfillmentTerm}. Failure to do so will mean that initial deposit made has been forfeited.
                               </p>
                            </div>
                         </div>
@@ -1005,44 +1015,39 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                      {/* Right Side: Totals */}
                      <div className="w-full md:w-1/3 space-y-2">
                         {(() => {
-                           const isNonFoodItem = (desc: string) => {
+                           const isExcludedFromTax = (desc: string) => {
                               if (!desc) return false;
                               const ldesc = desc.toLowerCase();
                               return ldesc.includes('transport') ||
                                  ldesc.includes('logistic') ||
                                  ldesc.includes('delivery') ||
-                                 ldesc.includes('menu card') ||
                                  ldesc.includes('service') ||
-                                 ldesc.includes('waiter') ||
-                                 ldesc.includes('truck') ||
                                  ldesc.includes('rental');
                            };
 
                            // 1. Calculate Standard Totals
                            const standardSubtotal = editableLines.reduce((acc, l) => {
-                              // Custom Cake Mode: ONLY lines marked as [SECTION] headers contribute to cost
-                              if (isCustomCakeMode) {
+                              if (isCustomFlow) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
 
                            const standardTaxableSubtotal = editableLines.reduce((acc, l) => {
-                              if (isCustomCakeMode) {
+                              if (isCustomFlow) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
-                              if (isNonFoodItem(l.description)) return acc;
+                              if (isExcludedFromTax(l.description)) return acc;
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
 
-                           const standardSC = effectiveIsCuisine ? 0 : Math.round(standardTaxableSubtotal * 0.15);
-                           const standardVAT = effectiveIsCuisine ? 0 : Math.round((standardTaxableSubtotal + standardSC) * 0.075);
+                           const standardSC = effectiveIsStandardFlow ? 0 : Math.round(standardTaxableSubtotal * (taxFeatures.serviceChargeRate / 100));
+                           const standardVAT = effectiveIsStandardFlow ? 0 : Math.round((standardTaxableSubtotal + standardSC) * (taxFeatures.vatRate / 100));
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
                            const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
-                              // Banquet Mode: ONLY lines marked as [SECTION] headers contribute to cost
-                              if (isCustomMode) {
+                              if (isCustomFlow) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
 
@@ -1053,10 +1058,10 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                            }, 0);
 
                            const effectiveTaxableSubtotal = editableLines.reduce((acc, l, idx) => {
-                              if (isCustomMode) {
+                              if (isCustomFlow) {
                                  if (!l.description.startsWith('[SECTION] ')) return acc;
                               }
-                              if (isNonFoodItem(l.description)) return acc;
+                              if (isExcludedFromTax(l.description)) return acc;
 
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
@@ -1064,8 +1069,8 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
-                           const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * 0.075);
+                           const effectiveSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * (taxFeatures.serviceChargeRate / 100));
+                           const effectiveVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * (taxFeatures.vatRate / 100));
                            const calculatedTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
                            const finalTotal = manualTotalOverride ?? calculatedTotal;
 
@@ -1080,11 +1085,11 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                     <span>{formatCurrency(effectiveSubtotal)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({effectiveIsCuisine ? '0%' : '15%'})</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({isStandardFlow ? '0%' : `${taxFeatures.serviceChargeRate}%`})</span>
                                     <span>{formatCurrency(effectiveSC)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT ({effectiveIsCuisine ? '0%' : '7.5%'})</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT ({isStandardFlow ? '0%' : `${taxFeatures.vatRate}%`})</span>
                                     <span>{formatCurrency(effectiveVAT)}</span>
                                  </div>
 
@@ -1108,7 +1113,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                     <div className="flex justify-between items-center text-[10px] font-bold text-orange-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 mb-2 mt-4">
                                        <span className="uppercase tracking-widest pl-2 font-black">Override Overall Total (Discounted)</span>
                                        <div className="flex items-center bg-white px-3 py-1 rounded border border-orange-200 shadow-sm">
-                                          <span className="mr-1 text-orange-300">â‚¦</span>
+                                          <span className="mr-1 text-orange-300">{NAIRA_SYMBOL}</span>
                                           <input
                                              type="number"
                                              className="w-40 bg-transparent border-none text-right font-black focus:ring-0 p-0 text-xs text-orange-600"
@@ -1144,7 +1149,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                {/* 5. Orange Footer Brand Message */}
                <div className="bg-orange-500 py-4 px-8 -mx-8 md:-mx-12 mt-12 mb-[-3rem] md:mb-[-4rem]">
                   <p className="text-white font-bold italic text-center text-sm md:text-base font-serif">
-                     Sweet treats for sweet moments. We look forward to serving you again soon.
+                     {industryConfig.nomenclature.fulfillment.portalSlogan || "Excellence in every delivery."}
                   </p>
                </div>
 
@@ -1718,15 +1723,15 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Revenue</p>
-               <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">â‚¦{(revenue / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">{NAIRA_SYMBOL}{(revenue / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Est. Direct Costs</p>
-               <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">â‚¦{(estimatedCost / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">{NAIRA_SYMBOL}{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
             <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest">Projected Net</p>
-               <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">â‚¦{(estimatedNet / 100).toLocaleString()}</h4>
+               <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">{NAIRA_SYMBOL}{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
 
@@ -1929,9 +1934,9 @@ const CostingMatrix = () => {
                      {costings.map((c, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 transition-all">
                            <td className="px-8 py-5 font-black text-slate-800 uppercase text-xs">{c.name}</td>
-                           <td className="px-8 py-5 text-right font-black text-slate-900">â‚¦{(c.revenueCents / 100).toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right font-black text-rose-500">â‚¦{(c.totalIngredientCostCents / 100).toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right font-black text-emerald-600">â‚¦{(c.grossMarginCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-slate-900">{NAIRA_SYMBOL}{(c.revenueCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-rose-500">{NAIRA_SYMBOL}{(c.totalIngredientCostCents / 100).toLocaleString()}</td>
+                           <td className="px-8 py-5 text-right font-black text-emerald-600">{NAIRA_SYMBOL}{(c.grossMarginCents / 100).toLocaleString()}</td>
                            <td className="px-8 py-5">
                               <div className="flex flex-col items-center gap-1">
                                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -1950,9 +1955,8 @@ const CostingMatrix = () => {
    );
 };
 
-const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => void, onFinalize: (inv: Invoice) => void, vertical: IndustryType }) => {
+const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: { onClose: () => void, onFinalize: (inv: Invoice) => void, vertical: IndustryType, industryConfig: IndustryProfile }) => {
    const { settings } = useSettingsStore();
-   const industryConfig = getIndustryConfig(vertical);
    const terms = industryConfig.nomenclature.fulfillment;
 
    const [items, setItems] = useState<{ id: string, name: string, quantity: number, priceCents: number, category: string, discountCents?: number }[]>([]);
@@ -2143,7 +2147,7 @@ const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => v
             priceCents: i.priceCents,
             costCents: i.priceCents * 0.4 // Default cost estimate
          })),
-         orderType: 'Cuisine',
+         orderType: 'Standard',
          banquetDetails: {
             notes: 'Standard Order',
             eventType: 'Standard Order',
@@ -2321,7 +2325,7 @@ const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => v
                                        <div className="flex-1 mr-4">
                                           <p className="font-bold text-slate-800 text-sm group-hover/item:text-emerald-700">{product.name}</p>
                                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                             â‚¦{product.price.toLocaleString()}
+                                             {NAIRA_SYMBOL}{product.price.toLocaleString()}
                                           </p>
                                        </div>
                                        <span className="text-[8px] font-black uppercase text-slate-300 group-hover/item:text-emerald-500 bg-slate-50 px-2 py-1 rounded-md transition-all group-hover/item:bg-emerald-100">{product.category}</span>
@@ -2344,7 +2348,7 @@ const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => v
                                  onChange={e => setCustomProductName(e.target.value)}
                               />
                               <div className="relative md:col-span-1">
-                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">â‚¦</span>
+                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{NAIRA_SYMBOL}</span>
                                  <input
                                     type="number"
                                     placeholder="Price"
@@ -2499,7 +2503,7 @@ const CuisineOrderModal = ({ onClose, onFinalize, vertical }: { onClose: () => v
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
                         <p className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">Total Amount</p>
                         <div className="flex items-baseline justify-center gap-1">
-                           <span className="text-xl font-bold text-slate-600">â‚¦</span>
+                           <span className="text-xl font-bold text-slate-600">{NAIRA_SYMBOL}</span>
                            <span className="text-3xl md:text-4xl font-black text-white tracking-tight">{(totalCents / 100).toLocaleString()}</span>
                         </div>
                      </div>
@@ -2539,10 +2543,10 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
 
    const [amendEventId, setAmendEventId] = useState<string | null>(null);
    const [showBrochure, setShowBrochure] = useState(false);
-   const [showCuisineOrder, setShowCuisineOrder] = useState(false);
+   const [showStandardOrder, setShowStandardOrder] = useState(false);
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
    const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
-   const [activeTab, setActiveTab] = useState<'orders' | 'cuisine' | 'matrix'>('cuisine');
+   const [activeTab, setActiveTab] = useState<'orders' | 'fulfillment' | 'matrix'>(features.showBOQ ? 'fulfillment' : 'orders');
    const [showProcurement, setShowProcurement] = useState(false);
    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
@@ -2782,7 +2786,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                                     ? 'text-emerald-500'
                                     : (isSelected ? 'text-slate-500' : 'text-rose-400')
                                     } `}>
-                                    â‚¦{(displayRevenue / 100).toLocaleString()}
+                                    {NAIRA_SYMBOL}{(displayRevenue / 100).toLocaleString()}
                                  </p>
                               </div>
                            </div>
@@ -2836,11 +2840,12 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
          }
 
          {
-            showCuisineOrder && createPortal(
-               <CuisineOrderModal
-                  onClose={() => setShowCuisineOrder(false)}
+            showStandardOrder && createPortal(
+               <StandardOrderModal
+                  onClose={() => setShowStandardOrder(false)}
                   onFinalize={handleFinalizePush}
                   vertical={activeVertical}
+                  industryConfig={industryConfig}
                />,
                document.body
             )
@@ -2858,8 +2863,9 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                   setViewingInvoice(null);
                }}
                guestCount={selectedEvent?.guestCount}
-               isCuisine={activeTab === 'cuisine'}
+               isStandardFlow={activeTab === 'orders' || generatedInvoice?.category === 'Cuisine' || (viewingInvoice?.category === terms.standardOrders)}
                eventId={selectedEvent?.id}
+               industryConfig={industryConfig}
             />,
             document.body
          )}
@@ -2870,6 +2876,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                   event={procurementWizardEvent}
                   onClose={() => setProcurementWizardEvent(null)}
                   onFinish={handleFinalizePush}
+                  industryConfig={industryConfig}
                />,
                document.body
             )

@@ -135,7 +135,6 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
   const hasPermission = (required?: string, allowedRoles?: Role[]) => {
     // 1. Super Admin Bypass
-    // 1. Super Admin Bypass
     if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
 
     const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;

@@ -9,6 +9,7 @@ import {
     AlertCircle, Activity, ArrowDownRight, Calendar, ShieldAlert, Clock, Filter
 } from 'lucide-react';
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -165,7 +166,7 @@ export const AnalyticsDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <KPICard
                     title="Total Revenue"
-                    value={`₦${analytics.totalRevenue.toLocaleString()}`}
+                    value={`${NAIRA_SYMBOL}${analytics.totalRevenue.toLocaleString()}`}
                     change="+12.5%"
                     trend="up"
                     icon={DollarSign}
@@ -173,7 +174,7 @@ export const AnalyticsDashboard: React.FC = () => {
                 />
                 <KPICard
                     title="Net Profit"
-                    value={`₦${analytics.netProfit.toLocaleString()}`}
+                    value={`${NAIRA_SYMBOL}${analytics.netProfit.toLocaleString()}`}
                     change="+8.3%"
                     trend="up"
                     icon={TrendingUp}
@@ -181,7 +182,7 @@ export const AnalyticsDashboard: React.FC = () => {
                 />
                 <KPICard
                     title="Outstanding AR"
-                    value={`₦${analytics.outstandingAR.toLocaleString()}`}
+                    value={`${NAIRA_SYMBOL}${analytics.outstandingAR.toLocaleString()}`}
                     change="-5.2%"
                     trend="down"
                     icon={AlertCircle}
@@ -234,7 +235,7 @@ export const AnalyticsDashboard: React.FC = () => {
                             fillOpacity={1}
                             fill="url(#colorRevenue)"
                             strokeWidth={2}
-                            name="Revenue (₦)"
+                            name={`Revenue (${NAIRA_SYMBOL})`}
                         />
                         <Area
                             type="monotone"
@@ -243,7 +244,7 @@ export const AnalyticsDashboard: React.FC = () => {
                             fillOpacity={1}
                             fill="url(#colorExpenses)"
                             strokeWidth={2}
-                            name="Expenses (₦)"
+                            name={`Expenses (${NAIRA_SYMBOL})`}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -270,7 +271,7 @@ export const AnalyticsDashboard: React.FC = () => {
                                     fontWeight: 'bold'
                                 }}
                             />
-                            <Bar dataKey="revenue" fill="#6366f1" radius={[0, 8, 8, 0]} name="Revenue (₦)" />
+                            <Bar dataKey="revenue" fill="#6366f1" radius={[0, 8, 8, 0]} name={`Revenue (${NAIRA_SYMBOL})`} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

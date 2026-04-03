@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Role } from '../types';
+import { NAIRA_SYMBOL } from '../utils/finance';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, CartesianGrid, PieChart as RePieChart, Pie, Cell, Legend
@@ -126,9 +127,9 @@ const StandardDashboards = ({ currentUser }: { currentUser: any }) => {
     <div className="space-y-6 animate-in fade-in">
       <h2 className="text-xl font-bold text-slate-800">Financial Overview</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card title="Total Revenue" value={`₦${(data.financial.revenue / 1000000).toFixed(1)}M`} sub="Current Ledger" icon={TrendingUp} color="text-indigo-600 bg-indigo-600" />
-        <Card title="Cash on Hand" value={`₦${(data.financial.cash / 1000000).toFixed(1)}M`} sub="Liquidity Status" icon={TrendingUp} color="text-emerald-600 bg-emerald-600" />
-        <Card title="Outstanding AR" value={`₦${(data.financial.receivables / 1000000).toFixed(1)}M`} sub="Receivables" icon={AlertCircle} color="text-purple-600 bg-purple-600" />
+        <Card title="Total Revenue" value={`${NAIRA_SYMBOL}${(data.financial.revenue / 1000000).toFixed(1)}M`} sub="Current Ledger" icon={TrendingUp} color="text-indigo-600 bg-indigo-600" />
+        <Card title="Cash on Hand" value={`${NAIRA_SYMBOL}${(data.financial.cash / 1000000).toFixed(1)}M`} sub="Liquidity Status" icon={TrendingUp} color="text-emerald-600 bg-emerald-600" />
+        <Card title="Outstanding AR" value={`${NAIRA_SYMBOL}${(data.financial.receivables / 1000000).toFixed(1)}M`} sub="Receivables" icon={AlertCircle} color="text-purple-600 bg-purple-600" />
       </div>
     </div>
   );
