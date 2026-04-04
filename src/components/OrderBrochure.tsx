@@ -254,6 +254,11 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
             setContactEmail(existingContact.email);
             setContactPhone(existingContact.phone);
             setContactPerson(existingContact.contactPerson || '');
+        } else {
+            // Clear fields if no direct match found to prevent data leakage from previous selections
+            setContactEmail('');
+            setContactPhone('');
+            setContactPerson('');
         }
     };
 
@@ -300,9 +305,31 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
         };
 
         try {
+            // Resolve Target Contact ID (Check email match first)
+            let targetContactId = (initialEvent && initialEvent.contactId) ? initialEvent.contactId : user?.id;
+            let contactMatch = contacts.find(c => c.email?.toLowerCase() === contactEmail?.toLowerCase());
+
+            if (!contactMatch) {
+                const newContactId = crypto.randomUUID();
+                const newContact: Partial<Contact> = {
+                    id: newContactId,
+                    name: customerName,
+                    email: contactEmail,
+                    phone: contactPhone,
+                    type: 'Individual',
+                    contactPerson: contactPerson || customerName,
+                    sentimentScore: 0.5
+                };
+                addContact(newContact);
+                targetContactId = newContactId;
+            } else {
+                targetContactId = contactMatch.id;
+            }
+
             if (initialEvent && initialEvent.id) {
                 const { invoice } = await updateCateringOrder(initialEvent.id, {
                     customerName,
+                    contactId: targetContactId,
                     eventDate,
                     guestCount,
                     items: dealItems,
@@ -312,26 +339,6 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 localStorage.removeItem(`order_draft_${settings.id || 'general'}`);
                 if (invoice) onFinalize(invoice); else onComplete();
             } else {
-                let targetContactId = user?.id;
-                let contactMatch = contacts.find(c => c.email?.toLowerCase() === contactEmail?.toLowerCase());
-
-                if (!contactMatch) {
-                    const newContactId = crypto.randomUUID();
-                    const newContact: Partial<Contact> = {
-                        id: newContactId,
-                        name: customerName,
-                        email: contactEmail,
-                        phone: contactPhone,
-                        type: 'Individual',
-                        contactPerson: contactPerson || customerName,
-                        sentimentScore: 0.5
-                    };
-                    addContact(newContact);
-                    targetContactId = newContactId;
-                } else {
-                    targetContactId = contactMatch.id;
-                }
-
                 const { invoice } = await createCateringOrder({
                     customerName,
                     contactId: targetContactId as string,

@@ -142,9 +142,9 @@ interface DataState {
     completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
     finalizeProforma: (invoiceId: string) => Promise<void>;
-    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string) => Promise<void>;
+    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string) => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
-    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string) => Promise<void>;
+    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string) => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -2161,6 +2161,7 @@ export const useDataStore = create<DataState>()(
                     id: evId,
                     companyId: companyId,
                     customerName: d.customerName,
+                    contactId: validContactId, // Added for strict ID mapping
                     eventDate: d.eventDate,
                     guestCount: d.guestCount,
                     status: 'Confirmed',
@@ -2368,6 +2369,8 @@ export const useDataStore = create<DataState>()(
                                     ...inv,
                                     totalCents,
                                     subtotalCents: totalRev,
+                                    contactId: nextEvent.contactId || inv.contactId,
+                                    customerName: nextEvent.customerName || inv.customerName,
                                     category: nextEvent.orderType || inv.category || 'Banquet',
                                     serviceChargeCents,
                                     vatCents,
@@ -2505,7 +2508,23 @@ export const useDataStore = create<DataState>()(
                 return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
             },
 
-            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string) => {
+            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string) => {
+                const user = useAuthStore.getState().user;
+                const currentInvoice = get().invoices.find(inv => inv.id === invoiceId);
+
+                // Audit Log: If customer name changed
+                if (updatedCustomerName && updatedCustomerName !== currentInvoice?.customerName) {
+                    get().addInteractionLog({
+                        id: crypto.randomUUID(),
+                        contactId: currentInvoice?.contactId || 'unknown',
+                        type: 'Note',
+                        summary: 'Customer Name Correction',
+                        content: `Host name corrected from "${currentInvoice?.customerName || 'Valued Customer'}" to "${updatedCustomerName}" by ${user?.name || 'Unknown Staff'}.`,
+                        createdAt: new Date().toISOString(),
+                        createdBy: user?.id || 'system'
+                    });
+                }
+
                 set((state) => {
                     const currentInvoice = state.invoices.find(inv => inv.id === invoiceId);
                     const effectiveIsCuisine = isCuisine || (currentInvoice?.category === 'Cuisine');
@@ -2585,7 +2604,8 @@ export const useDataStore = create<DataState>()(
                             standardTotalCents: standardTotal,
                             discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
                             totalCents: updatedTotalCents,
-                            manualSetPriceCents: overrideTotalCents
+                            manualSetPriceCents: overrideTotalCents,
+                            customerName: updatedCustomerName || inv.customerName
                         } : inv),
                         cateringEvents: state.cateringEvents.map(event => {
                             const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
@@ -2594,6 +2614,7 @@ export const useDataStore = create<DataState>()(
                             if (isMatch) {
                                 return {
                                     ...event,
+                                    customerName: updatedCustomerName || event.customerName,
                                     financials: {
                                         ...event.financials,
                                         revenueCents: updatedTotalCents,
@@ -2620,7 +2641,25 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
 
-            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string) => {
+            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string) => {
+                const user = useAuthStore.getState().user;
+                const currentInvoice = get().invoices.find(inv => inv.id === invoiceId);
+
+                // Audit Log for finalization and/or name change
+                const nameChangeNote = (updatedCustomerName && updatedCustomerName !== currentInvoice?.customerName)
+                    ? ` (Customer name corrected to "${updatedCustomerName}")`
+                    : '';
+
+                get().addInteractionLog({
+                    id: crypto.randomUUID(),
+                    contactId: currentInvoice?.contactId || 'unknown',
+                    type: 'Note',
+                    summary: 'Invoice Finalized',
+                    content: `Invoice finalized by ${user?.name || 'Unknown Staff'}${nameChangeNote}`,
+                    createdAt: new Date().toISOString(),
+                    createdBy: user?.id || 'system'
+                });
+
                 set((state) => {
                     const currentInv = state.invoices.find(i => i.id === invoiceId);
                     const event = eventId ? state.cateringEvents.find(e => e.id === eventId) : undefined;
@@ -2691,7 +2730,8 @@ export const useDataStore = create<DataState>()(
                             standardTotalCents: standardTotal,
                             discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
                             totalCents: updatedTotalCents,
-                            manualSetPriceCents: overrideTotalCents
+                            manualSetPriceCents: overrideTotalCents,
+                            customerName: updatedCustomerName || inv.customerName
                         } : inv),
                         cateringEvents: state.cateringEvents.map(event => {
                             const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
@@ -2700,6 +2740,7 @@ export const useDataStore = create<DataState>()(
                             if (isMatch) {
                                 return {
                                     ...event,
+                                    customerName: updatedCustomerName || event.customerName,
                                     financials: {
                                         ...event.financials,
                                         revenueCents: updatedTotalCents,
@@ -2884,7 +2925,6 @@ export const useDataStore = create<DataState>()(
                         // Core Tables
                         contacts, invoices, cateringEvents, projects, tasks, employees, requisitions, chartOfAccounts, bankTransactions, bankAccounts, leaveRequests, performanceReviews, interactionLogs, messages, entityMedia, leads,
                         // Inventory Base Tables
-                        // Legacy Tables
                         reusableItems, rentalItems, ingredientItems, products,
                         // Inventory Views
                         rentalStock, ingredientStock,
@@ -2904,13 +2944,13 @@ export const useDataStore = create<DataState>()(
                         safePull('requisitions', companyId),
                         safePull('chart_of_accounts', companyId),
                         safePull('bank_transactions', companyId),
+                        safePull('bank_accounts', companyId), // Fixed: Account for bankAccounts in destructuring
                         safePull('leave_requests', companyId),
                         safePull('performance_reviews', companyId),
                         safePull('interaction_logs', companyId),
                         safePull('messages', companyId),
                         safePull('entity_media', companyId),
                         safePull('leads', companyId),
-                        safePull('bank_accounts', companyId),
 
 
                         safePull('reusable_items', companyId),
@@ -2942,7 +2982,15 @@ export const useDataStore = create<DataState>()(
                     if (interactionLogs !== null) set({ interactionLogs });
                     if (messages !== null) set({ messages });
                     if (leads !== null) set({ leads });
-                    if (bankAccounts !== null) set({ bankAccounts });
+                    if (bankAccounts !== null) {
+                        const org = useSettingsStore.getState().settings;
+                        const finalBanks = (bankAccounts.length === 0 && (org.type === 'Catering' || org.name?.toLowerCase().includes('xquisite'))) ? [
+                            { id: 'bank-gtb', companyId, bankName: 'GTB PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                            { id: 'bank-uba', companyId, bankName: 'UBA PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1021135344', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                            { id: 'bank-zenith', companyId, bankName: 'Zenith Bank PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                        ] as BankAccount[] : bankAccounts;
+                        set({ bankAccounts: finalBanks });
+                    }
 
                     console.log(`[Hydration] Sync complete for ${companyId}`);
 
@@ -3185,6 +3233,7 @@ export const useDataStore = create<DataState>()(
                     if (requisitions !== null) newState.requisitions = requisitions;
                     if (chartOfAccounts !== null) newState.chartOfAccounts = chartOfAccounts;
                     if (bankTransactions !== null) newState.bankTransactions = bankTransactions;
+                    if (bankAccounts !== null) newState.bankAccounts = bankAccounts;
                     if (messages !== null) newState.messages = messages;
                     if (entityMedia !== null) newState.entityMedia = entityMedia;
                     if (leads !== null) newState.leads = leads;

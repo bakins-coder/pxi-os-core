@@ -395,14 +395,31 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    );
 };
 
-
-
 const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStandardFlow, eventId, industryConfig }: { invoice: Invoice, onSave: (inv: Invoice) => void, onClose: () => void, guestCount?: number, isStandardFlow?: boolean, eventId?: string, industryConfig: IndustryProfile }) => {
    const isPurchase = invoice.type === 'Purchase';
    const { settings: org } = useSettingsStore();
    const { contacts, bankAccounts, finalizeInvoice, updateInvoiceLines, cateringEvents } = useDataStore();
    const contact = contacts.find(c => c.id === invoice.contactId);
-   const effectiveIsStandardFlow = isStandardFlow || invoice.category === 'Cuisine' || cateringEvents.find(e => e.id === eventId)?.orderType === 'Cuisine';
+   const event = cateringEvents.find(e => e.id === eventId);
+
+   // Helper to title case names (e.g. "mrs debanke aderogba" -> "Mrs Debanke Aderogba")
+   const toTitleCase = (str: string) => {
+      if (!str) return str;
+      return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+   };
+
+   // Resolve the display name: Prioritize the specific host identity associated with this order/event
+   // If the order has a specific customerName (e.g. "Mrs. Aderogba"), we use it even if it's linked to a generic contact (e.g. "Temple")
+   const rawDisplayName = (event?.customerName && event.customerName !== 'Valued Customer') 
+      ? event.customerName 
+      : (invoice.customerName || contact?.name || 'Valued Customer');
+   
+   const displayName = toTitleCase(rawDisplayName);
+   
+   const displayEmail = (contact?.name === event?.customerName) ? (contact?.email || '') : ''; // Only show email if it matches the current host to prevent data leaks
+   const displayAddress = contact?.address || 'Address on file';
+
+   const effectiveIsStandardFlow = isStandardFlow || invoice.category === 'Cuisine' || event?.orderType === 'Cuisine';
    const isBanquetMode = org.type === 'Catering' || org.type === 'Bakery';
    const isCustomFlow = !effectiveIsStandardFlow;
    const taxFeatures = industryConfig.features.taxConfig;
@@ -418,6 +435,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
 
    const [isFinalizing, setIsFinalizing] = useState(false);
    const [manualTotalOverride, setManualTotalOverride] = useState<number | undefined>(invoice.manualSetPriceCents);
+   const [editableCustomerName, setEditableCustomerName] = useState(displayName);
 
    // Helper for currency formatting
    const formatCurrency = (cents: number) => `${NAIRA_SYMBOL}${(cents / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })} `;
@@ -539,7 +557,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
 
       const summary = `
 *INVOICE SUMMARY: ${invoice.number}*
-Customer: ${contact?.name || 'Valued Customer'}
+Customer: ${displayName}
 Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 Due: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString('en-GB')}
 
@@ -689,8 +707,8 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
    const handleFinalize = async () => {
       setIsFinalizing(true);
       try {
-         // Atomic update: Lines + status + totals + sync in ONE go
-         await finalizeInvoice(invoice.id, editableLines, manualTotalOverride, eventId);
+         await finalizeInvoice(invoice.id, editableLines, manualTotalOverride, eventId, editableCustomerName);
+         setIsFinalizing(false);
 
          // Help the UI reflect the change before the print snapshot
          setIsProformaMode(false);
@@ -713,8 +731,8 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
    const handleSaveEdits = async () => {
       try {
-         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, effectiveIsStandardFlow, eventId);
-         // Update storage and notify parent if needed, but for now we just persist to cloud
+         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, effectiveIsStandardFlow, eventId, editableCustomerName);
+         onClose();
       } catch (err) {
          console.error("Failed to save edits", err);
       }
@@ -755,9 +773,15 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                   <div className="flex-1">
                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">BILL TO</p>
                      <div className="space-y-1">
-                        <h3 className="text-xl font-bold text-slate-900">{contact?.name || invoice.contactId || 'Valued Customer'}</h3>
-                        <p className="text-sm text-slate-500">{contact?.email}</p>
-                        <p className="text-sm text-slate-500 max-w-[200px]">{contact?.address || 'Address on file'}</p>
+                        <input 
+                           type="text"
+                           className="text-xl font-bold text-slate-900 bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-100 p-1 w-full -ml-1 cursor-text"
+                           value={editableCustomerName}
+                           onChange={(e) => setEditableCustomerName(e.target.value)}
+                           placeholder="Customer Name"
+                        />
+                        <p className="text-sm text-slate-500">{displayEmail}</p>
+                        <p className="text-sm text-slate-500 max-w-[200px]">{displayAddress}</p>
                      </div>
                   </div>
 
@@ -972,8 +996,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                            <h3 className="font-bold text-slate-900 mb-2">Payment Information</h3>
 
                            <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(org.name || 'The Organization').toUpperCase()}</span></p>
-                           
-                           {bankAccounts && bankAccounts.length > 0 ? (
+                                                  {bankAccounts && bankAccounts.length > 0 ? (
                               <>
                                  <p className="text-xs font-bold text-slate-900 underline mb-3">Bank Details:</p>
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -989,16 +1012,41 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  </div>
                               </>
                            ) : (
-                                 <p className="text-xs text-slate-400 italic">Please contact us for bank transfer details.</p>
+                              <>
+                                 <div className="flex justify-between items-center mb-3">
+                                    <p className="text-xs font-bold text-slate-900 underline">Bank Details:</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded">TIN: 15313371-0001</p>
+                                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                       <p className="text-[9px] font-black text-slate-800 uppercase">GTB A/C</p>
+                                       <div className="flex flex-col mt-1">
+                                          <span className="text-[10px] font-bold text-slate-900 font-mono">0396426845</span>
+                                       </div>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                       <p className="text-[9px] font-black text-slate-800 uppercase">UBA A/C</p>
+                                       <div className="flex flex-col mt-1">
+                                          <span className="text-[10px] font-bold text-slate-900 font-mono">1021135344</span>
+                                       </div>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                       <p className="text-[9px] font-black text-slate-800 uppercase">Zenith A/C</p>
+                                       <div className="flex flex-col mt-1">
+                                          <span className="text-[10px] font-bold text-slate-900 font-mono">1010951007</span>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </>
                            )}
                         </div>
-
+ 
                         {/* Terms & Disclaimer */}
-                        <div className="space-y-4">
+                        <div className="space-y-4 print:break-inside-avoid">
                            <div>
                               <h4 className="font-bold text-slate-900 text-xs mb-1">Terms and Conditions:</h4>
                               <p className="text-[10px] text-slate-500 leading-relaxed">
-                                 Initial deposit of 70% is to be paid before the {industryConfig.nomenclature.fulfillment.fulfillmentTerm} and balance payable immediately after the {industryConfig.nomenclature.fulfillment.fulfillmentTerm}.
+                                 Initial deposit of 90% is to be paid before the {industryConfig.nomenclature.fulfillment.fulfillmentTerm} and balance payable immediately after the {industryConfig.nomenclature.fulfillment.fulfillmentTerm}.
                                  Cancellation of {industryConfig.nomenclature.fulfillment.fulfillmentTerm} will result to only a 70% refund of initial deposit made.
                               </p>
                            </div>
@@ -1247,7 +1295,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                      <button
                         onClick={async () => {
                            await handleSaveEdits();
-                           onSave({ ...invoice, lines: editableLines, manualSetPriceCents: manualTotalOverride });
+                           onSave({ ...invoice, lines: editableLines, manualSetPriceCents: manualTotalOverride, customerName: editableCustomerName });
                         }}
                         className="flex-1 py-3 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg"
                      >
@@ -1522,66 +1570,39 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
 };
 
 const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
-   const normalize = (s: any) => {
-      try {
-         if (!s || typeof s !== 'string') return '';
-         return s.toUpperCase()
-            .replace(/\b(MRS|MR|DR|MS|MISS|CHIEF|ALHAJI|PASTOR|SIR|MADAM|DEACON|DEACONESS|OTUNBA|HON|SEN|PRINCE|PRINCESS|PROF|ENGR|ESQ)\.?\b/g, '') // Remove common titles
-            .replace(/[^A-Z0-9]/g, '')
-            .trim();
-      } catch (e) {
-         return '';
-      }
-   };
-   const evName = normalize(ev.customerName);
+   // 1. Strict ID Link (Primary Source of Truth)
+   const evInvoiceId = ev.financials?.invoiceId || (ev.financials as any)?.invoice_id;
+   let evInvoice = invoices.find(inv => inv.id === evInvoiceId);
 
-   // 1. Direct recovery for Anele & specific targets
-   let evInvoice: Invoice | undefined;
-   if (evName.includes('ANELE')) {
-      evInvoice = invoices.find(inv => Number(inv.totalCents) === 5150000 || Number(inv.totalCents) === 51500);
-      if (evInvoice) console.log(`[REV RECOVERY] Found Anele invoice by total / name: ${evInvoice.id} `);
-   }
-
-   // 2. Try direct ID link if not found or if the linked one is empty
-   if (!evInvoice || Number(evInvoice.totalCents) === 0) {
-      const evInvoiceId = ev.financials?.invoiceId || (ev.financials as any)?.invoice_id;
-      const linked = invoices.find(inv => inv.id === evInvoiceId);
-      if (linked && Number(linked.totalCents) > 0) {
-         evInvoice = linked;
-         console.log(`[REV RECOVERY] Found non-zero linked invoice: ${evInvoice.id}`);
-      }
-   }
-
-   // 3. Broad Fallback for ANY non-zero invoice matching the customer
+   // 2. Fallback to Contact-based Lookup (Only if no direct invoiceId link exists OR if that link is broken/empty)
+   // This handles legacy events or those created before strict ID-mapping was fully enforced.
    if (!evInvoice || Number(evInvoice.totalCents) === 0) {
       const candidates = invoices.filter(inv => {
+         // MUST match the contactId and MUST be a non-zero sales invoice
          if (Number(inv.totalCents) <= 0) return false;
-         const invName = normalize(inv.customerName);
-
-         // Normalize parts to handle cases like "ADEJOKE" vs "ADEJOKE ADEDIRAN"
-         const isMutualMatch = evName && invName && (evName.includes(invName) || invName.includes(evName));
-
-         const lineMatch = inv.lines?.some(l => evName && (normalize(l.description).includes(evName) || evName.includes(normalize(l.description))));
-
-         return (ev.contactId && inv.contactId === ev.contactId) ||
-            isMutualMatch ||
-            lineMatch;
+         if (inv.type !== 'Sales') return false;
+         
+         // Direct Contact ID match + Name Match is the only acceptable fallback for data integrity
+         return ev.contactId && inv.contactId === ev.contactId && (inv.customerName === ev.customerName || !inv.customerName);
       });
 
       if (candidates.length > 0) {
+         // If multiple invoices exist for the same contact, we take the largest one as a heuristic 
+         // but log a warning as this indicates a potentially messy contact history.
          evInvoice = candidates.sort((a, b) => Number(b.totalCents) - Number(a.totalCents))[0];
-         console.log(`[REV RECOVERY] Found best fallback invoice: ${evInvoice.id} (${evInvoice.totalCents})`);
+         console.warn(`[DATA INTEGRITY] No direct invoiceId link for event ${ev.id}. Found contact-based fallback invoice: ${evInvoice.id}`);
       }
    }
 
    const isCuisine = ev.orderType === 'Cuisine' ||
       evInvoice?.category === 'Cuisine' ||
-      normalize(ev.banquetDetails?.notes).includes('CUISINE') ||
-      normalize(ev.banquetDetails?.eventType).includes('CUISINE');
+      ev.banquetDetails?.notes?.toUpperCase().includes('CUISINE') ||
+      ev.banquetDetails?.eventType?.toUpperCase().includes('CUISINE') ||
+      (ev as any).cuisineDetails?.notes?.toUpperCase().includes('CUISINE');
+
    let revenue = Number(evInvoice?.totalCents ?? (ev.financials?.revenueCents || 0));
 
    // Logic Sync: Cuisine orders never have SC/VAT. 
-   // If the database has a tax-inclusive total (e.g., 61812.5), we force it to the subtotal (50000).
    if (evInvoice && isCuisine) {
       const subtotal = evInvoice.subtotalCents || evInvoice.lines?.reduce((acc, l) => {
          const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null) ? l.manualPriceCents : l.unitPriceCents;
@@ -1589,10 +1610,9 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
       }, 0) || 0;
 
       revenue = subtotal;
-      console.log(`[REV SYNC] Adjusted Cuisine revenue for ${ev.customerName}: ${revenue} (was ${evInvoice.totalCents})`);
    }
 
-   const isPaid = evInvoice?.status === 'Paid';
+   const isPaid = evInvoice?.status === 'Paid' || (evInvoice?.status as any) === InvoiceStatus.PAID;
 
    return {
       revenue,

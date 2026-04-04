@@ -17,7 +17,10 @@
 ## 3. Nova (Web Visualization)
 - **Objective**: Design the Sidebar integration for multiple "Hubs".
 - **Requirement**: If an entity is both Catering and Bakery, both "Catering Ops" and "Bakery Ops" should appear in the Sidebar with their respective icons/nomenclature.
-- **Deliverable**: Visual mock-up or design notes for `Layout.tsx` updates.
+- **Critical Testing Task**:
+    - [ ] **Invoice Identity Check**: For both **Cuisine Orders** and **Banquet Orders**, click "View Invoice" for 3-5 different customers.
+    - [ ] **Verification**: Confirm that the **Customer Name** on the invoice strictly matches the **Customer Name** on the dashboard card.
+- **Deliverable**: Visual mock-up and testing confirmation in `docs/Walkthrough/invoice-identity-verification.md`.
 
 ---
 *Please acknowledge tasks by moving them to your respective "In Progress" folders.*

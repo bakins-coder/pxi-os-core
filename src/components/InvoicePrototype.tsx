@@ -87,9 +87,9 @@ export const InvoicePrototype = () => {
 
     // Organization Data
     const inferredCategory = invoice.category;
-    const orgName = settings.name || settings.companyName || 'Organization';
-    const orgAddress = settings.address || settings.companyAddress || '';
-    const orgPhone = settings.contactPhone;
+    const orgName = settings.name || 'Organization';
+    const orgAddress = settings.address || '';
+    const orgPhone = settings.contactPhone || '';
     const orgTin = settings.firs_tin;
     const orgLogo = settings.logo || "https://raw.githubusercontent.com/lucide-react/lucide/main/icons/shopping-bag.svg";
     const activeBrandColor = settings.brandColor || BRAND_COLOR;
