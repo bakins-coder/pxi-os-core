@@ -917,14 +917,15 @@ export const Finance = () => {
       const legacyAccounts = (bankAccounts || []).filter(acc =>
          acc.accountName.toLowerCase().includes('xquisite') ||
          acc.accountName.toLowerCase().includes('wembley') ||
+         acc.accountName.toLowerCase().includes('every woman') ||
          acc.bankName.includes('Bank Account') ||
          ['0210736266', '0396426845', '1010951007', '2022655945'].includes(acc.accountNumber)
       );
 
       if ((bankAccounts || []).length === 0 || legacyAccounts.length > 0) {
          const defaults = [
-            { id: crypto.randomUUID(), bankName: 'Main Operations', accountName: org.name || 'Every Woman', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
-            { id: crypto.randomUUID(), bankName: 'Reserve Account', accountName: org.name || 'Every Woman', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
+            { id: crypto.randomUUID(), bankName: 'Main Operations', accountName: org.name || 'Organization', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
+            { id: crypto.randomUUID(), bankName: 'Reserve Account', accountName: org.name || 'Organization', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
          ];
 
          if (legacyAccounts.length > 0) {

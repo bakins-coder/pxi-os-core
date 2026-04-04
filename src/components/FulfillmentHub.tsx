@@ -2595,18 +2595,10 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
 
       return base.filter(ev => {
          // Robust derivation of Cuisine status for filtering
+         // STRICT ID-BASED MAPPING: Only link if invoice ID matches exactly.
          const matchingInvoice = invoices.find(inv => {
             const evInvId = ev.financials?.invoiceId || (ev.financials as any)?.invoice_id;
-            if (evInvId && inv.id === evInvId) return true;
-
-            // Fallback to name matching if no ID link
-            const normalize = (s: any) => {
-               if (!s || typeof s !== 'string') return '';
-               return s.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
-            };
-            const evName = normalize(ev.customerName);
-            const invName = normalize(inv.customerName);
-            return evName && invName && (evName.includes(invName) || invName.includes(evName)) && Number(inv.totalCents) > 0;
+            return evInvId && inv.id === evInvId;
          });
 
          const isCuisine = ev.orderType === 'Cuisine' ||
