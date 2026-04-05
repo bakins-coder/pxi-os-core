@@ -18,12 +18,18 @@ import { NAIRA_SYMBOL } from '../utils/finance';
 
 const getImageUrl = (path?: string) => {
    if (!path) return null;
+   // If it's already a full URL (new uploads), return as is
    if (path.startsWith('http')) return path;
    if (path.startsWith('blob:')) return path;
    if (path.startsWith('data:')) return path;
    
-   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-   return `${supabaseUrl}/storage/v1/object/public/assets/${path}`;
+   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qbfhntvjqciardkjpfpy.supabase.co';
+   
+   // Encode spaces and special characters (e.g., 'side plate.jpeg' -> 'side%20plate.jpeg')
+   const encodedPath = encodeURI(path);
+   
+   // Xquisite legacy assets are in the 'asset_inventory' bucket
+   return `${supabaseUrl}/storage/v1/object/public/asset_inventory/${encodedPath}`;
 };
 
 // [INDUSTRY-AGNOSTIC FRAMEWORK] Local mapping removed in favor of global profiles in src/config/industryProfiles.ts
