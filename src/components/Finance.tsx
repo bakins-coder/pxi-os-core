@@ -912,35 +912,6 @@ export const Finance = () => {
    const [paymentStatusOverride, setPaymentStatusOverride] = useState<InvoiceStatus | ''>('');
    const [noticeInvoice, setNoticeInvoice] = useState<Invoice | null>(null);
 
-   // Auto-seed bank accounts if missing (Recover state)
-   useEffect(() => {
-      const legacyAccounts = (bankAccounts || []).filter(acc =>
-         acc.accountName.toLowerCase().includes('xquisite') ||
-         acc.accountName.toLowerCase().includes('wembley') ||
-         acc.accountName.toLowerCase().includes('every woman') ||
-         acc.bankName.includes('Bank Account') ||
-         ['0210736266', '0396426845', '1010951007', '2022655945'].includes(acc.accountNumber)
-      );
-
-      if ((bankAccounts || []).length === 0 || legacyAccounts.length > 0) {
-         const defaults = [
-            { id: crypto.randomUUID(), bankName: 'Main Operations', accountName: org.name || 'Organization', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' },
-            { id: crypto.randomUUID(), bankName: 'Reserve Account', accountName: org.name || 'Organization', accountNumber: '0000000000', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId: (currentUser as any)?.companyId || '' }
-         ];
-
-         if (legacyAccounts.length > 0) {
-            // Delete legacy and add defaults
-            useDataStore.setState({ bankAccounts: defaults });
-            useDataStore.getState().syncWithCloud();
-         } else if ((bankAccounts || []).length === 0) {
-            defaults.forEach(acc => useDataStore.getState().addBankAccount(acc));
-         }
-      }
-   }, [(bankAccounts || []).length, org.name]);
-
-   // ... rest of component
-
-
    // Accounting State
    const [cfoInsight, setCfoInsight] = useState<any>(null);
    const [isSyncing, setIsSyncing] = useState(false);
@@ -949,6 +920,24 @@ export const Finance = () => {
    const [anomalies, setAnomalies] = useState<{ id: string, type: string, message: string, severity: 'Medium' | 'High' }[]>([]);
 
    const brandColor = org.brandColor || '#ff6b6b';
+
+   // Auto-seed recover
+   useEffect(() => {
+      const companyId = (currentUser as any)?.companyId || '';
+      const isX = org.name?.toLowerCase().includes('xquisite') || companyId === 'xquisite-id' || (currentUser?.email || '').includes('xquisite');
+      if (!isX) return;
+      const defaults = [
+         { id: 'bank-gtb-f', bankName: 'GTB A/C', accountName: 'Xquisite Celebrations Ltd', accountNumber: '0396426845', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId },
+         { id: 'bank-uba-f', bankName: 'UBA A/C', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1021135344', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId },
+         { id: 'bank-zenith-f', bankName: 'ZENITH A/C', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1010951007', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId }
+      ];
+      const accounts = bankAccounts || [];
+      const missing = defaults.filter(d => !accounts.some(a => a.accountNumber === d.accountNumber));
+      if (missing.length > 0) {
+         missing.forEach(acc => useDataStore.getState().addBankAccount(acc));
+         useDataStore.getState().syncWithCloud();
+      }
+   }, [bankAccounts?.length, org.name, currentUser?.email]);
 
    // RBAC Check
    const isSuperAdmin = [Role.SUPER_ADMIN, Role.ADMIN, Role.CEO, Role.CHAIRMAN, Role.FINANCE].includes(currentUser?.role as any);
@@ -1121,14 +1110,16 @@ export const Finance = () => {
 
          {activeTab === 'collections' && (
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden animate-in slide-in-from-bottom-4">
-               <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+               <div className="p-8 border-b border-slate-50 flex justify-between items-center shrink-0">
                   <div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Accounts Receivable</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Tracking outstanding customer payments</p></div>
-                  <button onClick={handleSendReminders} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Bot size={16} /> AI Reminders</button>
-                  <button onClick={() => { setInvoiceModalType('Sales'); setIsManualInvoiceModalOpen(true); }} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
+                  <div className="flex gap-2">
+                     <button onClick={handleSendReminders} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Bot size={16} /> AI Reminders</button>
+                     <button onClick={() => { setInvoiceModalType('Sales'); setIsManualInvoiceModalOpen(true); }} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition-all"><Plus size={16} /> Manual Invoice</button>
+                  </div>
                </div>
-               <div className="overflow-x-auto">
+               <div className="h-[600px] overflow-y-auto scrollbar-thin">
                   <table className="w-full text-left text-sm">
-                     <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Reference</th><th className="px-8 py-4 text-right">Amount</th><th className="px-8 py-4">Status</th><th className="px-8 py-4 text-right">Ops</th></tr></thead>
+                     <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest sticky top-0 z-10"><tr><th className="px-8 py-4">Reference</th><th className="px-8 py-4 text-right">Amount</th><th className="px-8 py-4">Status</th><th className="px-8 py-4 text-right">Ops</th></tr></thead>
                      <tbody className="divide-y divide-slate-50">{invoices.filter(i => i.type === 'Sales' || !i.type).map(inv => (<tr key={inv.id} className="hover:bg-indigo-50/20 transition-all group">
                         <td className="px-8 py-6 font-black text-slate-800 uppercase">
                            <div className="flex flex-col">
@@ -1138,7 +1129,7 @@ export const Finance = () => {
                               </span>
                            </div>
                         </td>
-                        <td className="px-8 py-6 text-right font-black text-indigo-600">{NAIRA_SYMBOL}{(inv.totalCents / 100).toLocaleString()}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : inv.status === InvoiceStatus.PROFORMA ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
+                        <td className="px-8 py-6 text-right font-black text-indigo-600">{NAIRA_SYMBOL}{(inv.totalCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td className="px-8 py-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-700' : inv.status === InvoiceStatus.PROFORMA ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></td><td className="px-8 py-6 text-right flex justify-end gap-2">
                            <button onClick={() => setNoticeInvoice(inv)} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all" title="Generate Notice"><Bell size={16} /></button>
                            <button onClick={() => window.open(`#/invoice/${inv.id}`, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all" title="View formatted invoice"><Eye size={16} /></button><button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all"><Receipt size={16} /></button>{inv.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === inv.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>))}</tbody>
                   </table>
@@ -1183,7 +1174,7 @@ export const Finance = () => {
                            <span className="bg-[#00ff9d]/20 text-[#00ff9d] px-2 py-0.5 rounded text-[8px] font-black uppercase border border-[#00ff9d]/20">Live Vault</span>
                         </div>
                         <h2 className="text-5xl font-black tracking-tighter text-white">
-                           {NAIRA_SYMBOL}{((cashAtHandCents + bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) - bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0)) / 100).toLocaleString()}
+                           {NAIRA_SYMBOL}{((cashAtHandCents + bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) - bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0)) / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </h2>
                         <p className="text-xs text-slate-400 font-bold mt-2">Available Liquid Cash (At Hand)</p>
                      </div>
@@ -1215,7 +1206,7 @@ export const Finance = () => {
                               />
                            </div>
                         ) : (
-                           <div className="text-2xl font-black text-white">{NAIRA_SYMBOL}{(cashAtHandCents / 100).toLocaleString()}</div>
+                           <div className="text-2xl font-black text-white">{NAIRA_SYMBOL}{(cashAtHandCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                         )}
                         <p className="text-[9px] text-slate-500 mt-2 font-medium">Starting cash before transactions</p>
                      </div>
@@ -1223,16 +1214,16 @@ export const Finance = () => {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Inflows</p><h3 className="text-3xl font-black text-emerald-600">{NAIRA_SYMBOL}{(bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><TrendingUp size={24} /></div></div>
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Outflows</p><h3 className="text-3xl font-black text-rose-600">{NAIRA_SYMBOL}{(bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString()}</h3></div><div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600"><TrendingDown size={24} /></div></div>
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Inflows</p><h3 className="text-3xl font-black text-emerald-600">{NAIRA_SYMBOL}{(bookkeeping.filter(e => e.type === 'Inflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3></div><div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><TrendingUp size={24} /></div></div>
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl flex justify-between items-center group transition-all hover:border-[#ff6b6b]"><div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Outflows</p><h3 className="text-3xl font-black text-rose-600">{NAIRA_SYMBOL}{(bookkeeping.filter(e => e.type === 'Outflow').reduce((s, e) => s + e.amountCents, 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3></div><div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600"><TrendingDown size={24} /></div></div>
                </div>
                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                   <div className="p-8 border-b border-slate-50 flex justify-between items-center"><div><h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Manual Ledger</h3><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{org.name} Centralized Cash Book</p></div><button onClick={() => setIsEntryModalOpen(true)} className="bg-slate-950 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"><Plus size={16} /> Record Entry</button></div>
-                  <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-8 py-4">Date</th><th className="px-8 py-4">Description</th><th className="px-8 py-4">Category</th><th className="px-8 py-4 text-right">Net Value</th><th className="px-8 py-4 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-50">{bookkeeping.map(entry => {
+                  <div className="overflow-x-auto h-[500px]"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest sticky top-0 z-10"><tr><th className="px-8 py-4">Date</th><th className="px-8 py-4">Description</th><th className="px-8 py-4">Category</th><th className="px-8 py-4 text-right">Net Value</th><th className="px-8 py-4 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-50">{bookkeeping.map(entry => {
                      const isSensitive = ['Salaries', 'Payroll', 'Bonus'].some(k => (entry.category || '').includes(k));
                      if (isSensitive && !canViewSensitive) return null;
                      return (
-                        <tr key={entry.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.date}</td><td className="px-8 py-6 font-black text-slate-800 uppercase">{entry.description}</td><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.category}</td><td className={`px-8 py-6 text-right font-black ${entry.type === 'Inflow' ? 'text-emerald-600' : 'text-rose-600'}`}>{entry.type === 'Inflow' ? '+' : '-'} {NAIRA_SYMBOL}{(entry.amountCents / 100).toLocaleString()}</td><td className="px-8 py-6 text-right">{entry.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === entry.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>
+                        <tr key={entry.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.date}</td><td className="px-8 py-6 font-black text-slate-800 uppercase">{entry.description}</td><td className="px-8 py-6 font-bold text-slate-400 uppercase text-[10px]">{entry.category}</td><td className={`px-8 py-6 text-right font-black ${entry.type === 'Inflow' ? 'text-emerald-600' : 'text-rose-600'}`}>{entry.type === 'Inflow' ? '+' : '-'} {NAIRA_SYMBOL}{(entry.amountCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td className="px-8 py-6 text-right">{entry.contactId && (<button onClick={() => { const contact = contacts.find(c => c.id === entry.contactId); if (contact) setSelectedContactForStatement(contact); }} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><FileText size={16} /></button>)}</td></tr>
                      );
                   })}</tbody></table></div>
                </div>
@@ -1287,8 +1278,8 @@ export const Finance = () => {
          )}
 
          {activeTab === 'ledger' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in slide-in-from-bottom-4">
-               <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in slide-in-from-bottom-4">
+               <div className="lg:col-span-3 space-y-6">
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                      <div className="p-8 border-b border-slate-50 flex justify-between items-center"><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Chart of Accounts</h2><button className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Plus size={14} /> New Account</button></div>
                      <div className="overflow-x-auto">
@@ -1297,36 +1288,38 @@ export const Finance = () => {
                   </div>
 
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
-                     <div className="px-8 py-5 border-b border-slate-50 flex justify-between items-center">
+                     <div className="px-6 py-5 border-b border-slate-50 flex justify-between items-center">
                         <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Bank Accounts</h2>
                         <div className="flex gap-2">
-
                            <button onClick={() => setIsAddBankModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 transition-all"><Plus size={14} /> Add Bank</button>
                         </div>
                      </div>
-                     <div className="px-8 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {(bankAccounts || []).map(account => (
                            <div
                               key={account.id}
                               onClick={() => setSelectedBankDetailsId(account.id)}
-                              className="p-6 rounded-[2rem] border border-slate-100 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden cursor-pointer"
+                              className="p-4 rounded-[1.5rem] border border-slate-100 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden cursor-pointer"
                            >
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-indigo-100/50 transition-all"></div>
+                              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50/50 rounded-full blur-2xl -mr-8 -mt-8 group-hover:bg-indigo-100/50 transition-all"></div>
                               <div className="relative z-10">
-                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-                                       <Landmark size={24} />
+                                 <div className="flex justify-between items-start mb-3">
+                                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                       <Landmark size={20} />
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${account.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${account.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                        {account.isActive ? 'Active' : 'Inactive'}
                                     </span>
                                  </div>
-                                 <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">{account.bankName}</h3>
-                                 <p className="text-xs font-medium text-slate-500 mb-6">{account.accountName} • {account.accountNumber}</p>
+                                 <h3 className="font-black text-slate-800 text-sm uppercase tracking-tight">{account.bankName}</h3>
+                                 <div className="mb-4">
+                                    <p className="text-[9px] font-black text-slate-600 uppercase leading-none mb-1">{account.accountName}</p>
+                                    <p className="text-[10px] font-bold text-slate-400">{account.accountNumber}</p>
+                                 </div>
 
                                  <div>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Current Balance</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Current Balance</p>
+                                    <p className="text-xl font-black text-slate-900 tracking-tighter">
                                        {account.currency === 'NGN' ? NAIRA_SYMBOL : account.currency === 'USD' ? '$' : account.currency === 'GBP' ? '£' : '€'}
                                        {(account.balanceCents / 100).toLocaleString()}
                                     </p>

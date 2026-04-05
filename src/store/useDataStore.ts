@@ -2984,11 +2984,22 @@ export const useDataStore = create<DataState>()(
                     if (leads !== null) set({ leads });
                     if (bankAccounts !== null) {
                         const org = useSettingsStore.getState().settings;
-                        const finalBanks = (bankAccounts.length === 0 && (org.type === 'Catering' || org.name?.toLowerCase().includes('xquisite'))) ? [
+                        const isXquisite = org.type === 'Catering' || org.name?.toLowerCase().includes('xquisite');
+                        
+                        const defaults = [
                             { id: 'bank-gtb', companyId, bankName: 'GTB PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
                             { id: 'bank-uba', companyId, bankName: 'UBA PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1021135344', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
                             { id: 'bank-zenith', companyId, bankName: 'Zenith Bank PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                        ] as BankAccount[] : bankAccounts;
+                        ] as BankAccount[];
+
+                        // If it's Xquisite, ensure these 3 accounts exist by account number
+                        let finalBanks = bankAccounts;
+                        if (isXquisite || companyId === 'xquisite-id') {
+                            const existingNumbers = (bankAccounts || []).map(a => a.accountNumber);
+                            const missing = defaults.filter(d => !existingNumbers.includes(d.accountNumber));
+                            finalBanks = [...(bankAccounts || []), ...missing];
+                        }
+                        
                         set({ bankAccounts: finalBanks });
                     }
 

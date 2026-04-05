@@ -1741,17 +1741,17 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
+            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-slate-100 transition-all flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Revenue</p>
-               <h4 className="text-lg md:text-lg font-black text-slate-900 tracking-tight truncate">{NAIRA_SYMBOL}{(revenue / 100).toLocaleString()}</h4>
+               <h4 className="text-sm md:text-base font-black text-slate-900 tracking-tighter">{NAIRA_SYMBOL}{(revenue / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all overflow-hidden flex flex-col justify-center gap-1">
+            <div className="p-5 md:p-6 bg-white rounded-2xl md:rounded-[2rem] border-2 border-slate-50 shadow-sm hover:border-rose-100 transition-all flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Est. Direct Costs</p>
-               <h4 className="text-lg md:text-lg font-black text-rose-600 tracking-tight truncate">{NAIRA_SYMBOL}{(estimatedCost / 100).toLocaleString()}</h4>
+               <h4 className="text-sm md:text-base font-black text-rose-600 tracking-tighter">{NAIRA_SYMBOL}{(estimatedCost / 100).toLocaleString()}</h4>
             </div>
-            <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 overflow-hidden flex flex-col justify-center gap-1">
+            <div className="p-5 md:p-6 bg-slate-900 rounded-2xl md:rounded-[2rem] shadow-xl ring-4 ring-slate-50 flex flex-col justify-center gap-1">
                <p className="text-[8px] md:text-[9px] font-black text-[#00ff9d] uppercase tracking-widest">Projected Net</p>
-               <h4 className="text-lg md:text-lg font-black text-white tracking-tight truncate">{NAIRA_SYMBOL}{(estimatedNet / 100).toLocaleString()}</h4>
+               <h4 className="text-sm md:text-base font-black text-white tracking-tighter">{NAIRA_SYMBOL}{(estimatedNet / 100).toLocaleString()}</h4>
             </div>
          </div>
 

@@ -6,6 +6,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { Invoice, Contact, InvoiceStatus } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
 import { generateInvoicePDF } from '../utils/exportUtils';
+import { NAIRA_SYMBOL } from '../utils/finance';
 
 
 // Brand Colors
@@ -282,15 +283,15 @@ Link: ${window.location.href}
                                         <td className="py-6 text-right align-top text-sm font-medium text-slate-600">
                                             {isDiscounted ? (
                                                 <div className="flex flex-col items-end">
-                                                    <span className="text-xs text-slate-400 line-through decoration-slate-300">₦{originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
-                                                    <span className="text-orange-500 font-bold">₦{effectivePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                                    <span className="text-xs text-slate-400 line-through decoration-slate-300">{NAIRA_SYMBOL}{originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                                    <span className="text-orange-500 font-bold">{NAIRA_SYMBOL}{effectivePrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                                                 </div>
                                             ) : (
-                                                `₦${originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+                                                `${NAIRA_SYMBOL}${originalPrice.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
                                             )}
                                         </td>
                                         <td className="py-6 text-right align-top text-sm font-bold text-slate-800">
-                                            ₦{lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                                            {NAIRA_SYMBOL}{lineTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                 )
@@ -301,23 +302,22 @@ Link: ${window.location.href}
                 </div>
 
                 {/* Summary Section - Outside table to avoid column width constraints */}
-                {/* Summary Section - Outside table to avoid column width constraints */}
                 <div className="px-12 pb-8 flex flex-col items-end">
                     <div className="w-1/2 max-w-sm space-y-3">
                         <div className="flex justify-between items-center text-sm">
                             <span className="font-bold text-slate-600 uppercase">Subtotal:</span>
-                            <span className="font-medium text-slate-900">₦{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            <span className="font-medium text-slate-900">{NAIRA_SYMBOL}{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
                         {serviceCharge > 0 && (
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-bold text-slate-600 uppercase">Service Charge (15%):</span>
-                                <span className="font-medium text-slate-900">₦{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                <span className="font-medium text-slate-900">{NAIRA_SYMBOL}{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}
                         {vat > 0 && (
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-bold text-slate-600 uppercase">VAT ({invoice.category === 'Cuisine' ? '0%' : '7.5%'}):</span>
-                                <span className="font-medium text-slate-900">₦{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                <span className="font-medium text-slate-900">{NAIRA_SYMBOL}{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}
                         <div className="w-full h-px bg-slate-200 my-2"></div>
@@ -325,29 +325,29 @@ Link: ${window.location.href}
                         {hasDiscount && (
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-bold text-slate-400 uppercase">Standard Total:</span>
-                                <span className="font-medium text-slate-400 line-through decoration-slate-300">₦{impliedStandardTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                <span className="font-medium text-slate-400 line-through decoration-slate-300">{NAIRA_SYMBOL}{impliedStandardTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}
 
                         <div className="flex justify-between items-center text-sm">
                             <span className="font-bold text-slate-600 uppercase">Total Amount:</span>
-                            <span className="font-bold text-slate-900 text-lg">₦{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            <span className="font-bold text-slate-900 text-lg">{NAIRA_SYMBOL}{totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
 
                         {hasDiscount && (
                             <div className="flex justify-between items-center text-xs bg-green-50 p-2 rounded text-green-700">
                                 <span className="font-bold uppercase">You Save:</span>
-                                <span className="font-bold">₦{discountAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                                <span className="font-bold">{NAIRA_SYMBOL}{discountAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}
                         <div className="flex justify-between items-center text-xs">
                             <span className="font-medium text-slate-500">Amount Paid:</span>
-                            <span className="font-medium text-slate-800">₦{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                            <span className="font-medium text-slate-800">{NAIRA_SYMBOL}{paidAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="pt-4 border-t border-slate-200 flex justify-between items-end">
                             <div className="px-4 py-1 bg-slate-100 rounded text-xs font-bold text-slate-500 uppercase tracking-wider">Balance Due</div>
                             <div className="text-3xl font-black text-slate-900 border-b-2 border-slate-900 pb-1">
-                                ₦{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                                {NAIRA_SYMBOL}{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                             </div>
                         </div>
                     </div>
