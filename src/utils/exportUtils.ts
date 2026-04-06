@@ -159,8 +159,8 @@ export const generateInvoicePDF = async (
         return [
             line.description,
             line.quantity.toString(),
-            `${NAIRA_SYMBOL}${(price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
-            `${NAIRA_SYMBOL}${(line.quantity * price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+            `N${(price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+            `N${(line.quantity * price / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
         ];
     });
 
@@ -232,19 +232,19 @@ export const generateInvoicePDF = async (
     };
 
     // PRINT SUMMARY (CLEAN - No Duplicates)
-    addSummaryRow('SUBTOTAL', `${NAIRA_SYMBOL}${subtotalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+    addSummaryRow('SUBTOTAL', `N${subtotalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
 
     // Display 0% lines explicitly as requested previously, or real values if they exist (and weren't overridden)
     if (scRef > 0) {
-        addSummaryRow('SERVICE CHARGE (15%)', `${NAIRA_SYMBOL}${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+        addSummaryRow('SERVICE CHARGE (15%)', `N${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
     } else {
-        addSummaryRow('SERVICE CHARGE (0%)', `${NAIRA_SYMBOL}0.00`);
+        addSummaryRow('SERVICE CHARGE (0%)', `N0.00`);
     }
 
     if (vatRef > 0) {
-        addSummaryRow('VAT (7.5%)', `${NAIRA_SYMBOL}${vatRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+        addSummaryRow('VAT (7.5%)', `N${vatRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
     } else {
-        addSummaryRow('VAT (0%)', `${NAIRA_SYMBOL}0.00`);
+        addSummaryRow('VAT (0%)', `N0.00`);
     }
 
     currentY += 5;
@@ -260,7 +260,7 @@ export const generateInvoicePDF = async (
 
     doc.setFontSize(16);
     doc.setTextColor(0, 0, 0);
-    doc.text(`${NAIRA_SYMBOL}${totalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 167.5, currentY + 18, { align: 'center' });
+    doc.text(`N${totalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`, 167.5, currentY + 18, { align: 'center' });
 
     const boxBottomY = currentY + 30;
 
@@ -302,7 +302,8 @@ export const generateInvoicePDF = async (
         bank: b.bankName || b.institutionName,
         acc: b.accountNumber
     })) : [
-        { name: orgName, bank: "Bank Transfer", acc: "Contact Support" }
+        { name: "Xquisite Celebrations", bank: "GTBank", acc: "0396426845" },
+        { name: "Xquisite Celebrations", bank: "Zenith Bank", acc: "1010951007" }
     ];
 
     const startX = 15;
@@ -311,8 +312,8 @@ export const generateInvoicePDF = async (
     const gap = 3;
 
     banks.forEach((b, i) => {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
+        const col = i % 3;
+        const row = Math.floor(i / 3);
 
         const x = startX + (col * (boxW + gap));
         const y = leftColY + (row * (boxH + gap));

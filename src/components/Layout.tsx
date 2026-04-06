@@ -93,10 +93,10 @@ const NAV_ITEMS = [
   { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:contact_center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
   { label: 'CRM', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
-  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
 
   // Industry Specific
-  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General', 'Retail'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General', 'Retail'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
   { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },

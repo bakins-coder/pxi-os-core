@@ -1073,18 +1073,18 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  ldesc.includes('rental');
                            };
 
+                           // Use a more robust check: if there are ANY sections, we only count sections.
+                           // Otherwise, we count every line.
+                           const hasSections = editableLines.some(l => l.description.startsWith('[SECTION] '));
+
                            // 1. Calculate Standard Totals
                            const standardSubtotal = editableLines.reduce((acc, l) => {
-                              if (isCustomFlow) {
-                                 if (!l.description.startsWith('[SECTION] ')) return acc;
-                              }
+                              if (hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
 
                            const standardTaxableSubtotal = editableLines.reduce((acc, l) => {
-                              if (isCustomFlow) {
-                                 if (!l.description.startsWith('[SECTION] ')) return acc;
-                              }
+                              if (hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                               if (isExcludedFromTax(l.description)) return acc;
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
@@ -1095,9 +1095,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
                            const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
-                              if (isCustomFlow) {
-                                 if (!l.description.startsWith('[SECTION] ')) return acc;
-                              }
+                              if (hasSections && !l.description.startsWith('[SECTION] ')) return acc;
 
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
@@ -1106,9 +1104,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                            }, 0);
 
                            const effectiveTaxableSubtotal = editableLines.reduce((acc, l, idx) => {
-                              if (isCustomFlow) {
-                                 if (!l.description.startsWith('[SECTION] ')) return acc;
-                              }
+                              if (hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                               if (isExcludedFromTax(l.description)) return acc;
 
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
