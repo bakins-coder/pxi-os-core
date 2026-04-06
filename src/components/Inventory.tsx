@@ -29,7 +29,9 @@ const getImageUrl = (path?: string) => {
    const encodedPath = encodeURI(path);
    
    // Xquisite legacy assets are in the 'asset_inventory' bucket
-   return `${supabaseUrl}/storage/v1/object/public/asset_inventory/${encodedPath}`;
+   const finalUrl = `${supabaseUrl}/storage/v1/object/public/asset_inventory/${encodedPath}`;
+   console.debug(`[Inventory] Mapping image: ${path} -> ${finalUrl}`);
+   return finalUrl;
 };
 
 // [INDUSTRY-AGNOSTIC FRAMEWORK] Local mapping removed in favor of global profiles in src/config/industryProfiles.ts
