@@ -145,8 +145,8 @@ export const generateInvoicePDF = async (
 
     addDetail('Invoice Number:', invoice.number);
     addDetail('Invoice Date:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
-    const effectiveDueDate = invoice.dueDate && !isNaN(new Date(invoice.dueDate).getTime()) ? invoice.dueDate : invoice.date;
-    addDetail('Payment Due:', new Date(effectiveDueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+    // Payment is always due on receipt as per user request
+    addDetail('Payment Due:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
 
 
     // ---------------------------------------------------------
