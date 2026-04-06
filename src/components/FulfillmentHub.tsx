@@ -804,9 +804,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                         <span className="text-xs font-bold text-slate-500">Payment Due:</span>
                         <span className="text-xs font-bold text-slate-900">
-                           {invoice.dueDate
-                              ? new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                              : (invoice.date ? new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'On Receipt')}
+                           {invoice.date ? new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'On Receipt'}
                         </span>
                      </div>
                   </div>
@@ -2512,19 +2510,22 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                      </div>
                   </div>
 
-                  {/* FINANCIALS & ACTIONS (SCROLLABLE ON DESKTOP, FLOW ON MOBILE) */}
-                  <div className="lg:flex-1 lg:overflow-y-auto p-6 space-y-8 lg:scrollbar-thin">
-                     {/* Financials */}
-                     <div className="bg-slate-950 rounded-[2rem] p-6 shadow-xl shadow-slate-900/10 text-center space-y-1 relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
-                        <p className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">Total Amount</p>
-                        <div className="flex items-baseline justify-center gap-1">
-                           <span className="text-xl font-bold text-slate-600">{NAIRA_SYMBOL}</span>
-                           <span className="text-3xl md:text-4xl font-black text-white tracking-tight">{(totalCents / 100).toLocaleString()}</span>
+                  {/* FINANCIALS & ACTIONS - PINNED FOOTER PATTERN */}
+                  <div className="lg:flex-1 flex flex-col p-6 overflow-hidden">
+                     <div className="flex-1 overflow-y-auto pr-1 space-y-8 lg:scrollbar-thin">
+                        {/* Financials */}
+                        <div className="bg-slate-950 rounded-[2rem] p-6 shadow-xl shadow-slate-900/10 text-center space-y-1 relative overflow-hidden group">
+                           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
+                           <p className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">Total Amount</p>
+                           <div className="flex items-baseline justify-center gap-1">
+                              <span className="text-xl font-bold text-slate-600">{NAIRA_SYMBOL}</span>
+                              <span className="text-3xl md:text-4xl font-black text-white tracking-tight">{(totalCents / 100).toLocaleString()}</span>
+                           </div>
                         </div>
                      </div>
 
-                     <div className="space-y-3">
+                     {/* FIXED ACTIONS AT BOTTOM */}
+                     <div className="pt-6 space-y-3 shrink-0 border-t border-slate-100 mt-2">
                         <button
                            onClick={handleCreate}
                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm py-4 uppercase tracking-widest shadow-xl shadow-indigo-200 hover:shadow-indigo-300 active:scale-95 transition-all"
@@ -2538,9 +2539,6 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                            Cancel
                         </button>
                      </div>
-
-                     {/* Visual Spacer to give padding at bottom of scroll */}
-                     <div className="h-10"></div>
                   </div>
                </div>
             </div>

@@ -2605,7 +2605,8 @@ export const useDataStore = create<DataState>()(
                             discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
                             totalCents: updatedTotalCents,
                             manualSetPriceCents: overrideTotalCents,
-                            customerName: updatedCustomerName || inv.customerName
+                            customerName: updatedCustomerName || inv.customerName,
+                            dueDate: inv.date
                         } : inv),
                         cateringEvents: state.cateringEvents.map(event => {
                             const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
@@ -2731,7 +2732,8 @@ export const useDataStore = create<DataState>()(
                             discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
                             totalCents: updatedTotalCents,
                             manualSetPriceCents: overrideTotalCents,
-                            customerName: updatedCustomerName || inv.customerName
+                            customerName: updatedCustomerName || inv.customerName,
+                            dueDate: inv.date
                         } : inv),
                         cateringEvents: state.cateringEvents.map(event => {
                             const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
@@ -2762,7 +2764,8 @@ export const useDataStore = create<DataState>()(
                 set((state) => ({
                     invoices: state.invoices.map(inv => inv.id === invoiceId ? {
                         ...inv,
-                        status: InvoiceStatus.UNPAID
+                        status: InvoiceStatus.UNPAID,
+                        dueDate: inv.date
                     } : inv)
                 }));
                 await get().syncWithCloud();
