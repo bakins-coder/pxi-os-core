@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Banknote,
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
-  Package, ChefHat, Briefcase, Settings, Shield, BarChart2, Activity,
+  Package, ChefHat, Briefcase, Settings, Shield, BarChart2, BarChart3, Activity, FileText,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
   ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target
 } from 'lucide-react';
@@ -104,8 +104,8 @@ const NAV_ITEMS = [
   { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
   { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
   { label: 'Automation', icon: Bot, path: '/automation', requiredPermission: 'access:automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
-  { label: 'Analytics', icon: Activity, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE] },
-  { label: 'Reporting', icon: BarChart2, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES] },
+  { label: 'Analytics', icon: BarChart3, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Reports', icon: FileText, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
   { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -137,10 +137,14 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     // 1. Super Admin Bypass
     if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
 
+    // 2. Operations Manager Bypass for Core Hubs (Ensures visibility if Matrix is stale)
+    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.CATERING_OPERATIONS_MANAGER;
+    if (isOpsManager && required && ['access:dashboard', 'access:catering', 'access:inventory', 'access:crm', 'access:projects'].includes(required)) return true;
+
     const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
     if (isSuperAdmin) return true;
 
-    // 2. Legacy Role Check (Keep existing logic if no permission tag)
+    // 3. Legacy Role Check (Keep existing logic if no permission tag)
     if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) return false;
     if (!required) return true;
 

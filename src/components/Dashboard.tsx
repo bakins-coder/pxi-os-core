@@ -183,8 +183,19 @@ export const Dashboard = () => {
     if (!user) return false;
     if (user.isSuperAdmin) return true;
     const role = user.role as string;
-    const authorizedRoles = [Role.SUPER_ADMIN, Role.ADMIN, Role.CEO, Role.CHAIRMAN, Role.FINANCE, 'CFO', 'Operations', 'Finance Manager', 'Operations Manager'];
-    return authorizedRoles.includes(role) || user.permissionTags?.includes('access:finance') || user.permissionTags?.includes('access:reports');
+    // Limited to Executive, Admin, Finance, and Authorized Management roles
+    const authorizedRoles = [
+      Role.SUPER_ADMIN, 
+      Role.ADMIN, 
+      Role.CEO, 
+      Role.CHAIRMAN, 
+      Role.FINANCE, 
+      Role.FINANCE_OFFICER,
+      Role.CATERING_OPERATIONS_MANAGER,
+      'Finance Manager',
+      'Operations Manager'
+    ];
+    return authorizedRoles.includes(role as Role) || user.permissionTags?.includes('access:finance_all');
   }, [user]);
 
   const isOpsFinAuthorized = useMemo(() => {
