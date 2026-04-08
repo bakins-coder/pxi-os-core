@@ -42,3 +42,27 @@ Adding a new discriminator field (like `vertical`) to existing tables will resul
 Operational dashboards (like the Fulfillment Hub) must be reactive to route changes and vertical state to avoid stale data rendering when switching departments.
 *   **Pattern**: Use `useMemo` hooks with comprehensive dependency arrays that include the `vertical` prop.
 *   **Learning**: Missing `vertical` in the `useMemo` dependency array prevented the dashboard from refreshing when switching between Catering and Bakery routes.
+
+## 7. Tax Compliance & Financial Accuracy
+### Item-Based Tax Exclusion Logic
+In specialized industries (like Banquets/Catering), certain fees (e.g., transportation, menu charges) are often non-taxable, while others (food/beverage) attract SC and VAT.
+*   **Pattern**: Maintain a bifurcated subtotal system (`taxableSubtotalCents` vs `nonTaxableSubtotalCents`). Tax functions must only operate on the taxable base, while the grand total aggregates the final values.
+*   **Learning**: Corrected the "double taxation" bug where VAT was being applied to non-food items, ensuring legal compliance for Xquisite invoices.
+
+## 8. UI Resilience & Layout Hardening
+### Auto-Wrapping over Line Truncation
+In data-rich operational hubs, long descriptions (e.g., Nigerian Menu choices) are frequently truncated by default CSS layouts, causing information loss.
+*   **Pattern**: Avoid `truncate` and fixed-height headers for descriptive fields. Use auto-expanding `textarea` for inputs and `whitespace-normal break-words` for display text.
+*   **Learning**: The "truncated Nigerian menu" issue was solved by removing CSS truncation and enforcing container grounding with `min-w-0` on flex/grid items to prevent layout leaks.
+
+## 9. Terminology & Role Standardization
+### Professional Operational Nomenclature
+Technical labels (e.g., "Lead Designer") often mismatch the actual industry roles (e.g., "Lead Co-ordinator"), leading to confusion in multi-tenant environments.
+*   **Pattern**: Centralize operational labels in the `IndustryProfile`. Components must use these profile-level terms rather than hardcoded UI strings.
+*   **Learning**: Updated role terminology across the Fulfillment Hub and Order Brochure to better reflect the administrative reality of Xquisite operations.
+
+## 10. Premium Dashboard Interaction
+### Modals over Context-Switching (Navigation)
+On high-fidelity executive dashboards, navigating to a new route for a simple detail check (e.g., a calendar event) can feel like the "page disappearing," breaking the mental model of the dashboard.
+*   **Pattern**: Use rich detail modals (`EventDetailCard`) for first-click interactions. Only use full-page navigation for explicit "Full History" or "Deep Management" workflows.
+*   **Learning**: Fixed the "disappearing page" calendar bug by ensuring clicks render a modal instead of triggering a route change, preserving the dashboard's operational context.
