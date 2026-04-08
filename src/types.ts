@@ -509,6 +509,7 @@ export interface Invoice {
   lines: InvoiceLine[];
   totalCents: number;
   subtotalCents?: number;
+  taxableSubtotalCents?: number;
   serviceChargeCents?: number;
   vatCents?: number;
   paidAmountCents: number;

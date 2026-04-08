@@ -183,7 +183,8 @@ export const Dashboard = () => {
     if (!user) return false;
     if (user.isSuperAdmin) return true;
     const role = user.role as string;
-    // Limited to Executive, Admin, Finance, and Authorized Management roles
+    // Restricted to Executive, Admin, and core Finance/Management roles.
+    // Specifically excludes kitchen/operations management staff (e.g. Sarah).
     const authorizedRoles = [
       Role.SUPER_ADMIN, 
       Role.ADMIN, 
@@ -191,7 +192,6 @@ export const Dashboard = () => {
       Role.CHAIRMAN, 
       Role.FINANCE, 
       Role.FINANCE_OFFICER,
-      Role.CATERING_OPERATIONS_MANAGER,
       'Finance Manager',
       'Operations Manager'
     ];
@@ -260,7 +260,7 @@ export const Dashboard = () => {
       )}
 
       {/* Main Content Areas */}
-      <div className="col-span-12 lg:col-span-8 space-y-10">
+      <div className="col-span-12 space-y-10">
         <DashboardCard>
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -274,34 +274,24 @@ export const Dashboard = () => {
             </button>
           </div>
           <div className="flex-1 min-h-0">
-            <EventCalendar events={dataState.upcomingEvents} className="shadow-none border-0 h-full min-h-[250px]" />
+            <EventCalendar events={dataState.upcomingEvents} className="shadow-none border-0 h-full min-h-[350px]" />
           </div>
+        </DashboardCard>
+
+        <DashboardCard>
+          <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" onItemClick={(inv) => setSelectedItem({ type: 'receivable', data: inv })} />
+        </DashboardCard>
+        <DashboardCard>
+          <SummaryList title={getTerm(settings.type, 'procurement', 'Pending Procurement')} items={dataState.payables} type="payable" onItemClick={(req) => setSelectedItem({ type: 'payable', data: req })} />
         </DashboardCard>
 
         {isOpsFinAuthorized && (
           <div className="space-y-10">
             <DashboardCard>
-              <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" onItemClick={(inv) => setSelectedItem({ type: 'receivable', data: inv })} />
-            </DashboardCard>
-            <DashboardCard>
               <SummaryList title="Accounts Payable" items={dataState.accountsPayable} type="payable" onItemClick={(inv) => setSelectedItem({ type: 'payable-invoice', data: inv })} />
-            </DashboardCard>
-            <DashboardCard>
-              <SummaryList title={getTerm(settings.type, 'procurement', 'Pending Procurement')} items={dataState.payables} type="payable" onItemClick={(req) => setSelectedItem({ type: 'payable', data: req })} />
             </DashboardCard>
           </div>
         )}
-      </div>
-
-      <div className="col-span-12 lg:col-span-4 space-y-10">
-        <DashboardCard>
-          <SummaryList 
-            title={getTerm(settings.type, 'upcoming_events', 'UPCOMING EVENTS')} 
-            items={dataState.upcomingEvents} 
-            type="event" 
-            onItemClick={(ev) => navigate(`/${settings.type === 'Catering' ? 'catering' : 'dashboard'}?id=${ev.id}`)} 
-          />
-        </DashboardCard>
       </div>
 
       {selectedItem && selectedItem.type !== 'event' && (

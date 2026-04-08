@@ -14,7 +14,7 @@ import { CakeDesigner } from './CakeDesigner';
 
 export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType: propOrderType, vertical }: { onComplete: () => void, onFinalize: (inv: Invoice) => void, initialEvent?: CateringEvent, orderType?: string, vertical?: IndustryType }) => {
     const orderType = propOrderType || initialEvent?.orderType || 'Custom';
-    const isCuisine = orderType === 'Standard' || orderType === 'Cuisine';
+    const isCuisine = orderType === 'Cuisine';
     const [menuItems, setMenuItems] = useState<InventoryItem[]>([]);
     const [selected, setSelected] = useState<Record<string, number>>(() => {
         if (initialEvent) {
@@ -213,18 +213,32 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
             .map(([id, qty]) => calculateItemCosting(id, qty))
             .filter(Boolean) as any[];
 
+        const isExcludedFromTax = (desc: string) => {
+            if (!desc) return false;
+            const ldesc = desc.toLowerCase();
+            return ldesc.includes('transport') || ldesc.includes('logistic') || ldesc.includes('delivery') || ldesc.includes('menu card') || ldesc.includes('truck') || ldesc.includes('rental');
+        };
+
         const customRevenue = Object.values(customItems).reduce((sum, it) => sum + (it.priceCents * it.quantity), 0);
-        const revenue = costings.reduce((sum, c) => sum + (c.revenueCents || 0), 0) + customRevenue;
+        const totalSubtotal = costings.reduce((sum, c) => sum + (c.revenueCents || 0), 0) + customRevenue;
 
-        const scRate = features.taxConfig.serviceChargeRate;
-        const vatRate = features.taxConfig.vatRate;
+        const taxableSubtotal = costings.reduce((sum, c) => {
+            if (isExcludedFromTax(c.name)) return sum;
+            return sum + (c.revenueCents || 0);
+        }, 0) + Object.values(customItems).reduce((sum, it) => {
+            if (isExcludedFromTax(it.name)) return sum;
+            return sum + (it.priceCents * it.quantity);
+        }, 0);
 
-        const sc = Math.round(revenue * scRate);
-        const vat = Math.round((revenue + sc) * vatRate);
-        const totalWithTaxes = revenue + sc + vat;
+        const scRate = isCuisine ? 0 : features.taxConfig.serviceChargeRate;
+        const vatRate = isCuisine ? 0 : features.taxConfig.vatRate;
+
+        const sc = Math.round(taxableSubtotal * scRate);
+        const vat = Math.round((taxableSubtotal + sc) * vatRate);
+        const totalWithTaxes = totalSubtotal + sc + vat;
 
         return { totalRevenue: totalWithTaxes, margin: 60 };
-    }, [selected, calculateItemCosting, customItems, isCuisine]);
+    }, [selected, calculateItemCosting, customItems, isCuisine, features.taxConfig]);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, InventoryItem[]> = {};
@@ -473,8 +487,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             </div>
                             {!isCuisine && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Lead Designer</label><input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Designer Name" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} /></div>
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Designer Phone</label><input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} /></div>
+                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Lead Co-ordinator</label><input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Co-ordinator Name" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} /></div>
+                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Co-ordinator Phone</label><input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone Number" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} /></div>
                                 </div>
                             )}
                             <div>
@@ -528,16 +542,22 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                                         const item = menuItems.find(i => i.id === id);
                                                         if (!item) return null;
                                                         return (
-                                                            <div key={id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                                                                <div className="min-w-0"><p className="text-xs font-black uppercase truncate">{item.name}</p><p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{qty} Units</p></div>
-                                                                <button onClick={() => updateQty(id, 0)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
+                                                            <div key={id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 gap-4">
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="text-xs font-black uppercase whitespace-normal break-words leading-tight">{item.name}</p>
+                                                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">{qty} Units</p>
+                                                                </div>
+                                                                <button onClick={() => updateQty(id, 0)} className="text-rose-400 hover:text-rose-300 shrink-0"><Trash2 size={14} /></button>
                                                             </div>
                                                         );
                                                     })}
                                                     {cat === "General Selections" && Object.entries(customItems).map(([id, it]) => (
-                                                        <div key={id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-emerald-500/30">
-                                                            <div className="min-w-0"><p className="text-xs font-black uppercase truncate">{it.name} <span className="text-[8px] bg-emerald-500 text-white px-1 rounded ml-1">Custom</span></p><p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{it.quantity} Units</p></div>
-                                                            <button onClick={() => removeCustomItem(id)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
+                                                        <div key={id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-emerald-500/30 gap-4">
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-xs font-black uppercase whitespace-normal break-words leading-tight">{it.name} <span className="text-[8px] bg-emerald-500 text-white px-1 rounded ml-1">Custom</span></p>
+                                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">{it.quantity} Units</p>
+                                                            </div>
+                                                            <button onClick={() => removeCustomItem(id)} className="text-rose-400 hover:text-rose-300 shrink-0"><Trash2 size={14} /></button>
                                                         </div>
                                                     ))}
                                                 </div>

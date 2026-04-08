@@ -418,8 +418,9 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
    
    const displayEmail = (contact?.name === event?.customerName) ? (contact?.email || '') : ''; // Only show email if it matches the current host to prevent data leaks
    const displayAddress = contact?.address || 'Address on file';
-
-   const effectiveIsStandardFlow = isStandardFlow || invoice.category === 'Cuisine' || event?.orderType === 'Cuisine';
+    const effectiveIsStandardFlow = (isStandardFlow || invoice.category === 'Cuisine' || event?.orderType === 'Cuisine') && 
+       !['Banquet', 'Custom', 'Custom Orders'].includes(invoice.category || '') &&
+       !['Banquet', 'Custom', 'Custom Orders'].includes(event?.orderType || '');
    const isBanquetMode = org.type === 'Catering' || org.type === 'Bakery';
    const isCustomFlow = !effectiveIsStandardFlow;
    const taxFeatures = industryConfig.features.taxConfig;
@@ -546,8 +547,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
       }, 0);
 
       const isStandard = effectiveIsStandardFlow;
-      const sc = isStandard ? 0 : Math.round(subtotal * (taxFeatures.serviceChargeRate / 100));
-      const vat = isStandard ? 0 : Math.round((subtotal + sc) * (taxFeatures.vatRate / 100));
+      const sc = isStandard ? 0 : Math.round(subtotal * taxFeatures.serviceChargeRate);
+      const vat = isStandard ? 0 : Math.round((subtotal + sc) * taxFeatures.vatRate);
       const total = subtotal + sc + vat;
       const finalTotal = manualTotalOverride ?? total;
 
@@ -835,30 +836,30 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                            // Show Pricing IF: Not Custom Cake Mode OR It *IS* a Header row
                            const showPricing = !isCustomFlow || isHeader;
-
                            return (
                               <div key={idx} className={`flex flex-col md:grid ${showDiscountCol ? 'grid-cols-[2.8fr_0.5fr_1fr_1.2fr_1.5fr]' : 'grid-cols-[3.5fr_1fr_1.2fr_1.3fr]'} items-start text-xs group relative gap-3 md:gap-10 border-slate-50 ${isHeader ? 'bg-orange-50/50 -mx-4 px-4 py-3 md:py-2 mb-2 mt-2 rounded-lg border border-orange-100' : ''} `}>
                                  {isProformaMode ? (
                                     <>
                                        {/* Description (Top on Mobile, First Col on Desktop) */}
-                                       <div className="flex items-center gap-2 pr-4 w-full">
+                                       <div className="flex items-center gap-2 pr-4 flex-1 w-full">
                                           <button
                                              onClick={() => removeLineItem(idx)}
-                                             className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100"
+                                             className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100 flex-shrink-0"
                                           >
                                              <Trash2 size={12} />
                                           </button>
                                           {isCustomFlow && (
                                              <button
                                                 onClick={() => toggleSection(idx)}
-                                                className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
+                                                className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all flex-shrink-0 ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
                                                 title={isHeader ? "Currently Section Header" : "Currently Itemized (No Price)"}
                                              >
                                                 {isHeader ? 'Section' : 'Itemized'}
                                              </button>
                                           )}
-                                          <input
-                                             className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-800 font-medium ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg' : isCustomFlow ? 'text-xs md:ml-8' : ''} `}
+                                          <textarea
+                                             rows={isHeader ? 1 : 2}
+                                             className={`flex-1 bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1.5 text-slate-800 font-medium whitespace-normal break-words resize-none ${isHeader ? 'font-black uppercase tracking-wide bg-transparent text-lg overflow-hidden' : isCustomFlow ? 'text-xs' : ''} `}
                                              placeholder="Item description"
                                              value={isHeader ? line.description.replace('[SECTION] ', '') : line.description}
                                              onChange={e => handleLineChange(idx, 'description', e.target.value)}
@@ -930,7 +931,9 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                        {/* View Mode (Non-Editable) */}
                                        <div className="w-full md:pr-4">
                                           {isHeader && <span className="inline-block px-2 py-0.5 bg-orange-400 text-white rounded text-[9px] uppercase font-black tracking-widest mr-2 mb-1 shadow-sm">Section</span>}
-                                          <span className={`text-slate-800 font-medium block ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isCustomFlow ? 'text-xs md:ml-12 text-slate-600' : ''} `}>{isHeader ? line.description.replace('[SECTION] ', '') : line.description}</span>
+                                          <span className={`text-slate-800 font-medium block whitespace-normal break-words leading-relaxed ${isHeader ? 'font-black uppercase tracking-wide text-lg' : isCustomFlow ? 'text-xs md:ml-12 text-slate-600' : ''} `}>
+                                             {isHeader ? line.description.replace('[SECTION] ', '') : line.description}
+                                          </span>
                                        </div>
                                        <div className="grid grid-cols-2 md:contents w-full gap-2">
                                           <div className="flex flex-col md:block">
@@ -1067,12 +1070,12 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                               return ldesc.includes('transport') ||
                                  ldesc.includes('logistic') ||
                                  ldesc.includes('delivery') ||
+                                 ldesc.includes('menu card') ||
+                                 ldesc.includes('truck') ||
                                  ldesc.includes('service') ||
                                  ldesc.includes('rental');
                            };
 
-                           // Use a more robust check: if there are ANY sections, we only count sections.
-                           // Otherwise, we count every line.
                            const hasSections = editableLines.some(l => l.description.startsWith('[SECTION] '));
 
                            // 1. Calculate Standard Totals
@@ -1087,34 +1090,31 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                               return acc + (l.quantity * l.unitPriceCents);
                            }, 0);
 
-                           const standardSC = effectiveIsStandardFlow ? 0 : Math.round(standardTaxableSubtotal * (taxFeatures.serviceChargeRate / 100));
-                           const standardVAT = effectiveIsStandardFlow ? 0 : Math.round((standardTaxableSubtotal + standardSC) * (taxFeatures.vatRate / 100));
+                           const standardSC = effectiveIsStandardFlow ? 0 : Math.round(standardTaxableSubtotal * taxFeatures.serviceChargeRate);
+                           const standardVAT = effectiveIsStandardFlow ? 0 : Math.round((standardTaxableSubtotal + standardSC) * taxFeatures.vatRate);
                            const standardTotal = standardSubtotal + standardSC + standardVAT;
 
                            // 2. Calculate Effective Totals (Using Manual Prices)
-                           const effectiveSubtotal = editableLines.reduce((acc, l, idx) => {
+                           const effectiveSubtotal = editableLines.reduce((acc, l) => {
                               if (hasSections && !l.description.startsWith('[SECTION] ')) return acc;
-
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
                                  : l.unitPriceCents;
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveTaxableSubtotal = editableLines.reduce((acc, l, idx) => {
+                           const effectiveTaxableSubtotal = editableLines.reduce((acc, l) => {
                               if (hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                               if (isExcludedFromTax(l.description)) return acc;
-
                               const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                                  ? l.manualPriceCents
                                  : l.unitPriceCents;
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * (taxFeatures.serviceChargeRate / 100));
-                           const effectiveVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * (taxFeatures.vatRate / 100));
-                           const calculatedTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
-                           const finalTotal = manualTotalOverride ?? calculatedTotal;
+                           const effectiveSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * taxFeatures.serviceChargeRate);
+                           const effectiveVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * taxFeatures.vatRate);
+                           const finalTotal = manualTotalOverride ?? (effectiveSubtotal + effectiveSC + effectiveVAT);
 
                            const discount = Math.max(0, standardTotal - finalTotal);
                            const discountPercent = standardTotal > 0 ? (discount / standardTotal) * 100 : 0;
@@ -1127,33 +1127,30 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                     <span>{formatCurrency(effectiveSubtotal)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({isStandardFlow ? '0%' : `${taxFeatures.serviceChargeRate}%`})</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({effectiveIsStandardFlow ? '0%' : `${Math.round(taxFeatures.serviceChargeRate * 100)}%`})</span>
                                     <span>{formatCurrency(effectiveSC)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT ({isStandardFlow ? '0%' : `${taxFeatures.vatRate}%`})</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT ({effectiveIsStandardFlow ? '0%' : `${(taxFeatures.vatRate * 100).toFixed(1)}%`})</span>
                                     <span>{formatCurrency(effectiveVAT)}</span>
                                  </div>
 
-                                 <div className="h-px bg-slate-200 my-2"></div>
-
-                                 {/* Discount Display */}
                                  {hasDiscount && (
-                                    <>
-                                       <div className="flex justify-between items-center text-sm font-medium text-slate-400">
+                                    <div className="pt-2 border-t border-slate-100 mt-2 space-y-1">
+                                       <div className="flex justify-between items-center text-xs font-medium text-slate-400">
                                           <span className="uppercase tracking-widest text-[10px] font-bold">Standard Total</span>
                                           <span className="line-through decoration-slate-300">{formatCurrency(standardTotal)}</span>
                                        </div>
-                                       <div className="flex justify-between items-center text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded my-1">
+                                       <div className="flex justify-between items-center text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
                                           <span className="uppercase tracking-widest text-[10px] font-bold">Total Discount ({discountPercent.toFixed(1)}%)</span>
                                           <span>-{formatCurrency(discount)}</span>
                                        </div>
-                                    </>
+                                    </div>
                                  )}
 
                                  {isProformaMode && showDiscountCol && (
                                     <div className="flex justify-between items-center text-[10px] font-bold text-orange-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 mb-2 mt-4">
-                                       <span className="uppercase tracking-widest pl-2 font-black">Override Overall Total (Discounted)</span>
+                                       <span className="uppercase tracking-widest pl-2 font-black">Override Overall Total</span>
                                        <div className="flex items-center bg-white px-3 py-1 rounded border border-orange-200 shadow-sm">
                                           <span className="mr-1 text-orange-300">{NAIRA_SYMBOL}</span>
                                           <input
@@ -1588,7 +1585,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
       }
    }
 
-   const isCuisine = ev.orderType === 'Cuisine' ||
+   const isCuisine = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
       evInvoice?.category === 'Cuisine' ||
       ev.banquetDetails?.notes?.toUpperCase().includes('CUISINE') ||
       ev.banquetDetails?.eventType?.toUpperCase().includes('CUISINE') ||
@@ -1749,8 +1746,8 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
             </div>
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <section>
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
+            <section className="min-w-0">
                <div className="flex items-center gap-4 mb-8">
                   <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">{event.orderType === 'Cuisine' ? terms.standardOrders : terms.customOrders} Details</h4>
                   <div className="h-px flex-1 bg-slate-100"></div>
@@ -1774,7 +1771,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                </div>
             </section>
 
-            <section>
+            <section className="min-w-0">
                <div className="flex items-center gap-4 mb-8">
                   <h4 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">Coordination Intel</h4>
                   <div className="h-px flex-1 bg-slate-100"></div>
@@ -1793,7 +1790,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                      <div className="p-5 md:p-6 bg-slate-900 border border-[#00ff9d]/20 rounded-2xl shadow-xl">
                         <div className="flex items-center gap-3 mb-2">
                            <User size={12} className="text-[#00ff9d]" />
-                           <p className="text-[8px] font-black text-[#00ff9d] uppercase tracking-widest">Lead Designer</p>
+                           <p className="text-[8px] font-black text-[#00ff9d] uppercase tracking-widest">Lead Co-ordinator</p>
                         </div>
                         <p className="text-base md:text-lg font-black text-white uppercase tracking-tight">{event.banquetDetails.eventPlanner}</p>
                      </div>
@@ -2615,7 +2612,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
             return evInvId && inv.id === evInvId;
          });
 
-         const isCuisine = ev.orderType === 'Cuisine' ||
+         const isCuisine = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
             matchingInvoice?.category === 'Cuisine' ||
             (ev.cuisineDetails && Object.keys(ev.cuisineDetails).length > 0) ||
             ev.banquetDetails?.notes?.toUpperCase().includes('CUISINE') ||
@@ -2871,7 +2868,8 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                   setViewingInvoice(null);
                }}
                guestCount={selectedEvent?.guestCount}
-               isStandardFlow={activeTab === 'orders' || generatedInvoice?.category === 'Cuisine' || (viewingInvoice?.category === terms.standardOrders)}
+               isStandardFlow={(activeTab === 'cuisine' || generatedInvoice?.category === 'Cuisine' || viewingInvoice?.category === 'Cuisine') && 
+                   !['Banquet', 'Custom', 'Banquet Orders', 'Custom Orders'].includes(viewingInvoice?.category || generatedInvoice?.category || '')}
                eventId={selectedEvent?.id}
                industryConfig={industryConfig}
             />,

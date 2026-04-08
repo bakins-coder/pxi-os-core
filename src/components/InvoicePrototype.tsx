@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Printer, Download, ArrowLeft, Loader2, Share2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
+import { getIndustryConfig } from '../config/industryProfiles';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Invoice, Contact, InvoiceStatus } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
@@ -69,18 +70,45 @@ export const InvoicePrototype = () => {
         return acc + (l.quantity * price);
     }, 0) / 100;
 
+    const industryConfig = getIndustryConfig(settings.type);
+    const taxFeatures = industryConfig.features.taxConfig;
+    const isCuisine = invoice.category === 'Cuisine' || invoice.category === 'Standard' || invoice.category === 'Standard Orders';
+
+    const isExcludedFromTax = (desc: string) => {
+        if (!desc) return false;
+        const ldesc = desc.toLowerCase();
+        return ldesc.includes('transport') || ldesc.includes('logistic') || ldesc.includes('delivery') || ldesc.includes('menu card') || ldesc.includes('truck') || ldesc.includes('rental');
+    };
+
+    const effectiveTaxableSubtotal = invoice.taxableSubtotalCents !== undefined 
+        ? invoice.taxableSubtotalCents / 100 
+        : invoice.lines.reduce((acc, l) => {
+            if (isExcludedFromTax(l.description)) return acc;
+            const price = l.manualPriceCents !== undefined ? l.manualPriceCents : l.unitPriceCents;
+            return acc + (l.quantity * price);
+        }, 0) / 100;
+
     let subtotal = invoice.subtotalCents !== undefined ? invoice.subtotalCents / 100 : effectiveSubtotal;
-    let serviceCharge = invoice.serviceChargeCents !== undefined ? invoice.serviceChargeCents / 100 : subtotal * 0.15;
-    let vat = invoice.vatCents !== undefined ? invoice.vatCents / 100 : (subtotal + serviceCharge) * 0.075;
-    let totalAmount = invoice.totalCents !== undefined ? invoice.totalCents / 100 : subtotal + serviceCharge + vat;
+    
+    let serviceCharge = (invoice.serviceChargeCents !== undefined && (invoice.serviceChargeCents > 0 || isCuisine)) 
+        ? invoice.serviceChargeCents / 100 
+        : effectiveTaxableSubtotal * taxFeatures.serviceChargeRate;
+        
+    let vat = (invoice.vatCents !== undefined && (invoice.vatCents > 0 || isCuisine)) 
+        ? invoice.vatCents / 100 
+        : (effectiveTaxableSubtotal + serviceCharge) * taxFeatures.vatRate;
+        
+    let totalAmount = invoice.totalCents !== undefined && (invoice.totalCents > subtotal || isCuisine) 
+        ? invoice.totalCents / 100 
+        : subtotal + serviceCharge + vat;
 
     const paidAmount = invoice.paidAmountCents / 100;
     const balanceDue = totalAmount - paidAmount;
 
     // Calculate discount
-    const impliedStandardTotal = (standardSubtotal * 1.15 * 1.075);
+    const impliedStandardTotal = (standardSubtotal * (1 + taxFeatures.serviceChargeRate) * (1 + taxFeatures.vatRate));
     const discountAmount = Math.max(0, impliedStandardTotal - totalAmount);
-    const hasDiscount = discountAmount > 1; // Tolerance for float math
+    const hasDiscount = discountAmount > 0.01; 
 
     // Fallback Customer Data
     const customerName = customer?.name || 'Valued Customer';
@@ -138,7 +166,7 @@ export const InvoicePrototype = () => {
 *INVOICE SUMMARY: ${invoice.number}*
 Customer: ${customerName}
 Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
-Due: ${new Date(invoice.dueDate || invoice.date).toLocaleDateString('en-GB')}
+Due: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 
 *FEES:*
 Subtotal: ₦${subtotal.toLocaleString()}
@@ -249,7 +277,7 @@ Link: ${window.location.href}
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="font-bold text-slate-600">Payment Due:</span>
-                                <span className="font-medium text-slate-900">{new Date(invoice.dueDate).toLocaleDateString()}</span>
+                                <span className="font-medium text-slate-900">{new Date(invoice.date).toLocaleDateString()}</span>
                             </div>
 
                         </div>
@@ -277,7 +305,7 @@ Link: ${window.location.href}
                                 return (
                                     <tr key={item.id} className="group hover:bg-slate-50/50">
                                         <td className="py-6 pr-8 align-top break-words">
-                                            <p className="text-sm font-medium text-slate-800 leading-relaxed">{item.description}</p>
+                                            <p className="text-sm font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">{item.description}</p>
                                         </td>
                                         <td className="py-6 text-center align-top text-sm font-medium text-slate-600">{item.quantity}</td>
                                         <td className="py-6 text-right align-top text-sm font-medium text-slate-600">
@@ -308,17 +336,29 @@ Link: ${window.location.href}
                             <span className="font-bold text-slate-600 uppercase">Subtotal:</span>
                             <span className="font-medium text-slate-900">{NAIRA_SYMBOL}{subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        {serviceCharge > 0 && (
+                        {!isCuisine && (
                             <div className="flex justify-between items-center text-sm">
-                                <span className="font-bold text-slate-600 uppercase">Service Charge (15%):</span>
+                                <span className="font-bold text-slate-600 uppercase">Service Charge ({Math.round(taxFeatures.serviceChargeRate * 100)}%):</span>
                                 <span className="font-medium text-slate-900">{NAIRA_SYMBOL}{serviceCharge.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
                         )}
-                        {vat > 0 && (
+                        {!isCuisine && (
                             <div className="flex justify-between items-center text-sm">
-                                <span className="font-bold text-slate-600 uppercase">VAT ({invoice.category === 'Cuisine' ? '0%' : '7.5%'}):</span>
+                                <span className="font-bold text-slate-600 uppercase">VAT ({(taxFeatures.vatRate * 100).toFixed(1)}%):</span>
                                 <span className="font-medium text-slate-900">{NAIRA_SYMBOL}{vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                             </div>
+                        )}
+                        {isCuisine && (
+                            <>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="font-bold text-slate-400 uppercase">Service Charge (0%):</span>
+                                    <span className="font-medium text-slate-400">{NAIRA_SYMBOL}0.00</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="font-bold text-slate-400 uppercase">VAT (0%):</span>
+                                    <span className="font-medium text-slate-400">{NAIRA_SYMBOL}0.00</span>
+                                </div>
+                            </>
                         )}
                         <div className="w-full h-px bg-slate-200 my-2"></div>
 

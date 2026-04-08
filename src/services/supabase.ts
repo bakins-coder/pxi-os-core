@@ -59,7 +59,7 @@ const SCHEMA_WHITELISTS: Record<string, string[]> = {
   bank_transactions: ['id', 'company_id', 'date', 'description', 'amount_cents', 'type', 'category', 'contact_id', 'bank_account_id', 'reference_id', 'created_at'],
   chart_of_accounts: ['id', 'company_id', 'code', 'name', 'type', 'subtype', 'balance_cents', 'created_at'],
   messages: ['id', 'organization_id', 'sender_id', 'recipient_id', 'content', 'type', 'status', 'created_at', 'read_at'],
-  interaction_logs: ['id', 'contact_id', 'type', 'summary', 'content', 'created_by', 'created_at'],
+  interaction_logs: ['id', 'contact_id', 'type', 'summary', 'content', 'created_by', 'created_at', 'organization_id'],
   locations: ['id', 'organization_id', 'name', 'type', 'is_active'],
   leads: ['id', 'organization_id', 'name', 'email', 'phone', 'company', 'source', 'status', 'interest_level', 'notes', 'conversation_id', 'created_at', 'updated_at'],
   bank_accounts: ['id', 'company_id', 'name', 'type', 'balance_cents', 'currency', 'account_number', 'institution_name', 'last_updated'],
@@ -134,6 +134,14 @@ const mapOutgoingRow = (newItem: any) => {
     }
   });
 
+  // Fallback for organizationId if not already mapped
+  if (newItem.organizationId && !mapped.organization_id) {
+    mapped.organization_id = newItem.organizationId;
+  }
+  if (newItem.companyId && !mapped.company_id) {
+    mapped.company_id = newItem.companyId;
+  }
+
   return mapped;
 };
 
@@ -161,7 +169,11 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
     // 1. Initial Organization mapping
     if (!noOrgTables.includes(tableName)) {
       // Force organization_id mapping for tables that use it
-      const useOrgId = ['reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 'employees', 'catering_events', 'categories', 'ingredient_stock_batches', 'leads'].includes(tableName);
+      const useOrgId = [
+        'reusable_items', 'rental_items', 'ingredients', 'products', 'assets', 
+        'employees', 'catering_events', 'categories', 'ingredient_stock_batches', 
+        'leads', 'interaction_logs', 'entity_media', 'messages', 'locations'
+      ].includes(tableName);
       if (useOrgId) {
         if (!newItem.organization_id) {
           newItem.organization_id = newItem.organizationId || newItem.companyId || newItem.company_id;

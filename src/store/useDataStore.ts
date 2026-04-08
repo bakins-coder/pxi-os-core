@@ -13,6 +13,7 @@ import {
 import { supabase, syncTableToCloud, pullCloudState, mapIncomingRow, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
 import { useAuthStore } from './useAuthStore';
 import { useSettingsStore } from './useSettingsStore';
+import { getIndustryConfig } from '../config/industryProfiles';
 
 import { calculateItemCosting as utilsCalculateCosting } from '../utils/costing';
 
@@ -2143,7 +2144,7 @@ export const useDataStore = create<DataState>()(
                 const invoiceId = crypto.randomUUID();
                 const totalRev = d.items.reduce((s: number, i: any) => s + (i.priceCents * i.quantity), 0 as number);
 
-                const isCuisine = (d.orderType || 'Banquet') === 'Cuisine';
+                const isCuisine = d.orderType === 'Cuisine' || d.orderType === 'Standard' || d.orderType === 'Package' || d.orderType === 'Retail';
 
                 // Determine taxable revenue (food items only) by excluding logistics, rentals, menu cards, etc.
                 const taxableRev = d.items.reduce((s: number, i: any) => {
@@ -2191,7 +2192,7 @@ export const useDataStore = create<DataState>()(
                     dueDate: d.invoiceDate || new Date().toISOString().split('T')[0],
                     status: InvoiceStatus.PROFORMA,
                     type: 'Sales',
-                    category: d.orderType || 'Banquet',
+                    category: isCuisine ? 'Cuisine' : (d.orderType || 'Banquet'),
                     totalCents,
                     subtotalCents: totalRev,
                     serviceChargeCents,
@@ -2527,19 +2528,23 @@ export const useDataStore = create<DataState>()(
 
                 set((state) => {
                     const currentInvoice = state.invoices.find(inv => inv.id === invoiceId);
-                    const effectiveIsCuisine = isCuisine || (currentInvoice?.category === 'Cuisine');
+                    const settings = useSettingsStore.getState().settings;
+                    const industryConfig = getIndustryConfig(settings.type);
+                    const taxFeatures = industryConfig.features.taxConfig || { serviceChargeRate: 0.15, vatRate: 0.075 };
+                    const effectiveIsCuisine = (isCuisine || currentInvoice?.category === 'Cuisine') && 
+                        !['Banquet', 'Custom', 'Banquet Orders', 'Custom Orders'].includes(currentInvoice?.category || '');
 
                     // 1. Calculate Standard Totals (If no discounts applied)
-                    const isBanquet = !effectiveIsCuisine && lines.some(l => l.description.startsWith('[SECTION] '));
+                    const isBanquet = !effectiveIsCuisine && (lines.some(l => l.description.startsWith('[SECTION] ')) || currentInvoice?.category === 'Banquet' || currentInvoice?.category === 'Custom');
 
-                    const skipTaxes = effectiveIsCuisine || (
+                    const effectiveIsStandardFlow = effectiveIsCuisine || (
                         !isBanquet &&
                         !currentInvoice?.category?.includes('Banquet') &&
-                        currentInvoice?.serviceChargeCents === 0 &&
-                        currentInvoice?.vatCents === 0
+                        !currentInvoice?.category?.includes('Custom') &&
+                        currentInvoice?.category !== 'Standard'
                     );
 
-                    const isNonFoodItem = (desc: string) => {
+                    const isExcludedFromTax = (desc: string) => {
                         if (!desc) return false;
                         const ldesc = desc.toLowerCase();
                         return ldesc.includes('transport') ||
@@ -2550,24 +2555,24 @@ export const useDataStore = create<DataState>()(
                             ldesc.includes('rental');
                     };
 
-                    const standardSubtotal = lines.reduce((acc, l) => {
-                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
+                    const standardTotalSubtotal = lines.reduce((acc, l) => {
+                        if (isBanquet && lines.some(item => item.description.startsWith('[SECTION] ')) && !l.description.startsWith('[SECTION] ')) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
 
                     const standardTaxableSubtotal = lines.reduce((acc, l) => {
-                        if (isBanquet && !l.description.startsWith('[SECTION] ')) return acc;
-                        if (isNonFoodItem(l.description)) return acc;
+                        if (isBanquet && lines.some(item => item.description.startsWith('[SECTION] ')) && !l.description.startsWith('[SECTION] ')) return acc;
+                        if (isExcludedFromTax(l.description)) return acc;
                         return acc + (l.quantity * l.unitPriceCents);
                     }, 0);
-
-                    const standardSC = skipTaxes ? 0 : Math.round(standardTaxableSubtotal * 0.15);
-                    const standardVAT = skipTaxes ? 0 : Math.round((standardTaxableSubtotal + standardSC) * 0.075);
-                    const standardTotal = standardSubtotal + standardSC + standardVAT;
+                    
+                    const standardSC = effectiveIsStandardFlow ? 0 : Math.round(standardTaxableSubtotal * taxFeatures.serviceChargeRate);
+                    const standardVAT = effectiveIsStandardFlow ? 0 : Math.round((standardTaxableSubtotal + standardSC) * taxFeatures.vatRate);
+                    const standardTotal = standardTotalSubtotal + standardSC + standardVAT;
 
                     // 2. Calculate Effective Totals (Using manual prices if set)
                     const hasSections = lines.some(l => l.description.startsWith('[SECTION] '));
-                    const effectiveSubtotal = lines.reduce((acc, l) => {
+                    const effectiveTotalSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
@@ -2577,16 +2582,16 @@ export const useDataStore = create<DataState>()(
 
                     const effectiveTaxableSubtotal = lines.reduce((acc, l) => {
                         if (isBanquet && hasSections && !l.description.startsWith('[SECTION] ')) return acc;
-                        if (isNonFoodItem(l.description)) return acc;
+                        if (isExcludedFromTax(l.description)) return acc;
                         const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
                             ? l.manualPriceCents
                             : l.unitPriceCents;
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = skipTaxes ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
-                    const effectiveVAT = skipTaxes ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * 0.075);
-                    const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+                    const effectiveSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * taxFeatures.serviceChargeRate);
+                    const effectiveVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * taxFeatures.vatRate);
+                    const effectiveTotal = effectiveTotalSubtotal + effectiveSC + effectiveVAT;
 
                     // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost
                     const discount = Math.max(0, standardTotal - effectiveTotal);
@@ -2598,7 +2603,8 @@ export const useDataStore = create<DataState>()(
                             ...inv,
                             lines,
                             category: (isCuisine || inv.category === 'Cuisine') ? 'Cuisine' : inv.category,
-                            subtotalCents: effectiveSubtotal,
+                            subtotalCents: effectiveTotalSubtotal,
+                            taxableSubtotalCents: effectiveTaxableSubtotal,
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
                             standardTotalCents: standardTotal,
