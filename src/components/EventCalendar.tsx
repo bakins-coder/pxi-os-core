@@ -5,15 +5,17 @@ import { Task, CateringEvent } from '../types';
 import {
   ChevronLeft, ChevronRight, ChefHat, X
 } from 'lucide-react';
+import { EventDetailCard } from './EventDetailCard';
 
 
 interface EventCalendarProps {
   tasks?: Task[];
   events?: CateringEvent[];
   className?: string;
+  onEventClick?: (event: CateringEvent) => void;
 }
 
-export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks, events: propsEvents, className }) => {
+export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks, events: propsEvents, className, onEventClick }) => {
   const storeTasks = useDataStore(state => state.tasks);
   const storeEvents = useDataStore(state => state.cateringEvents);
 
@@ -86,8 +88,8 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
                     <div
                       key={idx}
                       onClick={() => {
-                        if (item.type === 'event') {
-                          navigate(`/catering?id=${item.data.id}`);
+                        if (onEventClick && item.type === 'event') {
+                          onEventClick(item.data);
                         } else {
                           setSelectedItem(item);
                         }
@@ -108,7 +110,12 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ tasks: propsTasks,
         ))}
       </div>
 
-      {/* We no longer render EventDetailCard for items that should navigate instead */}
+      {selectedItem && (
+        <EventDetailCard 
+          item={selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+        />
+      )}
     </div>
   );
-};
+};

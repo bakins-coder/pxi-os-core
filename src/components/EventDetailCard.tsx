@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Clock, ChefHat, Info, MapPin, Users, Calendar, Save, Trash2, MessageSquare, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CateringEvent, Task } from '../types';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -13,6 +13,7 @@ interface EventDetailCardProps {
 export const EventDetailCard = ({ item, onClose }: EventDetailCardProps) => {
     const { updateCateringOrder, tasks, cateringEvents } = useDataStore();
     const { user } = useAuthStore();
+    const navigate = useNavigate();
 
     // For events, we want the latest data from the store in case it was updated by someone else
     const currentEvent = item.type === 'event'
@@ -199,7 +200,11 @@ export const EventDetailCard = ({ item, onClose }: EventDetailCardProps) => {
                 {/* Footer / Actions */}
                 <div className="p-8 border-t border-slate-50 flex justify-between items-center bg-slate-50/50">
                     <button
-                        onClick={() => window.location.href = item.type === 'event' ? `/catering?id=${data.id}` : `/tasks?id=${data.id}`}
+                        onClick={() => {
+                            const path = item.type === 'event' ? `/catering?id=${data.id}` : `/tasks?id=${data.id}`;
+                            navigate(path);
+                            onClose();
+                        }}
                         className="text-xs font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-800 transition-colors"
                     >
                         View Full History →
