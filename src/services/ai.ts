@@ -1005,11 +1005,12 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 8. PROACTIVE LEAD CAPTURE: If a user (Customer) expresses interest, ask for their name/contact and use 'capture_lead'.
                 9. CUSTOMER SUPPORT: Use 'search_knowledge_base' to answer technical or support queries before giving a final answer.
                 10. CHAT CONTEXT: ALWAYS include 'conversationId' in the payload for lead captures if available.
+                11. RECORD TRANSACTIONS: If a user provides a receipt image or mentions recording an expense/sale, use 'RECORD_TRANSACTION' intent and extract all details (amount, company/merchant, date, category).
                 
                 Return JSON:
                 {
                     "response": "Answer to user...",
-                    "intent": "GENERAL_QUERY | ADD_EMPLOYEE | ADD_INVENTORY | ADD_CUSTOMER | ADD_SUPPLIER | ADD_PROJECT | CREATE_EVENT | LEAD_GENERATION | CUSTOMER_SUPPORT",
+                    "intent": "GENERAL_QUERY | ADD_EMPLOYEE | ADD_INVENTORY | ADD_CUSTOMER | ADD_SUPPLIER | ADD_PROJECT | CREATE_EVENT | LEAD_GENERATION | CUSTOMER_SUPPORT | RECORD_TRANSACTION",
                     "payload": { ... }
                 }
             `;
@@ -1037,7 +1038,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
                     type: SchemaType.OBJECT,
                     properties: {
                         response: { type: SchemaType.STRING },
-                        intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT', 'LEAD_GENERATION', 'CUSTOMER_SUPPORT'] } as any,
+                        intent: { type: SchemaType.STRING, enum: ['GENERAL_QUERY', 'ADD_EMPLOYEE', 'ADD_INVENTORY', 'ADD_CUSTOMER', 'ADD_SUPPLIER', 'ADD_PROJECT', 'CREATE_EVENT', 'LEAD_GENERATION', 'CUSTOMER_SUPPORT', 'RECORD_TRANSACTION'] } as any,
                         payload: {
                             type: SchemaType.OBJECT,
                             properties: {
@@ -1076,7 +1077,14 @@ export async function processAgentRequest(input: string, context: string, mode: 
                                 company: { type: SchemaType.STRING },
                                 interestLevel: { type: SchemaType.STRING },
                                 notes: { type: SchemaType.STRING },
-                                conversationId: { type: SchemaType.STRING }
+                                conversationId: { type: SchemaType.STRING },
+
+                                // Transaction Fields
+                                amountCents: { type: SchemaType.NUMBER },
+                                merchant: { type: SchemaType.STRING },
+                                description: { type: SchemaType.STRING },
+                                type: { type: SchemaType.STRING }, // Inflow/Outflow
+                                paymentMethod: { type: SchemaType.STRING }
                             }
                         }
                     },
@@ -1084,32 +1092,26 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 }
             } as any;
 
-            const model = ai.getGenerativeModel({
-                model: 'gemini-2.0-flash',
-                generationConfig
-            });
-
-            const result = await model.generateContent(contentParts);
-            const response = await result.response;
+            // Use executeToolCalls to allow the model to use tools before returning the final JSON
+            const result = await executeToolCalls(ai, 'gemini-2.0-flash', contentParts.map(p => ({ role: 'user', parts: [p] })), generationConfig, systemInstructions);
+            const responseText = result.text();
+            
             let parsed;
             try {
-                parsed = JSON.parse(response.text() || "{}");
+                parsed = JSON.parse(responseText || "{}");
             } catch (e) {
-                parsed = { response: response.text(), intent: 'GENERAL_QUERY', payload: {} };
+                // Fallback for non-JSON responses
+                parsed = { response: responseText, intent: 'GENERAL_QUERY', payload: {} };
             }
 
             // Event Query Fix: If user asks about events and response is a string, try to fetch and format events
             if (input.toLowerCase().includes('event') && typeof parsed.response === 'string' && parsed.response.trim().toLowerCase() === 'string') {
-                // Fetch events from dataStore
                 const dataStore = useDataStore.getState();
                 const events = dataStore.cateringEvents || [];
                 if (events.length > 0) {
-                    // Find the latest event
                     const lastEvent = [...events].sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())[0];
                     parsed.response = `| Customer | Date | Guests | Status | Location |\n|---|---|---|---|---|\n| ${lastEvent.customerName} | ${lastEvent.eventDate} | ${lastEvent.guestCount} | ${lastEvent.status} | ${lastEvent.location || 'N/A'} |`;
                     parsed.intent = 'GENERAL_QUERY';
-                } else {
-                    parsed.response = 'No events found.';
                 }
             }
             return parsed;

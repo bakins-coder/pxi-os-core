@@ -15,6 +15,11 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   hasAudio?: boolean;
+  attachment?: {
+    preview?: string;
+    name: string;
+    type: string;
+  };
 }
 
 interface ChatSession {
@@ -125,6 +130,9 @@ export const ChatWidget = () => {
   };
 
   const updateSessionMessages = (sessionId: string, newMessages: Message[]) => {
+    const settings = useSettingsStore.getState().settings;
+    const defaultTitle = settings.name || 'Xquisite';
+    
     setSessions(prev => prev.map(s => {
       if (s.id === sessionId) {
         // Auto-generate title from first user message if still default
@@ -132,7 +140,12 @@ export const ChatWidget = () => {
         if (s.title === 'New Chat' && newMessages.length > 1) {
           const firstUserMsg = newMessages.find(m => m.sender === 'user');
           if (firstUserMsg) {
-            title = firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : '');
+            // If the user starts with a greeting or short text, use the org name
+            if (firstUserMsg.text.length < 5 || firstUserMsg.text.toLowerCase().includes('hi') || firstUserMsg.text.toLowerCase().includes('hello')) {
+              title = defaultTitle;
+            } else {
+              title = firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : '');
+            }
           }
         }
         return { ...s, messages: newMessages, title };
@@ -219,7 +232,12 @@ export const ChatWidget = () => {
     const userMsg: Message = {
       id: Date.now().toString(),
       text: displayText || (attachment ? `Sent an attachment: ${attachment.file.name}` : ''),
-      sender: 'user'
+      sender: 'user',
+      attachment: attachment ? {
+        preview: attachment.preview,
+        name: attachment.file.name,
+        type: attachment.type || 'image'
+      } : undefined
     };
 
     // Optimistic update
@@ -406,6 +424,31 @@ export const ChatWidget = () => {
             companyId: useAuthStore.getState().user?.companyId || ''
           });
           updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Task Added: "${payload.title}" has been recorded.`, sender: 'bot' }]);
+        } else if (intent === 'RECORD_TRANSACTION') {
+          try {
+            const companyId = useAuthStore.getState().user?.companyId || '';
+            const txId = crypto.randomUUID();
+            
+            // Record in Bookkeeping
+            useDataStore.getState().addBookkeepingEntry({
+              id: txId,
+              date: payload.date || new Date().toISOString().split('T')[0],
+              description: payload.description || `Transaction at ${payload.merchant || 'Merchant'}`,
+              category: payload.category || 'Expense',
+              amountCents: payload.amountCents || 0,
+              type: (payload.type as any) || 'Outflow',
+              paymentMethod: 'Cash',
+              companyId: companyId
+            } as any);
+
+            updateSessionMessages(sessionId, [...currentMessages, { 
+              id: Date.now().toString(), 
+              text: `✅ **Transaction Recorded**: I've successfully logged the **${payload.amountCents / 100}** transaction for **${payload.merchant || 'Merchant'}**.\n\n**Reference ID**: \`${txId.slice(0, 8)}\`\n**Date**: ${payload.date || 'Today'}`, 
+              sender: 'bot' 
+            }]);
+          } catch (e) {
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Failed to record transaction.`, sender: 'bot' }]);
+          }
         } else {
           // Standard Response
           const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
@@ -726,7 +769,23 @@ export const ChatWidget = () => {
                     <div className="prose prose-slate prose-sm max-w-none prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tighter prose-p:mb-2 prose-li:mb-1 prose-table:border-collapse prose-table:w-full prose-th:bg-slate-50 prose-th:p-2 prose-td:p-2 prose-td:border prose-td:border-slate-100">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                     </div>
-                  ) : msg.text}
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                       {msg.attachment && (
+                        <div className="mb-2">
+                          {msg.attachment.type === 'image' ? (
+                            <img src={msg.attachment.preview} alt="Attachment" className="max-h-48 rounded-lg border border-slate-700 shadow-sm" />
+                          ) : (
+                            <div className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg border border-slate-700">
+                              <FileText size={16} className="text-indigo-400" />
+                              <span className="text-xs truncate max-w-[150px]">{msg.attachment.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <span>{msg.text}</span>
+                    </div>
+                  )}
                   {msg.hasAudio && (
                     <div className={`mt-2 flex items-center gap-2 text-[10px] ${themeText} font-bold uppercase tracking-widest`}>
                       <Sparkles size={12} /> Audio Response Playing
