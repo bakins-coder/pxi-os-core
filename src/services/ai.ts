@@ -300,6 +300,40 @@ const SYSTEM_TOOLS = {
             tasks: tasks.map(t => ({ title: t.title, status: t.status, priority: t.priority }))
         };
     },
+    get_bookkeeping_entries: (args: { limit?: number; type?: 'Inflow' | 'Outflow'; category?: string }) => {
+        const { limit = 20, type, category } = args || {};
+        const dataStore = useDataStore.getState();
+        let entries = dataStore.bookkeeping;
+        if (type) entries = entries.filter(e => e.type === type);
+        if (category) entries = entries.filter(e => e.category.toLowerCase().includes(category.toLowerCase()));
+        
+        return {
+            entries: entries.slice(0, limit).map(e => ({
+                date: e.date,
+                description: e.description,
+                category: e.category,
+                amount: (e.amountCents / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
+                type: e.type
+            })),
+            total_matches: entries.length
+        };
+    },
+    search_ledger: (args: { query: string; limit?: number }) => {
+        const { query, limit = 20 } = args;
+        const dataStore = useDataStore.getState();
+        const results = dataStore.bookkeeping.filter(e => 
+            e.description.toLowerCase().includes(query.toLowerCase()) || 
+            e.category.toLowerCase().includes(query.toLowerCase())
+        );
+        return {
+            matches: results.slice(0, limit).map(e => ({
+                date: e.date,
+                description: e.description,
+                amount: (e.amountCents / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
+                category: e.category
+            }))
+        };
+    },
     get_all_invoices: (args: { limit?: number; contact_id?: string }) => {
         const { limit = 20, contact_id } = args || {};
         const dataStore = useDataStore.getState();
@@ -472,11 +506,35 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "search_knowledge_base",
-        description: "Search the system documentation and guides. Use this to answer 'how-to' questions, technical queries about system architecture, or operational procedures.",
+        description: "Search system documentation. Use this ONLY for procedural 'how-to' questions. DO NOT use this for financial or data lookups.",
         parameters: {
             type: SchemaType.OBJECT,
             properties: {
-                query: { type: SchemaType.STRING, description: "The specific question or topic to search for" }
+                query: { type: SchemaType.STRING }
+            },
+            required: ["query"]
+        }
+    },
+    {
+        name: "get_bookkeeping_entries",
+        description: "Fetch list of transactions (Inflow/Outflow) from the financial ledger. Use this to find expenses by category (e.g., 'vehicle maintenance').",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                limit: { type: SchemaType.NUMBER },
+                category: { type: SchemaType.STRING, description: "Category name to filter by" },
+                type: { type: SchemaType.STRING, enum: ["Inflow", "Outflow"] }
+            }
+        }
+    },
+    {
+        name: "search_ledger",
+        description: "Search the bookkeeping ledger for specific keywords in descriptions or categories.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                query: { type: SchemaType.STRING, description: "Keyword to search for" },
+                limit: { type: SchemaType.NUMBER }
             },
             required: ["query"]
         }
@@ -587,12 +645,12 @@ const SYSTEM_TOOL_DECLARATIONS = [
 /**
  * Handles the Loop for Tool Calling
  */
-async function executeToolCalls(ai: any, modelId: string, initialMessages: any[], generationConfig?: any, systemInstruction?: string) {
+async function executeToolCalls(ai: any, modelId: string, initialMessages: any[], generationConfig?: any, systemInstruction?: string, toolDeclarations: any[] = SYSTEM_TOOL_DECLARATIONS) {
     const targetModel = modelId;
 
     const genModel = ai.getGenerativeModel({
         model: targetModel,
-        tools: [{ functionDeclarations: SYSTEM_TOOL_DECLARATIONS }],
+        tools: [{ functionDeclarations: toolDeclarations }],
         systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined
     });
 
@@ -642,18 +700,27 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
 
             // Final Response Validation
             if (candidate.finishReason === 'SAFETY') {
-                throw new Error("Response was flagged by safety filters.");
+                return { 
+                    text: () => "I'm sorry, I cannot fulfill this request due to safety restrictions. Please try rephrasing.",
+                    response: { text: () => "Safety block triggered." }
+                } as any;
             }
 
             // If the user requested a specific JSON schema but we skipped it during the loop turns,
             // we might need one last call to "JSON-ify" the final answer.
             if (generationConfig?.responseMimeType === "application/json" && (!turnConfig?.responseMimeType)) {
                 console.log("[AI Tools] Formatting final answer into JSON...");
-                const finalResult = await genModel.generateContent({
-                    contents: currentMessages,
-                    generationConfig
-                });
-                return await finalResult.response;
+                try {
+                    const finalResult = await genModel.generateContent({
+                        contents: currentMessages,
+                        generationConfig
+                    });
+                    const finalResponse = await finalResult.response;
+                    return finalResponse;
+                } catch (jsonErr) {
+                    console.error("[AI Tools] JSON formatting failed, returning raw response.", jsonErr);
+                    return response;
+                }
             }
 
             return response;
@@ -924,48 +991,122 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
     }
 }
 
+// RBAC Constants
+const AUTHORIZED_FINANCE_ROLES = [
+    'Super Admin', 'system_admin', 'Chief Executive Officer', 'Chairman', 
+    'Finance', 'Finance Officer', 'Admin', 'admin', 'CEO', 'CFO', 'MD', 'Director'
+];
+
+/**
+ * Robust check for financial data authorization.
+ * Handles case-sensitivity and whitespace variations.
+ */
+const checkFinancialAuthorization = (role: string | undefined): boolean => {
+    if (!role) return false;
+    const cleanRole = role.trim().toLowerCase();
+    const isAuthorized = AUTHORIZED_FINANCE_ROLES.some(r => r.toLowerCase() === cleanRole);
+    
+    console.log(`[AI RBAC] Authorization Check:`, {
+        role: role,
+        cleanRole: cleanRole,
+        isAuthorized: isAuthorized
+    });
+    
+    return isAuthorized;
+};
+
 export async function processAgentRequest(input: string, context: string, mode: 'text' | 'audio' | 'image' | 'pdf' = 'text'): Promise<any> {
-    if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
-    const ai = getAIInstance();
-
-    // Build Context
-    const dataStore = useDataStore.getState();
-    const workforceSummary = dataStore.employees.reduce((acc, emp) => {
-        acc[emp.role] = (acc[emp.role] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const menuContext = dataStore.inventory
-        // Include products, reusables (e.g., glasses, plates), and raw materials
-        .filter(i => i.type === 'product' || i.type === 'reusable' || i.type === 'raw_material')
-        .slice(0, 200) // INCREASED LIMIT: Top 200 items to ensure menu completeness
-        .map(i => {
-            const price = i.priceCents ? `₦${(i.priceCents / 100).toLocaleString()}` : 'Price Varies';
-            const desc = i.description ? ` - ${i.description}` : '';
-            return `- ${i.name} (${i.category}): ${i.stockQuantity} in stock [${price}]${desc}`;
-        })
-        .join('\n');
-
-    if (dataStore.inventory.length > 50) {
-        // Append a note that more exists
-        // menuContext += `\n... ${dataStore.inventory.length - 50} more items available via search.`;
-    }
-
-    const currentUser = useAuthStore.getState().user;
-    const userRole = currentUser?.role || 'Guest';
-
-    const totalReceivables = dataStore.invoices
-        .filter(i => i.status !== 'Paid')
-        .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
-
-    const operationalContextSummary = `Database Snapshot: ${dataStore.invoices.length} total invoices, ${dataStore.contacts.length} contacts, ${dataStore.inventory.length} items.`;
-
     try {
+        // Heartbeat / Direct response for simple greetings to bypass processing overhead
+        const cleanInput = input?.trim().toLowerCase();
+        const greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'help', 'ready'];
+        if (greetings.some(g => cleanInput.includes(g) && cleanInput.length < 15)) {
+            return { 
+                response: "Hello! I am Xquisite AI, your operational assistant. I'm online and ready to help. What's on your mind?", 
+                intent: 'GENERAL_QUERY' 
+            };
+        }
+
+        if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
+        const ai = getAIInstance();
+
+        // Build Context
+        const dataStore = useDataStore.getState();
+        const workforceSummary = dataStore.employees.reduce((acc, emp) => {
+            acc[emp.role] = (acc[emp.role] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const menuContext = dataStore.inventory
+            // Include products, reusables (e.g., glasses, plates), and raw materials
+            .filter(i => i.type === 'product' || i.type === 'reusable' || i.type === 'raw_material')
+            .slice(0, 200) // INCREASED LIMIT: Top 200 items to ensure menu completeness
+            .map(i => {
+                const price = i.priceCents ? `₦${(i.priceCents / 100).toLocaleString()}` : 'Price Varies';
+                const desc = i.description ? ` - ${i.description}` : '';
+                return `- ${i.name} (${i.category}): ${i.stockQuantity} in stock [${price}]${desc}`;
+            })
+            .join('\n');
+
+        if (dataStore.inventory.length > 50) {
+            // Append a note that more exists
+            // menuContext += `\n... ${dataStore.inventory.length - 50} more items available via search.`;
+        }
+
+        const currentUser = useAuthStore.getState().user;
+        const userRole = currentUser?.role || 'Guest';
+
+        const totalReceivables = dataStore.invoices
+            .filter(i => i.status !== 'Paid')
+            .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
+
+        const operationalContextSummary = `Database Snapshot: ${dataStore.invoices.length} total invoices, ${dataStore.contacts.length} contacts, ${dataStore.inventory.length} items.`;
+
         const response = await callWithRetry(async () => {
+            const orgSettings = useSettingsStore.getState().settings;
+            const orgName = orgSettings.name || 'Platform';
+            const orgType = orgSettings.type || 'General';
+            const isClothingBusiness = orgType === 'Retail' && (orgName.toLowerCase().includes('clothes') || orgName.toLowerCase().includes('boutique'));
+            
+            // RBAC Telemetry & Logic
+            const isAuthorizedForFinance = checkFinancialAuthorization(userRole);
+            
+            console.log(`[AI Service] RBAC state for request:`, {
+                userName: currentUser?.name || 'Unknown',
+                userRole: userRole,
+                isAuthorized: isAuthorizedForFinance,
+                orgName: orgName
+            });
+            
+            // Filter tools based on authorization
+            const filteredDeclarations = SYSTEM_TOOL_DECLARATIONS.filter(tool => {
+                if (!isAuthorizedForFinance) {
+                    const restrictedTools = ['get_financial_summary', 'get_bookkeeping_entries', 'search_ledger', 'get_outstanding_invoices'];
+                    return !restrictedTools.includes(tool.name);
+                }
+                return true;
+            });
+
             const systemInstructions = `
-                Role: You are the intelligent assistant for the ${useSettingsStore.getState().settings.name || 'Platform'} workspace.
-                User Role: ${userRole}.
+                Role: You are the intelligent assistant for the ${orgName} workspace.
+                Business Profile: ${orgName} is a ${orgType} business. 
+                ${!isClothingBusiness ? `IMPORTANT: This is NOT a clothing business. If the user mentions 'clothes' or 'clothing' in a way that seems out of context, politely clarify that you are managing ${orgType} operations.` : 'MISSION: You help manage a clothing/retail business.'}
+                
+                USER ACCESS CONTROL:
+                - User Role: ${userRole}.
+                - Financial Data Authorization: ${isAuthorizedForFinance ? 'AUTHORIZED' : 'RESTRICTED'}.
+                
+                GUARDRAILS:
+                ${!isAuthorizedForFinance ? `
+                - EXCEPTIONALLY IMPORTANT: You are NOT permitted to provide aggregate financial KPIs (Revenue, Total Expenses, Net Margin, Profits) or call the 'get_financial_summary' tool for this user role.
+                - If the user asks for financial KPIs or sensitive money data, you MUST POLITELY DECLINE.
+                - Response Instruction: "I'm sorry, I am not authorized to share aggregate financial KPIs with your role. Please refer to the MD, CEO, or CFO for this level of information."
+                ` : `
+                - You are authorized to provide financial summaries and KPIs to this user.
+                `}
+                
                 Operational Summary: ${operationalContextSummary}
+                Financial Context: ${dataStore.bookkeeping.length > 0 ? `Latest Entry: ${dataStore.bookkeeping[dataStore.bookkeeping.length - 1].description} (${dataStore.bookkeeping[dataStore.bookkeeping.length - 1].amountCents / 100} NGN)` : 'No entries yet.'}
                 
                 MISSION: Be the ultimate organizational logic node. If users ask about stats, ingredients, projects, or staff, be precise.
                 
@@ -1050,40 +1191,23 @@ export async function processAgentRequest(input: string, context: string, mode: 
                                 phone: { type: SchemaType.STRING },
                                 dob: { type: SchemaType.STRING },
                                 gender: { type: SchemaType.STRING },
-                                address: { type: SchemaType.STRING },
-                                dateOfEmployment: { type: SchemaType.STRING },
-                                healthNotes: { type: SchemaType.STRING },
-                                stats: { type: SchemaType.STRING },
-
-                                // Inventory Fields
                                 itemName: { type: SchemaType.STRING },
                                 quantity: { type: SchemaType.NUMBER },
                                 category: { type: SchemaType.STRING },
-
-                                // CRM / Event Fields
                                 name: { type: SchemaType.STRING },
-                                customerName: { type: SchemaType.STRING },
-                                date: { type: SchemaType.STRING },
-                                guestCount: { type: SchemaType.NUMBER },
-                                location: { type: SchemaType.STRING },
-                                eventType: { type: SchemaType.STRING },
                                 budget: { type: SchemaType.STRING },
                                 clientContactId: { type: SchemaType.STRING },
-
-                                // Common/Other
-                                unit: { type: SchemaType.STRING },
-
-                                // Lead Fields
-                                company: { type: SchemaType.STRING },
-                                interestLevel: { type: SchemaType.STRING },
-                                notes: { type: SchemaType.STRING },
-                                conversationId: { type: SchemaType.STRING },
-
-                                // Transaction Fields
+                                customerName: { type: SchemaType.STRING },
+                                eventType: { type: SchemaType.STRING },
+                                location: { type: SchemaType.STRING },
+                                date: { type: SchemaType.STRING },
+                                guestCount: { type: SchemaType.NUMBER },
+                                title: { type: SchemaType.STRING },
+                                priority: { type: SchemaType.STRING },
                                 amountCents: { type: SchemaType.NUMBER },
                                 merchant: { type: SchemaType.STRING },
                                 description: { type: SchemaType.STRING },
-                                type: { type: SchemaType.STRING }, // Inflow/Outflow
+                                type: { type: SchemaType.STRING },
                                 paymentMethod: { type: SchemaType.STRING }
                             }
                         }
@@ -1093,15 +1217,39 @@ export async function processAgentRequest(input: string, context: string, mode: 
             } as any;
 
             // Use executeToolCalls to allow the model to use tools before returning the final JSON
-            const result = await executeToolCalls(ai, 'gemini-2.0-flash', contentParts.map(p => ({ role: 'user', parts: [p] })), generationConfig, systemInstructions);
-            const responseText = result.text();
+            // Consolidate contentParts into a single message for SDK compatibility
+            const result = await executeToolCalls(ai, 'gemini-2.0-flash', [{ role: 'user', parts: contentParts }], generationConfig, systemInstructions, filteredDeclarations);
             
+            let responseText = "";
+            try {
+                // Try .text() first, then fallback to parts access
+                responseText = typeof result.text === 'function' ? result.text() : "";
+                if (!responseText && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    responseText = result.candidates[0].content.parts[0].text;
+                }
+            } catch (textErr) {
+                console.warn("[AI Service] Could not extract text from result:", textErr);
+                responseText = "I encountered an issue processing that information.";
+            }
+
             let parsed;
             try {
-                parsed = JSON.parse(responseText || "{}");
+                const cleanText = responseText.replace(/```json\n?|\n?```/g, "").trim();
+                parsed = JSON.parse(cleanText || "{}");
             } catch (e) {
+                console.error("[AI Service] JSON Parse Failed:", e, "Raw:", responseText);
                 // Fallback for non-JSON responses
-                parsed = { response: responseText, intent: 'GENERAL_QUERY', payload: {} };
+                parsed = { 
+                    response: responseText || "I'm sorry, I had trouble formatting my response. Could you try asking again?", 
+                    intent: 'GENERAL_QUERY', 
+                    payload: {} 
+                };
+            }
+
+            // Ensure response has the required fields
+            if (!parsed.response) {
+                parsed.response = responseText || "I'm sorry, I am not able to answer that right now.";
+                parsed.intent = parsed.intent || 'GENERAL_QUERY';
             }
 
             // Event Query Fix: If user asks about events and response is a string, try to fetch and format events
@@ -1151,7 +1299,9 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         Operational Summary: ${operationalContextSummary}
         
         Data Access Tools: 
-        - get_catering_events: Access the calendar/list of all catering events. Use this for 'Next event', 'What events do we have', etc.
+        - get_bookkeeping_entries: Access the financial ledger. Use this for 'How much was spent on X' or 'List expenses'.
+        - search_ledger: Search transactions by keyword.
+        - get_catering_events: Access the calendar/list of all catering events.
         - get_system_overview: Core KPI node. Use this IMMEDIATELY for 'How many...' or 'Overview' questions. NEVER ask for permission; JUST CALL IT.
         - get_ingredient_list: Raw material details and counts.
         - get_project_summary: Project tracking and progress.

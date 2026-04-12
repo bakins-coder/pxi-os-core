@@ -79,7 +79,7 @@ interface DataState {
     addInteractionLog: (log: Partial<InteractionLog>) => void;
     addInvoice: (invoice: Invoice) => void;
     updateInvoiceStatus: (id: string, status: any) => void;
-    addBookkeepingEntry: (entry: BookkeepingEntry) => void;
+    addBookkeepingEntry: (entry: BookkeepingEntry) => Promise<void>;
     addTransaction: (tx: BankTransaction) => void;
     recordPayment: (id: string, amount: number, bankAccountId?: string, statusOverride?: InvoiceStatus) => void;
     reconcileMatch: (lineId: string, accountId: string) => void;
@@ -928,9 +928,12 @@ export const useDataStore = create<DataState>()(
             updateInvoiceStatus: (id, status) => set((state) => ({
                 invoices: state.invoices.map(inv => inv.id === id ? { ...inv, status } : inv)
             })),
-            addBookkeepingEntry: (entry) => set((state) => ({
-                bookkeeping: [entry, ...state.bookkeeping]
-            })),
+            addBookkeepingEntry: async (entry) => {
+                set((state) => ({
+                    bookkeeping: [entry, ...state.bookkeeping]
+                }));
+                await get().syncWithCloud();
+            },
             addTransaction: (tx) => set((state) => ({
                 bankTransactions: [tx, ...state.bankTransactions]
             })),
