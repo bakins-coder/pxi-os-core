@@ -18,6 +18,9 @@ This file maintains the current list of all active AI team members across the Un
 | **Pax** | Conflict & Resolution Specialist | `gemini-1.5-pro` | Active |
 | **Sterling** | Financial Insights & Data Specialist | `gemini-1.5-pro` | Active |
 | **Vinci** | Video Production Coordinator | `gemini-1.5-pro` | Active |
+| **Secretary** | Executive Secretary (JIWSF) | `gemini-1.5-pro` | Active |
+| **Coach** | Sports Coach (JIWSF) | `gemini-1.5-pro` | Active |
+| **Volunteer** | Volunteer Coordinator (JIWSF) | `gemini-1.5-pro` | Active |
 
 ---
-*Last Updated: 2026-04-14 (Global Centralization)*
+*Last Updated: 2026-04-14 (JIWSF Onboarding)*

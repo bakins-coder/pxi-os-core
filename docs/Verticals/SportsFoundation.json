@@ -1,0 +1,43 @@
+{
+  "industry": "Sports Foundation",
+  "name": "J Ishola-Williams Sports Foundation",
+  "brand": {
+    "primary": "#003366",
+    "secondary": "#00CC66",
+    "slogan": "Empowering Orphaned Children in Nigeria Through Sports"
+  },
+  "terminology": {
+    "projects": "Foundation Programs",
+    "finance": "Grants & Endowments",
+    "donors": "Sponsors & Benefactors",
+    "personnel": "Coaches & Volunteers",
+    "calendar": "Training Schedule",
+    "event_pipeline": "FOUNDATION OPS",
+    "training": "Sports Mentorship"
+  },
+  "icons": {
+    "projects": "Trophy",
+    "finance": "DollarSign",
+    "personnel": "Users",
+    "calendar": "Calendar",
+    "training": "Activity"
+  },
+  "modules": {
+    "finance": true,
+    "hr": true,
+    "project_hub": true,
+    "communications": true,
+    "sports_ops": true
+  },
+  "ai_roster": {
+    "administration": "Executive Secretary",
+    "technical": "Sports Coach",
+    "engagement": "Volunteer Coordinator",
+    "systems": "Nexus (Global Hub Integrator)"
+  },
+  "guardrails": {
+    "allow_portions": false,
+    "allow_boq": true,
+    "allow_banquets": false
+  }
+}
