@@ -36,12 +36,24 @@ export const ChatWidget = () => {
   // Session State
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     const saved = localStorage.getItem('ai_chat_sessions');
-    return saved ? JSON.parse(saved) : [{
+    const parsed = saved ? JSON.parse(saved) : [{
       id: 'default',
       title: 'New Chat',
       messages: [{ id: '0', text: 'Hi! I can help you navigate or answer questions about your data.', sender: 'bot' }],
       createdAt: Date.now()
     }];
+    
+    // RETROACTIVE FIX: Sanitize titles from localStorage
+    const settings = useSettingsStore.getState().settings;
+    const isClothingBusiness = settings.type === 'Retail' && (settings.name.toLowerCase().includes('clothes') || settings.name.toLowerCase().includes('boutique'));
+    
+    return parsed.map((s: any) => {
+      // ONLY sanitize 'what clothes' if they AREN'T a clothing business (to fix the specific bug reported)
+      if (!isClothingBusiness && (s.title === 'what clothes' || s.title?.toLowerCase().includes('clothes'))) {
+        return { ...s, title: settings.name || 'AI Assistant' };
+      }
+      return s;
+    });
   });
   const [activeSessionId, setActiveSessionId] = useState<string>('default');
   const [showSidebar, setShowSidebar] = useState(false);
@@ -130,28 +142,26 @@ export const ChatWidget = () => {
   };
 
   const updateSessionMessages = (sessionId: string, newMessages: Message[]) => {
-    const settings = useSettingsStore.getState().settings;
-    const defaultTitle = settings.name || 'Xquisite';
-    
-    setSessions(prev => prev.map(s => {
-      if (s.id === sessionId) {
-        // Auto-generate title from first user message if still default
-        let title = s.title;
-        if (s.title === 'New Chat' && newMessages.length > 1) {
-          const firstUserMsg = newMessages.find(m => m.sender === 'user');
-          if (firstUserMsg) {
-            // If the user starts with a greeting or short text, use the org name
-            if (firstUserMsg.text.length < 5 || firstUserMsg.text.toLowerCase().includes('hi') || firstUserMsg.text.toLowerCase().includes('hello')) {
-              title = defaultTitle;
-            } else {
-              title = firstUserMsg.text.slice(0, 30) + (firstUserMsg.text.length > 30 ? '...' : '');
+    setSessions(prev => {
+      // Find the session to update
+      const sessionExists = prev.some(s => s.id === sessionId);
+      const targetId = sessionExists ? sessionId : (activeSessionId || prev[0]?.id);
+
+      return prev.map(s => {
+        if (s.id === targetId) {
+          // Update title if it's currently 'New Chat'
+          let title = s.title;
+          if (title === 'New Chat' && newMessages.length > 2) {
+            const lastUserMsg = [...newMessages].reverse().find(m => m.sender === 'user');
+            if (lastUserMsg) {
+              title = lastUserMsg.text.slice(0, 30) + (lastUserMsg.text.length > 30 ? '...' : '');
             }
           }
+          return { ...s, messages: newMessages, title };
         }
-        return { ...s, messages: newMessages, title };
-      }
-      return s;
-    }));
+        return s;
+      });
+    });
   };
 
   const getAudioContext = () => {
@@ -330,131 +340,141 @@ export const ChatWidget = () => {
 
       const fullContext = `Session: Global Floating Chat.\n\nRecent History:\n${historyContext}`;
 
+      // Implement a heartbeat timeout to prevent infinite "typing" state
+      const typingTimeout = setTimeout(() => {
+        if (isTyping) {
+          setIsTyping(false);
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: "I'm taking longer than usual to think... please try again if I don't respond in a few more seconds.", sender: 'bot' }]);
+        }
+      }, 15000);
+
       const response = await processAgentRequest(payload, fullContext, mode as any);
+      clearTimeout(typingTimeout);
 
       // Handle Agentic Action
       // Handle Agentic Action
-      if (response.intent) {
-        const { intent, payload } = response;
-        if (intent === 'ADD_EMPLOYEE') {
-          const { EmployeeStatus } = await import('../types');
-          // Validate Payload
-          if (!payload.firstName || !payload.role) {
-            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: "I need a bit more info. What is the staff member's name and role?", sender: 'bot' }]);
-          } else {
-            try {
-              const companyId = useAuthStore.getState().user?.companyId || '';
-              await useDataStore.getState().addEmployee({
-                firstName: payload.firstName || 'Unknown',
-                lastName: payload.lastName || 'Staff',
-                email: payload.email || `ai-gen-${Date.now()}@xquisite.com`,
-                role: payload.role || 'Employee',
-                salaryCents: 0,
-                status: EmployeeStatus.ACTIVE,
-                companyId: companyId,
-                dob: payload.dob || new Date().toISOString(),
-                gender: payload.gender as any || 'Male',
-                dateOfEmployment: payload.dateOfEmployment || new Date().toISOString(),
-                address: payload.address || '',
-                healthNotes: payload.healthNotes || '',
-                phoneNumber: payload.phone || '',
-                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.firstName}`,
-                kpis: []
-              });
-              updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: I've verified that ${payload.firstName} ${payload.lastName} was saved to the database as ${payload.role}.`, sender: 'bot' }]);
-            } catch (err) {
-              console.error("Agent Action Failed:", err);
-              updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Database Error: I tried to add ${payload.firstName}, but the database rejected it. Reason: ${(err as Error).message}`, sender: 'bot' }]);
-            }
-          }
-        } else if (intent === 'ADD_INVENTORY') {
-          if (!payload.itemName || !payload.quantity) {
-            useDataStore.getState().addInventoryItem({
-              name: payload.itemName,
-              stockQuantity: payload.quantity,
-              category: payload.category || 'General',
-              type: 'raw_material',
-              priceCents: 0,
-              companyId: useAuthStore.getState().user?.companyId || '',
-              id: `inv-${Date.now()}`
-            });
-            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${payload.quantity} ${payload.itemName} to inventory.`, sender: 'bot' }]);
-          }
-        } else if (intent === 'ADD_CUSTOMER' || intent === 'ADD_SUPPLIER') {
-          useDataStore.getState().addContact({
-            name: payload.name,
-            email: payload.email || '',
-            phone: payload.phone || '',
-            category: intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier',
-            type: 'Company', // Default
-            companyId: useAuthStore.getState().user?.companyId || ''
-          });
-          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: Added ${payload.name} as a new ${intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier'}.`, sender: 'bot' }]);
-        } else if (intent === 'ADD_PROJECT') {
-          useDataStore.getState().addProject({
-            name: payload.name,
-            clientContactId: payload.clientContactId, // Optional
-            budgetCents: payload.budget ? parseInt(payload.budget) * 100 : 0,
-            startDate: new Date().toISOString(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days
-            companyId: useAuthStore.getState().user?.companyId || ''
-          });
-          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Project Created: "${payload.name}" has been added to the board.`, sender: 'bot' }]);
-        } else if (intent === 'CREATE_EVENT') {
-          try {
-            await useDataStore.getState().createCateringOrder({
-              customerName: payload.customerName,
-              eventDate: payload.date || new Date().toISOString(),
-              guestCount: payload.guestCount || 50,
-              location: payload.location || 'TBD',
-              eventType: payload.eventType || 'General',
-              items: []
-            });
-            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Event Drafted: Catering event for ${payload.customerName} on ${payload.date} is ready for planning.`, sender: 'bot' }]);
-          } catch (e) {
-            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Event Creation Failed.`, sender: 'bot' }]);
-          }
-        } else if (intent === 'ADD_TASK') {
-          useDataStore.getState().addTask({
-            id: `task-${Date.now()}`,
-            title: payload.title || 'New Task',
-            description: payload.description || '',
-            priority: payload.priority || 'Medium',
-            status: 'Todo' as any,
-            companyId: useAuthStore.getState().user?.companyId || ''
-          });
-          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Task Added: "${payload.title}" has been recorded.`, sender: 'bot' }]);
-        } else if (intent === 'RECORD_TRANSACTION') {
+      const { intent, payload: agentPayload } = response || {};
+      
+      if (intent === 'ADD_EMPLOYEE') {
+        const { EmployeeStatus } = await import('../types');
+        // Validate Payload
+        if (!agentPayload?.firstName || !agentPayload?.role) {
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: "I need a bit more info. What is the staff member's name and role?", sender: 'bot' }]);
+        } else {
           try {
             const companyId = useAuthStore.getState().user?.companyId || '';
-            const txId = crypto.randomUUID();
-            
-            // Record in Bookkeeping
-            useDataStore.getState().addBookkeepingEntry({
-              id: txId,
-              date: payload.date || new Date().toISOString().split('T')[0],
-              description: payload.description || `Transaction at ${payload.merchant || 'Merchant'}`,
-              category: payload.category || 'Expense',
-              amountCents: payload.amountCents || 0,
-              type: (payload.type as any) || 'Outflow',
-              paymentMethod: 'Cash',
-              companyId: companyId
-            } as any);
-
-            updateSessionMessages(sessionId, [...currentMessages, { 
-              id: Date.now().toString(), 
-              text: `✅ **Transaction Recorded**: I've successfully logged the **${payload.amountCents / 100}** transaction for **${payload.merchant || 'Merchant'}**.\n\n**Reference ID**: \`${txId.slice(0, 8)}\`\n**Date**: ${payload.date || 'Today'}`, 
-              sender: 'bot' 
-            }]);
-          } catch (e) {
-            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Failed to record transaction.`, sender: 'bot' }]);
+            await useDataStore.getState().addEmployee({
+              firstName: agentPayload.firstName || 'Unknown',
+              lastName: agentPayload.lastName || 'Staff',
+              email: agentPayload.email || `ai-gen-${Date.now()}@xquisite.com`,
+              role: agentPayload.role || 'Employee',
+              salaryCents: 0,
+              status: EmployeeStatus.ACTIVE,
+              companyId: companyId,
+              dob: agentPayload.dob || new Date().toISOString(),
+              gender: agentPayload.gender as any || 'Male',
+              dateOfEmployment: agentPayload.dateOfEmployment || new Date().toISOString(),
+              address: agentPayload.address || '',
+              healthNotes: agentPayload.healthNotes || '',
+              phoneNumber: agentPayload.phone || '',
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${agentPayload.firstName}`,
+              kpis: []
+            });
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: I've verified that ${agentPayload.firstName} ${agentPayload.lastName} was saved to the database as ${agentPayload.role}.`, sender: 'bot' }]);
+          } catch (err) {
+            console.error("Agent Action Failed:", err);
+            updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Database Error: I tried to add ${agentPayload.firstName}, but the database rejected it. Reason: ${(err as Error).message}`, sender: 'bot' }]);
           }
-        } else {
-          // Standard Response
-          const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.response, sender: 'bot' };
-          updateSessionMessages(sessionId, [...currentMessages, botMsg]);
         }
+      } else if (intent === 'ADD_INVENTORY') {
+        if (!agentPayload?.itemName || !agentPayload?.quantity) {
+          useDataStore.getState().addInventoryItem({
+            name: agentPayload.itemName,
+            stockQuantity: agentPayload.quantity,
+            category: agentPayload.category || 'General',
+            type: 'raw_material',
+            priceCents: 0,
+            companyId: useAuthStore.getState().user?.companyId || '',
+            id: `inv-${Date.now()}`
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Actions Performed: Added ${agentPayload.quantity} ${agentPayload.itemName} to inventory.`, sender: 'bot' }]);
+        }
+      } else if (intent === 'ADD_CUSTOMER' || intent === 'ADD_SUPPLIER') {
+        useDataStore.getState().addContact({
+          name: agentPayload.name,
+          email: agentPayload.email || '',
+          phone: agentPayload.phone || '',
+          category: intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier',
+          type: 'Company', // Default
+          companyId: useAuthStore.getState().user?.companyId || ''
+        });
+        updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Success: Added ${agentPayload.name} as a new ${intent === 'ADD_CUSTOMER' ? 'Customer' : 'Supplier'}.`, sender: 'bot' }]);
+      } else if (intent === 'ADD_PROJECT') {
+        useDataStore.getState().addProject({
+          name: agentPayload.name,
+          clientContactId: agentPayload.clientContactId, // Optional
+          budgetCents: agentPayload.budget ? parseInt(agentPayload.budget) * 100 : 0,
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days
+          companyId: useAuthStore.getState().user?.companyId || ''
+        });
+        updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Project Created: "${agentPayload.name}" has been added to the board.`, sender: 'bot' }]);
+      } else if (intent === 'CREATE_EVENT') {
+        try {
+          await useDataStore.getState().createCateringOrder({
+            customerName: agentPayload.customerName,
+            eventDate: agentPayload.date || new Date().toISOString(),
+            guestCount: agentPayload.guestCount || 50,
+            location: agentPayload.location || 'TBD',
+            eventType: agentPayload.eventType || 'General',
+            items: []
+          });
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Event Drafted: Catering event for ${agentPayload.customerName} on ${agentPayload.date} is ready for planning.`, sender: 'bot' }]);
+        } catch (e) {
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Event Creation Failed.`, sender: 'bot' }]);
+        }
+      } else if (intent === 'ADD_TASK') {
+        useDataStore.getState().addTask({
+          id: `task-${Date.now()}`,
+          title: agentPayload.title || 'New Task',
+          description: agentPayload.description || '',
+          priority: agentPayload.priority || 'Medium',
+          status: 'Todo' as any,
+          companyId: useAuthStore.getState().user?.companyId || ''
+        });
+        updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `✅ Task Added: "${agentPayload.title}" has been recorded.`, sender: 'bot' }]);
+      } else if (intent === 'RECORD_TRANSACTION') {
+        try {
+          const companyId = useAuthStore.getState().user?.companyId || '';
+          const txId = crypto.randomUUID();
+          
+          await useDataStore.getState().addBookkeepingEntry({
+            id: txId,
+            date: agentPayload.date || new Date().toISOString().split('T')[0],
+            description: agentPayload.description || `Transaction at ${agentPayload.merchant || 'Merchant'}`,
+            category: agentPayload.category || 'Expense',
+            amountCents: agentPayload.amountCents || 0,
+            type: (agentPayload.type as any) || 'Outflow',
+            paymentMethod: 'Cash',
+            companyId: companyId
+          } as any);
 
+          updateSessionMessages(sessionId, [...currentMessages, { 
+            id: Date.now().toString(), 
+            text: `✅ **Transaction Recorded**: I've successfully logged the **${agentPayload.amountCents / 100}** transaction for **${agentPayload.merchant || 'Merchant'}**.\n\n**Reference ID**: \`${txId.slice(0, 8)}\`\n**Date**: ${agentPayload.date || 'Today'}`, 
+            sender: 'bot' 
+          }]);
+        } catch (e) {
+          updateSessionMessages(sessionId, [...currentMessages, { id: Date.now().toString(), text: `❌ Failed to record transaction.`, sender: 'bot' }]);
+        }
+      } else {
+        // Standard Response (Handles GENERAL_QUERY and missing/unknown intents)
+        const botMsg: Message = { 
+          id: (Date.now() + 1).toString(), 
+          text: response?.response || "I processed your request, but I don't have a specific response to show right now.", 
+          sender: 'bot' 
+        };
+        updateSessionMessages(sessionId, [...currentMessages, botMsg]);
       }
     } catch (error: any) {
       console.error("AI Error:", error);
