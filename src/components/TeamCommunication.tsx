@@ -22,7 +22,7 @@ const MeetingReportModal = ({ data, onSync, onClose }: { data: any, onSync: (tas
             <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                <div>
                   <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">Meeting Summary</h2>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Automated Intelligence Report</p>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Automated Intelligence Report</p>
                </div>
                <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00ff9d] shadow-lg animate-pulse"><Bot size={24} /></div>
             </div>
@@ -51,7 +51,7 @@ const MeetingReportModal = ({ data, onSync, onClose }: { data: any, onSync: (tas
                      {data.tasks.map((t: any, i: number) => (
                         <div key={i} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-indigo-200 transition-all">
                            <div className="flex items-center gap-4">
-                              <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><ListTodo size={16} /></div>
+                              <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all"><ListTodo size={16} /></div>
                               <span className="text-sm font-black text-slate-800 uppercase">{t.title}</span>
                            </div>
                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${t.priority === 'High' ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>{t.priority}</span>
@@ -62,7 +62,7 @@ const MeetingReportModal = ({ data, onSync, onClose }: { data: any, onSync: (tas
             </div>
 
             <div className="p-10 border-t border-slate-100 bg-slate-50/50 flex gap-4">
-               <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 rounded-2xl transition-all">Discard</button>
+               <button onClick={onClose} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 rounded-2xl transition-all">Discard</button>
                <button
                   onClick={() => onSync(data.tasks)}
                   className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
@@ -224,7 +224,7 @@ export const TeamCommunication = () => {
                      <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-6">Channels</h2>
                      <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                        <input className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-xs font-bold uppercase tracking-widest text-slate-300 outline-none focus:border-[#00ff9d]" placeholder="Search staff..." />
+                        <input className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-xs font-bold uppercase tracking-widest text-slate-100 placeholder:text-slate-600 outline-none focus:border-[#00ff9d]" placeholder="Search staff..." />
                      </div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -234,7 +234,7 @@ export const TeamCommunication = () => {
                            <button
                               key={member.id}
                               onClick={() => setSelectedUser(member)}
-                              className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all relative ${selectedUser?.id === member.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg scale-[1.02]' : 'hover:bg-white/5 text-slate-400'} ${!member.hasAccount ? 'opacity-50 grayscale' : ''}`}
+                              className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all relative ${selectedUser?.id === member.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg scale-[1.02]' : 'hover:bg-white/5 text-slate-500'} ${!member.hasAccount ? 'opacity-50 grayscale' : ''}`}
                            >
                               {unread > 0 && (
                                  <div className="absolute top-4 right-4 w-3 h-3 bg-[#00ff9d] rounded-full animate-pulse shadow-[0_0_10px_#00ff9d]" />

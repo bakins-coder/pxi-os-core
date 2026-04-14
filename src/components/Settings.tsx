@@ -100,7 +100,7 @@ export const Settings = () => {
                // Only Admins and Managers see restricted tabs
                return currentUser?.role === Role.ADMIN || currentUser?.role === Role.MANAGER || currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.CHAIRMAN;
             }).map(tab => (
-               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
                   {tab.label}
                </button>
             ))}
@@ -144,7 +144,7 @@ export const Settings = () => {
                   <div className="bg-white/5 p-10 rounded-[2.5rem] border border-white/5 relative overflow-hidden">
                      <div className="absolute top-0 right-0 p-8 opacity-10"><CloudLightning size={100} /></div>
                      <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Cloud Infrastructure</h2>
-                     <p className="text-xs text-slate-400 font-bold mb-8">Live Synchronization & Database Integrity</p>
+                     <p className="text-xs text-slate-300 font-bold mb-8">Live Synchronization & Database Integrity</p>
 
                      <div className="space-y-6">
                         <div className="flex items-center justify-between p-6 bg-slate-900 rounded-3xl border border-white/5">
@@ -338,7 +338,7 @@ const SecuritySettings = () => {
                <div className="p-4 bg-indigo-500/20 text-indigo-400 rounded-2xl"><Key size={24} /></div>
                <div>
                   <h2 className="text-2xl font-black uppercase tracking-tight">Credentials</h2>
-                  <p className="text-xs text-slate-400 font-bold">Update your access keys</p>
+                  <p className="text-xs text-slate-300 font-bold">Update your access keys</p>
                </div>
             </div>
 

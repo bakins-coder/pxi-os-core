@@ -40,7 +40,7 @@ export const RequisitionTracker: React.FC<RequisitionTrackerProps> = ({ eventId 
         <div className="space-y-6">
             {/* Tabs & Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h3 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">Requisitions</h3>
+                <h3 className="text-sm font-black uppercase tracking-[0.3em] text-slate-500">Requisitions</h3>
                 <div className="flex p-1 bg-slate-100 rounded-xl">
                     {['All', 'Approved', 'Pending', 'Rejected'].map(tab => (
                         <button
@@ -59,7 +59,7 @@ export const RequisitionTracker: React.FC<RequisitionTrackerProps> = ({ eventId 
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {filteredReqs.length === 0 ? (
                     <div className="p-8 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No requisitions found</p>
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">No requisitions found</p>
                     </div>
                 ) : (
                     filteredReqs.map(req => (

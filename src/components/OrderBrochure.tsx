@@ -386,8 +386,8 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     </div>
 
                     <div className="flex md:hidden bg-slate-200 p-1 rounded-xl">
-                        <button onClick={() => setActiveTab('details')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'details' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>1. Client & Spec</button>
-                        <button onClick={() => setActiveTab('menu')} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>2. The Menu</button>
+                        <button onClick={() => setActiveTab('details')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'details' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}>1. Client & Spec</button>
+                        <button onClick={() => setActiveTab('menu')} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}>2. The Menu</button>
                     </div>
 
                     <div className={`flex-1 flex flex-wrap justify-center items-center gap-1.5 md:gap-4 py-0.5 md:py-2 overflow-x-auto max-w-full no-scrollbar px-1 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
@@ -396,7 +396,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                 <button
                                     key={cat}
                                     onClick={() => setActiveCategory(cat)}
-                                    className={`px-3 py-2 md:px-4 md:py-2 rounded-md md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                    className={`px-3 py-2 md:px-4 md:py-2 rounded-md md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
                                 >
                                     {cat}
                                     {(Number(categoryTotals[cat]) || 0) > 0 && (
@@ -418,10 +418,10 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                     <div className={`w-full md:w-[400px] lg:w-[440px] md:border-r-2 border-slate-100 p-6 md:p-10 space-y-8 bg-slate-50/80 overflow-y-auto overflow-x-hidden scrollbar-thin ${activeTab === 'details' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                         <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Users size={16} className="text-indigo-600" /><h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3></div>
+                            <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Users size={16} className="text-emerald-600" /><h3 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3></div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.clientLabel} *</label>
-                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-indigo-500 shadow-sm" placeholder={nomenclature.fulfillment.clientLabel} value={customerName} onChange={e => handleHostChange(e.target.value)} />
+                                <label className="text-[10px] font-black text-slate-900 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.clientLabel} *</label>
+                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-emerald-500 shadow-sm" placeholder={nomenclature.fulfillment.clientLabel} value={customerName} onChange={e => handleHostChange(e.target.value)} />
                                 <datalist id="contacts-list-b">{contacts.map(c => <option key={c.id} value={c.name} />)}</datalist>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -441,7 +441,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                         </section>
 
                         <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Palette size={16} className="text-indigo-600" /><h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">{isCuisine ? 'Logistics & Timing' : 'Atmosphere & Coordination'}</h3></div>
+                            <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Palette size={16} className="text-emerald-600" /><h3 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Logistics & Timing' : 'Atmosphere & Coordination'}</h3></div>
                              {features.showCustomFields && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -536,7 +536,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                         if (catItems.length === 0 && (cat !== "General Selections" || Object.keys(customItems).length === 0)) return null;
                                         return (
                                             <div key={cat} className="space-y-4">
-                                                <div className="flex justify-between items-center border-b border-white/10 pb-2"><span className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">{cat}</span></div>
+                                                <div className="flex justify-between items-center border-b border-white/10 pb-2"><span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">{cat}</span></div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     {catItems.map(([id, qty]) => {
                                                         const item = menuItems.find(i => i.id === id);
@@ -591,16 +591,16 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                 {showCustomModal && (
                     <div className="fixed inset-0 z-[100] bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
                         <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in">
-                            <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Add Custom Product</h3><button onClick={() => setShowCustomModal(false)} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400 rounded-full transition-all"><X size={20} /></button></div>
+                            <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-black uppercase tracking-tight text-slate-950">Add Custom Product</h3><button onClick={() => setShowCustomModal(false)} className="p-2 bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-950 rounded-full transition-all"><X size={20} /></button></div>
                             <div className="space-y-4">
-                                <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Product Name</label><input className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomName} onChange={e => setNewCustomName(e.target.value)} /></div>
+                                <div><label className="text-[10px] font-black text-slate-950 uppercase tracking-widest block mb-1">Product Name</label><input className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-950 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all" value={newCustomName} onChange={e => setNewCustomName(e.target.value)} /></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Price ({NAIRA_SYMBOL})</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomPriceCents / 100} onChange={e => setNewCustomPriceCents(parseFloat(e.target.value) * 100)} /></div>
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Qty</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-500" value={newCustomQty} onChange={e => setNewCustomQty(parseInt(e.target.value))} /></div>
+                                    <div><label className="text-[10px] font-black text-slate-950 uppercase tracking-widest block mb-1">Price ({NAIRA_SYMBOL})</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-950 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all" value={newCustomPriceCents / 100} onChange={e => setNewCustomPriceCents(parseFloat(e.target.value) * 100)} /></div>
+                                    <div><label className="text-[10px] font-black text-slate-950 uppercase tracking-widest block mb-1">Qty</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-950 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all" value={newCustomQty} onChange={e => setNewCustomQty(parseInt(e.target.value))} /></div>
                                 </div>
                                 <div className="flex gap-3 pt-4">
-                                    <button onClick={() => setShowCustomModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest">Cancel</button>
-                                    <button onClick={addCustomItem} disabled={!newCustomName || newCustomQty <= 0} className="flex-[2] py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl">Add to Order</button>
+                                    <button onClick={() => setShowCustomModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-900 hover:bg-slate-200 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">Cancel</button>
+                                    <button onClick={addCustomItem} disabled={!newCustomName || newCustomQty <= 0} className="flex-[2] py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-slate-900 active:scale-95 transition-all disabled:opacity-50">Add to Order</button>
                                 </div>
                             </div>
                         </div>

@@ -19,9 +19,9 @@ const Card: React.FC<{ title: string; value: string; sub?: string; icon: any; co
     className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:ring-2 ring-indigo-500/20 group' : ''}`}
   >
     <div>
-      <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-indigo-600 transition-colors">{title}</p>
+      <p className="text-slate-600 text-sm font-medium mb-1 group-hover:text-indigo-600 transition-colors">{title}</p>
       <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
-      {sub && <p className={`text-xs mt-2 ${sub.includes('+') ? 'text-green-600' : sub.includes('-') ? 'text-red-500' : 'text-slate-400'}`}>{sub}</p>}
+      {sub && <p className={`text-xs mt-2 ${sub.includes('+') ? 'text-green-600' : sub.includes('-') ? 'text-red-500' : 'text-slate-500'}`}>{sub}</p>}
     </div>
     <div className={`p-3 rounded-xl ${color} bg-opacity-10 group-hover:bg-opacity-20 transition-all`}>
       <Icon className={color.replace('bg-', 'text-')} size={24} />
@@ -68,7 +68,7 @@ const StandardDashboards = ({ currentUser }: { currentUser: any }) => {
     <div className="space-y-6 animate-in fade-in">
       <div className="flex justify-between items-end">
         <h2 className="text-xl font-bold text-slate-800">My Performance</h2>
-        {!selectedAgentMetric && <p className="text-sm text-slate-500">Select a card for details</p>}
+        {!selectedAgentMetric && <p className="text-sm text-slate-600">Select a card for details</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -83,7 +83,7 @@ const StandardDashboards = ({ currentUser }: { currentUser: any }) => {
           <button onClick={() => setSelectedAgentMetric(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"><X size={20} /></button>
           <h3 className="font-bold text-slate-800 mb-4 text-lg">{selectedAgentMetric} Details</h3>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="p-8 text-center text-slate-400 italic font-medium">No telemetry data found for your node instance yet.</div>
+            <div className="p-8 text-center text-slate-600 italic font-medium">No telemetry data found for your node instance yet.</div>
           </div>
         </div>
       )}
@@ -115,7 +115,7 @@ const StandardDashboards = ({ currentUser }: { currentUser: any }) => {
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-12 text-center text-slate-400">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col items-center justify-center p-12 text-center text-slate-600">
           <BarChart2 size={48} className="opacity-10 mb-4" />
           <p className="font-bold uppercase tracking-widest">Real-time Telemetry Processing...</p>
         </div>

@@ -83,7 +83,7 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                         {requisition.referenceId && (
                             <div className="flex items-center gap-1.5 mt-1">
                                 <Users size={12} className="text-emerald-500" />
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                     {useDataStore.getState().cateringEvents.find(e => e.id === requisition.referenceId)?.customerName || 'General Event'}
                                 </span>
                             </div>
@@ -95,29 +95,29 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Item Name</label>
+                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Item Name</label>
                             <input
                                 type="text"
                                 value={editedReq.itemName || ''}
                                 onChange={e => setEditedReq({ ...editedReq, itemName: e.target.value })}
                                 disabled={requisition.status !== 'Pending' && requisition.status !== 'Rejected'}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Quantity</label>
+                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Quantity</label>
                             <input
                                 type="number"
                                 value={editedReq.quantity || 0}
                                 onChange={e => setEditedReq({ ...editedReq, quantity: parseInt(e.target.value) || 0 })}
                                 disabled={requisition.status !== 'Pending' && requisition.status !== 'Rejected'}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
                             />
                         </div>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Description / Notes</label>
+                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Description / Notes</label>
                         <textarea
                             value={editedReq.notes || ''}
                             onChange={e => setEditedReq({ ...editedReq, notes: e.target.value })}
@@ -128,11 +128,11 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
 
                     <div className="flex justify-between items-center py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Requested By</span>
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Requested By</span>
                             <span className="text-xs font-black text-slate-700">{requisition.requestorName || 'System'}</span>
                         </div>
                         <div className="text-right flex flex-col">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date Requested</span>
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Date Requested</span>
                             <span className="text-xs font-black text-slate-700">{requisition.createdAt ? new Date(requisition.createdAt).toLocaleDateString() : 'Historical Data'}</span>
                         </div>
                     </div>
@@ -140,7 +140,7 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                     {requisition.status === 'Pending' && requisition.type !== 'Release' && (
                         <div className="pt-4 border-t border-slate-100 space-y-4">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Source Bank Account (Required)</label>
+                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest block">Source Bank Account (Required)</label>
                                 <select
                                     value={selectedAccountId}
                                     onChange={e => setSelectedAccountId(e.target.value)}
@@ -154,7 +154,7 @@ export const RequisitionEditModal = ({ isOpen, onClose, requisition }: { isOpen:
                                         </option>
                                     ))}
                                 </select>
-                                <p className="text-[10px] text-slate-400 font-medium">Selecting a bank account will immediately deduct funds and mark as Paid.</p>
+                                <p className="text-[10px] text-slate-500 font-medium">Selecting a bank account will immediately deduct funds and mark as Paid.</p>
                             </div>
                         </div>
                     )}
@@ -450,7 +450,7 @@ export const RequisitionsHub: React.FC = () => {
                             <div className="p-6 bg-white/5 rounded-full mb-4">
                                 <Info size={32} className="text-slate-600" />
                             </div>
-                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">No Requisitions Found</h3>
+                            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">No Requisitions Found</h3>
                             <p className="text-[10px] text-slate-600 uppercase font-bold tracking-tighter mt-2">The operational ledger is clear for this filter selection.</p>
                         </div>
                     )}

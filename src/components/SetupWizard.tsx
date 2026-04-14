@@ -455,7 +455,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-2">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Honorific</label>
                               <select
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer text-slate-900"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 appearance-none transition-all cursor-pointer text-slate-900"
                                  value={repTitle}
                                  onChange={e => setRepTitle(e.target.value)}
                                  onFocus={() => setActiveField('repTitle')}
@@ -466,7 +466,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-4">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">First Name</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 transition-all placeholder:text-slate-500 text-slate-900"
                                  placeholder="e.g. Akinwale"
                                  value={firstName}
                                  onChange={e => setFirstName(e.target.value)}
@@ -476,7 +476,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-3">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Middle Name (Optional)</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 transition-all placeholder:text-slate-500 text-slate-900"
                                  placeholder="e.g. Babatunde"
                                  value={middleName}
                                  onChange={e => setMiddleName(e.target.value)}
@@ -486,7 +486,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-3">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Last Name</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 transition-all placeholder:text-slate-500 text-slate-900"
                                  placeholder="e.g. Akinbiyi"
                                  value={lastName}
                                  onChange={e => setLastName(e.target.value)}
@@ -510,7 +510,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                            <div className="md:col-span-3">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Job Title</label>
                               <input
-                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900"
+                                 className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 transition-all placeholder:text-slate-500 text-slate-900"
                                  placeholder="e.g. Managing Director"
                                  value={repJobTitle}
                                  onChange={e => setRepJobTitle(e.target.value)}
@@ -534,7 +534,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div className="relative">
                                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 border-r-2 border-slate-100 pr-6"><Building2 size={24} /></div>
                                  <input
-                                    className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] font-black outline-none focus:border-indigo-500 transition-all pl-24 text-2xl truncate shadow-inner focus:bg-white text-slate-900 placeholder:text-slate-400"
+                                    className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] font-black outline-none focus:border-emerald-500 transition-all pl-24 text-2xl truncate shadow-inner focus:bg-white text-slate-900 placeholder:text-slate-500"
                                     placeholder="e.g. Your Organization Ltd"
                                     value={orgName}
                                     onChange={e => setOrgName(e.target.value)}
@@ -549,7 +549,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                  <div className="relative">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 border-r-2 border-slate-100 pr-4"><Phone size={18} /></div>
                                     <input
-                                       className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all pl-20 text-slate-900 placeholder:text-slate-400"
+                                       className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 transition-all pl-20 text-slate-900 placeholder:text-slate-500"
                                        placeholder="080 123 4567"
                                        value={repPhone}
                                        onChange={e => setRepPhone(e.target.value)}
@@ -560,7 +560,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div>
                                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Business Classification</label>
                                  <select
-                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer text-slate-900"
+                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 appearance-none transition-all cursor-pointer text-slate-900"
                                     value={orgType}
                                     onChange={e => setOrgType(e.target.value as any)}
                                     onFocus={() => setActiveField('orgType')}
@@ -594,7 +594,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                  <div className="absolute left-6 top-8 text-slate-300"><MapPin size={24} /></div>
                                  <textarea
                                     rows={2}
-                                    className="w-full p-6 pt-7 pl-20 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-indigo-500 transition-all shadow-inner focus:bg-white resize-none text-slate-900 placeholder:text-slate-400"
+                                    className="w-full p-6 pt-7 pl-20 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-emerald-500 transition-all shadow-inner focus:bg-white resize-none text-slate-900 placeholder:text-slate-500"
                                     placeholder="Building Number, Street, LGA, State, Country"
                                     value={address}
                                     onChange={e => setAddress(e.target.value)}
@@ -607,7 +607,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div>
                                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">FIRS T.I.N (Corporate)</label>
                                  <input
-                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 transition-all text-slate-900 placeholder:text-slate-400"
+                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 transition-all text-slate-900 placeholder:text-slate-500"
                                     placeholder="12345678-0001"
                                     value={taxId}
                                     onChange={e => setTaxId(e.target.value)}
@@ -617,7 +617,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                               <div>
                                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-3 block">Operational Scale</label>
                                  <select
-                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-indigo-500 appearance-none transition-all cursor-pointer text-slate-900"
+                                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] font-black outline-none focus:border-emerald-500 appearance-none transition-all cursor-pointer text-slate-900"
                                     value={orgSize}
                                     onChange={e => setOrgSize(e.target.value as any)}
                                     onFocus={() => setActiveField('orgSize')}

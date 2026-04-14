@@ -2219,7 +2219,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                      <div className="p-6 space-y-6">
                         {/* 1. Customer Selection */}
                         <div className="space-y-2 relative z-50">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Customer / Contact</label>
+                           <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Customer / Contact</label>
                            <div className="relative group/search">
                               <input
                                  type="text"
@@ -2359,7 +2359,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                  onChange={e => setCustomProductName(e.target.value)}
                               />
                               <div className="relative md:col-span-1">
-                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{NAIRA_SYMBOL}</span>
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-bold">{NAIRA_SYMBOL}</span>
                                  <input
                                     type="number"
                                     placeholder="Price"
@@ -2377,7 +2377,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                        value={customProductQuantity || ''}
                                        onChange={e => setCustomProductQuantity(parseInt(e.target.value) || 0)}
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-black uppercase">Qty</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-700 font-black uppercase">Qty</span>
                                  </div>
                                  <button
                                     onClick={addCustomItem}
