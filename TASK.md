@@ -18,3 +18,12 @@
 - [x] Final Verification & Documentation
     - [x] Global Grep for legacy branding
     - [x] Create Walkthrough.md
+
+## [PHASE 2] JIWSF Vertical Alignment
+- [x] Refactor `Layout.tsx` for dynamic icons and labels
+- [x] Refactor `FulfillmentHub.tsx` for vertical-agnostic nomenclature
+- [x] Refactor `ProjectManagement.tsx` (Empty states and initialization)
+- [x] Update `terminology.ts` to support singular/plural mapping
+- [/] Verification & Polish
+    - [ ] Run platform-wide QA sweep on `pxi-os-core.vercel.app`
+    - [ ] Final visual check for "Catering" remnants in modals

@@ -58,6 +58,12 @@ const BRANDING_OVERRIDES: Record<string, Partial<OrganizationSettings>> = {
         name: 'Wembley Cakes',
         brandColor: '#f37021',
         logo: '/wembley_logo.jpg'
+    },
+    'J Ishola-Williams Sports Foundation': {
+        name: 'J Ishola-Williams Sports Foundation',
+        brandColor: '#ff6b6b',
+        logo: '/jiwsf-logo.png',
+        type: 'Sports Foundation'
     }
 };
 
@@ -99,6 +105,22 @@ export const useSettingsStore = create<SettingsState>()(
             fetchSettings: async (orgId: string) => {
                 try {
                     console.log('[Settings] Fetching settings for:', orgId);
+                    
+                    // [MOCK BYPASS] Immediate local override for ID
+                    if (orgId === 'jiwsf-id' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                        console.log('[Settings] Mock ID detected. Loading Foundation profile...');
+                        const jiwsfProfile = BRANDING_OVERRIDES['J Ishola-Williams Sports Foundation'];
+                        set((state) => ({
+                            settings: {
+                                ...state.settings,
+                                ...jiwsfProfile,
+                                id: 'jiwsf-id',
+                                setupComplete: true
+                            }
+                        }));
+                        return;
+                    }
+
                     if (!supabase) return;
                     const { data, error } = await supabase.from('organizations').select('*').eq('id', orgId).single();
                     if (data) {

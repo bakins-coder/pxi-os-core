@@ -38,7 +38,11 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
 
    useEffect(() => {
       const initialReqs: Partial<Requisition>[] = [];
-      const isStandardFlow = event.orderType === 'Cuisine' || event.banquetDetails?.eventType?.toUpperCase().includes('CUISINE');
+      const isStandardFlow = event.orderType === 'Cuisine' || 
+                             event.orderType === 'Standard' ||
+                             event.orderType === 'Package' ||
+                             event.banquetDetails?.eventType?.toUpperCase().includes('CUISINE') ||
+                             (industryConfig.type === 'Sports Foundation' && (event.orderType === 'Standard' || event.orderType === 'Package'));
 
       if (!isStandardFlow && features.showStaffProcurement) {
          const staffNeeded = Math.ceil(event.guestCount / staffRatio);
@@ -49,7 +53,7 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
             quantity: staffNeeded,
             pricePerUnitCents: staffRate * 100,
             totalAmountCents: staffNeeded * staffRate * 100,
-            notes: `Target ratio 1:${staffRatio} for ${event.guestCount} ${terms.unitsLabel.toLowerCase()}.`
+            notes: `Target ratio 1:${staffRatio} for ${event.guestCount} ${(terms.unitsLabel || 'units').toLowerCase()}.`
          });
       }
       initialReqs.push({
@@ -1585,11 +1589,13 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
       }
    }
 
-   const isCuisine = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
+      const isCuisine = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
       evInvoice?.category === 'Cuisine' ||
       ev.banquetDetails?.notes?.toUpperCase().includes('CUISINE') ||
       ev.banquetDetails?.eventType?.toUpperCase().includes('CUISINE') ||
-      (ev as any).cuisineDetails?.notes?.toUpperCase().includes('CUISINE');
+      (ev as any).cuisineDetails?.notes?.toUpperCase().includes('CUISINE') ||
+      // Sports Foundation alignment: treat program allocations as standard orders
+      (settings.type === 'Sports Foundation' && (ev.orderType === 'Standard' || ev.orderType === 'Package'));
 
    let revenue = Number(evInvoice?.totalCents ?? (ev.financials?.revenueCents || 0));
 
@@ -1640,7 +1646,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
    const updateCateringEvent = useDataStore(state => state.updateCateringEvent);
 
    const handleBypass = () => {
-      if (confirm("Manual Bypass: Move this order to Production phase?\n\nUse this only if procurement is complete but state hasn't updated automatically.")) {
+      if (confirm(`Manual Bypass: Move this order to ${terms.productionLabel} phase?\n\nUse this only if procurement is complete but state hasn't updated automatically.`)) {
          updateCateringEvent(event.id, { currentPhase: 'Execution' });
       }
    };
@@ -1756,10 +1762,10 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                   {event.items?.map((item, idx) => (
                      <div key={idx} className="p-4 md:p-5 bg-white border-2 border-slate-50 rounded-2xl flex justify-between items-center group hover:border-indigo-100 transition-all">
                         <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><UtensilsCrossed size={16} /></div>
+                           <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><industryConfig.ui.fulfillmentIcon size={16} /></div>
                            <div>
                               <p className="font-black text-slate-800 uppercase text-xs md:text-sm tracking-tight truncate">{item.name}</p>
-                              <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Fixed Portion Multiplier</p>
+                              <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest">{terms.unitLabel} Multiplier</p>
                            </div>
                         </div>
                         <div className="text-right">
@@ -1918,7 +1924,7 @@ const CostingMatrix = () => {
             <div className="flex justify-between items-center mb-10">
                <div>
                   <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none">Yield & Costing Matrix</h2>
-                  <p className="text-[10px] text-slate-400 font-black uppercase mt-2">Institutional benchmark: 40% Food Cost Target</p>
+                  <p className="text-[10px] text-slate-400 font-black uppercase mt-2">Institutional benchmark: Performance Target Optimization</p>
                </div>
                <button
                   onClick={() => {
@@ -2612,19 +2618,19 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
             return evInvId && inv.id === evInvId;
          });
 
-         const isCuisine = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
+         // Derivation of standard vs custom orders for filtering
+         const isStandard = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
             matchingInvoice?.category === 'Cuisine' ||
-            (ev.cuisineDetails && Object.keys(ev.cuisineDetails).length > 0) ||
-            ev.banquetDetails?.notes?.toUpperCase().includes('CUISINE') ||
-            ev.banquetDetails?.eventType?.toUpperCase().includes('CUISINE');
+            matchingInvoice?.category === 'Standard' ||
+            (settings.type === 'Sports Foundation' && (ev.orderType === 'Standard' || ev.orderType === 'Package'));
 
          if (activeTab === 'orders') {
-            if (isCuisine) return false;
-            // Banquets tab shows everything NOT marked as Cuisine (including legacy/untagged)
+            if (isStandard) return false;
+            // Orders tab excludes standard items
             if (viewMode === 'active') return ev.status !== 'Archived';
             return ev.status === 'Archived';
          } else if (activeTab === 'cuisine') {
-            if (!isCuisine) return false;
+            if (!isStandard) return false;
             if (viewMode === 'active') return ev.status !== 'Archived';
             return ev.status === 'Archived';
          }

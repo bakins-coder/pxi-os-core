@@ -160,22 +160,27 @@ function AppContent() {
 
   useEffect(() => {
     const hydrate = async () => {
-      if (settings.brandColor) {
-        document.documentElement.style.setProperty('--brand-primary', settings.brandColor);
+      try {
+        if (settings.brandColor) {
+          document.documentElement.style.setProperty('--brand-primary', settings.brandColor);
+        }
+        if (user?.companyId && (user.companyId !== settings.id || !settings.setupComplete)) {
+          console.log('[App] Company ID mismatch or incomplete setup. Fetching settings...');
+          useSettingsStore.getState().fetchSettings(user.companyId);
+        }
+        
+        await new Promise(r => setTimeout(r, 600));
+        if (user) {
+          useAuthStore.getState().refreshSession().catch(e => console.warn('[App] Session refresh failed:', e));
+        }
+      } catch (err) {
+        console.error('[App] Initialization error:', err);
+      } finally {
+        setIsInitializing(false);
       }
-      if (user?.companyId && (user.companyId !== settings.id || !settings.setupComplete)) {
-        console.log('[App] Company ID mismatch or incomplete setup. Fetching settings...');
-        useSettingsStore.getState().fetchSettings(user.companyId);
-      }
-      
-      await new Promise(r => setTimeout(r, 600));
-      if (user) {
-        useAuthStore.getState().refreshSession();
-      }
-      setIsInitializing(false);
     };
     hydrate();
-  }, [settings.brandColor, user?.id, settings.id]);
+  }, [user?.id]); // Only re-run if user changes, not on every settings update
 
   useEffect(() => {
     const { subscribeToRealtimeUpdates, unsubscribeFromRealtimeUpdates, hydrateFromCloud } = useDataStore.getState();

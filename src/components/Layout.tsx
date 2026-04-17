@@ -6,14 +6,15 @@ import {
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, BarChart3, Activity, FileText,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
-  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target
+  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target, HeartHandshake, Award, Printer, Share2, Triangle, ShoppingBag, UtensilsCrossed
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Role } from '../types';
 import { processVoiceCommand } from '../services/ai';
 import { useDataStore } from '../store/useDataStore';
-import { INDUSTRY_PROFILES } from '../config/industryProfiles';
+import { getIndustryConfig } from '../config/industryProfiles';
+import { getTerm } from '../utils/terminology';
 import { IndustryType } from '../types';
 import { ChatWidget } from './ChatWidget';
 
@@ -96,7 +97,7 @@ const NAV_ITEMS = [
   { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
 
   // Industry Specific
-  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General', 'Retail'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
+  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General', 'Retail', 'Sports Foundation'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
   { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -179,7 +180,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
             return industryProfiles.map(profile => ({
               ...item,
               label: profile.nomenclature.fulfillment.navLabel,
-              icon: profile.type === 'Retail' ? ShoppingCart : (profile.type === 'Catering' ? ChefHat : (profile.type === 'Bakery' ? Box : item.icon)),
+              icon: profile.ui.fulfillmentIcon || item.icon,
               path: profile.type === 'Catering' ? '/catering' : (profile.type === 'Bakery' ? '/bakery' : (profile.type === 'Retail' ? '/retail' : item.path)),
               profile // Attach profile for easier rendering
             }));
@@ -203,9 +204,17 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
           return true;
         }).map(item => {
+          const config = getIndustryConfig(settings.type);
           const isActive = currentPath === item.path;
-          const DisplayIcon = item.icon;
-          const displayLabel = item.label;
+          
+          let DisplayIcon = item.icon;
+          let displayLabel = item.label;
+
+          // Dynamic overrides for industry-specific items
+          if (item.path === '/catering') {
+            DisplayIcon = config.ui.fulfillmentIcon || ChefHat;
+            displayLabel = config.nomenclature.fulfillment.navLabel || 'Orders & Invoicing';
+          }
 
           return (
             <Link

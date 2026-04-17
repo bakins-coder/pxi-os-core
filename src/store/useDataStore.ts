@@ -2893,7 +2893,8 @@ export const useDataStore = create<DataState>()(
                     return;
                 }
 
-                const companyId = useAuthStore.getState().user?.companyId;
+                const user = useAuthStore.getState().user;
+                const companyId = user?.isSuperAdmin ? 'omni' : user?.companyId;
                 if (!companyId) return;
 
                 set({ isSyncing: true, syncStatus: 'Syncing' });

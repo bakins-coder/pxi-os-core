@@ -29,7 +29,7 @@ export enum Role {
   CHAIRMAN = 'Chairman',
   CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager'
 }
-export type IndustryType = 'Retail' | 'Catering' | 'Bakery' | 'Aviation' | 'General';
+export type IndustryType = 'Retail' | 'Catering' | 'Bakery' | 'Aviation' | 'General' | 'Sports Foundation';
 
 export enum AIAgentMode {
   HUMAN_FIRST = 'Human-First',
@@ -625,7 +625,7 @@ export interface EntityMedia {
   objectPath: string;
 }
 
-export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas' | 'Bakery';
+export type OrganizationType = 'General' | 'Banking' | 'Catering' | 'Retail' | 'Logistics' | 'Aviation' | 'Oil & Gas' | 'Bakery' | 'Sports Foundation';
 export type CompanySize = 'Micro (1-10)' | 'Small (11-50)' | 'Medium (51-250)' | 'Large (250+)';
 export type AppModule = 'Accounting' | 'CRM' | 'Finance' | 'Automation' | 'Inventory' | 'Reports' | 'Catering' | 'Logistics' | 'HR' | 'Bakery';
 export type MarketingChannel = 'Blog' | 'Social' | 'Email' | 'Ads';

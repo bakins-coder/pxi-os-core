@@ -121,44 +121,61 @@ const SYSTEM_TOOLS = {
         }));
         return { staff: data };
     },
-    search_knowledge_base: async (args: { query: string }) => {
-        const { query } = args;
-        const apiKey = (import.meta as any).env.VITE_PINECONE_API_KEY;
-        const host = (import.meta as any).env.VITE_PINECONE_HOST;
+    search_knowledge_base: async (args: { query: string; namespace?: string; filter?: object }) => {
+        const { query, namespace = "documentation", filter } = args;
+        const pineconeApiKey = (import.meta as any).env.VITE_PINECONE_API_KEY;
+        const geminiApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+        const host = (import.meta as any).env.VITE_PINECONE_HOST || (import.meta as any).env.VITE_PINECONE_URL;
 
-        if (!apiKey || !host) {
-            console.warn("[AI Tools] Pinecone Knowledge Base not configured (Missing VITE_PINECONE_API_KEY or VITE_PINECONE_HOST).");
-            return { error: "Knowledge base keys missing. Please configure VITE_PINECONE_API_KEY and VITE_PINECONE_HOST." };
+        if (!pineconeApiKey || !host || !geminiApiKey) {
+            console.warn("[AI Tools] Knowledge Base not fully configured.");
+            return { error: "Missing vector database configuration (Pinecone/Gemini)." };
         }
 
         try {
-            // Pinecone Integrated Inference Search (POST /query)
+            // 1. Get high-fidelity embedding from Gemini
+            const embedResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${geminiApiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "models/gemini-embedding-001", // Using 3072-dim stable model
+                    content: { parts: [{ text: query }] }
+                })
+            });
+
+            if (!embedResponse.ok) throw new Error("Gemini embedding gateway failed");
+            const embedData = await embedResponse.json();
+            const vector = embedData.embedding.values;
+
+            // 2. Perform Multi-Tenant Vector Search
             const response = await fetch(`${host}/query`, {
                 method: 'POST',
                 headers: {
-                    'Api-Key': apiKey,
+                    'Api-Key': pineconeApiKey,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    namespace: "documentation",
-                    topK: 3,
-                    inputs: [{ text: query }]
+                    namespace,
+                    topK: 10, // Increased for broader enterprise context
+                    vector,
+                    filter,   // Support for fine-grained metadata filtering (tenant_id, etc.)
+                    includeMetadata: true
                 })
             });
 
             if (!response.ok) throw new Error(`Pinecone error: ${response.statusText}`);
 
             const data = await response.json();
-            const hits = data.result?.hits || [];
+            const matches = data.matches || [];
 
             return {
-                results: hits.map((h: any) => ({
-                    source: h.fields?.path || h._id,
-                    content: h.fields?.content?.substring(0, 500) + "..." // Snip for brevity
+                results: matches.map((m: any) => ({
+                    source: m.metadata?.path || m.id,
+                    content: m.metadata?.content || "No content preview available."
                 }))
             };
         } catch (e) {
-            console.error("[AI Tools] Pinecone search failed:", e);
+            console.error("[AI Tools] Knowledge search failed:", e);
             return { error: "Failed to search knowledge base." };
         }
     },
@@ -506,11 +523,12 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "search_knowledge_base",
-        description: "Search system documentation. Use this ONLY for procedural 'how-to' questions. DO NOT use this for financial or data lookups.",
+        description: "Search system knowledge or personal memory. Use 'documentation' for how-to questions and 'personal_brain' for facts about Akin, projects, or history.",
         parameters: {
             type: SchemaType.OBJECT,
             properties: {
-                query: { type: SchemaType.STRING }
+                query: { type: SchemaType.STRING, description: "The natural language query" },
+                namespace: { type: SchemaType.STRING, description: "Namespace to search: 'documentation' (default) or 'personal_brain'." }
             },
             required: ["query"]
         }

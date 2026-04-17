@@ -26,7 +26,7 @@ import {
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { Role, Invoice, Requisition, CateringEvent } from '../types';
 import { EventCalendar } from './EventCalendar';
-import { getTerm } from '../utils/terminology';
+import { getTerm, getIndustryTerminology } from '../utils/terminology';
 import { NAIRA_SYMBOL } from '../utils/finance';
 
 // High-Fidelity "Floating Card on Tray" System - Adapted from Executive Reference
@@ -205,6 +205,8 @@ export const Dashboard = () => {
   }, [user, isFinancialAuthorized]);
 
   const handleOpenAssistant = () => window.dispatchEvent(new CustomEvent('open-assistant'));
+  const activeProfile = getIndustryTerminology(settings.type);
+  const isFoundation = activeProfile.type === 'Sports Foundation';
 
   return (
     <div className="grid grid-cols-12 gap-8 p-8">
@@ -232,10 +234,10 @@ export const Dashboard = () => {
       {isFinancialAuthorized && (
         <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: 'Total Revenue', value: formatCurrency(dataState.financial.revenue), icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+12.4%' },
-            { label: 'Cash at Hand', value: formatCurrency(dataState.financial.cash), icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Healthy' },
-            { label: 'Receivables', value: formatCurrency(dataState.financial.receivables), icon: Receipt, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Action Needed' },
-            { label: 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Real-time' },
+            { label: isFoundation ? 'Grants & Endowments' : 'Total Revenue', value: formatCurrency(dataState.financial.revenue), icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+12.4%' },
+            { label: isFoundation ? 'Reserved Grants' : 'Cash at Hand', value: formatCurrency(dataState.financial.cash), icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Healthy' },
+            { label: isFoundation ? 'Allocations' : 'Receivables', value: formatCurrency(dataState.financial.receivables), icon: Receipt, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Action Needed' },
+            { label: isFoundation ? 'Program Surplus' : 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Real-time' },
           ].map((kpi, idx) => (
             <div key={idx} className="bg-white p-5 rounded-[2rem] border-0 shadow-[0_10px_35px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col justify-between hover:scale-[1.03] transition-all h-[120px] relative overflow-hidden group">
               <div className="flex items-center justify-between relative z-10">
@@ -279,7 +281,7 @@ export const Dashboard = () => {
         </DashboardCard>
 
         <DashboardCard>
-          <SummaryList title="Awaiting Payments" items={dataState.receivables} type="receivable" onItemClick={(inv) => setSelectedItem({ type: 'receivable', data: inv })} />
+          <SummaryList title={getTerm(settings.type, 'order_title_plural', 'Awaiting Payments')} items={dataState.receivables} type="receivable" onItemClick={(inv) => setSelectedItem({ type: 'receivable', data: inv })} />
         </DashboardCard>
         <DashboardCard>
           <SummaryList title={getTerm(settings.type, 'procurement', 'Pending Procurement')} items={dataState.payables} type="payable" onItemClick={(req) => setSelectedItem({ type: 'payable', data: req })} />

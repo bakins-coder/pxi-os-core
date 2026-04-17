@@ -22,7 +22,8 @@ const MOCK_USERS: User[] = [
     { id: 'sys-admin-ore', name: 'Ore Braithwaite', email: 'oreoluwatomiwab@gmail.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=OreBraithwaite', companyId: '' },
     { id: 'super-admin-root', name: 'Platform Architect', email: 'root@paradigm-xi.com', role: Role.SUPER_ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Architect', companyId: 'platform-global' },
     { id: 'guest-xquisite', name: 'Guest User', email: 'guest@xquisite.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'xquisite-id' },
-    { id: 'guest-platform', name: 'Guest User', email: 'guest@paradigm-xi.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'demo-id' }
+    { id: 'guest-platform', name: 'Guest User', email: 'guest@paradigm-xi.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'demo-id' },
+    { id: 'akin-jiwsf', name: 'Akinwunmi Braithwaite', email: 'akin@jiwsf.org', role: Role.EXECUTIVE, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Akin', companyId: 'jiwsf-id' }
 ];
 
 // Helper for timeouts
@@ -95,10 +96,21 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 // Authenticate
-                const { data, error } = await withTimeout(
+                let data, error;
+
+                // [MOCK BYPASS] Allow local testing with mock users
+                const mockUser = MOCK_USERS.find(u => u.email === email && password === 'Akins-Coder');
+                if (mockUser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                    console.log('[Auth] Mock Login detected. Bypassing Supabase...');
+                    set({ user: mockUser });
+                    useSettingsStore.getState().fetchSettings(mockUser.companyId);
+                    return;
+                }
+
+                ({ data, error } = await withTimeout(
                     supabase.auth.signInWithPassword({ email, password }),
                     8000, 'Supabase Sign-In timed out'
-                );
+                ) as any);
 
                 if (error) {
                     await logAuditEvent('LOGIN', 'FAILURE', { email, error: error.message });

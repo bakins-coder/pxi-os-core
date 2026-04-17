@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Requisition } from '../types';
 import { ShoppingCart, Plus, CheckCircle2, Clock, Info, Box, Trash2, Send } from 'lucide-react';
 import { NAIRA_SYMBOL } from '../utils/finance';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { getIndustryConfig, INDUSTRY_PROFILES } from '../config/industryProfiles';
+import { IndustryType } from '../types';
 
 export const Procurement: React.FC = () => {
     const { requisitions, addRequisitionsBulk } = useDataStore();
     const { user } = useAuthStore();
+    const { settings } = useSettingsStore();
+
+    const industryConfig = useMemo(() => getIndustryConfig(settings.type), [settings.type]);
+    const terms = industryConfig.nomenclature.inventory;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
@@ -15,7 +22,7 @@ export const Procurement: React.FC = () => {
 
     const [formData, setFormData] = useState({
         itemName: '',
-        category: 'Food' as 'Food' | 'Hardware' | 'Service' | 'Financial',
+        category: 'Food' as 'Food' | 'Hardware' | 'Service' | 'Financial' | string,
         quantity: 0,
         pricePerUnit: 0,
         notes: '',
@@ -135,7 +142,7 @@ export const Procurement: React.FC = () => {
                                     required
                                     value={formData.itemName}
                                     onChange={e => setFormData({ ...formData, itemName: e.target.value })}
-                                    placeholder="e.g. Tomatoes (Basket)"
+                                    placeholder={`e.g. ${industryConfig.substanceLabel.singular} Name`}
                                     className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
                                 />
                             </div>
@@ -148,7 +155,7 @@ export const Procurement: React.FC = () => {
                                         onChange={e => setFormData({ ...formData, category: e.target.value as any })}
                                         className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                                     >
-                                        <option value="Food">Food / Raw Material</option>
+                                        <option value="Food">{industryConfig.substanceLabel.plural} / Resources</option>
                                         <option value="Hardware">Hardware / Equipment</option>
                                         <option value="Service">Service</option>
                                         <option value="Financial">Financial / Fees</option>

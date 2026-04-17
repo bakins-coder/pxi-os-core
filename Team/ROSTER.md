@@ -8,7 +8,7 @@ This file maintains the current list of all active AI team members across the Un
 | **Nexus** | Systems Architect & Life Ops Lead | `gemini-1.5-pro` | Active |
 | **Snailee** | Senior Researcher | `gemini-1.5-pro` | Active |
 | **Vault** | DevOps & Integrity Lead | `gemini-1.5-pro` | Active |
-| **Atlas** | Knowledge Architect | `gemini-1.5-pro` | Active |
+| **Atlas** | Memory Steward & Knowledge Architect | `gemini-1.5-pro` | Active |
 | **Sentinel** | SSH & Security Specialist | `gemini-1.5-pro` | Active |
 | **Nova** | Web Visualization Specialist | `gemini-1.5-pro` | Active |
 | **Apex** | Mobile Deployment Specialist | `gemini-1.5-pro` | Active |
@@ -18,9 +18,10 @@ This file maintains the current list of all active AI team members across the Un
 | **Pax** | Conflict & Resolution Specialist | `gemini-1.5-pro` | Active |
 | **Sterling** | Financial Insights & Data Specialist | `gemini-1.5-pro` | Active |
 | **Vinci** | Video Production Coordinator | `gemini-1.5-pro` | Active |
-| **Secretary** | Executive Secretary (JIWSF) | `gemini-1.5-pro` | Active |
-| **Coach** | Sports Coach (JIWSF) | `gemini-1.5-pro` | Active |
-| **Volunteer** | Volunteer Coordinator (JIWSF) | `gemini-1.5-pro` | Active |
+| **Secretary** | Executive Secretary (JIWSF) - Fully Agentic | `gemini-1.5-pro` | Active |
+| **Coach** | Sports Coach (JIWSF) - Fully Agentic | `gemini-1.5-pro` | Active |
+| **Volunteer** | Volunteer Coordinator (JIWSF) - Fully Agentic | `gemini-1.5-pro` | Active |
+| **Legal** | Legal Counsel (JIWSF) - Fully Agentic | `gemini-1.5-pro` | Active |
 
 ---
-*Last Updated: 2026-04-14 (JIWSF Onboarding)*
+*Last Updated: 2026-04-16 (JIWSF Finalization)*

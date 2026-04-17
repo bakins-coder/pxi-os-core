@@ -1,7 +1,7 @@
-import { 
-    ShoppingBag, Utensils, Zap, Package, 
+import {
     Truck, ChefHat, UtensilsCrossed, Flame, Box, Grid3X3,
-    LucideIcon 
+    Trophy, Users, Activity, DollarSign, Calendar, ShoppingBag,
+    Package, type LucideIcon
 } from 'lucide-react';
 import { IndustryType } from '../types';
 export type { IndustryType };
@@ -345,67 +345,71 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             }
         }
     },
-    General: {
-        type: 'General',
-        label: 'General',
+    'Sports Foundation': {
+        type: 'Sports Foundation',
+        label: 'Sports Foundation',
         ui: {
-            productsIcon: Package,
-            fulfillmentIcon: Grid3X3,
-            standardIcon: Package,
+            productsIcon: Trophy,
+            fulfillmentIcon: Activity,
+            standardIcon: Trophy,
             customIcon: ShoppingBag,
             cardImageHeight: 'h-96',
-            defaultCategories: ['General', 'Office', 'Maintenance']
+            defaultCategories: ['Sports Gear', 'Educational Kits', 'Medical Supplies', 'Training Equipment', 'Nutrition']
         },
         nomenclature: {
             inventory: {
-                pipelineLabel: 'Resource Pipeline',
-                pipelineSubtitle: 'General asset and stock management',
-                substanceLabel: { singular: 'Item', plural: 'Items' },
-                receiveLabel: 'Restock',
-                releaseLabel: 'Dispatch',
-                stockLabel: 'Storage',
-                priceLabel: 'Rate',
-                ingredientsLabel: 'Materials',
-                productsLabel: 'Stock Items',
-                recipeLabel: 'Manifest',
-                boqLabel: 'Stock Analysis'
+                pipelineLabel: 'Impact Supply Pipeline',
+                pipelineSubtitle: 'Resource allocation and mentor gear tracking',
+                substanceLabel: { singular: 'Asset', plural: 'Assets' },
+                receiveLabel: 'Receive Grants',
+                releaseLabel: 'Deploy to Program',
+                stockLabel: 'On-Hand',
+                priceLabel: 'Value',
+                ingredientsLabel: 'Operational Supplies',
+                productsLabel: 'Program Items',
+                recipeLabel: null,
+                boqLabel: 'Resource Analysis'
             },
             fulfillment: {
-                orderTitle: 'Service Request',
-                nodeSubtitle: 'General Operations Node',
-                clientLabel: 'Internal Client',
-                contactLabel: 'Request Info',
-                logisticsLabel: 'Execution Details',
-                dateLabel: 'Required Date',
-                unitsLabel: 'Qty',
-                locationLabel: 'Target Location',
-                finalizeLabel: 'Complete Sale',
-                navLabel: 'Fulfillment',
-                standardOrdersLabel: 'Standard Orders',
-                customOrdersLabel: 'Custom Requests',
-                fulfillmentHub: 'Fulfillment Center',
-                productionLabel: 'Processing',
-                standardOrders: 'Standard Flow',
-                customOrders: 'Custom Flow',
-                categories: ['Standard'],
-                categoryMap: {},
-                staffLabel: 'Operations Staff',
-                logisticsUnitLabel: 'Logistics Unit',
-                portalSlogan: 'Streamlining your operations.',
-                fulfillmentTerm: 'request'
+                orderTitle: 'Program Allocation',
+                nodeSubtitle: 'Sports Foundation Distribution',
+                clientLabel: 'Sponsor / Lead',
+                contactLabel: 'Program Details',
+                logisticsLabel: 'Deployment & Setup',
+                dateLabel: 'Program Date',
+                unitsLabel: 'Beneficiary Count',
+                locationLabel: 'Site / Field Address',
+                finalizeLabel: 'Close Program',
+                navLabel: 'Distribution Hub',
+                standardOrdersLabel: 'Foundation Programs',
+                customOrdersLabel: 'Special Initiatives',
+                fulfillmentHub: 'Distribution Hub',
+                productionLabel: 'Operations',
+                standardOrders: 'Core Programs',
+                customOrders: 'Targeted Grants',
+                categories: ['Sports Gear', 'Educational Kits', 'Medical Supplies', 'Grants', 'General'],
+                categoryMap: {
+                    "Mentorship": "Educational Kits",
+                    "Football": "Sports Gear",
+                    "Training": "Sports Gear"
+                },
+                staffLabel: 'Coaches & Volunteers',
+                logisticsUnitLabel: 'Foundation Van',
+                portalSlogan: 'Empowering Nigerian youth through sports.',
+                fulfillmentTerm: 'program'
             }
         },
         features: {
             showFulfillment: true,
             showVisualizer: false,
-            showCustomFields: false,
-            showBOQ: false,
+            showCustomFields: true,
+            showBOQ: true,
             showRequisitions: true,
             showProjections: true,
-            showStaffProcurement: false,
+            showStaffProcurement: true,
             taxConfig: {
                 serviceChargeRate: 0,
-                vatRate: 0.075
+                vatRate: 0
             }
         }
     }

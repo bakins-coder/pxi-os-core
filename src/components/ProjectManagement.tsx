@@ -225,7 +225,7 @@ export const ProjectManagement = () => {
                   <div className="col-span-full py-40 text-center border-4 border-dashed border-slate-100 rounded-[4rem]">
                      <Layers size={64} className="mx-auto text-slate-200 mb-6" />
                      <p className="text-slate-400 font-black uppercase tracking-widest">No active projects detected</p>
-                     <p className="text-slate-400 text-xs mt-2">Create a new Catering Order to initialize a project.</p>
+                     <p className="text-slate-400 text-xs mt-2">Initialize a new {getTerm(settings.type, 'order_title_singular', 'Order')} to create a project.</p>
                   </div>
                )}
             </div>

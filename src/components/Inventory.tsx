@@ -439,14 +439,14 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
       try {
          await addRequisition({
             type: 'Release',
-            category: 'Food',
+            category: industryConfig.substanceLabel?.singular || 'Substance',
             itemName: `Release: ${ing?.name}`,
             ingredientId: selectedIngId,
             quantity: qty,
             pricePerUnitCents: 0,
             totalAmountCents: 0,
             referenceId: selectedEventId,
-            notes: notes || `Standard release to kitchen`,
+            notes: notes || `Standard ${industryConfig.releaseLabel.toLowerCase()} process`,
             requestorId: user?.id
          });
          onClose();
@@ -465,7 +465,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
             className={`bg-white shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-md rounded-[2.5rem] max-h-[85vh]'}`}
          >
             <div className="p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <h2 className="text-xl font-black text-slate-900 uppercase">{industryConfig.releaseLabel} Request</h2>
+               <h2 className="text-xl font-black text-slate-900 uppercase">Authorize {industryConfig.releaseLabel}</h2>
                <div className="flex gap-2">
                   <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-rose-50 rounded-xl transition-all">
                      {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -474,7 +474,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6">
-               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">{industryConfig.substanceLabel.singular} Release</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select {industryConfig.substanceLabel.singular}...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
+               <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">{industryConfig.substanceLabel.singular} Allocation</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}><option value="">Select {industryConfig.substanceLabel.singular}...</option>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name} (Stock: {i.stockLevel} {i.unit})</option>)}</select></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Tie to Event/Order</label><select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}><option value="">General / Casual Order</option>{events.map(e => <option key={e.id} value={e.id}>{e.customerName} - {e.eventDate}</option>)}</select></div>
                <div className="grid grid-cols-1 gap-4"><div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Quantity</label><input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none text-slate-900" value={qty} onChange={e => setQty(parseFloat(e.target.value) || 0)} /></div></div>
                <div><label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Release Notes</label><textarea rows={2} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g., Replacement for spoiled batch..." /></div>
@@ -525,7 +525,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
             if (!newItemName || qty <= 0) return;
             await addRequisition({
                type: 'Purchase',
-               category: 'Food',
+               category: industryConfig.substanceLabel?.singular || 'Substance',
                itemName: newItemName,
                quantity: qty,
                pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
@@ -539,7 +539,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
             const ing = ingredients.find(i => i.id === selectedIngId);
             await addRequisition({
                type: 'Purchase',
-               category: 'Food',
+               category: industryConfig.substanceLabel?.singular || 'Substance',
                itemName: ing?.name || 'Unknown Item',
                ingredientId: selectedIngId,
                quantity: qty,
@@ -602,7 +602,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
                            className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900"
                            value={newItemName}
                            onChange={e => setNewItemName(e.target.value)}
-                           placeholder="e.g. Fresh Tomatoes, Palm Oil..."
+                           placeholder="e.g. Asset Name, Resource..."
                         />
                         <div>
                            <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Unit of Measure</label>

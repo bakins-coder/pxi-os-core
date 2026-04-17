@@ -370,7 +370,11 @@ export const pullCloudState = async (tableName: string, companyId?: string) => {
   const mapItem = (item: any) => mapIncomingRow(tableName, item);
   let query = supabase.from(tableName).select('*');
   const col = useOrgId ? 'organization_id' : 'company_id';
-  query = query.eq(col, effectiveId);
+
+  // [OMNI POLICY] If id is 'omni', skip the filter to allow authorized cross-tenant retrieval for Super Admins
+  if (effectiveId !== 'omni') {
+    query = query.eq(col, effectiveId);
+  }
 
   const { data, error } = await query;
   if (error) throw error;

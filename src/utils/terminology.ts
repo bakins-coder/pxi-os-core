@@ -7,6 +7,7 @@ export const getIndustryTerminology = (industry: string): Record<string, string>
   else if (['Bakery', 'Cake', 'Confectionery'].includes(industry)) type = 'Bakery';
   else if (['Retail', 'Store', 'E-commerce'].includes(industry)) type = 'Retail';
   else if (['Aviation', 'Flight Ops'].includes(industry)) type = 'Aviation';
+  else if (['Foundation', 'Sports Foundation', 'Non-Profit'].includes(industry)) type = 'Sports Foundation';
 
   const profile = INDUSTRY_PROFILES[type];
   
@@ -19,6 +20,8 @@ export const getIndustryTerminology = (industry: string): Record<string, string>
     upcoming_events: profile.nomenclature.fulfillment.orderTitle || 'Upcoming Events',
     procurement: profile.nomenclature.inventory.ingredientsLabel || 'Procurement',
     project_timeline: 'TIMELINE',
+    order_title_singular: profile.nomenclature.fulfillment.fulfillmentTerm ? (profile.nomenclature.fulfillment.fulfillmentTerm.charAt(0).toUpperCase() + profile.nomenclature.fulfillment.fulfillmentTerm.slice(1)) : 'Order',
+    order_title_plural: profile.nomenclature.fulfillment.fulfillmentTerm ? (profile.nomenclature.fulfillment.fulfillmentTerm.charAt(0).toUpperCase() + profile.nomenclature.fulfillment.fulfillmentTerm.slice(1) + 's') : 'Orders',
     type,
     ...profile.nomenclature.inventory,
     ...profile.nomenclature.fulfillment
