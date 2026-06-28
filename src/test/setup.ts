@@ -36,3 +36,52 @@ global.IntersectionObserver = class IntersectionObserver {
     }
     unobserve() { }
 };
+
+// Mock Supabase
+vi.mock('../services/supabase', () => {
+    function makeChainableResponse(response = { data: null, error: null }) {
+        const chain: any = {};
+        const passthru = () => chain;
+        chain.select = passthru;
+        chain.eq = passthru;
+        chain.ilike = passthru;
+        chain.limit = passthru;
+        chain.order = passthru;
+        chain.insert = passthru;
+        chain.update = passthru;
+        chain.delete = passthru;
+        chain.single = async () => ({ data: response.data, error: response.error });
+        chain.maybeSingle = async () => ({ data: response.data, error: response.error });
+        chain.then = (onFulfilled: any) => Promise.resolve({ data: response.data, error: response.error }).then(onFulfilled);
+        return chain;
+    }
+    const channelStub = () => ({
+        on: () => channelStub(),
+        subscribe: () => ({}),
+    });
+    return {
+        supabase: {
+            from: (tableName: string) => makeChainableResponse(),
+            channel: (name?: string) => channelStub(),
+            removeChannel: () => {}
+        },
+        syncTableToCloud: vi.fn(),
+        pullCloudState: vi.fn(),
+        mapIncomingRow: vi.fn(),
+        pullInventoryViews: vi.fn(),
+        postReusableMovement: vi.fn(),
+        postRentalMovement: vi.fn(),
+        postIngredientMovement: vi.fn(),
+        uploadEntityImage: vi.fn(),
+        saveEntityMedia: vi.fn(),
+    };
+});
+
+// Mock lucide-react
+vi.mock('lucide-react', async () => {
+    const orig: any = await vi.importActual('lucide-react');
+    return {
+        ...orig,
+        Truck: orig.Truck || ((props: any) => null)
+    };
+});

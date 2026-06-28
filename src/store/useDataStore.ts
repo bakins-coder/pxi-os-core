@@ -19,6 +19,29 @@ import { calculateItemCosting as utilsCalculateCosting } from '../utils/costing'
 
 console.error('[DEBUG] useDataStore.ts LOADING...');
 
+async function runSelect(builderOrPromise: any) {
+    try {
+        if (!builderOrPromise) return { data: null, error: new Error('no query') };
+        if (typeof builderOrPromise.single === 'function') {
+            return await builderOrPromise.single();
+        }
+        if (typeof builderOrPromise.maybeSingle === 'function') {
+            return await builderOrPromise.maybeSingle();
+        }
+        if (typeof builderOrPromise.then === 'function') {
+            return await builderOrPromise;
+        }
+        if (typeof builderOrPromise === 'function') {
+            const res = builderOrPromise();
+            if (typeof res.then === 'function') return await res;
+        }
+        return { data: null, error: null };
+    } catch (err: any) {
+        return { data: null, error: err };
+    }
+}
+
+
 interface DataState {
     inventory: InventoryItem[];
     recipes: Recipe[];
@@ -2901,7 +2924,9 @@ export const useDataStore = create<DataState>()(
 
                 try {
                     // Sync Organization Settings Source of Truth
-                    const { data: orgData } = await supabase.from('organizations').select('type, enabled_modules, name').eq('id', companyId).single();
+                    const orgQuery = supabase.from('organizations').select('type, enabled_modules, name').eq('id', companyId);
+                    const { data: orgData, error: orgError } = await runSelect(orgQuery);
+                    if (orgError) console.warn('[Hydration] org fetch error:', orgError);
 
                     if (orgData) {
                         useSettingsStore.getState().updateSettings({

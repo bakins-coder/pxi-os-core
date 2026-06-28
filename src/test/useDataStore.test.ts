@@ -28,29 +28,6 @@ vi.mock('../store/useSettingsStore', () => ({
     }
 }));
 
-// Mock Supabase
-vi.mock('../services/supabase', () => ({
-    supabase: {
-        from: vi.fn(() => ({
-            upsert: vi.fn(() => ({
-                select: vi.fn(() => ({
-                    single: vi.fn(() => Promise.resolve({ data: {}, error: null }))
-                })),
-                error: null
-            })),
-            select: vi.fn(() => ({
-                eq: vi.fn(() => ({
-                    order: vi.fn(() => Promise.resolve({ data: [], error: null }))
-                }))
-            }))
-        })),
-        channel: vi.fn(() => ({
-            on: vi.fn().mockReturnThis(),
-            subscribe: vi.fn()
-        }))
-    },
-    syncTableToCloud: vi.fn(() => Promise.resolve({ success: true }))
-}));
 
 describe('useDataStore', () => {
     beforeEach(() => {

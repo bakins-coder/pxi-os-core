@@ -4,6 +4,18 @@ import { renderHook, act } from '@testing-library/react';
 import { useDataStore } from '../store/useDataStore';
 import { InvoiceStatus } from '../types';
 
+// Mock useSettingsStore
+vi.mock('../store/useSettingsStore', () => ({
+    useSettingsStore: {
+        getState: vi.fn(() => ({
+            settings: {
+                type: 'Catering'
+            }
+        }))
+    }
+}));
+
+
 describe('useDataStore - updateInvoiceLines', () => {
     beforeEach(() => {
         useDataStore.setState({
