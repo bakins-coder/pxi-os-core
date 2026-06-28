@@ -50,7 +50,7 @@ export const Procurement: React.FC = () => {
         const newDraft: Partial<Requisition> = {
             id: `draft-${Date.now()}`,
             type: 'Purchase',
-            category: formData.category,
+            category: formData.category as 'Food' | 'Hardware' | 'Service' | 'Financial',
             itemName: formData.itemName,
             quantity: effectiveQty,
             pricePerUnitCents: Math.round(effectiveUnitPrice * 100),
@@ -142,7 +142,7 @@ export const Procurement: React.FC = () => {
                                     required
                                     value={formData.itemName}
                                     onChange={e => setFormData({ ...formData, itemName: e.target.value })}
-                                    placeholder={`e.g. ${industryConfig.substanceLabel.singular} Name`}
+                                    placeholder={`e.g. ${terms.substanceLabel.singular} Name`}
                                     className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
                                 />
                             </div>
@@ -155,7 +155,7 @@ export const Procurement: React.FC = () => {
                                         onChange={e => setFormData({ ...formData, category: e.target.value as any })}
                                         className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                                     >
-                                        <option value="Food">{industryConfig.substanceLabel.plural} / Resources</option>
+                                        <option value="Food">{terms.substanceLabel.plural} / Resources</option>
                                         <option value="Hardware">Hardware / Equipment</option>
                                         <option value="Service">Service</option>
                                         <option value="Financial">Financial / Fees</option>

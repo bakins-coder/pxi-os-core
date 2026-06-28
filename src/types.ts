@@ -2,6 +2,7 @@ export enum Role {
   SUPER_ADMIN = 'Super Admin',
   SYSTEM_ADMIN = 'system_admin',
   CEO = 'Chief Executive Officer',
+  EXECUTIVE = 'Executive',
   ADMIN = 'Admin',
   MANAGER = 'Manager',
   AGENT = 'Contact Center Agent',
@@ -238,7 +239,7 @@ export interface CateringEvent {
   currentPhase: CateringPhase;
   readinessScore: number;
   items: DealItem[];
-  orderType?: 'Banquet' | 'Cuisine';
+  orderType?: 'Banquet' | 'Cuisine' | 'Standard' | 'Package' | 'Custom' | 'Banquet Orders' | 'Custom Orders';
   tasks: EventTask[];
   hardwareChecklist: HardwareCheckoutRecord[];
   dispatchedAssets?: DispatchedAsset[];

@@ -439,7 +439,7 @@ const KitchenReleaseModal = ({ isOpen, onClose, ingredients, events }: { isOpen:
       try {
          await addRequisition({
             type: 'Release',
-            category: industryConfig.substanceLabel?.singular || 'Substance',
+            category: (industryConfig.substanceLabel?.singular || 'Substance') as any,
             itemName: `Release: ${ing?.name}`,
             ingredientId: selectedIngId,
             quantity: qty,
@@ -525,7 +525,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
             if (!newItemName || qty <= 0) return;
             await addRequisition({
                type: 'Purchase',
-               category: industryConfig.substanceLabel?.singular || 'Substance',
+               category: (industryConfig.substanceLabel?.singular || 'Substance') as any,
                itemName: newItemName,
                quantity: qty,
                pricePerUnitCents: qty > 0 ? (estimatedCost / qty) * 100 : 0,
@@ -539,7 +539,7 @@ const PurchaseRequestModal = ({ isOpen, onClose, ingredients }: { isOpen: boolea
             const ing = ingredients.find(i => i.id === selectedIngId);
             await addRequisition({
                type: 'Purchase',
-               category: industryConfig.substanceLabel?.singular || 'Substance',
+               category: (industryConfig.substanceLabel?.singular || 'Substance') as any,
                itemName: ing?.name || 'Unknown Item',
                ingredientId: selectedIngId,
                quantity: qty,

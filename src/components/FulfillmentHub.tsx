@@ -42,7 +42,7 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
                              event.orderType === 'Standard' ||
                              event.orderType === 'Package' ||
                              event.banquetDetails?.eventType?.toUpperCase().includes('CUISINE') ||
-                             (industryConfig.type === 'Sports Foundation' && (event.orderType === 'Standard' || event.orderType === 'Package'));
+                             (industryConfig.type === 'Sports Foundation');
 
       if (!isStandardFlow && features.showStaffProcurement) {
          const staffNeeded = Math.ceil(event.guestCount / staffRatio);
@@ -1596,7 +1596,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
       ev.banquetDetails?.eventType?.toUpperCase().includes('CUISINE') ||
       (ev as any).cuisineDetails?.notes?.toUpperCase().includes('CUISINE') ||
       // Sports Foundation alignment: treat program allocations as standard orders
-      (settings.type === 'Sports Foundation' && (ev.orderType === 'Standard' || ev.orderType === 'Package'));
+      (settings.type === 'Sports Foundation');
 
    let revenue = Number(evInvoice?.totalCents ?? (ev.financials?.revenueCents || 0));
 
@@ -1766,7 +1766,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                            <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all"><industryConfig.ui.fulfillmentIcon size={16} /></div>
                            <div>
                               <p className="font-black text-slate-800 uppercase text-xs md:text-sm tracking-tight truncate">{item.name}</p>
-                              <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest">{terms.unitLabel} Multiplier</p>
+                              <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest">{terms.unitsLabel} Multiplier</p>
                            </div>
                         </div>
                         <div className="text-right">
@@ -2623,7 +2623,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
          const isStandard = ev.orderType === 'Cuisine' || ev.orderType === 'Standard' || ev.orderType === 'Package' ||
             matchingInvoice?.category === 'Cuisine' ||
             matchingInvoice?.category === 'Standard' ||
-            (settings.type === 'Sports Foundation' && (ev.orderType === 'Standard' || ev.orderType === 'Package'));
+            (settings.type === 'Sports Foundation');
 
          if (activeTab === 'orders') {
             if (isStandard) return false;

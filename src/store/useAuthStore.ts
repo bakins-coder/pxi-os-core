@@ -103,7 +103,7 @@ export const useAuthStore = create<AuthState>()(
                 if (mockUser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
                     console.log('[Auth] Mock Login detected. Bypassing Supabase...');
                     set({ user: mockUser });
-                    useSettingsStore.getState().fetchSettings(mockUser.companyId);
+                    useSettingsStore.getState().fetchSettings(mockUser.companyId || '');
                     return;
                 }
 
