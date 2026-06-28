@@ -684,10 +684,13 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
         // Forcing JSON mode can prevent the model from calling tools effectively.
         const turnConfig = { ...generationConfig, responseMimeType: undefined, responseSchema: undefined };
 
-        const result = await genModel.generateContent({
+        // Add a slight delay before asking the AI to prevent burst limits on the free tier
+        if (i > 0) await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const result: any = await callWithRetry(() => genModel.generateContent({
             contents: currentMessages,
             generationConfig: turnConfig
-        });
+        }));
 
         const response = await result.response;
 
@@ -729,10 +732,11 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
             if (generationConfig?.responseMimeType === "application/json" && (!turnConfig?.responseMimeType)) {
                 console.log("[AI Tools] Formatting final answer into JSON...");
                 try {
-                    const finalResult = await genModel.generateContent({
+                    await new Promise(resolve => setTimeout(resolve, 1500)); // Rate limit buffer
+                    const finalResult: any = await callWithRetry(() => genModel.generateContent({
                         contents: currentMessages,
                         generationConfig
-                    });
+                    }));
                     const finalResponse = await finalResult.response;
                     return finalResponse;
                 } catch (jsonErr) {
@@ -801,7 +805,7 @@ export async function bulkGroundIngredientPrices(ingredients: Ingredient[]): Pro
         if (!ing.priceSourceQuery) continue;
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 tools: [{ googleSearch: {} } as any]
             });
 
@@ -832,7 +836,7 @@ export async function getLiveRecipeIngredientPrices(recipe: Recipe): Promise<Rec
 
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-2.5-flash',
             tools: [{ googleSearch: {} } as any]
             // JSON mode removed here because it conflicts with Google Search Grounding
         });
@@ -874,7 +878,7 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     if (useSettingsStore.getState().strictMode) return { marketPriceCents: 0, groundedSummary: "Strict Mode Enabled", sources: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         tools: [{ googleSearch: {} } as any]
     });
 
@@ -903,7 +907,7 @@ export async function runInventoryReconciliation(event: CateringEvent): Promise<
     const payload = JSON.stringify(event.hardwareChecklist);
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -937,7 +941,7 @@ export async function extractInfoFromCV(base64Data: string, mimeType: string): P
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -967,7 +971,7 @@ export async function parseEmployeeVoiceInput(base64Audio: string, mimeType: str
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1000,7 +1004,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000)
     } catch (error: any) {
         if (retries > 0 && (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED'))) {
             // Exponential Backoff: 1s -> 2s -> 4s -> 8s (cap at 10s)
-            console.warn(`[AI Service] Rate limit hit (429). Model: gemini-2.0-flash. Retrying in ${delay}ms... (${retries} attempts left)`);
+            console.warn(`[AI Service] Rate limit hit (429). Model: gemini-2.5-flash. Retrying in ${delay}ms... (${retries} attempts left)`);
             await new Promise(resolve => setTimeout(resolve, delay));
             const nextDelay = Math.min(delay * 2, 10000);
             return callWithRetry(fn, retries - 1, nextDelay);
@@ -1078,10 +1082,28 @@ export async function processAgentRequest(input: string, context: string, mode: 
             .filter(i => i.status !== 'Paid')
             .reduce((sum, inv) => sum + (inv.totalCents - inv.paidAmountCents), 0);
 
-        const operationalContextSummary = `Database Snapshot: ${dataStore.invoices.length} total invoices, ${dataStore.contacts.length} contacts, ${dataStore.inventory.length} items.`;
+        let operationalContextSummary = `Database Snapshot: ${dataStore.invoices.length} total invoices, ${dataStore.contacts.length} contacts, ${dataStore.inventory.length} items.`;
 
-        const response = await callWithRetry(async () => {
-            const orgSettings = useSettingsStore.getState().settings;
+        // Eager Intent Routing: Preload data based on keywords to save AI tool calls
+        let eagerDataContext = '';
+        if (cleanInput.includes('inventory') || cleanInput.includes('stock') || cleanInput.includes('how many') || cleanInput.includes('fork') || cleanInput.includes('plate') || cleanInput.includes('item')) {
+            const inventoryData = SYSTEM_TOOLS.get_inventory_status({});
+            eagerDataContext += `\n[PRE-FETCHED INVENTORY DATA]\n${JSON.stringify(inventoryData)}`;
+        }
+        if (cleanInput.includes('invoice') || cleanInput.includes('debt') || cleanInput.includes('owe') || cleanInput.includes('unpaid') || cleanInput.includes('balance')) {
+            const debtorData = SYSTEM_TOOLS.get_outstanding_invoices({});
+            eagerDataContext += `\n[PRE-FETCHED DEBTORS DATA]\n${JSON.stringify(debtorData)}`;
+        }
+        if (cleanInput.includes('staff') || cleanInput.includes('employee') || cleanInput.includes('team')) {
+            const staffData = SYSTEM_TOOLS.get_staff_directory();
+            eagerDataContext += `\n[PRE-FETCHED STAFF DATA]\n${JSON.stringify(staffData)}`;
+        }
+        if (cleanInput.includes('event') || cleanInput.includes('catering') || cleanInput.includes('calendar')) {
+            const events = dataStore.cateringEvents || [];
+            eagerDataContext += `\n[PRE-FETCHED EVENTS DATA]\n${JSON.stringify(events)}`;
+        }
+
+        const orgSettings = useSettingsStore.getState().settings;
             const orgName = orgSettings.name || 'Platform';
             const orgType = orgSettings.type || 'General';
             const isClothingBusiness = orgType === 'Retail' && (orgName.toLowerCase().includes('clothes') || orgName.toLowerCase().includes('boutique'));
@@ -1126,6 +1148,8 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 Operational Summary: ${operationalContextSummary}
                 Financial Context: ${dataStore.bookkeeping.length > 0 ? `Latest Entry: ${dataStore.bookkeeping[dataStore.bookkeeping.length - 1].description} (${dataStore.bookkeeping[dataStore.bookkeeping.length - 1].amountCents / 100} NGN)` : 'No entries yet.'}
                 
+                ${eagerDataContext ? `==== PRE-LOADED CONTEXT DATA ====\nThe requested data has already been fetched for you locally to save time. DO NOT call any additional data retrieval tools. Answer the user based strictly on the following data:\n${eagerDataContext}\n====================================` : ''}
+                
                 MISSION: Be the ultimate organizational logic node. If users ask about stats, ingredients, projects, or staff, be precise.
                 
                 Inventory Taxonomy:
@@ -1149,8 +1173,8 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 - search_knowledge_base: Troubleshooting / Methodology.
                 
                 Instructions:
-                1. CALL TOOLS FIRST: You MUST call the appropriate tool BEFORE generating your final response. If the user asks a question that requires data (counts, lists, details), your first turn MUST be a tool call.
-                2. NO PLAN-ONLY RESPONSES: Do not say 'I will retrieve the information' or ask 'Would you like me to...'. Just call the tool.
+                1. CALL TOOLS FIRST: If pre-loaded context is NOT provided above, you MUST call the appropriate tool BEFORE generating your final response.
+                2. NO PLAN-ONLY RESPONSES: Do not say 'I will retrieve the information' or ask 'Would you like me to...'. Just answer or call the tool.
                 3. **STRICT TABLE REQUIREMENT**:
                    If the user asks for lists (Events, Debtors, Ingredients, Projects, Staff, Inventory), respond ONLY with a Markdown table.
                    - Event Table: | Customer | Date | Guests | Status | Location |
@@ -1236,7 +1260,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
 
             // Use executeToolCalls to allow the model to use tools before returning the final JSON
             // Consolidate contentParts into a single message for SDK compatibility
-            const result = await executeToolCalls(ai, 'gemini-2.0-flash', [{ role: 'user', parts: contentParts }], generationConfig, systemInstructions, filteredDeclarations);
+            const result = await executeToolCalls(ai, 'gemini-2.5-flash', [{ role: 'user', parts: contentParts }], generationConfig, systemInstructions, filteredDeclarations);
             
             let responseText = "";
             try {
@@ -1281,9 +1305,6 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 }
             }
             return parsed;
-        });
-
-        return response;
     } catch (error: any) {
         console.error("AI Agent Request Failed:", error);
         if (error.status === 429 || error.message?.includes('429')) {
@@ -1350,27 +1371,24 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         userParts.push({ inlineData: { data: attachment.base64, mimeType: attachment.mimeType } });
     }
 
-    const response = await callWithRetry(async () => {
-        const currentMessages = [
-            { role: 'user', parts: userParts }
-        ];
+    const currentMessages = [
+        { role: 'user', parts: userParts }
+    ];
 
-        try {
-            const result = await executeToolCalls(ai, 'gemini-2.0-flash', currentMessages, {}, systemInstruction);
-            return result.text() || "I couldn't retrieve that information right now.";
-        } catch (e: any) {
-            console.error("[generateAIResponse] execution failed:", e);
-            return `Error: ${e.message || "The AI encountered an issue processing your request."}`;
-        }
-    });
-    return response || "I'm sorry, I couldn't complete that request.";
+    try {
+        const result: any = await executeToolCalls(ai, 'gemini-2.5-flash', currentMessages, {}, systemInstruction);
+        return result.text() || "I couldn't retrieve that information right now.";
+    } catch (e: any) {
+        console.error("[generateAIResponse] execution failed:", e);
+        return `Error: ${e.message || "The AI encountered an issue processing your request."}`;
+    }
 }
 
 export async function getCFOAdvice(): Promise<any> {
     if (useSettingsStore.getState().strictMode) return { summary: "Services Offline (Strict Mode)", sentiment: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1408,7 +1426,7 @@ export async function processVoiceCommand(base64Audio: string, mimeType: string,
     try {
         const response = await callWithRetry(async () => {
             const model = ai.getGenerativeModel({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -1453,7 +1471,7 @@ export async function textToSpeech(text: string): Promise<string> {
     const ai = getAIInstance();
     try {
         const model = ai.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
         });
 
         // Note: New SDK specific TTS handling calls generateContent with parts
@@ -1473,7 +1491,7 @@ export async function getAIResponseForAudio(base64Audio: string, mimeType: strin
     if (useSettingsStore.getState().strictMode) return "Strict Mode Enabled";
     const ai = getAIInstance();
 
-    const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' });
+    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent([
         { inlineData: { data: base64Audio, mimeType } },
         { text: "Respond to this query. ALWAYS use Markdown formatting in your response." }
@@ -1486,7 +1504,7 @@ export async function getFormGuidance(formName: string, fieldName: string, value
     if (useSettingsStore.getState().strictMode) return { tip: "AI Guidance Disabled", status: "Neutral" };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1521,7 +1539,7 @@ export async function runBankingChat(history: any[], message: string): Promise<s
     if (useSettingsStore.getState().strictMode) return "Banking Assistant is currently offline due to Strict Mode.";
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.5-flash',
         systemInstruction: `Financial assistant for the ${useSettingsStore.getState().settings.name || 'Platform'} portal. ALWAYS use Markdown for structure.`
     });
 
@@ -1541,7 +1559,7 @@ export async function suggestCOAForTransaction(description: string, coa: any[]):
     const accountsContext = coa.map(a => `${a.id}: ${a.name} (${a.type}/${a.subtype})`).join('\n');
 
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1570,7 +1588,7 @@ export async function processMeetingAudio(base64Audio: string, mimeType: string)
     if (useSettingsStore.getState().strictMode) return { summary: "Strict Mode Enabled", decisions: [], tasks: [] };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1615,7 +1633,7 @@ export async function runProjectAnalysis(projectId: string, context: string): Pr
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001', // Standardize to stable 2.0 Flash
+        model: 'gemini-2.5-flash', // Standardize to stable 2.0 Flash
         generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -1628,7 +1646,7 @@ export async function executeAgentWorkflow(workflowId: string, agentName: string
     if (useSettingsStore.getState().strictMode) return {};
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.5-flash',
         generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -1641,7 +1659,7 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
     if (useSettingsStore.getState().strictMode) return { type: 'Outflow', amountCents: 0, description: 'Strict Mode', date: new Date().toISOString().split('T')[0], merchant: '' };
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite-001',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1677,7 +1695,7 @@ export async function generateCakeImage(prompt: string): Promise<string> {
     let optimizedPrompt = prompt;
     try {
         const ai = getAIInstance();
-        const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' });
+        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
         // Stricter instructions to preserve ALL user requested details
         const result = await model.generateContent(`Act as an expert prompt engineer. Convert the user's cake request into a DESCRIBING image prompt. 
             MANDATORY: 
@@ -1730,3 +1748,5 @@ export async function generateCakeImage(prompt: string): Promise<string> {
         }
     }
 }
+
+
