@@ -1565,6 +1565,7 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
 };
 
 const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
+   const { settings } = useSettingsStore.getState();
    // 1. Strict ID Link (Primary Source of Truth)
    const evInvoiceId = ev.financials?.invoiceId || (ev.financials as any)?.invoice_id;
    let evInvoice = invoices.find(inv => inv.id === evInvoiceId);

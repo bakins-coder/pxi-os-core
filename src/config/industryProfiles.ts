@@ -1,7 +1,7 @@
 import {
     Truck, ChefHat, UtensilsCrossed, Flame, Box, Grid3X3,
     Trophy, Users, Activity, DollarSign, Calendar, ShoppingBag,
-    Package, type LucideIcon
+    Package, Utensils, Zap, type LucideIcon
 } from 'lucide-react';
 import { IndustryType } from '../types';
 export type { IndustryType };
@@ -78,6 +78,70 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
     Retail: {
         type: 'Retail',
         label: 'Retail',
+        ui: {
+            productsIcon: ShoppingBag,
+            fulfillmentIcon: Truck,
+            standardIcon: Package,
+            customIcon: ShoppingBag,
+            cardImageHeight: 'h-72',
+            defaultCategories: ['Clothing', 'Accessories', 'Footwear', 'Beauty', 'Home']
+        },
+        nomenclature: {
+            inventory: {
+                pipelineLabel: 'Product Stock Pipeline',
+                pipelineSubtitle: 'Real-time inventory orchestration and batch tracking',
+                substanceLabel: { singular: 'Product', plural: 'Products' },
+                receiveLabel: 'Stock In',
+                releaseLabel: 'Stock Out',
+                stockLabel: 'In-Store',
+                priceLabel: 'MSRP',
+                ingredientsLabel: 'Bulk Stock',
+                productsLabel: 'Product Catalog',
+                recipeLabel: null,
+                boqLabel: 'Inventory Analysis'
+            },
+            fulfillment: {
+                orderTitle: 'Bulk Sales Order',
+                nodeSubtitle: 'Store fulfillment & Procurement',
+                clientLabel: 'Business Client',
+                contactLabel: 'Procurement Specialist',
+                logisticsLabel: 'Logistics & Dispatch',
+                dateLabel: 'Expected Delivery',
+                unitsLabel: 'Total Units',
+                locationLabel: 'Shipping Address',
+                finalizeLabel: 'Finalize Transaction',
+                navLabel: 'Stock & Dispatch',
+                standardOrdersLabel: 'Restock Pipeline',
+                customOrdersLabel: 'Client Orders',
+                fulfillmentHub: 'Fulfillment Node',
+                productionLabel: 'Fulfillment',
+                standardOrders: 'Catalog Order',
+                customOrders: 'Special Request',
+                categories: ['Apparel', 'Accessories', 'Footwear', 'Limited Edition', 'General Stock'],
+                categoryMap: {},
+                staffLabel: 'Support Personnel',
+                logisticsUnitLabel: 'Delivery Unit',
+                portalSlogan: 'Quality fashion, delivered to your door.',
+                fulfillmentTerm: 'delivery'
+            }
+        },
+        features: {
+            showFulfillment: true,
+            showVisualizer: false,
+            showCustomFields: false,
+            showBOQ: false,
+            showRequisitions: true,
+            showProjections: true,
+            showStaffProcurement: false,
+            taxConfig: {
+                serviceChargeRate: 0,
+                vatRate: 0.075
+            }
+        }
+    },
+    General: {
+        type: 'General',
+        label: 'General',
         ui: {
             productsIcon: ShoppingBag,
             fulfillmentIcon: Truck,

@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Role } from '../types';
 import { processVoiceCommand } from '../services/ai';
 import { useDataStore } from '../store/useDataStore';
-import { getIndustryConfig } from '../config/industryProfiles';
+import { getIndustryConfig, INDUSTRY_PROFILES } from '../config/industryProfiles';
 import { getTerm } from '../utils/terminology';
 import { IndustryType } from '../types';
 import { ChatWidget } from './ChatWidget';
