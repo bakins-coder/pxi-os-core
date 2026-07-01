@@ -17,6 +17,7 @@ import { getIndustryConfig, INDUSTRY_PROFILES } from '../config/industryProfiles
 import { getTerm } from '../utils/terminology';
 import { IndustryType } from '../types';
 import { ChatWidget } from './ChatWidget';
+import { ParadigmWorkspace } from './ParadigmWorkspace';
 
 const SyncIndicator = () => {
   const { syncStatus, lastSyncError, isSyncing, syncWithCloud, realtimeStatus } = useDataStore();
@@ -112,7 +113,7 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
-const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean }) => {
+const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode, onToggleWorkspace }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean, onToggleWorkspace?: () => void }) => {
   const { settings } = useSettingsStore();
   const { user: currentUser } = useAuthStore();
   const industryProfiles = useMemo(() => {
@@ -172,6 +173,19 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
         <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={settings.logo} />
       </div>
+
+      {currentUser?.email === 'tomiwab@hotmail.com' && onToggleWorkspace && !isCollapsed && (
+        <div className="px-6 mb-4">
+          <button 
+            type="button"
+            onClick={onToggleWorkspace}
+            className="w-full py-3.5 bg-gradient-to-r from-purple-900/40 to-orange-900/40 border border-orange-500/30 text-orange-400 rounded-xl font-black uppercase tracking-wider text-[9px] hover:border-orange-500/60 hover:text-white transition-all flex items-center justify-center gap-2 animate-pulse"
+          >
+            <Zap size={12} className="text-orange-400 shrink-0" />
+            Ajapasworld Workspace
+          </button>
+        </div>
+      )}
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
         {NAV_ITEMS.flatMap(item => {
@@ -289,6 +303,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = ({ children, userRole }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeWorkspace, setActiveWorkspace] = useState<'xquisite' | 'ajapasworld'>('xquisite');
   const { settings, strictMode } = useSettingsStore();
   const { user: currentUser, logout } = useAuthStore();
 
@@ -366,6 +381,15 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
 
   const formattedDate = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
 
+  if (activeWorkspace === 'ajapasworld') {
+    return (
+      <ParadigmWorkspace 
+        onSwitchWorkspace={() => setActiveWorkspace('xquisite')} 
+        adminEmail={currentUser?.email || ''} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-[#020617]">
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -380,6 +404,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
               isCollapsed={isSidebarCollapsed}
               logo={settings.logo}
               strictMode={strictMode}
+              onToggleWorkspace={() => setActiveWorkspace('ajapasworld')}
             />
           </aside>
         )}
@@ -445,7 +470,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#020617] transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} strictMode={strictMode} />
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} strictMode={strictMode} onToggleWorkspace={() => setActiveWorkspace('ajapasworld')} />
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
