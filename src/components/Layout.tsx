@@ -174,7 +174,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
         <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={settings.logo} />
       </div>
 
-      {currentUser?.email?.toLowerCase() === 'tomiwab@hotmail.com' && onToggleWorkspace && !isCollapsed && (
+      {(currentUser?.email?.toLowerCase() === 'tomiwab@hotmail.com' || currentUser?.companyId === '4376c123-01c9-4a92-9675-8123456789ab') && onToggleWorkspace && !isCollapsed && (
         <div className="px-6 mb-4">
           <button 
             type="button"
@@ -305,9 +305,20 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { settings, strictMode } = useSettingsStore();
   const { user: currentUser, logout } = useAuthStore();
+  const AJAPASWORLD_ORG_ID = '4376c123-01c9-4a92-9675-8123456789ab';
+  const isAjapasUser = currentUser?.companyId === AJAPASWORLD_ORG_ID;
   const [activeWorkspace, setActiveWorkspace] = useState<'xquisite' | 'ajapasworld'>(
-    currentUser?.companyId === '4376c123-01c9-4a92-9675-8123456789ab' ? 'ajapasworld' : 'xquisite'
+    isAjapasUser ? 'ajapasworld' : 'xquisite'
   );
+
+  // Sync workspace with user context reactively (e.g. after SuperAdmin context switch)
+  useEffect(() => {
+    if (currentUser?.companyId === AJAPASWORLD_ORG_ID) {
+      setActiveWorkspace('ajapasworld');
+    } else if (currentUser?.companyId && currentUser.companyId !== AJAPASWORLD_ORG_ID) {
+      setActiveWorkspace('xquisite');
+    }
+  }, [currentUser?.companyId]);
 
   const brandColor = settings.brandColor || '#00ff9d';
   const orgName = settings.name || 'Platform';
@@ -318,7 +329,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   const handleSwitchWorkspace = (workspace: 'xquisite' | 'ajapasworld') => {
     if (currentUser) {
       const targetOrgId = workspace === 'ajapasworld' 
-        ? '4376c123-01c9-4a92-9675-8123456789ab' 
+        ? AJAPASWORLD_ORG_ID
         : '10959119-72e4-4e57-ba54-923e36bba6a6';
       
       useAuthStore.getState().setUser({ ...currentUser, companyId: targetOrgId });

@@ -154,7 +154,7 @@ export const useAuthStore = create<AuthState>()(
                             id: data.user.id,
                             email: email,
                             // SECURITY FIX: Default to EMPLOYEE, only specific emails get ADMIN if profile fails
-                            role: (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') ? Role.ADMIN : Role.EMPLOYEE,
+                            role: (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk' || email === 'ajapas-admin@ajapasworld.local') ? Role.ADMIN : Role.EMPLOYEE,
                             first_name: 'User',
                             last_name: ''
                         };
@@ -314,7 +314,7 @@ export const useAuthStore = create<AuthState>()(
                 const metadata = user.user_metadata || {};
 
                 // SECURITY FIX: Safe Defaults
-                const isKnownAdmin = user.email === 'oreoluwatomiwab@gmail.com' || user.email === 'toxsyyb@yahoo.co.uk';
+                const isKnownAdmin = user.email === 'oreoluwatomiwab@gmail.com' || user.email === 'toxsyyb@yahoo.co.uk' || user.email === 'ajapas-admin@ajapasworld.local';
                 const safeRole = (profile?.role as Role) || (metadata.role as Role) || (isKnownAdmin ? Role.ADMIN : Role.EMPLOYEE);
 
                 // [CRITICAL FIX] Ensure Company ID is never empty for staff

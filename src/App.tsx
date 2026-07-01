@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { ParadigmWorkspace } from './components/ParadigmWorkspace';
 import { Dashboard } from './components/Dashboard';
 import { CRM } from './components/CRM';
 import { Finance } from './components/Finance';
@@ -239,6 +240,21 @@ function AppContent() {
       </Routes>
     );
   }
+
+  // ─── AJAPASWORLD WORKSPACE INTERCEPT ───────────────────────────────────────
+  // If this user belongs to the Ajapasworld organization, render the fully
+  // custom Ajapasworld workspace instead of the standard platform layout.
+  const AJAPASWORLD_ORG_ID = '4376c123-01c9-4a92-9675-8123456789ab';
+  if (user?.companyId === AJAPASWORLD_ORG_ID) {
+    const handleSwitchToXquisite = () => {
+      useAuthStore.getState().setUser({ ...user, companyId: '10959119-72e4-4e57-ba54-923e36bba6a6' });
+      useSettingsStore.getState().reset();
+      useDataStore.getState().reset();
+      setTimeout(() => { window.location.hash = '/'; window.location.reload(); }, 100);
+    };
+    return <ParadigmWorkspace onSwitchWorkspace={handleSwitchToXquisite} adminEmail={user.email || ''} />;
+  }
+  // ────────────────────────────────────────────────────────────────────────────
 
   return (
     <Layout userRole={user.role}>
