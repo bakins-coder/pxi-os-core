@@ -17,7 +17,12 @@ import {
   RotateCcw,
   Zap,
   ArrowRight,
-  FileText
+  FileText,
+  MessageSquare,
+  Send,
+  Mic,
+  Square,
+  Volume2
 } from "lucide-react";
 import {
   AreaChart,
@@ -28,6 +33,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useDataStore } from "../store/useDataStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { generateAIResponse, textToSpeech, processVoiceCommand } from "../services/ai";
+import { decodeBase64, decodeRawPcmToAudioBuffer } from "../services/audioUtils";
 
 // Mock Data for CRM leads
 interface Lead {
@@ -64,6 +73,102 @@ const initialProducts: Product[] = [
   { id: "p4", name: "Coloring Financial Storybook", category: "Workbook", currentPrice: 9.99, stock: 210, demandFactor: "Low" },
   { id: "p5", name: "Saves The Day Audio Story", category: "Game", currentPrice: 4.99, stock: 999, demandFactor: "Medium" }
 ];
+
+const defaultEmployees = [
+  { id: "e1", firstName: "Yanribo", lastName: "the Chameleon", role: "AI Strategist", avatar: "/assets/media__1782918840398.png" },
+  { id: "e2", firstName: "Ajapsi", lastName: "the Tortoise", role: "Product Designer", avatar: "/assets/media__1782921132229.png" },
+  { id: "e3", firstName: "Ajapa", lastName: "the Tortoise", role: "Financial Auditor", avatar: "/assets/media__1782921185348.png" },
+  { id: "e4", firstName: "Kiki", lastName: "Kangaroo", role: "CRM Coordinator", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kiki" },
+  { id: "e5", firstName: "Barnaby", lastName: "Beaver", role: "Catalog Optimizer", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Barnaby" },
+  { id: "e6", firstName: "Oliver", lastName: "Owl", role: "Security Auditor", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver" }
+];
+
+interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  createdAt: string;
+}
+
+const initialChats: Record<string, ChatMessage[]> = {
+  e1: [
+    {
+      id: "w1",
+      text: "Hello Akin! I am Yanribo. I'm reviewing our CRM leads and making sure we stay in touch with our potential partners. How can I help you strategize today?",
+      sender: "bot",
+      createdAt: new Date().toISOString()
+    }
+  ],
+  e2: [
+    {
+      id: "w2",
+      text: "Hey Akin! Ajapsi here! Woohoo! I'm super excited about our curriculum games and workbooks. Let's make learning about money awesome! Got any new ideas?",
+      sender: "bot",
+      createdAt: new Date().toISOString()
+    }
+  ],
+  e3: [
+    {
+      id: "w3",
+      text: "Greetings, Akin. This is Ajapa. I am carefully auditing our invoices and matching them with our Lotus Bank payments (Account 1010386319). Please let me know if you want to inspect a ledger report.",
+      sender: "bot",
+      createdAt: new Date().toISOString()
+    }
+  ],
+  e4: [
+    {
+      id: "w4",
+      text: "Hi Akin! Kiki Kangaroo on the move! Ready to speed up our client outreach and dispatch new automated emails. Let us know who we should ping next!",
+      sender: "bot",
+      createdAt: new Date().toISOString()
+    }
+  ],
+  e5: [
+    {
+      id: "w5",
+      text: "Hello, Akin. Barnaby Beaver here. I'm organizing the product catalog inventory count and cross-checking the offline backup worksheets. Busy as always, let's get building!",
+      sender: "bot",
+      createdAt: new Date().toISOString()
+    }
+  ],
+  e6: [
+    {
+      id: "w6",
+      text: "Akin. Oliver Owl reporting. I have run the compliance analysis on the main database. No integrity errors found. Let me know if you need specific field validation.",
+      sender: "bot",
+      createdAt: new Date().toISOString()
+    }
+  ]
+};
+
+const mapDbLeadToLocal = (dbLead: any): Lead => {
+  let localStatus: Lead["status"] = "New";
+  if (dbLead.status === "Converted") localStatus = "Won";
+  else if (dbLead.status === "Qualified") localStatus = "Proposal";
+  else if (dbLead.status === "Lost") localStatus = "Lost";
+  else if (dbLead.status === "New") localStatus = "New";
+  
+  return {
+    id: dbLead.id,
+    name: dbLead.name,
+    email: dbLead.email || "",
+    status: localStatus,
+    value: dbLead.value || 0,
+    source: dbLead.source || "Web Signup"
+  };
+};
+
+const mapLocalStatusToDb = (localStatus: Lead["status"]): any => {
+  if (localStatus === "Won") return "Converted";
+  if (localStatus === "Proposal" || localStatus === "Contacted") return "Qualified";
+  return localStatus;
+};
+
+const getDemandFactor = (name: string): "High" | "Medium" | "Low" => {
+  if (name.includes("Workbook") || name.includes("Course")) return "High";
+  if (name.includes("Coloring")) return "Low";
+  return "Medium";
+};
 
 // Finance metrics chart data
 const chartData = [
@@ -104,14 +209,31 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     "[Kiki] 16:09:20 - Auto-generated email template for Tunde Bakare."
   ]);
 
-  // CRM state
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  // Zustand state bindings
+  const dbLeads = useDataStore(state => state.leads);
+  const leads = dbLeads.map(mapDbLeadToLocal);
+  const dbInvoices = useDataStore(state => state.invoices);
   const [newLead, setNewLead] = useState({ name: "", email: "", status: "New" as Lead["status"], value: "" });
   const [selectedLeadId, setSelectedLeadId] = useState<string>("1");
   const [draftedEmail, setDraftedEmail] = useState<string>("");
 
-  // Products state
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Product pricing optimization state
+  const [optimizedPrices, setOptimizedPrices] = useState<Record<string, number>>({});
+  const dbInventory = useDataStore(state => state.inventory.filter(i => i.type === 'product'));
+  const products = dbInventory.map(item => {
+    const currentPrice = (item.priceCents || 0) / 100;
+    const demandFactor = getDemandFactor(item.name);
+    const optimizedPrice = optimizedPrices[item.id];
+    return {
+      id: item.id,
+      name: item.name,
+      category: item.category as any,
+      currentPrice,
+      stock: item.stockQuantity || 0,
+      demandFactor,
+      optimizedPrice
+    };
+  });
 
   // Invoice generator state
   const [invoiceMeta, setInvoiceMeta] = useState({
@@ -135,6 +257,89 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     teens: false,
     wiseup: false
   });
+
+  // AI Staff Communication Desk state
+  const employees = useDataStore(state => state.employees);
+  const displayEmployees = employees.length > 0 ? employees : defaultEmployees;
+  const [selectedStaff, setSelectedStaff] = useState<any>(defaultEmployees[0]);
+  const [staffInput, setStaffInput] = useState("");
+  const [isStaffRecording, setIsStaffRecording] = useState(false);
+  const [isStaffTyping, setIsStaffTyping] = useState(false);
+  const [staffChats, setStaffChats] = useState<Record<string, ChatMessage[]>>(initialChats);
+  
+  // Audio references
+  const staffMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const staffAudioChunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Database Seeding Effect for Leads, Products, and Employees
+  useEffect(() => {
+    const seedInitialData = async () => {
+      const storeLeads = useDataStore.getState().leads;
+      if (storeLeads.length === 0) {
+        for (const l of initialLeads) {
+          await useDataStore.getState().addLead({
+            id: l.id,
+            name: l.name,
+            email: l.email,
+            status: mapLocalStatusToDb(l.status),
+            source: l.source,
+            interestLevel: 'High',
+            createdAt: new Date().toISOString()
+          } as any);
+        }
+      }
+
+      const storeProducts = useDataStore.getState().inventory.filter(i => i.type === 'product');
+      if (storeProducts.length === 0) {
+        const companyId = useAuthStore.getState().user?.companyId || '';
+        for (const p of initialProducts) {
+          await useDataStore.getState().addInventoryItem({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            priceCents: Math.round(p.currentPrice * 100),
+            stockQuantity: p.stock,
+            type: 'product' as any,
+            companyId: companyId
+          });
+        }
+      }
+
+      const storeEmployees = useDataStore.getState().employees;
+      if (storeEmployees.length === 0) {
+        const companyId = useAuthStore.getState().user?.companyId || '';
+        for (const emp of defaultEmployees) {
+          await useDataStore.getState().addEmployee({
+            id: emp.id,
+            firstName: emp.firstName,
+            lastName: emp.lastName,
+            email: `${emp.firstName.toLowerCase()}@ajapasworld.com`,
+            role: emp.role,
+            salaryCents: 15000000,
+            status: 'Active' as any,
+            companyId,
+            dob: new Date(1990, 0, 1).toISOString(),
+            gender: 'Male',
+            dateOfEmployment: new Date().toISOString(),
+            address: 'Lagos, Nigeria',
+            avatar: emp.avatar
+          } as any);
+        }
+      }
+    };
+    seedInitialData();
+  }, []);
+
+  // Update selectedStaff dynamically if displayEmployees changes
+  useEffect(() => {
+    if (selectedStaff && displayEmployees.length > 0) {
+      const match = displayEmployees.find(e => e.id === selectedStaff.id);
+      if (match) {
+        setSelectedStaff(match);
+      }
+    }
+  }, [displayEmployees]);
 
   // Print references
   const invoicePreviewRef = useRef<HTMLDivElement>(null);
@@ -175,7 +380,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   };
 
   // Add a CRM lead
-  const handleAddLead = (e: React.FormEvent) => {
+  const handleAddLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.name || !newLead.email) {
       showToast("Validation Error", "Name and Email are required.");
@@ -183,14 +388,25 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     }
     const leadVal = parseFloat(newLead.value) || 0;
     const addedLead: Lead = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: newLead.name,
       email: newLead.email,
       status: newLead.status,
       value: leadVal,
       source: "Manual Admin CRM"
     };
-    setLeads(prev => [...prev, addedLead]);
+
+    const dbStatus = mapLocalStatusToDb(newLead.status);
+    await useDataStore.getState().addLead({
+      id: addedLead.id,
+      name: addedLead.name,
+      email: addedLead.email,
+      status: dbStatus,
+      source: addedLead.source,
+      interestLevel: 'High',
+      createdAt: new Date().toISOString()
+    } as any);
+
     setNewLead({ name: "", email: "", status: "New", value: "" });
     addAgentLog(`Kiki added new CRM contact: ${addedLead.name} (${addedLead.email})`);
     showToast("Lead Added", `${addedLead.name} has been added to the CRM list.`);
@@ -198,7 +414,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
   // Generate Follow-up email template
   const generateFollowUpEmail = () => {
-    const lead = leads.find(l => l.id === selectedLeadId);
+    const lead = leads.find(l => l.id === selectedLeadId) || leads[0];
     if (!lead) return;
 
     let body = `Dear ${lead.name},\n\n`;
@@ -250,41 +466,255 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   };
 
   // AI Price optimization formula
-  const applyPriceOptimization = (prodId: string) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === prodId) {
-        let recommendationMultiplier = 1.0;
-        if (p.demandFactor === "High") recommendationMultiplier = 1.15; // 15% increase
-        if (p.demandFactor === "Low") recommendationMultiplier = 0.85; // 15% decrease (discount)
-        if (p.demandFactor === "Medium") recommendationMultiplier = 1.05; // 5% adjustment
-        
-        const optimized = parseFloat((p.currentPrice * recommendationMultiplier).toFixed(2));
-        addAgentLog(`Ajapsi optimized price for ${p.name}: $${p.currentPrice} -> $${optimized}`);
-        showToast("Pricing Optimized", `Price adjusted based on ${p.demandFactor} demand factors.`);
-        return {
-          ...p,
-          currentPrice: optimized,
-          optimizedPrice: undefined
-        };
-      }
-      return p;
-    }));
+  const applyPriceOptimization = async (prodId: string) => {
+    const item = products.find(p => p.id === prodId);
+    if (!item) return;
+    const optPrice = optimizedPrices[prodId];
+    if (!optPrice) return;
+    
+    await useDataStore.getState().updateInventoryItem(prodId, { priceCents: Math.round(optPrice * 100) });
+    
+    setOptimizedPrices(prev => {
+      const updated = { ...prev };
+      delete updated[prodId];
+      return updated;
+    });
+    
+    addAgentLog(`Ajapsi optimized price for ${item.name}: $${item.currentPrice.toFixed(2)} -> $${optPrice.toFixed(2)}`);
+    showToast("Pricing Optimized", `Price adjusted based on ${item.demandFactor} demand factors.`);
   };
 
   // Optimize all prices suggestions display
   const showOptimizationSuggestions = () => {
-    setProducts(prev => prev.map(p => {
+    const suggestions: Record<string, number> = {};
+    products.forEach(p => {
       let multiplier = 1.0;
       if (p.demandFactor === "High") multiplier = 1.15;
       if (p.demandFactor === "Low") multiplier = 0.85;
       if (p.demandFactor === "Medium") multiplier = 1.05;
-      return {
-        ...p,
-        optimizedPrice: parseFloat((p.currentPrice * multiplier).toFixed(2))
-      };
-    }));
+      suggestions[p.id] = parseFloat((p.currentPrice * multiplier).toFixed(2));
+    });
+    setOptimizedPrices(suggestions);
     addAgentLog("Ajapsi calculated AI pricing optimization suggestions for all catalog items.");
     showToast("Suggestions Calculated", "Click Apply next to each product to confirm.");
+  };
+
+  // Save / Record Invoice to Zustand Store
+  const handleSaveInvoice = async () => {
+    const companyId = useAuthStore.getState().user?.companyId || '';
+    const newInvoiceId = `inv-${Date.now()}`;
+    
+    const lines = invoiceItems.map((item, idx) => ({
+      id: `line-${idx}-${Date.now()}`,
+      description: item.description,
+      quantity: item.qty,
+      unitPriceCents: Math.round(item.price * 100)
+    }));
+
+    const subtotalCents = Math.round(invoiceSubtotal * 100);
+    const taxCents = Math.round(invoiceTax * 100);
+    const totalCents = Math.round(invoiceTotal * 100);
+
+    await useDataStore.getState().addInvoice({
+      id: newInvoiceId,
+      number: invoiceMeta.invoiceNumber,
+      companyId,
+      customerName: invoiceMeta.clientName,
+      date: invoiceMeta.issueDate,
+      dueDate: invoiceMeta.dueDate,
+      status: 'Sent' as any,
+      type: 'Sales',
+      lines,
+      subtotalCents,
+      totalCents,
+      paidAmountCents: 0,
+      description: `Lotus Bank Remittance: A/C 1010386319 (Sort: LTSBNG22)`
+    });
+
+    addAgentLog(`Ajapa recorded invoice ${invoiceMeta.invoiceNumber} in local database.`);
+    showToast("Invoice Recorded", `Invoice ${invoiceMeta.invoiceNumber} saved to database store.`);
+  };
+
+  // Audio helpers
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+    return audioContextRef.current;
+  };
+
+  const playRawPcm = async (base64: string) => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      const pcmData = decodeBase64(base64);
+      const audioBuffer = await decodeRawPcmToAudioBuffer(pcmData, ctx, 24000);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.start();
+    } catch (e) {
+      console.error("Audio Playback Error:", e);
+    }
+  };
+
+  const playVoice = async (text: string) => {
+    try {
+      showToast("Generating Voice...", "Talking with neural network.");
+      const base64Audio = await textToSpeech(text);
+      if (base64Audio) {
+        await playRawPcm(base64Audio);
+        return;
+      }
+    } catch (e) {
+      console.warn("AI TTS failed, falling back to browser synthesis:", e);
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const speak = () => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) || voices.find(v => v.lang.startsWith("en"));
+        if (preferredVoice) utterance.voice = preferredVoice;
+        window.speechSynthesis.speak(utterance);
+      };
+      if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = speak;
+      } else {
+        speak();
+      }
+    }
+  };
+
+  const startStaffRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      staffMediaRecorderRef.current = mediaRecorder;
+      staffAudioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) staffAudioChunksRef.current.push(event.data);
+      };
+      mediaRecorder.onstop = handleStaffAudioStop;
+      mediaRecorder.start();
+      setIsStaffRecording(true);
+      showToast("Recording Voice...", "Speak now.");
+    } catch (err) {
+      showToast("Mic Failed", "Could not link recording hardware.");
+    }
+  };
+
+  const stopStaffRecording = () => {
+    if (staffMediaRecorderRef.current && isStaffRecording) {
+      staffMediaRecorderRef.current.stop();
+      setIsStaffRecording(false);
+      staffMediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const handleStaffAudioStop = async () => {
+    const audioBlob = new Blob(staffAudioChunksRef.current, { type: 'audio/webm' });
+    setIsStaffTyping(true);
+
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    reader.onloadend = async () => {
+      const base64String = (reader.result as string).split(',')[1];
+      try {
+        const voiceResult = await processVoiceCommand(base64String, 'audio/webm', `Chatting with AI Staff ${selectedStaff.firstName}`);
+        const transcription = voiceResult.transcription || voiceResult.feedback || "Voice input recorded.";
+        if (transcription) {
+          await sendStaffMessage(transcription);
+        }
+      } catch (e) {
+        console.error("Transcription error:", e);
+        showToast("Error", "Could not transcribe audio.");
+      } finally {
+        setIsStaffTyping(false);
+      }
+    };
+  };
+
+  const sendStaffMessage = async (text: string) => {
+    if (!text.trim()) return;
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      text,
+      sender: 'user',
+      createdAt: new Date().toISOString()
+    };
+
+    const staffId = selectedStaff.id;
+    const currentMsgs = staffChats[staffId] || [];
+    const updatedMsgs = [...currentMsgs, userMsg];
+    setStaffChats(prev => ({
+      ...prev,
+      [staffId]: updatedMsgs
+    }));
+
+    setIsStaffTyping(true);
+
+    try {
+      let personaContext = "";
+      if (selectedStaff.firstName === "Yanribo") {
+        personaContext = "You are Yanribo, the wise, maternal, and strategic AI chameleon. You help Akin with business strategy, marketing ideas, and lead followups. Keep your tone encouraging, thoughtful, and professional.";
+      } else if (selectedStaff.firstName === "Ajapsi") {
+        personaContext = "You are Ajapsi, the energetic, playful tortoise. You are the product designer, full of child-like enthusiasm, focused on games, educational workbooks, and teenager budgeting planners. Keep your tone bubbly, exciting, and friendly with emojis!";
+      } else if (selectedStaff.firstName === "Ajapa") {
+        personaContext = "You are Ajapa, the scholarly, cautious, and academic tortoise who wears a graduation cap and glasses. You focus on math, school curriculum, bookkeeping audits, and matching bank transfers (like Lotus Bank Account 1010386319). Keep your tone formal, analytical, precise, and polite.";
+      } else if (selectedStaff.firstName === "Kiki") {
+        personaContext = "You are Kiki Kangaroo, the bubbly, fast-paced outreach lead. You focus on lead communications, email templates, and CRM contact details. Keep your tone energetic, brief, direct, and active.";
+      } else if (selectedStaff.firstName === "Barnaby") {
+        personaContext = "You are Barnaby Beaver, the organized and busy catalog coordinator. You focus on raw materials list, inventory stock quantities, and offline backup worksheets. Keep your tone busy, practical, productive, and task-oriented.";
+      } else if (selectedStaff.firstName === "Oliver") {
+        personaContext = "You are Oliver Owl, the calm, quiet, and highly analytical security auditor. You focus on database compliance, system overview KPIs, and technical validation logs. Keep your tone serious, precise, brief, and logical.";
+      }
+
+      const responseText = await generateAIResponse(text, personaContext);
+      
+      const botMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        text: responseText,
+        sender: 'bot',
+        createdAt: new Date().toISOString()
+      };
+
+      setStaffChats(prev => ({
+        ...prev,
+        [staffId]: [...(prev[staffId] || []), botMsg]
+      }));
+
+    } catch (err) {
+      console.error("AI communication failed:", err);
+      const errorMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        text: "Sorry Akin, I am experiencing connection issues. Please try again in a moment.",
+        sender: 'bot',
+        createdAt: new Date().toISOString()
+      };
+      setStaffChats(prev => ({
+        ...prev,
+        [staffId]: [...(prev[staffId] || []), errorMsg]
+      }));
+    } finally {
+      setIsStaffTyping(false);
+    }
+  };
+
+  // Activity click handler to route/scroll directly to modules
+  const handleActivityLinkClick = (e: React.MouseEvent, activityName: string, targetModuleId: string) => {
+    e.preventDefault();
+    showToast("Opening Module", `Navigating to ${activityName} tools in the workspace.`);
+    const el = document.getElementById(targetModuleId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // Print Invoice trigger
@@ -775,20 +1205,159 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         {/* Tabs for CRM, Products, Finance */}
         <div className="grid grid-cols-1 gap-8">
           
+          {/* AI STAFF COMMUNICATION DESK */}
+          <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="staff-communication-desk">
+            <div className="bg-gradient-to-r from-teal-950/50 to-slate-900 p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-teal-600/30 text-teal-400 font-mono text-[10px] rounded uppercase font-bold border border-teal-500/20">
+                    AI Communication
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">Real-time team collaboration desk</span>
+                </div>
+                <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
+                  <MessageSquare className="h-6 w-6 text-teal-500 animate-pulse" />
+                  MoneeWise AI Staff Communication Desk (Inbox)
+                </h2>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 min-h-[480px]">
+              {/* Sidebar */}
+              <div className="border-r border-slate-800 p-4 bg-slate-950/30 space-y-2">
+                <h3 className="text-slate-400 text-xs font-mono uppercase tracking-wider mb-4 px-2">Team Directory</h3>
+                {displayEmployees.map((emp: any) => (
+                  <button
+                    key={emp.id}
+                    onClick={() => setSelectedStaff(emp)}
+                    className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all relative ${
+                      selectedStaff.id === emp.id 
+                        ? 'bg-teal-500 text-slate-950 font-bold shadow-lg shadow-teal-500/10' 
+                        : 'hover:bg-slate-800/60 text-slate-300'
+                    }`}
+                  >
+                    <img src={emp.avatar} className="w-10 h-10 rounded-full object-cover bg-slate-800" alt={emp.firstName} />
+                    <div className="text-left min-w-0 flex-1">
+                      <div className="text-xs truncate">{emp.firstName} {emp.lastName}</div>
+                      <div className={`text-[10px] font-mono opacity-70 truncate ${selectedStaff.id === emp.id ? 'text-slate-900' : 'text-slate-400'}`}>{emp.role}</div>
+                    </div>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  </button>
+                ))}
+              </div>
+
+              {/* Chat Area */}
+              <div className="md:col-span-3 flex flex-col h-[480px] bg-slate-950/20">
+                {/* Chat Header */}
+                <div className="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img src={selectedStaff.avatar} className="w-9 h-9 rounded-full object-cover bg-slate-800" alt={selectedStaff.firstName} />
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100">{selectedStaff.firstName} {selectedStaff.lastName}</h4>
+                      <p className="text-[10px] text-slate-400 font-mono">{selectedStaff.role} • Online</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Messages Body */}
+                <div className="flex-grow p-4 overflow-y-auto space-y-4">
+                  {(staffChats[selectedStaff.id] || []).map((msg) => {
+                    const isMe = msg.sender === 'user';
+                    return (
+                      <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] p-3 rounded-2xl ${
+                          isMe 
+                            ? 'bg-teal-500 text-slate-950 font-medium rounded-tr-sm shadow-md' 
+                            : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-sm'
+                        }`}>
+                          <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          <div className="flex justify-between items-center mt-2 gap-4">
+                            <span className={`text-[8px] font-mono ${isMe ? 'text-slate-950/60' : 'text-slate-500'}`}>
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {!isMe && (
+                              <button
+                                onClick={() => playVoice(msg.text)}
+                                className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-teal-400 hover:text-teal-300 transition-colors"
+                              >
+                                <Volume2 size={12} /> Play Voice
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {isStaffTyping && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl rounded-tl-sm flex space-x-1.5 items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce delay-100"></div>
+                        <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce delay-200"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Area */}
+                <div className="p-3 border-t border-slate-800 bg-slate-900/40">
+                  <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+                    <input
+                      className="flex-grow bg-transparent text-xs text-white placeholder:text-slate-500 outline-none"
+                      placeholder={`Send a message to ${selectedStaff.firstName}...`}
+                      value={staffInput}
+                      onChange={(e) => setStaffInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          sendStaffMessage(staffInput);
+                          setStaffInput('');
+                        }
+                      }}
+                    />
+                    
+                    {isStaffRecording ? (
+                      <button onClick={stopStaffRecording} className="p-2 bg-rose-500/20 text-rose-400 rounded-full hover:scale-105 transition-all">
+                        <Square size={14} className="fill-current" />
+                      </button>
+                    ) : (
+                      <button onClick={startStaffRecording} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-teal-400 transition-colors">
+                        <Mic size={14} />
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        sendStaffMessage(staffInput);
+                        setStaffInput('');
+                      }}
+                      disabled={!staffInput.trim() || isStaffTyping || isStaffRecording}
+                      className="p-2 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-full disabled:opacity-20 transition-all"
+                    >
+                      <Send size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           {/* CRM MODULE */}
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="crm-module">
             <div className="bg-gradient-to-r from-red-950/50 to-slate-900 p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-red-600/30 text-red-400 font-mono text-[10px] rounded uppercase font-bold border border-red-500/20">
-                    Lead Management
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">CRM module managed by Yanribo (Red wrap turban)</span>
+              <div className="flex items-center gap-4">
+                <img src="/assets/media__1782918840398.png" className="w-16 h-16 rounded-full object-cover border-2 border-red-500 bg-slate-850" alt="Yanribo" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-red-600/30 text-red-400 font-mono text-[10px] rounded uppercase font-bold border border-red-500/20">
+                      Lead Management
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">CRM module managed by Yanribo (Red wrap turban)</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
+                    <Users className="h-6 w-6 text-red-500" />
+                    MoneeWise CRM Desk
+                  </h2>
                 </div>
-                <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
-                  <Users className="h-6 w-6 text-red-500" />
-                  MoneeWise CRM Desk
-                </h2>
               </div>
             </div>
             
@@ -959,17 +1528,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
           {/* PRODUCTS MODULE */}
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="products-module">
             <div className="bg-gradient-to-r from-orange-950/40 to-slate-900 p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-orange-600/30 text-orange-400 font-mono text-[10px] rounded uppercase font-bold border border-orange-500/20">
-                    Catalog & Operations
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">Products managed by Ajapsi (Red beret)</span>
+              <div className="flex items-center gap-4">
+                <img src="/assets/media__1782921132229.png" className="w-16 h-16 rounded-full object-cover border-2 border-orange-500 bg-slate-850" alt="Ajapsi" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-orange-600/30 text-orange-400 font-mono text-[10px] rounded uppercase font-bold border border-orange-500/20">
+                      Catalog & Operations
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">Products managed by Ajapsi (Red beret)</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
+                    <Package className="h-6 w-6 text-orange-500" />
+                    MoneeWise Product Registry
+                  </h2>
                 </div>
-                <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
-                  <Package className="h-6 w-6 text-orange-500" />
-                  MoneeWise Product Registry
-                </h2>
               </div>
               <button 
                 onClick={showOptimizationSuggestions} 
@@ -1042,17 +1614,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="finance-module">
             <div className="bg-gradient-to-r from-purple-950/40 to-slate-900 p-6 border-b border-slate-800">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-purple-600/30 text-purple-400 font-mono text-[10px] rounded uppercase font-bold border border-purple-500/20">
-                      Accounting Desk
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">Finance & Invoicing managed by Ajapa (Graduation cap)</span>
+                <div className="flex items-center gap-4">
+                  <img src="/assets/media__1782921185348.png" className="w-16 h-16 rounded-full object-cover border-2 border-purple-500 bg-slate-850" alt="Ajapa" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-purple-600/30 text-purple-400 font-mono text-[10px] rounded uppercase font-bold border border-purple-500/20">
+                        Accounting Desk
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">Finance & Invoicing managed by Ajapa (Graduation cap)</span>
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
+                      <DollarSign className="h-6 w-6 text-purple-500" />
+                      MoneeWise Finance Desk & Invoice Generator
+                    </h2>
                   </div>
-                  <h2 className="text-2xl font-bold text-white mt-1 flex items-center gap-2">
-                    <DollarSign className="h-6 w-6 text-purple-500" />
-                    MoneeWise Finance Desk & Invoice Generator
-                  </h2>
                 </div>
               </div>
             </div>
@@ -1229,12 +1804,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-200">Invoice Document Preview</h3>
-                  <button 
-                    onClick={handlePrintInvoice}
-                    className="bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-500 hover:to-orange-500 text-white gap-2 font-bold text-xs h-9 px-4 rounded-xl flex items-center shadow-lg"
-                  >
-                    <Printer className="h-4 w-4" /> Print / Export Invoice
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={handleSaveInvoice}
+                      className="bg-purple-700 hover:bg-purple-600 text-white gap-2 font-bold text-xs h-9 px-4 rounded-xl flex items-center shadow-lg transition-all"
+                    >
+                      <Plus className="h-4 w-4" /> Record Invoice
+                    </button>
+                    <button 
+                      onClick={handlePrintInvoice}
+                      className="bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-500 hover:to-orange-500 text-white gap-2 font-bold text-xs h-9 px-4 rounded-xl flex items-center shadow-lg"
+                    >
+                      <Printer className="h-4 w-4" /> Print / Export Invoice
+                    </button>
+                  </div>
                 </div>
                 
                 {/* HTML Invoice Template */}
@@ -1390,19 +1973,67 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                 </div>
               </div>
               
+              {/* RECORDED INVOICES LEDGER */}
+              <div className="xl:col-span-2 border-t border-slate-800 pt-8 mt-6">
+                <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-400" />
+                  Recorded Invoices Ledger (Lotus Bank A/C 1010386319)
+                </h3>
+                <div className="border border-slate-800/80 rounded-xl overflow-hidden bg-slate-950/40">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-mono text-xs uppercase">
+                        <th className="p-4">Invoice No</th>
+                        <th className="p-4">Client Name</th>
+                        <th className="p-4">Issue Date</th>
+                        <th className="p-4">Due Date</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Total ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900 text-sm text-slate-300">
+                      {dbInvoices.map((inv) => {
+                        let statusColor = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+                        if (inv.status === "Paid") statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                        if (inv.status === "Sent") statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/30";
+                        return (
+                          <tr key={inv.id} className="hover:bg-slate-900/40 transition-colors duration-200">
+                            <td className="p-4 font-mono font-bold text-white">{inv.number}</td>
+                            <td className="p-4 font-semibold text-slate-300">{inv.customerName}</td>
+                            <td className="p-4 font-mono text-xs text-slate-400">{inv.date}</td>
+                            <td className="p-4 font-mono text-xs text-slate-400">{inv.dueDate}</td>
+                            <td className="p-4">
+                              <span className={`px-2 py-0.5 text-xs rounded-full border ${statusColor}`}>
+                                {inv.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right font-mono font-semibold text-white">
+                              ${((inv.totalCents || 0) / 100).toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </div>
 
           {/* MONEYWISE ACTIVITIES PANEL */}
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="activities-panel">
-            <div className="p-6 border-b border-slate-800">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Folder className="h-6 w-6 text-yellow-500" />
-                MoneeWise Activities & Curriculum Panel
-              </h2>
-              <p className="text-slate-400 text-sm mt-1">
-                Direct access folder structure linking to active games, stories, budgeting planners, and courses.
-              </p>
+            <div className="p-6 border-b border-slate-800 flex items-center gap-4">
+              <img src="/assets/media__1782923338035.png" className="w-16 h-16 rounded-full object-cover border-2 border-yellow-500 bg-slate-850" alt="Ajapa Family" />
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Folder className="h-6 w-6 text-yellow-500" />
+                  MoneeWise Activities & Curriculum Panel
+                </h2>
+                <p className="text-slate-400 text-sm mt-1">
+                  Direct access folder structure linking to active games, stories, budgeting planners, and courses.
+                </p>
+              </div>
             </div>
             
             <div className="p-6 space-y-4">
@@ -1425,39 +2056,39 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                 
                 {expandedFolders.ajapsi && (
                   <div className="p-4 bg-slate-950/60 border-t border-slate-900 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <a href="#/ajapsi/games/coin-counting" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#coin-counting" onClick={(e) => handleActivityLinkClick(e, "Coin Counting Game", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🎮 Game: Coin Counting</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/games/money-math" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#money-math" onClick={(e) => handleActivityLinkClick(e, "Money Math Game", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🎮 Game: Money Math</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/games/saving-challenge" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#saving-challenge" onClick={(e) => handleActivityLinkClick(e, "Saving Challenge Game", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🎮 Game: Saving Challenge</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/games/word-ladder" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#word-ladder" onClick={(e) => handleActivityLinkClick(e, "Word Ladder Game", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🎮 Game: Word Ladder</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/stories/saves-the-day" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#saves-the-day" onClick={(e) => handleActivityLinkClick(e, "Saves The Day Story", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>📖 Story: Saves The Day</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/stories/magic-coin" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#magic-coin" onClick={(e) => handleActivityLinkClick(e, "Magic Coin Story", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>📖 Story: Magic Coin</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/stories/piggy-bank-mystery" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#piggy-bank-mystery" onClick={(e) => handleActivityLinkClick(e, "Piggy Bank Mystery Story", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>📖 Story: Piggy Bank Mystery</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/activities/coloring" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#coloring" onClick={(e) => handleActivityLinkClick(e, "Coloring Book Activity", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🎨 Activity: Coloring Book</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/ajapsi/journal-editor" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#journal-editor" onClick={(e) => handleActivityLinkClick(e, "Journal Editor Utility", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>✍️ Utility: Journal Editor</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
@@ -1483,43 +2114,43 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                 
                 {expandedFolders.teens && (
                   <div className="p-4 bg-slate-950/60 border-t border-slate-900 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <a href="#/teens/finance/saving-challenge" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#saving-challenge" onClick={(e) => handleActivityLinkClick(e, "Saving Challenge Desk", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>📉 Finance: Saving Challenge</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/finance/budgeting" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#budgeting" onClick={(e) => handleActivityLinkClick(e, "Budget Planner", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>📉 Finance: Budget Planner</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/finance/investing" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#investing" onClick={(e) => handleActivityLinkClick(e, "Investing Simulation", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>📉 Finance: Investing Simulation</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/entrepreneurship" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#entrepreneurship" onClick={(e) => handleActivityLinkClick(e, "Entrepreneurship Workspace", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💼 Entrepreneurship Workspace</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/lifehacks/study-tips" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#study-tips" onClick={(e) => handleActivityLinkClick(e, "Study Hacks Tips", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🧠 LifeHacks: Study Hacks</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/lifehacks/time-management" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#time-management" onClick={(e) => handleActivityLinkClick(e, "Time Management Hacks", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🧠 LifeHacks: Time Management</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/lifehacks/mental-health" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#mental-health" onClick={(e) => handleActivityLinkClick(e, "Mental Health Support", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🧠 LifeHacks: Mental Health Support</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/skills/coding-bootcamp" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#coding-bootcamp" onClick={(e) => handleActivityLinkClick(e, "Coding Bootcamp Skills", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🚀 Skills: Coding Bootcamp</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/skills/public-speaking" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#public-speaking" onClick={(e) => handleActivityLinkClick(e, "Public Speaking Skills", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🚀 Skills: Public Speaking</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/teens/club/business-competition" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#business-competition" onClick={(e) => handleActivityLinkClick(e, "Young CEO Competition Club", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🏆 Club: Young CEO Competition</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
@@ -1545,35 +2176,35 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                 
                 {expandedFolders.wiseup && (
                   <div className="p-4 bg-slate-950/60 border-t border-slate-900 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <a href="#/wiseup/finance/investing-basics" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#investing-basics" onClick={(e) => handleActivityLinkClick(e, "Investing Basics", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💰 Finance: Investing Basics</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/finance/advanced-savings" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#advanced-savings" onClick={(e) => handleActivityLinkClick(e, "Wealth Accrual", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💰 Finance: Wealth Accrual</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/finance/financial-planning" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#financial-planning" onClick={(e) => handleActivityLinkClick(e, "Portfolio Planning", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💰 Finance: Portfolio Planning</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/finance/tax-strategies" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#tax-strategies" onClick={(e) => handleActivityLinkClick(e, "Tax Optimization", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💰 Finance: Tax Optimization</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/career" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#career" onClick={(e) => handleActivityLinkClick(e, "Career Pathways", "finance-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💼 Career Pathways</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/entrepreneurship" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#entrepreneurship" onClick={(e) => handleActivityLinkClick(e, "Business Incubator", "products-module")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>💼 Business Incubator</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/life-skills" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#life-skills" onClick={(e) => handleActivityLinkClick(e, "Life Skills Hub", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🌱 Life Skills Hub</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
-                    <a href="#/wiseup/community/building" className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
+                    <a href="#community-building" onClick={(e) => handleActivityLinkClick(e, "Community Building", "activities-panel")} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-colors flex items-center justify-between text-xs text-slate-200">
                       <span>🤝 Community Building</span>
                       <ChevronRight className="h-4.5 w-4.5 text-slate-500" />
                     </a>
