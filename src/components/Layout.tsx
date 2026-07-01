@@ -174,7 +174,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
         <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={settings.logo} />
       </div>
 
-      {currentUser?.email === 'tomiwab@hotmail.com' && onToggleWorkspace && !isCollapsed && (
+      {currentUser?.email?.toLowerCase() === 'tomiwab@hotmail.com' && onToggleWorkspace && !isCollapsed && (
         <div className="px-6 mb-4">
           <button 
             type="button"
@@ -303,15 +303,36 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = ({ children, userRole }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState<'xquisite' | 'ajapasworld'>('xquisite');
   const { settings, strictMode } = useSettingsStore();
   const { user: currentUser, logout } = useAuthStore();
+  const [activeWorkspace, setActiveWorkspace] = useState<'xquisite' | 'ajapasworld'>(
+    currentUser?.companyId === '4376c123-01c9-4a92-9675-8123456789ab' ? 'ajapasworld' : 'xquisite'
+  );
 
   const brandColor = settings.brandColor || '#00ff9d';
   const orgName = settings.name || 'Platform';
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleSwitchWorkspace = (workspace: 'xquisite' | 'ajapasworld') => {
+    if (currentUser) {
+      const targetOrgId = workspace === 'ajapasworld' 
+        ? '4376c123-01c9-4a92-9675-8123456789ab' 
+        : '10959119-72e4-4e57-ba54-923e36bba6a6';
+      
+      useAuthStore.getState().setUser({ ...currentUser, companyId: targetOrgId });
+      useSettingsStore.getState().reset();
+      useDataStore.getState().reset();
+      
+      setTimeout(() => {
+        window.location.hash = '/';
+        window.location.reload();
+      }, 100);
+    } else {
+      setActiveWorkspace(workspace);
+    }
+  };
 
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -384,7 +405,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   if (activeWorkspace === 'ajapasworld') {
     return (
       <ParadigmWorkspace 
-        onSwitchWorkspace={() => setActiveWorkspace('xquisite')} 
+        onSwitchWorkspace={() => handleSwitchWorkspace('xquisite')} 
         adminEmail={currentUser?.email || ''} 
       />
     );
@@ -404,7 +425,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
               isCollapsed={isSidebarCollapsed}
               logo={settings.logo}
               strictMode={strictMode}
-              onToggleWorkspace={() => setActiveWorkspace('ajapasworld')}
+              onToggleWorkspace={() => handleSwitchWorkspace('ajapasworld')}
             />
           </aside>
         )}
@@ -470,7 +491,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#020617] transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} strictMode={strictMode} onToggleWorkspace={() => setActiveWorkspace('ajapasworld')} />
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} strictMode={strictMode} onToggleWorkspace={() => handleSwitchWorkspace('ajapasworld')} />
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
