@@ -327,12 +327,17 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
           } as any);
         }
       } else {
-        // Auto-migrate old seeded records (e.g. Chameleon to Tortoise)
-        const yanribo = storeEmployees.find(e => e.firstName === 'Yanribo' && e.lastName !== 'the Tortoise');
-        if (yanribo) {
-          useDataStore.getState().updateEmployee(yanribo.id, { 
-            lastName: 'the Tortoise'
-          } as any);
+        // Auto-migrate avatar paths and names for the Ajapa tortoise characters
+        const avatarFixes: Record<string, { lastName: string; avatar: string }> = {
+          'Yanribo': { lastName: 'the Tortoise', avatar: '/assets/media__1782918840398.png' },
+          'Ajapsi':  { lastName: 'the Tortoise', avatar: '/assets/media__1782921132229.png' },
+          'Ajapa':   { lastName: 'the Tortoise', avatar: '/assets/media__1782921185348.png' },
+        };
+        for (const emp of storeEmployees) {
+          const fix = avatarFixes[emp.firstName];
+          if (fix && (emp.avatar !== fix.avatar || emp.lastName !== fix.lastName)) {
+            useDataStore.getState().updateEmployee(emp.id, fix as any);
+          }
         }
       }
     };
