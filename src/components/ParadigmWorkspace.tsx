@@ -219,8 +219,8 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
   // Product pricing optimization state
   const [optimizedPrices, setOptimizedPrices] = useState<Record<string, number>>({});
-  const dbInventory = useDataStore(state => state.inventory.filter(i => i.type === 'product'));
-  const products = dbInventory.map(item => {
+  const dbInventory = useDataStore(state => state.inventory);
+  const products = dbInventory.filter(i => i.type === 'product').map(item => {
     const currentPrice = (item.priceCents || 0) / 100;
     const demandFactor = getDemandFactor(item.name);
     const optimizedPrice = optimizedPrices[item.id];
