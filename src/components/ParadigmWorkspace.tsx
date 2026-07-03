@@ -326,17 +326,35 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             avatar: emp.avatar
           } as any);
         }
+      } else {
+        // Auto-migrate old seeded records (e.g. Chameleon to Tortoise)
+        const yanribo = storeEmployees.find(e => e.firstName === 'Yanribo' && e.lastName !== 'the Tortoise');
+        if (yanribo) {
+          useDataStore.getState().updateEmployee(yanribo.id, { 
+            lastName: 'the Tortoise'
+          } as any);
+        }
       }
     };
     seedInitialData();
   }, []);
 
-  // Update selectedStaff dynamically if displayEmployees changes
+  // Update selectedStaff dynamically if displayEmployees changes.
+  // Also handles the case where selectedStaff was seeded from defaultEmployees
+  // (id="e1") but the persisted store has employees with Supabase UUIDs.
   useEffect(() => {
-    if (selectedStaff && displayEmployees.length > 0) {
-      const match = displayEmployees.find(e => e.id === selectedStaff.id);
+    if (displayEmployees.length > 0) {
+      const match = displayEmployees.find(e => e.id === selectedStaff?.id);
       if (match) {
+        // Sync latest data (e.g. lastName "the Tortoise" after migration)
         setSelectedStaff(match);
+      } else {
+        // selectedStaff id doesn't exist in the live list (UUID vs e1 mismatch).
+        // Try to find by firstName instead so the user sees the right person.
+        const byName = selectedStaff?.firstName
+          ? displayEmployees.find(e => e.firstName === selectedStaff.firstName)
+          : null;
+        setSelectedStaff(byName ?? displayEmployees[0]);
       }
     }
   }, [displayEmployees]);
