@@ -75,7 +75,7 @@ const initialProducts: Product[] = [
 ];
 
 const defaultEmployees = [
-  { id: "e1", firstName: "Yanribo", lastName: "the Chameleon", role: "AI Strategist", avatar: "/assets/media__1782918840398.png" },
+  { id: "e1", firstName: "Yanribo", lastName: "the Tortoise", role: "AI Strategist", avatar: "/assets/media__1782918840398.png" },
   { id: "e2", firstName: "Ajapsi", lastName: "the Tortoise", role: "Product Designer", avatar: "/assets/media__1782921132229.png" },
   { id: "e3", firstName: "Ajapa", lastName: "the Tortoise", role: "Financial Auditor", avatar: "/assets/media__1782921185348.png" },
   { id: "e4", firstName: "Kiki", lastName: "Kangaroo", role: "CRM Coordinator", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kiki" },
@@ -663,7 +663,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     try {
       let personaContext = "";
       if (selectedStaff.firstName === "Yanribo") {
-        personaContext = "You are Yanribo, the wise, maternal, and strategic AI chameleon. You help Akin with business strategy, marketing ideas, and lead followups. Keep your tone encouraging, thoughtful, and professional.";
+        personaContext = "You are Yanribo, the wise, maternal, and strategic AI tortoise (Mamma Ajapa). You help Akin with business strategy, marketing ideas, and lead followups. Keep your tone encouraging, thoughtful, and professional.";
       } else if (selectedStaff.firstName === "Ajapsi") {
         personaContext = "You are Ajapsi, the energetic, playful tortoise. You are the product designer, full of child-like enthusiasm, focused on games, educational workbooks, and teenager budgeting planners. Keep your tone bubbly, exciting, and friendly with emojis!";
       } else if (selectedStaff.firstName === "Ajapa") {
