@@ -1313,7 +1313,11 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 intent: 'GENERAL_QUERY'
             };
         }
-        return { response: `Connection Error: ${error.message || "Unknown Error"} (Status: ${error.status || "N/A"})`, intent: 'GENERAL_QUERY' };
+        let errorMsg = error.message || "Unknown Error";
+        if (errorMsg.includes("Failed to fetch") || String(error).includes("Failed to fetch")) {
+            errorMsg += "\n\n💡 Troubleshooting: This usually indicates that an Ad Blocker (like uBlock Origin, Adblock Plus) or Brave Shield is blocking requests to 'generativelanguage.googleapis.com'. Please try disabling your shield/ad blocker for localhost, or whitelist the Google Gemini API domain.";
+        }
+        return { response: `Connection Error: ${errorMsg} (Status: ${error.status || "N/A"})`, intent: 'GENERAL_QUERY' };
     }
 }
 
@@ -1380,7 +1384,11 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         return result.text() || "I couldn't retrieve that information right now.";
     } catch (e: any) {
         console.error("[generateAIResponse] execution failed:", e);
-        return `Error: ${e.message || "The AI encountered an issue processing your request."}`;
+        let errorMsg = e.message || "The AI encountered an issue processing your request.";
+        if (errorMsg.includes("Failed to fetch") || String(e).includes("Failed to fetch")) {
+            errorMsg += "\n\n💡 Troubleshooting: This usually indicates that an Ad Blocker (like uBlock Origin, Adblock Plus) or Brave Shield is blocking requests to 'generativelanguage.googleapis.com'. Please try disabling your shield/ad blocker for localhost, or whitelist the Google Gemini API domain.";
+        }
+        return `Error: ${errorMsg}`;
     }
 }
 
