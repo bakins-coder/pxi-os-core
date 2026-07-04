@@ -22,7 +22,8 @@ import {
   Send,
   Mic,
   Square,
-  Volume2
+  Volume2,
+  LogOut
 } from "lucide-react";
 import {
   AreaChart,
@@ -202,6 +203,7 @@ interface ParadigmWorkspaceProps {
 }
 
 export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWorkspace, adminEmail }) => {
+  const logout = useAuthStore(state => state.logout);
   // Alert/Toast states
   const [toastMessage, setToastMessage] = useState<{ title: string; desc?: string } | null>(null);
   
@@ -982,12 +984,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
               Workspace Mode: <span className="text-orange-400 font-bold">Ajapasworld</span>
             </p>
           </div>
-          <button 
-            onClick={onSwitchWorkspace}
-            className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-xl transition-all hover:scale-[1.02] shadow-lg"
-          >
-            Switch to Xquisite Celebrations <ArrowRight size={14} className="text-emerald-400" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onSwitchWorkspace}
+              className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-xl transition-all hover:scale-[1.02] shadow-lg"
+            >
+              Switch to Xquisite Celebrations <ArrowRight size={14} className="text-emerald-400" />
+            </button>
+            <button 
+              onClick={logout}
+              className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 font-bold text-xs uppercase px-4 py-2.5 rounded-xl transition-all hover:scale-[1.02] shadow-lg"
+            >
+              Sign Out <LogOut size={14} className="text-rose-400" />
+            </button>
+          </div>
         </div>
 
         {/* Workspace Banner / Header */}
