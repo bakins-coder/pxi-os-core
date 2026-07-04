@@ -225,6 +225,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   const dbLeads = useDataStore(state => state.leads);
   const leads = dbLeads.map(mapDbLeadToLocal);
   const dbInvoices = useDataStore(state => state.invoices);
+  const juneRevenueTotal = dbInvoices
+    .filter(inv => {
+      if (!inv.date) return false;
+      const dateObj = new Date(inv.date);
+      return dateObj.getMonth() === 5 && inv.status === 'Paid';
+    })
+    .reduce((sum, inv) => sum + (inv.totalCents || 0), 0) / 100;
+  
+  const juneRevenueFormatted = new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0
+  }).format(juneRevenueTotal);
+
   const [newLead, setNewLead] = useState({ name: "", email: "", status: "New" as Lead["status"], value: "" });
   const [selectedLeadId, setSelectedLeadId] = useState<string>("1");
   const [draftedEmail, setDraftedEmail] = useState<string>("");
@@ -338,14 +352,116 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             avatar: emp.avatar
           } as any);
         }
-      } else {
+      }
+
+      // Seed Invoices and Bookkeeping Entries if empty
+      const storeInvoices = useDataStore.getState().invoices;
+      if (storeInvoices.length === 0) {
+        const companyId = useAuthStore.getState().user?.companyId || '';
+        
+        // Seed Invoices
+        const invoicesToSeed = [
+          {
+            id: 'inv-1',
+            number: 'INV-2026-001',
+            companyId,
+            contactId: 'c1',
+            customerName: 'Kola Adebayo',
+            date: '2026-06-15',
+            dueDate: '2026-06-30',
+            status: 'Paid' as any,
+            type: 'Sales' as any,
+            totalCents: 15000000,
+            paidAmountCents: 15000000,
+            lines: [{ id: 'l1', description: 'Ajapsi Math & Money Workbook (Bulk)', quantity: 10, unitPriceCents: 1500000 }]
+          },
+          {
+            id: 'inv-2',
+            number: 'INV-2026-002',
+            companyId,
+            contactId: 'c2',
+            customerName: 'Tunde Bakare',
+            date: '2026-06-20',
+            dueDate: '2026-07-05',
+            status: 'Paid' as any,
+            type: 'Sales' as any,
+            totalCents: 7750000,
+            paidAmountCents: 7750000,
+            lines: [{ id: 'l2', description: 'Coin Counting Board Game (Bulk)', quantity: 5, unitPriceCents: 1550000 }]
+          },
+          {
+            id: 'inv-3',
+            number: 'INV-2026-003',
+            companyId,
+            contactId: 'c3',
+            customerName: 'Funmi Alao',
+            date: '2026-06-25',
+            dueDate: '2026-07-10',
+            status: 'Unpaid' as any,
+            type: 'Sales' as any,
+            totalCents: 4500000,
+            paidAmountCents: 0,
+            lines: [{ id: 'l3', description: 'WiseUp Teens Budgeting Course', quantity: 1, unitPriceCents: 4500000 }]
+          }
+        ];
+
+        for (const inv of invoicesToSeed) {
+          await useDataStore.getState().addInvoice(inv as any);
+        }
+
+        // Seed Bookkeeping Entries
+        const bookkeepingToSeed = [
+          {
+            id: 'b-1',
+            date: '2026-06-15',
+            type: 'Inflow' as const,
+            category: 'Sales Revenue',
+            description: 'Payment for Invoice INV-2026-001 (Kola Adebayo)',
+            amountCents: 15000000,
+            referenceId: 'inv-1'
+          },
+          {
+            id: 'b-2',
+            date: '2026-06-20',
+            type: 'Inflow' as const,
+            category: 'Sales Revenue',
+            description: 'Payment for Invoice INV-2026-002 (Tunde Bakare)',
+            amountCents: 7750000,
+            referenceId: 'inv-2'
+          },
+          {
+            id: 'b-3',
+            date: '2026-06-22',
+            type: 'Outflow' as const,
+            category: 'Operating Expense',
+            description: 'Advertising campaign on Facebook and Google',
+            amountCents: 5000000
+          },
+          {
+            id: 'b-4',
+            date: '2026-06-26',
+            type: 'Outflow' as const,
+            category: 'Office Rent',
+            description: 'Monthly co-working space rental payment',
+            amountCents: 8000000
+          }
+        ];
+
+        for (const entry of bookkeepingToSeed) {
+          await useDataStore.getState().addBookkeepingEntry(entry as any);
+        }
+      }
+
+      // Auto-migrate old seeded records (e.g. Chameleon to Tortoise)
+      const storeEmployeesAfter = useDataStore.getState().employees;
+      if (storeEmployeesAfter.length > 0) {
         // Auto-migrate avatar paths and names for the Ajapa tortoise characters
         const avatarFixes: Record<string, { lastName: string; avatar: string }> = {
           'Yanribo': { lastName: 'the Tortoise', avatar: '/assets/yanribo.jpg' },
           'Ajapsi':  { lastName: 'the Tortoise', avatar: '/assets/ajapsi.jpg' },
           'Ajapa':   { lastName: 'the Tortoise', avatar: '/assets/ajapa.jpg' },
         };
-        for (const emp of storeEmployees) {
+        for (const emp of storeEmployeesAfter) {
           const fix = avatarFixes[emp.firstName];
           if (fix && (emp.avatar !== fix.avatar || emp.lastName !== fix.lastName)) {
             useDataStore.getState().updateEmployee(emp.id, fix as any);
@@ -1050,7 +1166,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-mono">JUNE REVENUE</p>
-                <p className="text-xl font-bold font-mono text-amber-300">₦227,500</p>
+                <p className="text-xl font-bold font-mono text-amber-300">{juneRevenueFormatted}</p>
               </div>
             </div>
 
