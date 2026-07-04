@@ -77,17 +77,17 @@ const initialProducts: Product[] = [
 // Avatar overrides: always use local PNG for the Ajapa tortoise characters
 // regardless of what the database or persisted store has stored.
 const STAFF_AVATAR_OVERRIDES: Record<string, string> = {
-  'Yanribo': '/assets/yanribo.png',
-  'Ajapsi':  '/assets/ajapsi.png',
-  'Ajapa':   '/assets/ajapa.webp',
+  'Yanribo': '/assets/yanribo.jpg',
+  'Ajapsi':  '/assets/ajapsi.jpg',
+  'Ajapa':   '/assets/ajapa.jpg',
 };
 const getStaffAvatar = (firstName: string, storedAvatar: string): string =>
   STAFF_AVATAR_OVERRIDES[firstName] ?? storedAvatar;
 
 const defaultEmployees = [
-  { id: "e1", firstName: "Yanribo", lastName: "the Tortoise", role: "AI Strategist", avatar: "/assets/yanribo.png" },
-  { id: "e2", firstName: "Ajapsi", lastName: "the Tortoise", role: "Product Designer", avatar: "/assets/ajapsi.png" },
-  { id: "e3", firstName: "Ajapa", lastName: "the Tortoise", role: "Financial Auditor", avatar: "/assets/ajapa.webp" },
+  { id: "e1", firstName: "Yanribo", lastName: "the Tortoise", role: "AI Strategist", avatar: "/assets/yanribo.jpg" },
+  { id: "e2", firstName: "Ajapsi", lastName: "the Tortoise", role: "Product Designer", avatar: "/assets/ajapsi.jpg" },
+  { id: "e3", firstName: "Ajapa", lastName: "the Tortoise", role: "Financial Auditor", avatar: "/assets/ajapa.jpg" },
   { id: "e4", firstName: "Kiki", lastName: "Kangaroo", role: "CRM Coordinator", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kiki" },
   { id: "e5", firstName: "Barnaby", lastName: "Beaver", role: "Catalog Optimizer", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Barnaby" },
   { id: "e6", firstName: "Oliver", lastName: "Owl", role: "Security Auditor", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver" }
@@ -339,9 +339,9 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
       } else {
         // Auto-migrate avatar paths and names for the Ajapa tortoise characters
         const avatarFixes: Record<string, { lastName: string; avatar: string }> = {
-          'Yanribo': { lastName: 'the Tortoise', avatar: '/assets/yanribo.png' },
-          'Ajapsi':  { lastName: 'the Tortoise', avatar: '/assets/ajapsi.png' },
-          'Ajapa':   { lastName: 'the Tortoise', avatar: '/assets/ajapa.webp' },
+          'Yanribo': { lastName: 'the Tortoise', avatar: '/assets/yanribo.jpg' },
+          'Ajapsi':  { lastName: 'the Tortoise', avatar: '/assets/ajapsi.jpg' },
+          'Ajapa':   { lastName: 'the Tortoise', avatar: '/assets/ajapa.jpg' },
         };
         for (const emp of storeEmployees) {
           const fix = avatarFixes[emp.firstName];
@@ -1378,7 +1378,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="crm-module">
             <div className="bg-gradient-to-r from-red-950/50 to-slate-900 p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <img src="/assets/yanribo.png" className="w-16 h-16 rounded-full object-cover border-2 border-red-500 bg-slate-850" alt="Yanribo" />
+                <img src="/assets/yanribo.jpg" className="w-16 h-16 rounded-full object-cover border-2 border-red-500 bg-slate-850" alt="Yanribo" />
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 bg-red-600/30 text-red-400 font-mono text-[10px] rounded uppercase font-bold border border-red-500/20">
@@ -1562,7 +1562,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl overflow-hidden shadow-xl" id="products-module">
             <div className="bg-gradient-to-r from-orange-950/40 to-slate-900 p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <img src="/assets/ajapsi.png" className="w-16 h-16 rounded-full object-cover border-2 border-orange-500 bg-slate-850" alt="Ajapsi" />
+                <img src="/assets/ajapsi.jpg" className="w-16 h-16 rounded-full object-cover border-2 border-orange-500 bg-slate-850" alt="Ajapsi" />
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 bg-orange-600/30 text-orange-400 font-mono text-[10px] rounded uppercase font-bold border border-orange-500/20">
@@ -1648,7 +1648,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             <div className="bg-gradient-to-r from-purple-950/40 to-slate-900 p-6 border-b border-slate-800">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <img src="/assets/ajapa.webp" className="w-16 h-16 rounded-full object-cover border-2 border-purple-500 bg-slate-850" alt="Ajapa" />
+                  <img src="/assets/ajapa.jpg" className="w-16 h-16 rounded-full object-cover border-2 border-purple-500 bg-slate-850" alt="Ajapa" />
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 bg-purple-600/30 text-purple-400 font-mono text-[10px] rounded uppercase font-bold border border-purple-500/20">
