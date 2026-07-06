@@ -572,7 +572,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     if (lead.status === "New") {
       body += `Thanks for connecting with Ajapasworld! We noticed you recently joined us via ${lead.source}. We would love to introduce you to our premium MoneeWise financial literacy curriculum.\n\nAre you available for a brief 10-minute demo call this week?`;
     } else if (lead.status === "Proposal") {
-      body += `I hope you are having a wonderful week. I'm following up on the proposal we sent over for the bulk license order (valued at $${lead.value}).\n\nWe are excited to partner with you to bring these gamified workbooks to your students. Let me know if you have any questions about the Lotus Bank account details or package setup!`;
+      body += `I hope you are having a wonderful week. I'm following up on the proposal we sent over for the bulk license order (valued at ₦${Number(lead.value).toLocaleString()}).\n\nWe are excited to partner with you to bring these gamified workbooks to your students. Let me know if you have any questions about the Lotus Bank account details or package setup!`;
     } else if (lead.status === "Contacted") {
       body += `It was great speaking with you recently about MoneeWise. Based on our conversation, I recommend our WiseUp financial course for teens and young adults.\n\nI've attached our catalog. Let me know if you would like to schedule a trial session.`;
     } else {
@@ -631,7 +631,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
       return updated;
     });
     
-    addAgentLog(`Ajapsi optimized price for ${item.name}: $${item.currentPrice.toFixed(2)} -> $${optPrice.toFixed(2)}`);
+    addAgentLog(`Ajapsi optimized price for ${item.name}: ₦${item.currentPrice.toFixed(2)} -> ₦${optPrice.toFixed(2)}`);
     showToast("Pricing Optimized", `Price adjusted based on ${item.demandFactor} demand factors.`);
   };
 
@@ -1559,7 +1559,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                               </span>
                             </td>
                             <td className="p-4 text-right font-mono font-semibold text-white">
-                              ${lead.value.toLocaleString()}
+                              ₦{lead.value.toLocaleString()}
                             </td>
                           </tr>
                         );
@@ -1648,7 +1648,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label htmlFor="lead-value" className="text-xs text-slate-400 font-medium">Est. Deal Value ($)</label>
+                        <label htmlFor="lead-value" className="text-xs text-slate-400 font-medium">Est. Deal Value (₦)</label>
                         <input 
                           id="lead-value" 
                           type="number"
@@ -1733,7 +1733,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                         <tr key={product.id} className="hover:bg-slate-900/40 transition-colors duration-200">
                           <td className="p-4 font-semibold text-white">{product.name}</td>
                           <td className="p-4 font-mono text-xs">{product.category}</td>
-                          <td className="p-4 font-mono font-bold text-white">${product.currentPrice}</td>
+                          <td className="p-4 font-mono font-bold text-white">₦{product.currentPrice}</td>
                           <td className="p-4">
                             <span className={`px-2 py-0.5 text-xs rounded border uppercase font-mono ${demandBadge}`}>
                               {product.demandFactor}
@@ -1742,9 +1742,9 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                           <td className="p-4">
                             {product.optimizedPrice ? (
                               <div className="flex items-center gap-1.5 font-mono">
-                                <span className="font-bold text-emerald-400">${product.optimizedPrice}</span>
+                                <span className="font-bold text-emerald-400">₦{product.optimizedPrice}</span>
                                 <span className={`text-[10px] uppercase px-1 rounded ${product.optimizedPrice > product.currentPrice ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                                  {product.optimizedPrice > product.currentPrice ? '+$' + (product.optimizedPrice - product.currentPrice).toFixed(2) : '-$' + (product.currentPrice - product.optimizedPrice).toFixed(2)}
+                                  {product.optimizedPrice > product.currentPrice ? '+₦' + (product.optimizedPrice - product.currentPrice).toFixed(2) : '-₦' + (product.currentPrice - product.optimizedPrice).toFixed(2)}
                                 </span>
                               </div>
                             ) : (
@@ -1823,7 +1823,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                         <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} fontStyle="italic" />
                         <YAxis stroke="#94a3b8" fontSize={11} />
                         <Tooltip contentStyle={{ backgroundColor: "#020617", borderColor: "#334155", color: "#f8fafc" }} />
-                        <Area type="monotone" dataKey="revenue" name="Revenue ($)" stroke="#8b5cf6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
+                        <Area type="monotone" dataKey="revenue" name="Revenue (₦)" stroke="#8b5cf6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
                         <Area type="monotone" dataKey="activeUsers" name="Active Users" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorUsers)" />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -1936,7 +1936,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                           />
                         </div>
                         <div className="space-y-1">
-                          <label htmlFor="item-price" className="text-[10px] text-slate-500 font-medium">Price ($)</label>
+                          <label htmlFor="item-price" className="text-[10px] text-slate-500 font-medium">Price (₦)</label>
                           <input 
                             id="item-price" 
                             type="number" 
@@ -2052,8 +2052,8 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                       <tr className="bg-purple-900 text-white font-mono uppercase text-[9px]" style={{ backgroundColor: '#4c1d95' }}>
                         <th className="p-2.5 rounded-l">Description</th>
                         <th className="p-2.5 text-center">Qty</th>
-                        <th className="p-2.5 text-right">Price ($)</th>
-                        <th className="p-2.5 text-right rounded-r">Total ($)</th>
+                        <th className="p-2.5 text-right">Price (₦)</th>
+                        <th className="p-2.5 text-right rounded-r">Total (₦)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -2072,8 +2072,8 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                             </div>
                           </td>
                           <td className="p-2.5 text-center text-slate-600 font-mono">{item.qty}</td>
-                          <td className="p-2.5 text-right text-slate-600 font-mono">${item.price.toFixed(2)}</td>
-                          <td className="p-2.5 text-right font-bold text-slate-900 font-mono">${(item.qty * item.price).toFixed(2)}</td>
+                          <td className="p-2.5 text-right text-slate-600 font-mono">₦{item.price.toFixed(2)}</td>
+                          <td className="p-2.5 text-right font-bold text-slate-900 font-mono">₦{(item.qty * item.price).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2084,15 +2084,15 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                     <div className="w-56 text-xs text-slate-600">
                       <div className="flex justify-between py-1 border-b border-slate-100">
                         <span>Subtotal:</span>
-                        <span className="font-mono text-slate-900">${invoiceSubtotal.toFixed(2)}</span>
+                        <span className="font-mono text-slate-900">₦{invoiceSubtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-100">
                         <span>VAT (5.5%):</span>
-                        <span className="font-mono text-slate-900">${invoiceTax.toFixed(2)}</span>
+                        <span className="font-mono text-slate-900">₦{invoiceTax.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between py-2 font-bold text-purple-900 text-sm border-t-2 border-orange-500 border-b-2 border-orange-500" style={{ color: '#4c1d95', borderTopColor: '#f97316', borderBottomColor: '#f97316' }}>
                         <span>TOTAL DUE:</span>
-                        <span className="font-mono">${invoiceTotal.toFixed(2)}</span>
+                        <span className="font-mono">₦{invoiceTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -2147,7 +2147,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                         <th className="p-4">Issue Date</th>
                         <th className="p-4">Due Date</th>
                         <th className="p-4">Status</th>
-                        <th className="p-4 text-right">Total ($)</th>
+                        <th className="p-4 text-right">Total (₦)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900 text-sm text-slate-300">
@@ -2167,7 +2167,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                               </span>
                             </td>
                             <td className="p-4 text-right font-mono font-semibold text-white">
-                              ${((inv.totalCents || 0) / 100).toFixed(2)}
+                              ₦{((inv.totalCents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
                         );
