@@ -872,196 +872,52 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   const handlePrintInvoice = () => {
     addAgentLog(`Printed invoice ${invoiceMeta.invoiceNumber} for client ${invoiceMeta.clientName}.`);
     
-    // Create print window and render print preview container
-    const printContent = invoicePreviewRef.current?.innerHTML;
-    
+    let printContent = invoicePreviewRef.current?.innerHTML || '';
     if (printContent) {
-      const windowUrl = 'about:blank';
-      const uniqueName = new Date().getTime();
-      const printWindow = window.open(windowUrl, uniqueName.toString(), 'left=50,top=50,width=800,height=900');
+      // Replace all relative asset paths with absolute URLs so they load in about:blank
+      const origin = window.location.origin;
+      printContent = printContent.replace(/src="\/assets\//g, `src="${origin}/assets/`);
       
+      const printWindow = window.open('about:blank', '_blank', 'left=50,top=50,width=850,height=950');
       if (printWindow) {
         printWindow.document.write(`
           <html>
             <head>
               <title>Invoice - ${invoiceMeta.invoiceNumber}</title>
+              <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+              <!-- Tailwind CDN so that the preview styles match 100% when printed -->
+              <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
               <style>
                 body {
-                  font-family: sans-serif;
-                  margin: 20px;
-                  color: #1e1b4b;
-                  background: #fff;
-                }
-                .invoice-print-container {
-                  padding: 40px;
-                  border: 1px solid #e2e8f0;
-                  max-width: 800px;
-                  margin: 0 auto;
-                }
-                .top-bar-gradient {
-                  height: 12px;
-                  background: linear-gradient(90deg, #4c1d95 0%, #f97316 50%, #eab308 100%);
-                  margin-bottom: 30px;
-                }
-                .header-flex {
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: flex-start;
-                  margin-bottom: 40px;
-                }
-                .brand-title {
-                  font-size: 28px;
-                  font-weight: 700;
-                  color: #4c1d95;
-                  letter-spacing: -0.5px;
-                  margin: 0;
-                }
-                .brand-subtitle {
-                  font-size: 12px;
-                  color: #f97316;
-                  text-transform: uppercase;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  margin-top: 4px;
-                }
-                .invoice-tag {
-                  font-size: 32px;
-                  font-weight: 800;
-                  color: #4c1d95;
-                  text-align: right;
-                  margin: 0;
-                }
-                .meta-table {
-                  margin-top: 10px;
-                  font-size: 13px;
-                  border-collapse: collapse;
-                }
-                .meta-table td {
-                  padding: 4px 8px;
-                }
-                .meta-label {
-                  font-weight: 600;
-                  color: #64748b;
-                }
-                .billing-grid {
-                  display: grid;
-                  grid-template-columns: 1fr 1fr;
-                  gap: 40px;
-                  margin-bottom: 40px;
-                  background: #f8fafc;
+                  font-family: 'Outfit', 'Inter', sans-serif;
+                  background-color: #fff;
+                  color: #1e293b;
                   padding: 20px;
-                  border-radius: 8px;
-                  border-left: 4px solid #f97316;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
                 }
-                .bill-section h3 {
-                  font-size: 14px;
-                  text-transform: uppercase;
-                  color: #4c1d95;
-                  margin-bottom: 10px;
-                  margin-top: 0;
-                  letter-spacing: 0.5px;
-                }
-                .bill-section p {
-                  margin: 3px 0;
-                  font-size: 13px;
-                  color: #334155;
-                }
-                .items-table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  margin-bottom: 30px;
-                }
-                .items-table th {
-                  background: #4c1d95;
-                  color: white;
-                  font-size: 13px;
-                  text-transform: uppercase;
-                  text-align: left;
-                  padding: 12px;
-                }
-                .items-table td {
-                  padding: 12px;
-                  border-bottom: 1px solid #e2e8f0;
-                  font-size: 13px;
-                  color: #334155;
-                }
-                .text-right {
-                  text-align: right !important;
-                }
-                .totals-flex {
-                  display: flex;
-                  justify-content: flex-end;
-                  margin-bottom: 40px;
-                }
-                .totals-box {
-                  width: 300px;
-                }
-                .total-row {
-                  display: flex;
-                  justify-content: space-between;
-                  padding: 8px 0;
-                  font-size: 13px;
-                  border-bottom: 1px solid #e2e8f0;
-                }
-                .grand-total-row {
-                  display: flex;
-                  justify-content: space-between;
-                  padding: 12px 0;
-                  font-size: 16px;
-                  font-weight: 700;
-                  color: #4c1d95;
-                  border-top: 2px solid #f97316;
-                  border-bottom: 2px solid #f97316;
-                }
-                .bank-card {
-                  background: linear-gradient(135deg, #1e1b4b 0%, #311062 100%);
-                  color: white;
-                  padding: 24px;
-                  border-radius: 12px;
-                  margin-bottom: 30px;
-                  border-bottom: 6px solid #eab308;
-                  position: relative;
-                }
-                .bank-card h4 {
-                  margin: 0 0 15px 0;
-                  color: #eab308;
-                  font-size: 14px;
-                  text-transform: uppercase;
-                  letter-spacing: 1px;
-                }
-                .bank-grid {
-                  display: grid;
-                  grid-template-columns: 1fr 1fr;
-                  gap: 15px;
-                  font-size: 13px;
-                }
-                .bank-item-lbl {
-                  color: #94a3b8;
-                  font-size: 11px;
-                  text-transform: uppercase;
-                }
-                .bank-item-val {
-                  font-weight: 600;
-                  margin-top: 2px;
-                }
-                .footer {
-                  text-align: center;
-                  font-size: 12px;
-                  color: #64748b;
-                  margin-top: 50px;
-                  border-top: 1px solid #e2e8f0;
-                  padding-top: 20px;
+                @media print {
+                  body {
+                    padding: 0;
+                    margin: 0;
+                  }
+                  .no-print {
+                    display: none !important;
+                  }
                 }
               </style>
             </head>
             <body>
-              <div class="invoice-print-container">
+              <div style="max-width: 850px; margin: 0 auto;">
                 ${printContent}
               </div>
               <script>
+                // Wait for all images to finish loading before bringing up the print dialog
                 window.onload = function() {
-                  window.print();
-                  window.close();
+                  setTimeout(function() {
+                    window.print();
+                    window.close();
+                  }, 500);
                 };
               </script>
             </body>
@@ -1982,153 +1838,247 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                 {/* HTML Invoice Template */}
                 <div 
                   ref={invoicePreviewRef}
-                  className="bg-white text-slate-900 rounded-xl shadow-2xl p-6 font-sans overflow-hidden border border-slate-200"
+                  className="bg-white text-slate-900 rounded-2xl shadow-2xl font-sans overflow-hidden border border-slate-200 flex max-w-[850px] mx-auto relative"
                   style={{ minHeight: "650px" }}
                 >
-                  {/* AJAPA's Gold, Orange, Purple gradient header band */}
-                  <div className="h-3 bg-gradient-to-r from-purple-800 via-orange-500 to-yellow-500 rounded-t -mx-6 -mt-6 mb-6" />
-                  
-                  {/* Top Logo and Invoice ID details */}
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold tracking-tight text-purple-950 font-serif" style={{ color: '#3b0764' }}>
-                        Ajapa's World
-                      </h2>
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-orange-600" style={{ color: '#ea580c' }}>
-                        Empowering Youth Financially
-                      </span>
-                      <p className="text-[10px] text-slate-500 mt-2 font-mono leading-tight">
-                        info@ajapasworld.com | www.ajapasworld.com<br />
-                        Lagos, Nigeria
-                      </p>
+                  {/* Left colorful strip */}
+                  <div 
+                    className="w-4 shrink-0 bg-repeat-y" 
+                    style={{ 
+                      backgroundImage: 'linear-gradient(180deg, #ea580c 20%, #eab308 20%, #eab308 40%, #8b5cf6 40%, #8b5cf6 60%, #3b82f6 60%, #3b82f6 80%, #10b981 80%, #10b981 100%)', 
+                      backgroundSize: '100% 60px' 
+                    }} 
+                  />
+
+                  {/* Main content body */}
+                  <div className="flex-grow p-6 flex flex-col bg-[#fdfbf7]">
+                    
+                    {/* Brand Banner Header */}
+                    <div className="relative p-6 text-white rounded-xl overflow-hidden min-h-[160px] mb-6 shadow-md">
+                      <img 
+                        src="/assets/ajapa_family.jpg" 
+                        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.7] saturate-125" 
+                        alt="Header Banner" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-950/80 via-purple-950/40 to-slate-950/50" />
+                      
+                      <div className="relative z-10 flex justify-between items-start h-full">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-3xl font-extrabold tracking-wider font-sans text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-300 to-green-400 drop-shadow-md">AJAPSI</span>
+                            <span className="bg-purple-600 text-white font-mono text-[10px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow">MONEEWISE</span>
+                          </div>
+                          <p className="text-[9px] text-yellow-300 font-bold tracking-wide mt-1 drop-shadow-sm">Learn. Play. Grow. The Ajapsi Way!</p>
+                          
+                          {/* Mini Blackboard */}
+                          <div className="mt-4 bg-slate-950/95 border-2 border-amber-800 rounded-lg p-2 max-w-[170px] shadow-lg transform -rotate-1">
+                            <p className="font-sans text-[9px] text-amber-100 text-center font-bold leading-tight">
+                              MoneeWise Kids make <span className="text-yellow-400">Smart Choices!</span> 😊
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-1 items-end">
+                          <span className="text-xl font-black text-white tracking-widest uppercase bg-purple-900/40 px-3 py-1 rounded border border-purple-500/20 mb-2">INVOICE</span>
+                          <div className="flex flex-col gap-1 items-end">
+                            <span className="px-2.5 py-0.5 bg-orange-600/95 border border-orange-500 text-[8px] font-black tracking-wider uppercase rounded shadow transform rotate-1">LEARN</span>
+                            <span className="px-2.5 py-0.5 bg-purple-600/95 border border-purple-500 text-[8px] font-black tracking-wider uppercase rounded shadow transform -rotate-1">SAVE</span>
+                            <span className="px-2.5 py-0.5 bg-emerald-600/95 border border-emerald-500 text-[8px] font-black tracking-wider uppercase rounded shadow transform rotate-1">GROW</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <h1 className="text-2xl font-black text-purple-900 tracking-tight uppercase" style={{ color: '#581c87' }}>
-                        INVOICE
-                      </h1>
-                      <table className="mt-2 text-[10px] border-collapse ml-auto text-slate-600 font-mono">
-                        <tbody>
-                          <tr>
-                            <td className="py-0.5 px-2 text-slate-400 font-medium">INVOICE NO:</td>
-                            <td className="py-0.5 px-2 font-bold text-slate-900">{invoiceMeta.invoiceNumber}</td>
+
+                    {/* Metadata & Billing Cards Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      
+                      {/* Left: Invoice details */}
+                      <div className="bg-white border border-emerald-500/20 rounded-xl p-3 shadow-sm space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold">#</div>
+                          <div>
+                            <span className="text-[8px] text-slate-400 block font-mono uppercase tracking-wide">Invoice No.</span>
+                            <span className="font-bold text-xs text-slate-800 font-mono">{invoiceMeta.invoiceNumber}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 text-xs">📅</div>
+                          <div>
+                            <span className="text-[8px] text-slate-400 block font-mono uppercase tracking-wide">Invoice Date</span>
+                            <span className="font-bold text-xs text-slate-800 font-mono">{invoiceMeta.issueDate}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs">⏳</div>
+                          <div>
+                            <span className="text-[8px] text-slate-400 block font-mono uppercase tracking-wide">Due Date</span>
+                            <span className="font-bold text-xs text-slate-800 font-mono">{invoiceMeta.dueDate}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Center: Bill To Details */}
+                      <div className="bg-white border border-blue-500/20 rounded-xl p-3 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <span className="bg-blue-50 text-blue-800 text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wider border border-blue-100">Bill To:</span>
+                          <div className="mt-2 text-xs font-bold text-slate-800 border-b border-dashed border-slate-200 pb-1">{invoiceMeta.clientName}</div>
+                          <div className="text-[9px] text-slate-500 border-b border-dashed border-slate-200 py-0.5 truncate">{invoiceMeta.clientEmail}</div>
+                          <div className="text-[9px] text-slate-600 border-b border-dashed border-slate-200 py-0.5 truncate">{invoiceMeta.clientAddress}</div>
+                        </div>
+                      </div>
+
+                      {/* Right: Dashed Speech Bubble */}
+                      <div className="bg-emerald-500/5 border-2 border-dashed border-emerald-500/20 rounded-2xl p-4 flex items-center justify-center text-center">
+                        <p className="font-sans text-[10px] text-emerald-800 font-black italic leading-relaxed">
+                          "Smart today, Wise tomorrow, That's the Ajapsi way!" 🐢✨
+                        </p>
+                      </div>
+
+                    </div>
+
+                    {/* Table of items */}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-6 bg-white">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-purple-950 text-white font-mono uppercase text-[9px]">
+                            <th className="p-3">Item Description</th>
+                            <th className="p-3 text-center">Quantity</th>
+                            <th className="p-3 text-right">Unit Price (₦)</th>
+                            <th className="p-3 text-right">Total (₦)</th>
                           </tr>
-                          <tr>
-                            <td className="py-0.5 px-2 text-slate-400 font-medium">ISSUE DATE:</td>
-                            <td className="py-0.5 px-2 text-slate-900">{invoiceMeta.issueDate}</td>
-                          </tr>
-                          <tr>
-                            <td className="py-0.5 px-2 text-slate-400 font-medium">DUE DATE:</td>
-                            <td className="py-0.5 px-2 text-slate-900">{invoiceMeta.dueDate}</td>
-                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {invoiceItems.map((item, idx) => {
+                            const getProductThumbnail = (description: string): string => {
+                              const desc = description.toLowerCase();
+                              if (desc.includes('ajapsi') || desc.includes('workbook') || desc.includes('license') || desc.includes('subscription')) {
+                                return '/assets/ajapsi.jpg';
+                              }
+                              if (desc.includes('ajapa') || desc.includes('course') || desc.includes('facilitation') || desc.includes('workshop')) {
+                                return '/assets/ajapa.jpg';
+                              }
+                              if (desc.includes('yanribo') || desc.includes('crm') || desc.includes('email')) {
+                                return '/assets/yanribo.jpg';
+                              }
+                              return '/assets/family.png';
+                            };
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="p-3 font-semibold text-slate-800 flex items-center gap-2">
+                                  <img 
+                                    src={getProductThumbnail(item.description)} 
+                                    className="w-8 h-8 rounded object-cover border border-slate-200 shrink-0" 
+                                    alt="Thumbnail" 
+                                  />
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{item.description}</span>
+                                    <button 
+                                      onClick={() => handleRemoveInvoiceItem(idx)}
+                                      className="text-red-500 hover:text-red-700 ml-1 no-print shrink-0"
+                                      title="Delete Line Item"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 inline" />
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="p-3 text-center text-slate-600 font-mono">{item.qty}</td>
+                                <td className="p-3 text-right text-slate-600 font-mono">₦{item.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td className="p-3 text-right font-bold text-slate-900 font-mono">₦{(item.qty * item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
-                  </div>
 
-                  {/* Billing Details layout */}
-                  <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border-l-4 border-orange-500" style={{ borderLeftColor: '#f97316' }}>
-                    <div>
-                      <h3 className="text-[11px] font-bold text-purple-900 uppercase tracking-wide mb-1" style={{ color: '#4c1d95' }}>
-                        BILLED TO:
-                      </h3>
-                      <p className="text-xs font-bold text-slate-800">{invoiceMeta.clientName}</p>
-                      <p className="text-[10px] text-slate-600 mt-0.5">{invoiceMeta.clientEmail}</p>
-                      <p className="text-[10px] text-slate-600 leading-snug mt-1 max-w-[200px]">
-                        {invoiceMeta.clientAddress}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-[11px] font-bold text-purple-900 uppercase tracking-wide mb-1" style={{ color: '#4c1d95' }}>
-                        REMIT PAYMENT TO:
-                      </h3>
-                      <p className="text-xs font-bold text-slate-800">Ajapasworld Operations</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">Finance Department</p>
-                    </div>
-                  </div>
+                    {/* Bottom illustration & remittance grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mt-auto">
+                      
+                      {/* Bottom Left illustration box */}
+                      <div className="md:col-span-5 flex flex-col items-center bg-amber-500/5 border border-amber-500/10 rounded-xl p-4">
+                        <img 
+                          src="/assets/family.png" 
+                          className="w-20 h-20 rounded-full object-cover border-2 border-yellow-500 shadow-sm" 
+                          alt="Ajapa Family" 
+                        />
+                        <div className="mt-3 bg-slate-950 border-2 border-purple-500/30 rounded-lg p-2.5 text-center transform rotate-1 shadow-md">
+                          <p className="text-[9px] font-sans font-bold text-purple-200 leading-snug">
+                            Good choices today, a better tomorrow! 💜
+                          </p>
+                        </div>
+                      </div>
 
-                  {/* Line Items Table */}
-                  <table className="w-full text-left text-xs mb-6">
-                    <thead>
-                      <tr className="bg-purple-900 text-white font-mono uppercase text-[9px]" style={{ backgroundColor: '#4c1d95' }}>
-                        <th className="p-2.5 rounded-l">Description</th>
-                        <th className="p-2.5 text-center">Qty</th>
-                        <th className="p-2.5 text-right">Price (₦)</th>
-                        <th className="p-2.5 text-right rounded-r">Total (₦)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {invoiceItems.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50">
-                          <td className="p-2.5 font-medium text-slate-800">
-                            <div className="flex items-center justify-between">
-                              <span>{item.description}</span>
-                              <button 
-                                onClick={() => handleRemoveInvoiceItem(idx)}
-                                className="text-red-500 hover:text-red-700 ml-2 no-print shrink-0"
-                                title="Delete Line Item"
-                              >
-                                <Trash2 className="h-3 w-3 inline" />
-                              </button>
+                      {/* Bottom Right totals & payment box */}
+                      <div className="md:col-span-7 flex flex-col gap-3">
+                        
+                        {/* Totals card */}
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-xs space-y-1.5">
+                          <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                            <span className="text-slate-500">Subtotal</span>
+                            <span className="font-bold text-slate-800 font-mono">₦{invoiceSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                            <span className="text-slate-500">VAT (5.5%)</span>
+                            <span className="font-bold text-slate-800 font-mono">₦{invoiceTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between py-2 px-3 font-extrabold text-white text-sm bg-purple-950 rounded-lg shadow-sm">
+                            <span>TOTAL AMOUNT DUE</span>
+                            <span className="font-mono">₦{invoiceTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+
+                        {/* Remittance Details Card */}
+                        <div className="p-4 rounded-xl text-white border-b-4 border-yellow-500 shadow-md relative overflow-hidden bg-gradient-to-br from-indigo-950 to-purple-950">
+                          <h4 className="text-[9px] font-black tracking-widest text-yellow-400 uppercase mb-2">
+                            PAYMENT DETAILS (LOTUS BANK)
+                          </h4>
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[9px]">
+                            <div>
+                              <span className="text-[8px] text-indigo-300 uppercase block font-semibold">Account Name</span>
+                              <span className="font-bold text-indigo-50">Data Clinic</span>
                             </div>
-                          </td>
-                          <td className="p-2.5 text-center text-slate-600 font-mono">{item.qty}</td>
-                          <td className="p-2.5 text-right text-slate-600 font-mono">₦{item.price.toFixed(2)}</td>
-                          <td className="p-2.5 text-right font-bold text-slate-900 font-mono">₦{(item.qty * item.price).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <div>
+                              <span className="text-[8px] text-indigo-300 uppercase block font-semibold">Bank Name</span>
+                              <span className="font-bold text-indigo-50">Lotus Bank</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-[8px] text-indigo-300 uppercase block font-semibold">Account Number</span>
+                              <span className="font-black text-yellow-400 font-mono text-[11px]">1010386319</span>
+                            </div>
+                          </div>
+                        </div>
 
-                  {/* Totals Section */}
-                  <div className="flex justify-end mb-6">
-                    <div className="w-56 text-xs text-slate-600">
-                      <div className="flex justify-between py-1 border-b border-slate-100">
-                        <span>Subtotal:</span>
-                        <span className="font-mono text-slate-900">₦{invoiceSubtotal.toFixed(2)}</span>
+                        {/* Yellow Sticky notes */}
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3.5 relative overflow-hidden shadow-sm">
+                          <span className="absolute top-2 right-2 text-yellow-600 text-xs">⭐</span>
+                          <h5 className="text-[9px] font-black text-yellow-800 uppercase tracking-wider mb-1">Notes:</h5>
+                          <ul className="list-disc pl-4 text-[9px] text-yellow-900 space-y-1">
+                            <li>Thank you for your business.</li>
+                            <li>Kindly include the invoice number as the payment reference.</li>
+                            <li>Please send proof of payment after payment has been made.</li>
+                          </ul>
+                        </div>
+
                       </div>
-                      <div className="flex justify-between py-1 border-b border-slate-100">
-                        <span>VAT (5.5%):</span>
-                        <span className="font-mono text-slate-900">₦{invoiceTax.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between py-2 font-bold text-purple-900 text-sm border-t-2 border-orange-500 border-b-2 border-orange-500" style={{ color: '#4c1d95', borderTopColor: '#f97316', borderBottomColor: '#f97316' }}>
-                        <span>TOTAL DUE:</span>
-                        <span className="font-mono">₦{invoiceTotal.toFixed(2)}</span>
-                      </div>
+
                     </div>
+
+                    {/* Thank you footer */}
+                    <div className="bg-sky-600 text-white text-center text-[10px] font-bold py-2 rounded-lg mt-6 shadow-sm flex items-center justify-center gap-1.5">
+                      <span>THANK YOU! We appreciate your support and partnership.</span>
+                      <span className="text-red-300">❤️</span>
+                    </div>
+
                   </div>
 
-                  {/* Pre-seeded Bank Remittance Information Card */}
+                  {/* Right colorful strip */}
                   <div 
-                    className="p-4 rounded-xl text-white font-sans border-b-4 border-yellow-500 shadow-md relative"
-                    style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #3b0764 100%)', borderBottomColor: '#eab308' }}
-                  >
-                    <h4 className="text-[10px] font-bold tracking-widest text-yellow-400 uppercase mb-2">
-                      BANK REMITTANCE DETAILS (LOTUS BANK)
-                    </h4>
-                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[10px]">
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase block">Account Holder</span>
-                        <span className="font-bold text-slate-100">Data Clinic</span>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase block">Bank Name</span>
-                        <span className="font-bold text-slate-100">Lotus Bank</span>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase block">Account Number</span>
-                        <span className="font-bold text-yellow-400 font-mono">1010386319</span>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 uppercase block">Swift Code / Sort Code</span>
-                        <span className="font-bold text-slate-100 font-mono">LTSBNG22</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Invoice Footer */}
-                  <div className="text-center text-[9px] text-slate-400 mt-8 border-t border-slate-100 pt-3">
-                    Thank you for partnering with us to build financial confidence in children.
-                  </div>
+                    className="w-4 shrink-0 bg-repeat-y" 
+                    style={{ 
+                      backgroundImage: 'linear-gradient(180deg, #ea580c 20%, #eab308 20%, #eab308 40%, #8b5cf6 40%, #8b5cf6 60%, #3b82f6 60%, #3b82f6 80%, #10b981 80%, #10b981 100%)', 
+                      backgroundSize: '100% 60px' 
+                    }} 
+                  />
                 </div>
               </div>
               
