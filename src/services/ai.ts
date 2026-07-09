@@ -1513,12 +1513,18 @@ export async function generateAIResponse(
         const result: any = await executeToolCalls(ai, 'gemini-2.5-flash', currentMessages, {}, systemInstruction, SYSTEM_TOOL_DECLARATIONS);
         return result.text() || "I couldn't retrieve that information right now.";
     } catch (e: any) {
-        console.error("[generateAIResponse] execution failed:", e);
-        let errorMsg = e.message || "The AI encountered an issue processing your request.";
-        if (errorMsg.includes("Failed to fetch") || String(e).includes("Failed to fetch")) {
-            errorMsg += "\n\n💡 Troubleshooting: This usually indicates that an Ad Blocker (like uBlock Origin, Adblock Plus) or Brave Shield is blocking requests to 'generativelanguage.googleapis.com'. Please try disabling your shield/ad blocker for localhost, or whitelist the Google Gemini API domain.";
+        console.warn("[generateAIResponse] 2.5-flash failed, falling back to 1.5-flash. Error was:", e.message || e);
+        try {
+            const result: any = await executeToolCalls(ai, 'gemini-1.5-flash', currentMessages, {}, systemInstruction, SYSTEM_TOOL_DECLARATIONS);
+            return result.text() || "I couldn't retrieve that information right now.";
+        } catch (fallbackErr: any) {
+            console.error("[generateAIResponse] Both models failed:", fallbackErr);
+            let errorMsg = fallbackErr.message || "The AI encountered an issue processing your request.";
+            if (errorMsg.includes("Failed to fetch") || String(fallbackErr).includes("Failed to fetch")) {
+                errorMsg += "\n\n💡 Troubleshooting: This usually indicates that an Ad Blocker (like uBlock Origin, Adblock Plus) or Brave Shield is blocking requests to 'generativelanguage.googleapis.com'. Please try disabling your shield/ad blocker for localhost, or whitelist the Google Gemini API domain.";
+            }
+            return `Error: ${errorMsg}`;
         }
-        return `Error: ${errorMsg}`;
     }
 }
 
