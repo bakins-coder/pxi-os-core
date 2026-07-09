@@ -225,19 +225,24 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   const dbLeads = useDataStore(state => state.leads);
   const leads = dbLeads.map(mapDbLeadToLocal);
   const dbInvoices = useDataStore(state => state.invoices);
-  const juneRevenueTotal = dbInvoices
+  
+  const [selectedRevenueMonth, setSelectedRevenueMonth] = useState<string>("5"); // Default to June (5)
+  
+  const revenueTotal = dbInvoices
     .filter(inv => {
+      if (inv.status !== 'Paid') return false;
       if (!inv.date) return false;
+      if (selectedRevenueMonth === "All") return true;
       const dateObj = new Date(inv.date);
-      return dateObj.getMonth() === 5 && inv.status === 'Paid';
+      return dateObj.getMonth() === parseInt(selectedRevenueMonth);
     })
     .reduce((sum, inv) => sum + (inv.totalCents || 0), 0) / 100;
   
-  const juneRevenueFormatted = new Intl.NumberFormat('en-NG', {
+  const revenueFormatted = new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
     maximumFractionDigits: 0
-  }).format(juneRevenueTotal);
+  }).format(revenueTotal);
 
   const [newLead, setNewLead] = useState({ name: "", email: "", status: "New" as Lead["status"], value: "" });
   const [selectedLeadId, setSelectedLeadId] = useState<string>("1");
@@ -1077,13 +1082,36 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+            <div className="flex items-center gap-3 col-span-1">
+              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20 self-start mt-0.5">
                 <DollarSign className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-xs text-slate-400 font-mono">JUNE REVENUE</p>
-                <p className="text-xl font-bold font-mono text-amber-300">{juneRevenueFormatted}</p>
+              <div className="flex-grow">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
+                    {selectedRevenueMonth === "All" ? "ALL-TIME" : new Date(2026, parseInt(selectedRevenueMonth), 1).toLocaleString('en-US', { month: 'short' }).toUpperCase()} REVENUE
+                  </p>
+                  <select
+                    value={selectedRevenueMonth}
+                    onChange={(e) => setSelectedRevenueMonth(e.target.value)}
+                    className="bg-slate-800 text-[9px] text-slate-300 font-bold border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer focus:border-amber-500 transition-colors no-print"
+                  >
+                    <option value="All">All Time</option>
+                    <option value="0">Jan</option>
+                    <option value="1">Feb</option>
+                    <option value="2">Mar</option>
+                    <option value="3">Apr</option>
+                    <option value="4">May</option>
+                    <option value="5">Jun</option>
+                    <option value="6">Jul</option>
+                    <option value="7">Aug</option>
+                    <option value="8">Sep</option>
+                    <option value="9">Oct</option>
+                    <option value="10">Nov</option>
+                    <option value="11">Dec</option>
+                  </select>
+                </div>
+                <p className="text-xl font-bold font-mono text-amber-300 mt-1">{revenueFormatted}</p>
               </div>
             </div>
 
