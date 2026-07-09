@@ -438,6 +438,68 @@ const SYSTEM_TOOLS = {
         const dataStore = useDataStore.getState();
         await dataStore.sendDemoEmail(lead_id);
         return { success: true, message: `Prospecting email with demo link triggered for lead ${lead_id}.` };
+    },
+    prepare_invoice_preview: (args: { clientName: string; clientEmail?: string; clientAddress?: string; invoiceNumber?: string; issueDate?: string; dueDate?: string; items: Array<{ description: string; qty: number; price: number }> }) => {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('update_invoice_form', { detail: args }));
+        }
+        return { success: true, message: `Successfully loaded invoice details into the preview for ${args.clientName}.` };
+    },
+    record_paid_invoice: async (args: { clientName: string; clientEmail?: string; clientAddress?: string; invoiceNumber: string; paymentDate: string; items: Array<{ description: string; qty: number; price: number }> }) => {
+        const companyId = useAuthStore.getState().user?.companyId || '';
+        const newInvoiceId = `inv-${Date.now()}`;
+        
+        const lines = args.items.map((item, idx) => ({
+            id: `line-${idx}-${Date.now()}`,
+            description: item.description,
+            quantity: item.qty,
+            unitPriceCents: Math.round(item.price * 100)
+        }));
+
+        const subtotal = args.items.reduce((sum, item) => sum + (item.qty * item.price), 0);
+        const subtotalCents = Math.round(subtotal * 100);
+        const taxCents = Math.round(subtotal * 0.055 * 100);
+        const totalCents = subtotalCents + taxCents;
+
+        // 1. Create Invoice
+        await useDataStore.getState().addInvoice({
+            id: newInvoiceId,
+            number: args.invoiceNumber,
+            companyId,
+            customerName: args.clientName,
+            date: args.paymentDate,
+            dueDate: args.paymentDate,
+            status: 'Paid' as any,
+            type: 'Sales',
+            lines,
+            subtotalCents,
+            totalCents,
+            paidAmountCents: totalCents,
+            description: `Lotus Bank Remittance: A/C 1010386319 (Sort: LTSBNG22)`
+        });
+
+        // 2. Create Bookkeeping Entry
+        const newBookkeepingId = `book-${Date.now()}`;
+        await useDataStore.getState().addBookkeepingEntry({
+            id: newBookkeepingId,
+            companyId,
+            date: args.paymentDate,
+            type: 'Inflow',
+            category: 'Sales Revenue',
+            description: `Payment received for Invoice ${args.invoiceNumber} (${args.clientName})`,
+            amountCents: totalCents,
+            referenceId: newInvoiceId
+        } as any);
+
+        // Dispatch refresh so React component can sync local lists if needed
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('invoice_recorded_by_ai'));
+        }
+
+        return { 
+            success: true, 
+            message: `Successfully recorded paid invoice ${args.invoiceNumber} for ${args.clientName} on ${args.paymentDate}. Total paid: ₦${(totalCents / 100).toLocaleString()}.` 
+        };
     }
 };
 
@@ -656,6 +718,62 @@ const SYSTEM_TOOL_DECLARATIONS = [
                 conversation_id: { type: SchemaType.STRING, description: "ID of the current chat session" }
             },
             required: ["name"]
+        }
+    },
+    {
+        name: "prepare_invoice_preview",
+        description: "Prepare/draft an invoice with the specified metadata and item lines, loading it directly into the user's workspace screen customizer preview. Use this when the user asks to 'draft', 'create a preview of', or 'prepare' an invoice.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                clientName: { type: SchemaType.STRING, description: "Customer/Client name" },
+                clientEmail: { type: SchemaType.STRING, description: "Client email address" },
+                clientAddress: { type: SchemaType.STRING, description: "Client physical address" },
+                invoiceNumber: { type: SchemaType.STRING, description: "Invoice code/number, e.g. INV-2026-089" },
+                issueDate: { type: SchemaType.STRING, description: "Date of issue (YYYY-MM-DD)" },
+                dueDate: { type: SchemaType.STRING, description: "Due date (YYYY-MM-DD)" },
+                items: {
+                    type: SchemaType.ARRAY,
+                    description: "List of item lines in the invoice",
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            description: { type: SchemaType.STRING, description: "Item description" },
+                            qty: { type: SchemaType.NUMBER, description: "Quantity" },
+                            price: { type: SchemaType.NUMBER, description: "Unit Price in Naira" }
+                        },
+                        required: ["description", "qty", "price"]
+                    }
+                }
+            },
+            required: ["clientName", "items"]
+        }
+    },
+    {
+        name: "record_paid_invoice",
+        description: "Add a completed paid invoice and its matching payment transaction to the database, updating total revenue. Use this when the user says an invoice has already been generated and paid, or when they want to record a completed sale/payment immediately.",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                clientName: { type: SchemaType.STRING, description: "Customer name" },
+                clientEmail: { type: SchemaType.STRING, description: "Customer email" },
+                clientAddress: { type: SchemaType.STRING, description: "Customer physical address" },
+                invoiceNumber: { type: SchemaType.STRING, description: "Invoice number" },
+                paymentDate: { type: SchemaType.STRING, description: "Date payment was received (YYYY-MM-DD)" },
+                items: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            description: { type: SchemaType.STRING, description: "Item name" },
+                            qty: { type: SchemaType.NUMBER, description: "Quantity" },
+                            price: { type: SchemaType.NUMBER, description: "Unit Price in Naira" }
+                        },
+                        required: ["description", "qty", "price"]
+                    }
+                }
+            },
+            required: ["clientName", "invoiceNumber", "paymentDate", "items"]
         }
     }
 ];
@@ -1356,18 +1474,19 @@ export async function generateAIResponse(prompt: string, context: string = "", a
         - get_staff_directory: Personnel node.
         - get_recipe_analysis: Detailed menu item logic.
         - search_knowledge_base: Troubleshooting / Methodology.
+        - prepare_invoice_preview: Draft an invoice preview on screen.
+        - record_paid_invoice: Record a paid invoice and inflow entry directly.
         
         Instructions:
         1. CALL TOOLS FIRST: You MUST call the appropriate tool BEFORE generating your final response.
         2. NO PLAN-ONLY RESPONSES: Do not say "I will retrieve the information." Just call the tool and then provide the data.
         3. **STRICT TABLE REQUIREMENT**:
-           If the user asks for lists (Events, Debtors, Ingredients, Projects, Staff, Inventory), respond ONLY with a Markdown table.
-           - Event Table: | Customer | Date | Guests | Status | Location |
-           - Debtor Table: | Customer Name | Balance | Status | (Use 'amount_formatted')
-           - Project Table: | Project Name | Status | Progress | Tasks |
         4. MULTI-TURN DATA PERSISTENCE: Refer back to previously fetched data.
         5. NAMES: Always show the human-readable Customer Name.
-        6. ACTIONS: If the user asks to "Add", "Create", "Remind", or "Task", use the appropriate tools like 'add_task'.
+        6. ACTIONS: If the user asks to "Add", "Create", "Remind", or "Task", use the appropriate tools.
+        7. INVOICING: 
+           - If the user asks to prepare, draft, or create a preview of an invoice (e.g. "Prepare an invoice for Kola..."), extract the customer name, items, quantities, prices, dates, and call 'prepare_invoice_preview'.
+           - If the user asks to record an invoice that has already been generated and payment made (e.g. "Add a paid invoice of ₦50,000 for Mayokun on June 29..."), call 'record_paid_invoice'.
     `;
 
     const userParts: any[] = [{ text: prompt }];

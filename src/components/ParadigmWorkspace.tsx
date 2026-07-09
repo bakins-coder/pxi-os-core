@@ -492,6 +492,39 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     }
   }, [displayEmployees]);
 
+  // AI-invoicing communication event listeners
+  useEffect(() => {
+    const handleUpdateInvoiceForm = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const data = customEvent.detail;
+      if (data.clientName) setInvoiceMeta(prev => ({ ...prev, clientName: data.clientName }));
+      if (data.clientEmail) setInvoiceMeta(prev => ({ ...prev, clientEmail: data.clientEmail }));
+      if (data.clientAddress) setInvoiceMeta(prev => ({ ...prev, clientAddress: data.clientAddress }));
+      if (data.invoiceNumber) setInvoiceMeta(prev => ({ ...prev, invoiceNumber: data.invoiceNumber }));
+      if (data.issueDate) setInvoiceMeta(prev => ({ ...prev, issueDate: data.issueDate }));
+      if (data.dueDate) setInvoiceMeta(prev => ({ ...prev, dueDate: data.dueDate }));
+      if (data.items) {
+        setInvoiceItems(data.items.map((it: any) => ({
+          description: it.description,
+          qty: it.qty,
+          price: it.price
+        })));
+      }
+      showToast("Invoice Drafted", `Ajapa drafted the invoice details into the preview.`);
+    };
+
+    const handleInvoiceRecorded = () => {
+      showToast("Payment Recorded", `Ajapa has successfully registered the payment and updated the revenue!`);
+    };
+
+    window.addEventListener('update_invoice_form', handleUpdateInvoiceForm);
+    window.addEventListener('invoice_recorded_by_ai', handleInvoiceRecorded);
+    return () => {
+      window.removeEventListener('update_invoice_form', handleUpdateInvoiceForm);
+      window.removeEventListener('invoice_recorded_by_ai', handleInvoiceRecorded);
+    };
+  }, []);
+
   // Print references
   const invoicePreviewRef = useRef<HTMLDivElement>(null);
 
