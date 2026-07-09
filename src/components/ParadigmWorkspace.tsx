@@ -102,7 +102,7 @@ interface ChatMessage {
 }
 
 const initialChats: Record<string, ChatMessage[]> = {
-  e1: [
+  Yanribo: [
     {
       id: "w1",
       text: "Hello Akin! I am Yanribo. I'm reviewing our CRM leads and making sure we stay in touch with our potential partners. How can I help you strategize today?",
@@ -110,7 +110,7 @@ const initialChats: Record<string, ChatMessage[]> = {
       createdAt: new Date().toISOString()
     }
   ],
-  e2: [
+  Ajapsi: [
     {
       id: "w2",
       text: "Hey Akin! Ajapsi here! Woohoo! I'm super excited about our curriculum games and workbooks. Let's make learning about money awesome! Got any new ideas?",
@@ -118,7 +118,7 @@ const initialChats: Record<string, ChatMessage[]> = {
       createdAt: new Date().toISOString()
     }
   ],
-  e3: [
+  Ajapa: [
     {
       id: "w3",
       text: "Greetings, Akin. This is Ajapa. I am carefully auditing our invoices and matching them with our Lotus Bank payments (Account 1010386319). Please let me know if you want to inspect a ledger report.",
@@ -126,7 +126,7 @@ const initialChats: Record<string, ChatMessage[]> = {
       createdAt: new Date().toISOString()
     }
   ],
-  e4: [
+  Kiki: [
     {
       id: "w4",
       text: "Hi Akin! Kiki Kangaroo on the move! Ready to speed up our client outreach and dispatch new automated emails. Let us know who we should ping next!",
@@ -134,7 +134,7 @@ const initialChats: Record<string, ChatMessage[]> = {
       createdAt: new Date().toISOString()
     }
   ],
-  e5: [
+  Barnaby: [
     {
       id: "w5",
       text: "Hello, Akin. Barnaby Beaver here. I'm organizing the product catalog inventory count and cross-checking the offline backup worksheets. Busy as always, let's get building!",
@@ -142,7 +142,7 @@ const initialChats: Record<string, ChatMessage[]> = {
       createdAt: new Date().toISOString()
     }
   ],
-  e6: [
+  Oliver: [
     {
       id: "w6",
       text: "Akin. Oliver Owl reporting. I have run the compliance analysis on the main database. No integrity errors found. Let me know if you need specific field validation.",
@@ -291,8 +291,28 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   const [staffInput, setStaffInput] = useState("");
   const [isStaffRecording, setIsStaffRecording] = useState(false);
   const [isStaffTyping, setIsStaffTyping] = useState(false);
-  const [staffChats, setStaffChats] = useState<Record<string, ChatMessage[]>>(initialChats);
-  
+  const [staffChats, setStaffChats] = useState<Record<string, ChatMessage[]>>(() => {
+    try {
+      const saved = localStorage.getItem('paradigm_staff_chats');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const merged = { ...initialChats };
+        for (const key of Object.keys(parsed)) {
+          if (parsed[key] && parsed[key].length > 0) {
+            merged[key] = parsed[key];
+          }
+        }
+        return merged;
+      }
+      return initialChats;
+    } catch {
+      return initialChats;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('paradigm_staff_chats', JSON.stringify(staffChats));
+  }, [staffChats]);
   // Audio references
   const staffMediaRecorderRef = useRef<MediaRecorder | null>(null);
   const staffAudioChunksRef = useRef<Blob[]>([]);
@@ -834,7 +854,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
       createdAt: new Date().toISOString()
     };
 
-    const staffId = selectedStaff.id;
+    const staffId = selectedStaff.firstName;
     const currentMsgs = staffChats[staffId] || [];
     const updatedMsgs = [...currentMsgs, userMsg];
     setStaffChats(prev => ({
@@ -860,7 +880,15 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         personaContext = "You are Oliver Owl, the calm, quiet, and highly analytical security auditor. You focus on database compliance, system overview KPIs, and technical validation logs. Keep your tone serious, precise, brief, and logical.";
       }
 
-      const responseText = await generateAIResponse(text, personaContext);
+      // Format previous 10 messages of the chat history for Gemini
+      const historyLimit = 10;
+      const previousMsgs = updatedMsgs.slice(-historyLimit - 1, -1);
+      const chatHistory = previousMsgs.map(msg => ({
+        role: msg.sender === 'user' ? 'user' as const : 'model' as const,
+        parts: [{ text: msg.text }]
+      }));
+
+      const responseText = await generateAIResponse(text, personaContext, undefined, chatHistory);
       
       const botMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -1305,11 +1333,26 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                       <p className="text-[10px] text-slate-400 font-mono">{selectedStaff.role} • Online</p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Clear chat history with ${selectedStaff.firstName}?`)) {
+                        setStaffChats(prev => {
+                          const updated = { ...prev };
+                          updated[selectedStaff.firstName] = initialChats[selectedStaff.firstName] || [];
+                          return updated;
+                        });
+                      }
+                    }}
+                    className="text-[10px] bg-slate-800 hover:bg-slate-700 hover:text-red-400 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-400 font-bold transition-all no-print flex items-center gap-1.5"
+                    title="Clear Conversation History"
+                  >
+                    Clear History
+                  </button>
                 </div>
 
                 {/* Messages Body */}
                 <div className="flex-grow p-4 overflow-y-auto space-y-4">
-                  {(staffChats[selectedStaff.id] || []).map((msg) => {
+                  {(staffChats[selectedStaff.firstName] || []).map((msg) => {
                     const isMe = msg.sender === 'user';
                     return (
                       <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>

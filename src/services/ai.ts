@@ -1439,7 +1439,12 @@ export async function processAgentRequest(input: string, context: string, mode: 
     }
 }
 
-export async function generateAIResponse(prompt: string, context: string = "", attachment?: { base64: string, mimeType: string }): Promise<string> {
+export async function generateAIResponse(
+    prompt: string, 
+    context: string = "", 
+    attachment?: { base64: string, mimeType: string },
+    history: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = []
+): Promise<string> {
     if (useSettingsStore.getState().strictMode) return "I am currently in Strict Mode. AI services are disabled.";
     const ai = getAIInstance();
     const dataStore = useDataStore.getState();
@@ -1456,6 +1461,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
 
     const systemInstruction = `
         Role: You are the intelligent assistant for the ${useSettingsStore.getState().settings.name || 'Platform'} workspace.
+        ${context ? `Specific Agent Persona / Instruction: ${context}` : ''}
         User Role: ${userRole}.
         Operational Summary: ${operationalContextSummary}
         
@@ -1495,6 +1501,7 @@ export async function generateAIResponse(prompt: string, context: string = "", a
     }
 
     const currentMessages = [
+        ...history,
         { role: 'user', parts: userParts }
     ];
 
