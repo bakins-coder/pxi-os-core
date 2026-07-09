@@ -439,24 +439,44 @@ const SYSTEM_TOOLS = {
         await dataStore.sendDemoEmail(lead_id);
         return { success: true, message: `Prospecting email with demo link triggered for lead ${lead_id}.` };
     },
-    prepare_invoice_preview: (args: { clientName: string; clientEmail?: string; clientAddress?: string; invoiceNumber?: string; issueDate?: string; dueDate?: string; items: Array<{ description: string; qty: number; price: number }> }) => {
+    prepare_invoice_preview: (args: { clientName: string; clientEmail?: string; clientAddress?: string; invoiceNumber?: string; issueDate?: string; dueDate?: string; itemsJson: string }) => {
+        let parsedItems = [];
+        try {
+            parsedItems = JSON.parse(args.itemsJson);
+        } catch (e) {
+            console.error("Failed to parse itemsJson in prepare_invoice_preview:", e);
+        }
+
+        const detail = {
+            ...args,
+            items: parsedItems
+        };
+
         if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('update_invoice_form', { detail: args }));
+            window.dispatchEvent(new CustomEvent('update_invoice_form', { detail }));
         }
         return { success: true, message: `Successfully loaded invoice details into the preview for ${args.clientName}.` };
     },
-    record_paid_invoice: async (args: { clientName: string; clientEmail?: string; clientAddress?: string; invoiceNumber: string; paymentDate: string; items: Array<{ description: string; qty: number; price: number }> }) => {
+    record_paid_invoice: async (args: { clientName: string; clientEmail?: string; clientAddress?: string; invoiceNumber: string; paymentDate: string; itemsJson: string }) => {
         const companyId = useAuthStore.getState().user?.companyId || '';
         const newInvoiceId = `inv-${Date.now()}`;
         
-        const lines = args.items.map((item, idx) => ({
+        let parsedItems = [];
+        try {
+            parsedItems = JSON.parse(args.itemsJson);
+        } catch (e) {
+            console.error("Failed to parse itemsJson in record_paid_invoice:", e);
+            return { success: false, error: "Invalid items JSON format." };
+        }
+
+        const lines = parsedItems.map((item: any, idx: number) => ({
             id: `line-${idx}-${Date.now()}`,
             description: item.description,
-            quantity: item.qty,
-            unitPriceCents: Math.round(item.price * 100)
+            quantity: item.qty || 1,
+            unitPriceCents: Math.round((item.price || 0) * 100)
         }));
 
-        const subtotal = args.items.reduce((sum, item) => sum + (item.qty * item.price), 0);
+        const subtotal = parsedItems.reduce((sum: number, item: any) => sum + ((item.qty || 1) * (item.price || 0)), 0);
         const subtotalCents = Math.round(subtotal * 100);
         const taxCents = Math.round(subtotal * 0.055 * 100);
         const totalCents = subtotalCents + taxCents;
@@ -732,21 +752,12 @@ const SYSTEM_TOOL_DECLARATIONS = [
                 invoiceNumber: { type: SchemaType.STRING, description: "Invoice code/number, e.g. INV-2026-089" },
                 issueDate: { type: SchemaType.STRING, description: "Date of issue (YYYY-MM-DD)" },
                 dueDate: { type: SchemaType.STRING, description: "Due date (YYYY-MM-DD)" },
-                items: {
-                    type: SchemaType.ARRAY,
-                    description: "List of item lines in the invoice",
-                    items: {
-                        type: SchemaType.OBJECT,
-                        properties: {
-                            description: { type: SchemaType.STRING, description: "Item description" },
-                            qty: { type: SchemaType.NUMBER, description: "Quantity" },
-                            price: { type: SchemaType.NUMBER, description: "Unit Price in Naira" }
-                        },
-                        required: ["description", "qty", "price"]
-                    }
+                itemsJson: { 
+                    type: SchemaType.STRING, 
+                    description: "JSON array of items. Each item must be an object with keys 'description' (string), 'qty' (number), and 'price' (number in Naira). E.g. '[{\"description\":\"Story Books\",\"qty\":65,\"price\":5000}]'" 
                 }
             },
-            required: ["clientName", "items"]
+            required: ["clientName", "itemsJson"]
         }
     },
     {
@@ -760,20 +771,12 @@ const SYSTEM_TOOL_DECLARATIONS = [
                 clientAddress: { type: SchemaType.STRING, description: "Customer physical address" },
                 invoiceNumber: { type: SchemaType.STRING, description: "Invoice number" },
                 paymentDate: { type: SchemaType.STRING, description: "Date payment was received (YYYY-MM-DD)" },
-                items: {
-                    type: SchemaType.ARRAY,
-                    items: {
-                        type: SchemaType.OBJECT,
-                        properties: {
-                            description: { type: SchemaType.STRING, description: "Item name" },
-                            qty: { type: SchemaType.NUMBER, description: "Quantity" },
-                            price: { type: SchemaType.NUMBER, description: "Unit Price in Naira" }
-                        },
-                        required: ["description", "qty", "price"]
-                    }
+                itemsJson: { 
+                    type: SchemaType.STRING, 
+                    description: "JSON array of items. Each item must be an object with keys 'description' (string), 'qty' (number), and 'price' (number in Naira). E.g. '[{\"description\":\"Story Books\",\"qty\":65,\"price\":5000}]'" 
                 }
             },
-            required: ["clientName", "invoiceNumber", "paymentDate", "items"]
+            required: ["clientName", "invoiceNumber", "paymentDate", "itemsJson"]
         }
     }
 ];
@@ -794,6 +797,7 @@ async function executeToolCalls(ai: any, modelId: string, initialMessages: any[]
     const calledTools = new Set<string>();
 
     console.log(`[AI Tools] Starting execution loop for model: ${targetModel}`, { initialMessagesCount: initialMessages.length });
+    console.log(`[AI Tools] Declarations passed to model:`, toolDeclarations.map(t => t.name));
 
     for (let i = 0; i < 10; i++) {
         console.log(`[AI Tools] Turn ${i + 1}...`);
@@ -1506,7 +1510,7 @@ export async function generateAIResponse(
     ];
 
     try {
-        const result: any = await executeToolCalls(ai, 'gemini-2.5-flash', currentMessages, {}, systemInstruction);
+        const result: any = await executeToolCalls(ai, 'gemini-2.5-flash', currentMessages, {}, systemInstruction, SYSTEM_TOOL_DECLARATIONS);
         return result.text() || "I couldn't retrieve that information right now.";
     } catch (e: any) {
         console.error("[generateAIResponse] execution failed:", e);
