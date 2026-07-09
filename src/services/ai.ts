@@ -478,8 +478,22 @@ const SYSTEM_TOOLS = {
 
         const subtotal = parsedItems.reduce((sum: number, item: any) => sum + ((item.qty || 1) * (item.price || 0)), 0);
         const subtotalCents = Math.round(subtotal * 100);
-        const taxCents = Math.round(subtotal * 0.055 * 100);
-        const totalCents = subtotalCents + taxCents;
+        const taxCents = 0;
+        const totalCents = subtotalCents;
+
+        // Idempotency: Clear existing invoice and bookkeeping entries with the same number to allow overwriting
+        if (args.invoiceNumber) {
+            const store = useDataStore.getState();
+            const existingInv = store.invoices.find(inv => inv.number === args.invoiceNumber);
+            if (existingInv) {
+                const filteredInvs = store.invoices.filter(inv => inv.number !== args.invoiceNumber);
+                const filteredEntries = store.bookkeeping.filter(entry => entry.referenceId !== existingInv.id);
+                useDataStore.setState({
+                    invoices: filteredInvs,
+                    bookkeeping: filteredEntries
+                });
+            }
+        }
 
         // 1. Create Invoice
         await useDataStore.getState().addInvoice({
