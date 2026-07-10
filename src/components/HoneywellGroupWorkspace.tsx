@@ -195,6 +195,10 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
   const [activeTab, setActiveTab] = useState<Record<string, string>>({});
   const [activeOrcaTab, setActiveOrcaTab] = useState<'chat' | 'activity'>('chat');
   
+  // Real-time responsive layout controls
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [orcaMinimized, setOrcaMinimized] = useState(false);
+  
   // Real-time clock state for Lagos
   const [lagosTime, setLagosTime] = useState("");
 
@@ -319,45 +323,118 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
   return (
     <div style={{ minHeight: '100vh', background: '#090d16', color: '#f1f5f9', fontFamily: "'Inter', 'Segoe UI', sans-serif", display: 'flex', overflow: 'hidden' }}>
 
-      {/* ── LEFT SIDEBAR NAVIGATION ──────────────────────────────────────────────── */}
-      <div style={{ width: 280, background: '#0b0f19', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 24, flexShrink: 0 }}>
+      {/* ── LEFT SIDEBAR NAVIGATION (COLLAPSIBLE) ────────────────────────────────── */}
+      <div style={{
+        width: sidebarCollapsed ? 76 : 280,
+        background: '#0b0f19',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        padding: sidebarCollapsed ? '24px 10px' : '24px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 24,
+        flexShrink: 0,
+        transition: 'all 0.3s ease',
+        alignItems: sidebarCollapsed ? 'center' : 'stretch',
+        position: 'relative'
+      }}>
         
+        {/* Collapse/Expand Toggle Button */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          style={{
+            position: 'absolute',
+            right: -12,
+            top: 32,
+            width: 24,
+            height: 24,
+            borderRadius: '50%',
+            background: '#0b0f19',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: '#d4a017',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 50,
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.color = '#fff'}
+          onMouseOut={e => e.currentTarget.style.color = '#d4a017'}
+        >
+          {sidebarCollapsed ? <ChevronRight size={12} /> : <ChevronRight size={12} style={{ transform: 'rotate(180deg)' }} />}
+        </button>
+
         {/* Brand Logo Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, background: 'linear-gradient(135deg, #d4a017, #f5c842)', color: '#020617', fontWeight: 900, borderRadius: 10, fontSize: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, background: 'linear-gradient(135deg, #d4a017, #f5c842)', color: '#020617', fontWeight: 900, borderRadius: 10, fontSize: 20, flexShrink: 0 }}>
             H
           </div>
-          <div>
-            <h2 style={{ fontSize: 14, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.05em' }}>HONEYWELL<span style={{ color: '#d4a017' }}>GROUP</span></h2>
-            <span style={{ fontSize: 9, color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>HQ Console v4.0</span>
-          </div>
+          {!sidebarCollapsed && (
+            <div>
+              <h2 style={{ fontSize: 14, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.05em' }}>HONEYWELL<span style={{ color: '#d4a017' }}>GROUP</span></h2>
+              <span style={{ fontSize: 9, color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>HQ Console v4.0</span>
+            </div>
+          )}
         </div>
 
         {/* Lagos Time Widget */}
-        <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Clock size={14} color="#d4a017" />
-          <span style={{ fontSize: 9, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lagos:</span>
-          <span style={{ fontSize: 11, color: '#fff', fontFamily: 'monospace', fontWeight: 700, marginLeft: 'auto' }}>{lagosTime || "00:00:00 AM"}</span>
+        <div style={{
+          background: 'rgba(0,0,0,0.3)',
+          border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: 10,
+          padding: sidebarCollapsed ? '10px 0' : '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: sidebarCollapsed ? 0 : 8,
+          width: '100%'
+        }} title={sidebarCollapsed ? `Lagos Time: ${lagosTime}` : undefined}>
+          <Clock size={14} color="#d4a017" style={{ flexShrink: 0 }} />
+          {!sidebarCollapsed && (
+            <>
+              <span style={{ fontSize: 9, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lagos:</span>
+              <span style={{ fontSize: 11, color: '#fff', fontFamily: 'monospace', fontWeight: 700, marginLeft: 'auto' }}>{lagosTime || "00:00:00 AM"}</span>
+            </>
+          )}
         </div>
 
         {/* Active Role Selector Widget */}
-        <div style={{ background: 'rgba(212,160,23,0.06)', border: '1px solid rgba(212,160,23,0.2)', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => showToast('Role details verified under RBAC security policy.')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <UserCheck size={14} color="#d4a017" />
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#d4a017', letterSpacing: '0.05em' }}>Group Admin</span>
+        <div 
+          style={{
+            background: 'rgba(212,160,23,0.06)',
+            border: '1px solid rgba(212,160,23,0.2)',
+            borderRadius: 10,
+            padding: sidebarCollapsed ? '10px' : '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+            cursor: 'pointer',
+            width: '100%'
+          }} 
+          onClick={() => showToast('Role details verified under RBAC security policy.')}
+          title={sidebarCollapsed ? 'Role: Group Administrator' : undefined}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : 8 }}>
+            <UserCheck size={14} color="#d4a017" style={{ flexShrink: 0 }} />
+            {!sidebarCollapsed && (
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#d4a017', letterSpacing: '0.05em' }}>Group Admin</span>
+            )}
           </div>
-          <ChevronDown size={12} color="#d4a017" />
+          {!sidebarCollapsed && <ChevronDown size={12} color="#d4a017" />}
         </div>
 
         {/* Navigation Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px' }}>
-            <span style={{ fontSize: 10, color: '#475569', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Core Navigation</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(52,211,153,0.1)', color: '#34d399', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 20 }}>
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-              Live
-            </span>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+          {!sidebarCollapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 4px' }}>
+              <span style={{ fontSize: 10, color: '#475569', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Core Navigation</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(52,211,153,0.1)', color: '#34d399', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 20 }}>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                Live
+              </span>
+            </div>
+          )}
 
           {[
             { id: 'subsidiaries', label: 'Subsidiaries', icon: LayoutGrid },
@@ -373,26 +450,33 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12,
+                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                  gap: sidebarCollapsed ? 0 : 12,
                   background: isActive ? 'rgba(212,160,23,0.1)' : 'transparent',
                   border: 'none',
                   borderLeft: isActive ? '3px solid #d4a017' : '3px solid transparent',
-                  padding: '12px 14px',
-                  borderRadius: '0 10px 10px 0',
+                  padding: sidebarCollapsed ? '12px 0' : '12px 14px',
+                  borderRadius: sidebarCollapsed ? '10px' : '0 10px 10px 0',
                   color: isActive ? '#fff' : '#64748b',
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s'
+                  width: '100%',
+                  textAlign: sidebarCollapsed ? 'center' : 'left',
+                  transition: 'all 0.2s',
+                  position: 'relative'
                 }}
+                title={sidebarCollapsed ? item.label : undefined}
                 onMouseOver={e => { if(!isActive) e.currentTarget.style.color = '#fff'; }}
                 onMouseOut={e => { if(!isActive) e.currentTarget.style.color = '#64748b'; }}
               >
-                <item.icon size={16} color={isActive ? '#d4a017' : '#64748b'} />
-                {item.label}
-                {item.id === 'compliance' && (
+                <item.icon size={16} color={isActive ? '#d4a017' : '#64748b'} style={{ flexShrink: 0 }} />
+                {!sidebarCollapsed && item.label}
+                {!sidebarCollapsed && item.id === 'compliance' && (
                   <span style={{ marginLeft: 'auto', background: '#d4a017', color: '#000', fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
+                )}
+                {sidebarCollapsed && item.id === 'compliance' && (
+                  <span style={{ position: 'absolute', top: 4, right: 4, background: '#d4a017', color: '#000', fontSize: 8, fontWeight: 900, width: 12, height: 12, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
                 )}
               </button>
             );
@@ -400,11 +484,11 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
         </div>
 
         {/* Sidebar Footer */}
-        <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16 }}>
-          <span style={{ fontSize: 9, color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>RBAC Scope Active</span>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block' }} />
-            Group Administrator
+        <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16, width: '100%', display: 'flex', flexDirection: 'column', alignItems: sidebarCollapsed ? 'center' : 'stretch' }}>
+          {!sidebarCollapsed && <span style={{ fontSize: 9, color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>RBAC Scope Active</span>}
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: sidebarCollapsed ? 0 : '4px 0 0', display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : 6 }} title={sidebarCollapsed ? 'RBAC Scope: Group Administrator' : undefined}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block', flexShrink: 0, marginRight: sidebarCollapsed ? 0 : 6 }} />
+            {!sidebarCollapsed && "Group Administrator"}
           </p>
         </div>
       </div>
@@ -412,6 +496,40 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
       {/* ── RIGHT MAIN CONTENT AREA ─────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto', position: 'relative' }}>
         
+        {/* Floating ORCA AI tab restore indicator */}
+        {orcaMinimized && activeSidebarTab === 'subsidiaries' && (
+          <button
+            onClick={() => setOrcaMinimized(false)}
+            style={{
+              position: 'fixed',
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'linear-gradient(135deg, #d4a017, #f5c842)',
+              color: '#020617',
+              border: 'none',
+              borderRadius: '10px 0 0 10px',
+              padding: '20px 10px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 8,
+              zIndex: 100,
+              boxShadow: '-4px 0 20px rgba(212,160,23,0.35)',
+              writingMode: 'vertical-rl',
+              textTransform: 'uppercase',
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: '0.15em'
+            }}
+            title="Expand ORCA AI Panel"
+          >
+            <Brain size={14} style={{ transform: 'rotate(90deg)', marginBottom: 6 }} />
+            <span>Expand ORCA AI</span>
+          </button>
+        )}
+
         {/* Toast Notification */}
         {toastMsg && (
           <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: '#0b0f19', border: '2px solid #d4a017', borderRadius: 14, padding: '12px 20px', boxShadow: '0 8px 32px rgba(212,160,23,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -531,8 +649,8 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
                 ))}
               </div>
 
-              {/* Subsidiaries Grid + Floating ORCA AI Panel Side-by-Side */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
+              {/* Subsidiaries Grid + Floating ORCA AI Panel Side-by-Side (RESPONSIVE GRID WIDTHS) */}
+              <div style={{ display: 'grid', gridTemplateColumns: orcaMinimized ? '1fr' : '1fr 360px', gap: 24, transition: 'all 0.3s ease' }}>
                 
                 {/* Subsidiaries Cards Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -632,76 +750,129 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
                         </button>
                       </div>
 
-                      {/* Expanded Mini Panel Content */}
+                      {/* Expanded Mini Panel Content (CARDS INTERFACE INSTEAD OF TABS) */}
                       {expandedCompany === company.id && (
                         <div style={{ background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden' }}>
                           
-                          {/* Inner Tabs switcher */}
-                          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            {COMPANY_TABS.map(tab => (
-                              <button
-                                key={tab}
-                                onClick={() => setActiveTab(prev => ({ ...prev, [company.id]: tab }))}
-                                style={{
-                                  flex: 1,
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '12px 0',
-                                  fontSize: 10,
-                                  fontWeight: 800,
-                                  cursor: 'pointer',
-                                  color: activeTab[company.id] === tab ? '#d4a017' : '#475569',
-                                  borderBottom: activeTab[company.id] === tab ? '2px solid #d4a017' : '2px solid transparent',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                {tab}
-                              </button>
-                            ))}
+                          {/* Inner Tabs switcher styled as interactive Sub-Cards Grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '20px 24px 12px' }}>
+                            {[
+                              { id: 'Assets', label: 'Assets & Operations', icon: company.id === 'hogl' ? Flame : (company.id === 'ikeja-hotel' ? Hotel : (company.id === 'flour-mills' ? Wheat : Landmark)), color: '#d4a017', desc: company.id === 'hogl' ? '7 Active Tanks' : (company.id === 'ikeja-hotel' ? '229 Luxury Rooms' : (company.id === 'flour-mills' ? 'Legacy Acquired' : '9 Active Projects')) },
+                              { id: 'HR/Staff', label: 'Workforce & HR', icon: Users, color: '#a78bfa', desc: company.id === 'hogl' ? '438 Active Staff' : (company.id === 'ikeja-hotel' ? '184 Hotel Staff' : (company.id === 'flour-mills' ? 'Alumni Mapped' : '312 Real Estate Staff')) },
+                              { id: 'CRM', label: 'CRM & Pipelines', icon: Globe, color: '#60a5fa', desc: company.id === 'hogl' ? '24 Contracts' : (company.id === 'ikeja-hotel' ? '11 Group Bookings' : (company.id === 'flour-mills' ? 'Archived Records' : '34 Client Leases')) },
+                              { id: 'Financials', label: 'Financial Ledger', icon: TrendingUp, color: '#34d399', desc: company.id === 'hogl' ? '+$24.50M YTD' : (company.id === 'ikeja-hotel' ? '+$14.80M YTD' : (company.id === 'flour-mills' ? '+$11.50M YTD' : '+$31.20M YTD')) }
+                            ].map(tabCard => {
+                              const isSelected = activeTab[company.id] === tabCard.id;
+                              return (
+                                <div
+                                  key={tabCard.id}
+                                  onClick={() => setActiveTab(prev => ({ ...prev, [company.id]: tabCard.id }))}
+                                  style={{
+                                    background: isSelected ? 'rgba(212,160,23,0.06)' : 'rgba(255,255,255,0.02)',
+                                    border: isSelected ? '1px solid #d4a017' : '1px solid rgba(255,255,255,0.06)',
+                                    borderRadius: 14,
+                                    padding: '14px 16px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8,
+                                    boxShadow: isSelected ? '0 0 15px rgba(212,160,23,0.15)' : 'none',
+                                    transition: 'all 0.2s ease',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                  }}
+                                  onMouseOver={e => {
+                                    if (!isSelected) {
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                                    }
+                                  }}
+                                  onMouseOut={e => {
+                                    if (!isSelected) {
+                                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                    }
+                                  }}
+                                >
+                                  {/* Selection indicator glow */}
+                                  {isSelected && (
+                                    <div style={{ position: 'absolute', top: 0, right: 0, width: 24, height: 24, background: 'rgba(212,160,23,0.2)', borderRadius: '0 0 0 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d4a017' }} />
+                                    </div>
+                                  )}
+                                  
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 8,
+                                      background: `${tabCard.color}15`,
+                                      border: `1px solid ${tabCard.color}30`,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
+                                    }}>
+                                      <tabCard.icon size={14} color={tabCard.color} />
+                                    </div>
+                                    <span style={{ fontSize: 10, fontWeight: 800, color: isSelected ? '#fff' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      {tabCard.id === 'HR/Staff' ? 'Workforce' : (tabCard.id === 'Financials' ? 'Financials' : tabCard.id)}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <p style={{ fontSize: 11, fontWeight: 700, color: isSelected ? '#d4a017' : '#cbd5e1', margin: 0 }}>{tabCard.label}</p>
+                                    <p style={{ fontSize: 9, color: '#64748b', margin: '4px 0 0', fontWeight: 600 }}>{tabCard.desc}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
 
-                          {/* Inner Tab contents */}
-                          <div style={{ padding: '20px 24px', minHeight: 100 }}>
-                            {activeTab[company.id] === 'Assets' && (
-                              <div style={{ display: 'flex', gap: 12 }}>
-                                {company.stats.map((s, si) => (
-                                  <div key={si} style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                                    <p style={{ fontSize: 9, color: '#64748b', margin: 0, fontWeight: 800, textTransform: 'uppercase' }}>{s.label}</p>
-                                    <p style={{ fontSize: 16, fontWeight: 900, color: '#d4a017', margin: '6px 0 0' }}>{s.value}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {activeTab[company.id] === 'HR/Staff' && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {['Department Heads', 'Open Positions', 'Leave Requests'].map((item, i) => (
-                                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
-                                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{item}</span>
-                                    <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{[12, 4, 7][i]}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {activeTab[company.id] === 'CRM' && (
-                              <div style={{ display: 'flex', gap: 10 }}>
-                                {['Active Contracts', 'Pipeline', 'Won Deals'].map((item, i) => (
-                                  <div key={i} style={{ flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 8px' }}>
-                                    <p style={{ fontSize: 16, fontWeight: 900, color: '#d4a017', margin: 0 }}>{[24, 11, 8][i]}</p>
-                                    <p style={{ fontSize: 9, color: '#64748b', margin: '4px 0 0', fontWeight: 800 }}>{item}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {activeTab[company.id] === 'Financials' && (
-                              <div style={{ display: 'flex', gap: 10 }}>
-                                {['Q2 Revenue', 'EBITDA', 'Net Profit'].map((item, i) => (
-                                  <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 14px' }}>
-                                    <p style={{ fontSize: 9, color: '#64748b', margin: 0, fontWeight: 800, textTransform: 'uppercase' }}>{item}</p>
-                                    <p style={{ fontSize: 14, fontWeight: 900, color: '#34d399', margin: '6px 0 0' }}>{['₦18.4B', '₦6.2B', '₦4.1B'][i]}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                          {/* Inner Tab contents (Expanded panel below sub-cards) */}
+                          <div style={{ padding: '0 24px 20px', minHeight: 100 }}>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: 14, padding: '20px', animation: 'slideDown 0.3s ease' }}>
+                              {activeTab[company.id] === 'Assets' && (
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                  {company.stats.map((s, si) => (
+                                    <div key={si} style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                      <p style={{ fontSize: 9, color: '#64748b', margin: 0, fontWeight: 800, textTransform: 'uppercase' }}>{s.label}</p>
+                                      <p style={{ fontSize: 16, fontWeight: 900, color: '#d4a017', margin: '6px 0 0' }}>{s.value}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {activeTab[company.id] === 'HR/Staff' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  {['Department Heads', 'Open Positions', 'Leave Requests'].map((item, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{item}</span>
+                                      <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{[12, 4, 7][i]}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {activeTab[company.id] === 'CRM' && (
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                  {['Active Contracts', 'Pipeline', 'Won Deals'].map((item, i) => (
+                                    <div key={i} style={{ flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 8px' }}>
+                                      <p style={{ fontSize: 16, fontWeight: 900, color: '#d4a017', margin: 0 }}>{[24, 11, 8][i]}</p>
+                                      <p style={{ fontSize: 9, color: '#64748b', margin: '4px 0 0', fontWeight: 800 }}>{item}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {activeTab[company.id] === 'Financials' && (
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                  {['Q2 Revenue', 'EBITDA', 'Net Profit'].map((item, i) => (
+                                    <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 14px' }}>
+                                      <p style={{ fontSize: 9, color: '#64748b', margin: 0, fontWeight: 800, textTransform: 'uppercase' }}>{item}</p>
+                                      <p style={{ fontSize: 14, fontWeight: 900, color: '#34d399', margin: '6px 0 0' }}>{['₦18.4B', '₦6.2B', '₦4.1B'][i]}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -718,148 +889,181 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
                   ))}
                 </div>
 
-                {/* Floating ORCA AI Column */}
-                <div>
-                  <div style={{ background: '#0e121e', border: '1px solid rgba(212,160,23,0.2)', borderRadius: 20, overflow: 'hidden', position: 'sticky', top: 24, boxShadow: '0 0 30px rgba(212,160,23,0.05)' }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, rgba(212,160,23,0.08), transparent)' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(212,160,23,0.15)', border: '1px solid rgba(212,160,23,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Brain size={18} color="#d4a017" />
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 12, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ORCA</h3>
-                        <p style={{ fontSize: 10, color: '#d4a017', margin: 0, fontWeight: 700 }}>Chief AI Agent</p>
-                      </div>
-                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block' }} />
-                        <span style={{ fontSize: 9, color: '#34d399', fontWeight: 800, letterSpacing: '0.05em' }}>LIVE</span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <button
-                        onClick={() => setActiveOrcaTab('chat')}
-                        style={{
-                          flex: 1,
-                          background: 'none',
-                          border: 'none',
-                          padding: '10px 0',
-                          fontSize: 10,
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          color: activeOrcaTab === 'chat' ? '#d4a017' : '#475569',
-                          borderBottom: activeOrcaTab === 'chat' ? '2px solid #d4a017' : '2px solid transparent',
-                          transition: 'all 0.2s',
-                          letterSpacing: '0.05em',
-                          textTransform: 'uppercase'
-                        }}
-                      >
-                        💬 AI Conversation
-                      </button>
-                      <button
-                        onClick={() => setActiveOrcaTab('activity')}
-                        style={{
-                          flex: 1,
-                          background: 'none',
-                          border: 'none',
-                          padding: '10px 0',
-                          fontSize: 10,
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          color: activeOrcaTab === 'activity' ? '#d4a017' : '#475569',
-                          borderBottom: activeOrcaTab === 'activity' ? '2px solid #d4a017' : '2px solid transparent',
-                          transition: 'all 0.2s',
-                          letterSpacing: '0.05em',
-                          textTransform: 'uppercase',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6
-                        }}
-                      >
-                        📊 Live Activity
-                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                      </button>
-                    </div>
-
-                    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {activeOrcaTab === 'chat' ? (
-                        <>
-                          <div style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '10px 12px', height: 260, overflowY: 'auto', fontFamily: 'monospace', display: 'flex', flexDirection: 'column-reverse', gap: 6 }}>
-                            <div ref={logEndRef} />
-                            {orcaChat.map((msg, i) => {
-                              let color = msg.sender === 'user' ? '#60a5fa' : (msg.text.includes('Analyzing request...') ? '#f5c842' : '#e2e8f0');
-                              return (
-                                <div key={i} style={{ display: 'flex', gap: 6, paddingBottom: 4, lineHeight: 1.4 }}>
-                                  <span style={{ color: msg.sender === 'user' ? '#60a5fa' : '#d4a017', flexShrink: 0, fontSize: 11, fontWeight: 700 }}>
-                                    {msg.sender === 'user' ? '👤' : '›'}
-                                  </span>
-                                  <span style={{ fontSize: 10, color, transition: 'color 0.3s', wordBreak: 'break-word' }}>
-                                    {msg.sender === 'user' ? `[YOU] ${msg.time} - ${msg.text}` : `[ORCA] ${msg.time} - ${msg.text}`}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                {/* Floating ORCA AI Column (CAN BE MINIMIZED) */}
+                {!orcaMinimized && (
+                  <div>
+                    <div style={{ background: '#0e121e', border: '1px solid rgba(212,160,23,0.2)', borderRadius: 20, overflow: 'hidden', position: 'sticky', top: 24, boxShadow: '0 0 30px rgba(212,160,23,0.05)' }}>
+                      <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg, rgba(212,160,23,0.08), transparent)' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(212,160,23,0.15)', border: '1px solid rgba(212,160,23,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Brain size={18} color="#d4a017" />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: 12, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ORCA</h3>
+                          <p style={{ fontSize: 10, color: '#d4a017', margin: 0, fontWeight: 700 }}>Chief AI Agent</p>
+                        </div>
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block' }} />
+                            <span style={{ fontSize: 9, color: '#34d399', fontWeight: 800, letterSpacing: '0.05em' }}>LIVE</span>
                           </div>
                           
-                          <form onSubmit={handleSend} style={{ display: 'flex', gap: 8 }}>
-                            <input
-                              type="text"
-                              value={inputMsg}
-                              onChange={e => setInputMsg(e.target.value)}
-                              placeholder={isTyping ? "ORCA is thinking..." : "Ask ORCA..."}
-                              disabled={isTyping}
-                              style={{
-                                flex: 1,
-                                background: 'rgba(0,0,0,0.6)',
-                                border: '1px solid rgba(212,160,23,0.3)',
-                                borderRadius: 10,
-                                padding: '8px 12px',
-                                fontSize: 11,
-                                color: '#fff',
-                                outline: 'none'
-                              }}
-                            />
-                            <button
-                              type="submit"
-                              disabled={isTyping || !inputMsg.trim()}
-                              style={{
-                                background: 'linear-gradient(135deg, #d4a017, #f5c842)',
-                                border: 'none',
-                                borderRadius: 10,
-                                padding: '8px 14px',
-                                color: '#020617',
-                                fontSize: 11,
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                opacity: (isTyping || !inputMsg.trim()) ? 0.5 : 1
-                              }}
-                            >
-                              Send
-                            </button>
-                          </form>
-                        </>
-                      ) : (
-                        <div style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '10px 12px', height: 300, overflowY: 'auto', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {orcaLogs.map((log, i) => (
-                            <div key={i} style={{ display: 'flex', gap: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.04)', lineHeight: 1.5 }}>
-                              <span style={{ color: '#d4a017', flexShrink: 0, fontSize: 11, fontWeight: 700 }}>›</span>
-                              <span style={{ fontSize: 10, color: i === 0 ? '#e2e8f0' : '#64748b', transition: 'color 0.3s' }}>{log}</span>
-                            </div>
-                          ))}
+                          {/* Minimize Toggle Button */}
+                          <button
+                            onClick={() => setOrcaMinimized(true)}
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              color: '#64748b',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              transition: 'all 0.2s'
+                            }}
+                            title="Minimize ORCA Panel"
+                            onMouseOver={e => {
+                              e.currentTarget.style.color = '#fff';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            }}
+                            onMouseOut={e => {
+                              e.currentTarget.style.color = '#64748b';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                            }}
+                          >
+                            <ChevronRight size={14} />
+                          </button>
                         </div>
-                      )}
+                      </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'rgba(212,160,23,0.06)', borderRadius: 8 }}>
-                        <Zap size={11} color="#d4a017" />
-                        <span style={{ fontSize: 9, color: '#94a3b8' }}>
-                          {activeOrcaTab === 'chat' 
-                            ? (isTyping ? "ORCA is querying group ledger..." : "Real-time AI query console active")
-                            : "Live background auditing stream active"}
-                        </span>
+                      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <button
+                          onClick={() => setActiveOrcaTab('chat')}
+                          style={{
+                            flex: 1,
+                            background: 'none',
+                            border: 'none',
+                            padding: '10px 0',
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            color: activeOrcaTab === 'chat' ? '#d4a017' : '#475569',
+                            borderBottom: activeOrcaTab === 'chat' ? '2px solid #d4a017' : '2px solid transparent',
+                            transition: 'all 0.2s',
+                            letterSpacing: '0.05em',
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          💬 AI Conversation
+                        </button>
+                        <button
+                          onClick={() => setActiveOrcaTab('activity')}
+                          style={{
+                            flex: 1,
+                            background: 'none',
+                            border: 'none',
+                            padding: '10px 0',
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            color: activeOrcaTab === 'activity' ? '#d4a017' : '#475569',
+                            borderBottom: activeOrcaTab === 'activity' ? '2px solid #d4a017' : '2px solid transparent',
+                            transition: 'all 0.2s',
+                            letterSpacing: '0.05em',
+                            textTransform: 'uppercase',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6
+                          }}
+                        >
+                          📊 Live Activity
+                          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                        </button>
+                      </div>
+
+                      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {activeOrcaTab === 'chat' ? (
+                          <>
+                            <div style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '10px 12px', height: 260, overflowY: 'auto', fontFamily: 'monospace', display: 'flex', flexDirection: 'column-reverse', gap: 6 }}>
+                              <div ref={logEndRef} />
+                              {orcaChat.map((msg, i) => {
+                                let color = msg.sender === 'user' ? '#60a5fa' : (msg.text.includes('Analyzing request...') ? '#f5c842' : '#e2e8f0');
+                                return (
+                                  <div key={i} style={{ display: 'flex', gap: 6, paddingBottom: 4, lineHeight: 1.4 }}>
+                                    <span style={{ color: msg.sender === 'user' ? '#60a5fa' : '#d4a017', flexShrink: 0, fontSize: 11, fontWeight: 700 }}>
+                                      {msg.sender === 'user' ? '👤' : '›'}
+                                    </span>
+                                    <span style={{ fontSize: 10, color, transition: 'color 0.3s', wordBreak: 'break-word' }}>
+                                      {msg.sender === 'user' ? `[YOU] ${msg.time} - ${msg.text}` : `[ORCA] ${msg.time} - ${msg.text}`}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            <form onSubmit={handleSend} style={{ display: 'flex', gap: 8 }}>
+                              <input
+                                type="text"
+                                value={inputMsg}
+                                onChange={e => setInputMsg(e.target.value)}
+                                placeholder={isTyping ? "ORCA is thinking..." : "Ask ORCA..."}
+                                disabled={isTyping}
+                                style={{
+                                  flex: 1,
+                                  background: 'rgba(0,0,0,0.6)',
+                                  border: '1px solid rgba(212,160,23,0.3)',
+                                  borderRadius: 10,
+                                  padding: '8px 12px',
+                                  fontSize: 11,
+                                  color: '#fff',
+                                  outline: 'none'
+                                }}
+                              />
+                              <button
+                                type="submit"
+                                disabled={isTyping || !inputMsg.trim()}
+                                style={{
+                                  background: 'linear-gradient(135deg, #d4a017, #f5c842)',
+                                  border: 'none',
+                                  borderRadius: 10,
+                                  padding: '8px 14px',
+                                  color: '#020617',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  opacity: (isTyping || !inputMsg.trim()) ? 0.5 : 1
+                                }}
+                              >
+                                Send
+                              </button>
+                            </form>
+                          </>
+                        ) : (
+                          <div style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '10px 12px', height: 300, overflowY: 'auto', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {orcaLogs.map((log, i) => (
+                              <div key={i} style={{ display: 'flex', gap: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.04)', lineHeight: 1.5 }}>
+                                <span style={{ color: '#d4a017', flexShrink: 0, fontSize: 11, fontWeight: 700 }}>›</span>
+                                <span style={{ fontSize: 10, color: i === 0 ? '#e2e8f0' : '#64748b', transition: 'color 0.3s' }}>{log}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'rgba(212,160,23,0.06)', borderRadius: 8 }}>
+                          <Zap size={11} color="#d4a017" />
+                          <span style={{ fontSize: 9, color: '#94a3b8' }}>
+                            {activeOrcaTab === 'chat' 
+                              ? (isTyping ? "ORCA is querying group ledger..." : "Real-time AI query console active")
+                              : "Live background auditing stream active"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
               </div>
 
