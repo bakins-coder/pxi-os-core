@@ -505,28 +505,37 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
               right: 0,
               top: '50%',
               transform: 'translateY(-50%)',
-              background: 'linear-gradient(135deg, #d4a017, #f5c842)',
-              color: '#020617',
-              border: 'none',
-              borderRadius: '10px 0 0 10px',
-              padding: '20px 10px',
+              background: 'rgba(212,160,23,0.12)',
+              border: '1px solid rgba(212,160,23,0.35)',
+              borderRight: 'none',
+              color: '#d4a017',
+              borderRadius: '12px 0 0 12px',
+              width: 32,
+              height: 74,
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 8,
+              justifyContent: 'center',
+              gap: 6,
               zIndex: 100,
-              boxShadow: '-4px 0 20px rgba(212,160,23,0.35)',
-              writingMode: 'vertical-rl',
-              textTransform: 'uppercase',
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: '0.15em'
+              boxShadow: '-4px 0 15px rgba(0,0,0,0.5)',
+              transition: 'all 0.2s ease',
+              padding: 0
             }}
             title="Expand ORCA AI Panel"
+            onMouseOver={e => {
+              e.currentTarget.style.background = 'rgba(212,160,23,0.22)';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.background = 'rgba(212,160,23,0.12)';
+              e.currentTarget.style.color = '#d4a017';
+            }}
           >
-            <Brain size={14} style={{ transform: 'rotate(90deg)', marginBottom: 6 }} />
-            <span>Expand ORCA AI</span>
+            <ChevronRight size={12} style={{ transform: 'rotate(180deg)' }} />
+            <Brain size={14} />
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
           </button>
         )}
 
