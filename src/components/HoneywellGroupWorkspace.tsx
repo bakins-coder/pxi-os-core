@@ -27,7 +27,14 @@ import {
   ShieldCheck,
   Plus,
   MapPin,
-  UserCheck
+  UserCheck,
+  MessageSquare,
+  GitBranch,
+  FlaskConical,
+  Send,
+  Paperclip,
+  Hash,
+  Activity
 } from 'lucide-react';
 import {
   AreaChart,
@@ -190,7 +197,21 @@ const ORCA_MESSAGES = [
 const COMPANY_TABS = ['Assets', 'HR/Staff', 'CRM', 'Financials'];
 
 export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = ({ adminEmail, staffId }) => {
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'subsidiaries' | 'services' | 'orca' | 'compliance'>('subsidiaries');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'subsidiaries' | 'services' | 'orca' | 'compliance' | 'scenarios' | 'collab'>('subsidiaries');
+
+  // AI Scenario Planning state
+  const [scenarioInputs, setScenarioInputs] = useState({ subsidiary: 'hogl', metric: 'revenue', change: '+15', horizon: '6 months' });
+  const [scenarioResult, setScenarioResult] = useState<null | { headline: string; impacts: { label: string; value: string; color: string }[]; summary: string }>(null);
+  const [scenarioRunning, setScenarioRunning] = useState(false);
+
+  // Collaboration Hub state
+  const [collabChannel, setCollabChannel] = useState<'general' | 'hogl' | 'ikeja' | 'realestate'>('general');
+  const [collabMessages, setCollabMessages] = useState<{ author: string; company: string; time: string; text: string; type: 'text' | 'file' }[]>([
+    { author: 'Arc. Chidi Opara', company: 'Honeywell Real Estate', time: '14:22', text: 'Shared Q2 property valuation report for group review.', type: 'file' },
+    { author: 'Olabisi Okunola', company: 'HOGL Energy', time: '13:47', text: 'Tank Farm 3 throughput data is updated. Please review before the board meeting.', type: 'text' },
+    { author: 'Group Admin', company: 'Honeywell Group HQ', time: '13:10', text: 'Reminder: Group board meeting is scheduled for July 22 at Ikoyi HQ. All CEOs should prepare subsidiary reports.', type: 'text' },
+  ]);
+  const [collabInput, setCollabInput] = useState('');
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, string>>({});
   const [activeOrcaTab, setActiveOrcaTab] = useState<'chat' | 'activity'>('chat');
@@ -440,6 +461,8 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
             { id: 'subsidiaries', label: 'Subsidiaries', icon: LayoutGrid },
             { id: 'services', label: 'Shared Services', icon: Layers },
             { id: 'orca', label: 'Chief AI (ORCA)', icon: Brain },
+            { id: 'scenarios', label: 'AI Scenario Planner', icon: FlaskConical },
+            { id: 'collab', label: 'Collaboration Hub', icon: MessageSquare },
             { id: 'compliance', label: 'Compliance Logs', icon: ShieldCheck }
           ].map(item => {
             const isActive = activeSidebarTab === item.id;
@@ -1246,6 +1269,277 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
             </div>
           )}
 
+          {/* ── TAB CONTENT 5: AI SCENARIO PLANNER ───────────────────────────────── */}
+          {activeSidebarTab === 'scenarios' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              
+              {/* Hero Header */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(212,160,23,0.08) 100%)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 20, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa', fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 20, marginBottom: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    <FlaskConical size={12} />
+                    ORCA Powered
+                  </div>
+                  <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.5px' }}>Advanced AI Scenario Planning</h2>
+                  <p style={{ fontSize: 13, color: '#94a3b8', margin: '8px 0 0', lineHeight: 1.5 }}>Expand ORCA's capabilities to run complex 'what-if' scenarios for financial and operational planning, allowing executives to explore potential outcomes of strategic decisions with greater depth.</p>
+                </div>
+                <div style={{ width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(212,160,23,0.15))', border: '1px solid rgba(139,92,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 24 }}>
+                  <FlaskConical size={36} color="#a78bfa" />
+                </div>
+              </div>
+
+              {/* Scenario Builder + Results Side by Side */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                
+                {/* Scenario Input Builder */}
+                <div style={{ background: '#0e121e', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <GitBranch size={16} color="#a78bfa" />
+                    <h3 style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Configure Scenario</h3>
+                  </div>
+
+                  {/* Subsidiary Selector */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Subsidiary</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      {[{ id: 'hogl', label: 'HOGL Energy', color: '#f97316' }, { id: 'ikeja', label: 'Ikeja Hotel', color: '#a78bfa' }, { id: 'flour', label: 'Flour Mills', color: '#eab308' }, { id: 'realestate', label: 'Real Estate', color: '#34d399' }].map(sub => (
+                        <button key={sub.id} onClick={() => setScenarioInputs(p => ({ ...p, subsidiary: sub.id }))} style={{ background: scenarioInputs.subsidiary === sub.id ? `${sub.color}15` : 'rgba(255,255,255,0.02)', border: scenarioInputs.subsidiary === sub.id ? `1px solid ${sub.color}50` : '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px', color: scenarioInputs.subsidiary === sub.id ? sub.color : '#64748b', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>{sub.label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Metric Selector */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>What-If Metric</label>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {['revenue', 'headcount', 'capex', 'margin'].map(m => (
+                        <button key={m} onClick={() => setScenarioInputs(p => ({ ...p, metric: m }))} style={{ background: scenarioInputs.metric === m ? 'rgba(212,160,23,0.12)' : 'rgba(255,255,255,0.02)', border: scenarioInputs.metric === m ? '1px solid rgba(212,160,23,0.4)' : '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 14px', color: scenarioInputs.metric === m ? '#d4a017' : '#64748b', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'capitalize' }}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Change Magnitude */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Change Magnitude</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {['+5', '+10', '+15', '+25', '-10', '-20'].map(c => (
+                        <button key={c} onClick={() => setScenarioInputs(p => ({ ...p, change: c }))} style={{ background: scenarioInputs.change === c ? (c.startsWith('-') ? 'rgba(239,68,68,0.1)' : 'rgba(52,211,153,0.1)') : 'rgba(255,255,255,0.02)', border: scenarioInputs.change === c ? (c.startsWith('-') ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(52,211,153,0.35)') : '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 12px', color: scenarioInputs.change === c ? (c.startsWith('-') ? '#f87171' : '#34d399') : '#64748b', fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}>{c}%</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time Horizon */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Planning Horizon</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {['3 months', '6 months', '1 year', '3 years'].map(h => (
+                        <button key={h} onClick={() => setScenarioInputs(p => ({ ...p, horizon: h }))} style={{ background: scenarioInputs.horizon === h ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.02)', border: scenarioInputs.horizon === h ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 12px', color: scenarioInputs.horizon === h ? '#60a5fa' : '#64748b', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>{h}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Run Button */}
+                  <button
+                    disabled={scenarioRunning}
+                    onClick={async () => {
+                      setScenarioRunning(true);
+                      setScenarioResult(null);
+                      await new Promise(r => setTimeout(r, 1800));
+                      const subName = { hogl: 'HOGL Energy', ikeja: 'Ikeja Hotel Plc', flour: 'Honeywell Flour Mills', realestate: 'Honeywell Real Estate' }[scenarioInputs.subsidiary] || 'HOGL Energy';
+                      const isPositive = scenarioInputs.change.startsWith('+');
+                      const pct = parseInt(scenarioInputs.change);
+                      setScenarioResult({
+                        headline: `${scenarioInputs.change}% ${scenarioInputs.metric} shift in ${subName} over ${scenarioInputs.horizon}`,
+                        summary: `Based on ${subName}'s current ${scenarioInputs.metric} baseline and market dynamics, a ${scenarioInputs.change}% adjustment over ${scenarioInputs.horizon} is projected to have the following group-wide impact. ORCA recommends ${isPositive ? 'proceeding with phased implementation and monitoring key risk indicators' : 'reviewing cost mitigation strategies and exploring alternative revenue streams'}.`,
+                        impacts: [
+                          { label: 'Group Portfolio Impact', value: isPositive ? `+₦${Math.abs(pct * 1.3).toFixed(1)}B` : `-₦${Math.abs(pct * 1.3).toFixed(1)}B`, color: isPositive ? '#34d399' : '#f87171' },
+                          { label: 'Headcount Effect', value: isPositive ? `+${Math.abs(pct * 4)} roles` : `-${Math.abs(pct * 4)} roles`, color: isPositive ? '#60a5fa' : '#f87171' },
+                          { label: 'Tax Liability Delta', value: isPositive ? `+₦${(Math.abs(pct) * 0.28).toFixed(2)}B` : `-₦${(Math.abs(pct) * 0.28).toFixed(2)}B`, color: '#f59e0b' },
+                          { label: 'Group IRR Shift', value: isPositive ? `+${(Math.abs(pct) * 0.3).toFixed(1)}%` : `-${(Math.abs(pct) * 0.3).toFixed(1)}%`, color: isPositive ? '#34d399' : '#f87171' },
+                        ]
+                      });
+                      setScenarioRunning(false);
+                    }}
+                    style={{ background: scenarioRunning ? 'rgba(139,92,246,0.15)' : 'linear-gradient(135deg, #7c3aed, #a78bfa)', border: 'none', borderRadius: 12, padding: '14px', color: '#fff', fontSize: 13, fontWeight: 900, cursor: scenarioRunning ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all 0.2s', letterSpacing: '0.05em' }}
+                  >
+                    <Activity size={16} />
+                    {scenarioRunning ? 'ORCA is computing scenario...' : 'RUN AI SCENARIO ANALYSIS'}
+                  </button>
+                </div>
+
+                {/* Scenario Results Panel */}
+                <div style={{ background: '#0e121e', border: scenarioResult ? '1px solid rgba(139,92,246,0.3)' : '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 16, transition: 'all 0.3s' }}>
+                  {scenarioRunning && (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, minHeight: 300 }}>
+                      <div style={{ width: 56, height: 56, borderRadius: '50%', border: '3px solid rgba(139,92,246,0.2)', borderTop: '3px solid #a78bfa', animation: 'spin 1s linear infinite' }} />
+                      <p style={{ color: '#a78bfa', fontSize: 13, fontWeight: 700 }}>ORCA is computing scenario outcomes...</p>
+                      <p style={{ color: '#64748b', fontSize: 11 }}>Analysing group financials, market conditions, and risk vectors</p>
+                    </div>
+                  )}
+                  {!scenarioRunning && !scenarioResult && (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 300 }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 18, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FlaskConical size={28} color="#a78bfa" /></div>
+                      <p style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600, textAlign: 'center', maxWidth: 240 }}>Configure a scenario and click Run to see ORCA's projected outcomes.</p>
+                    </div>
+                  )}
+                  {!scenarioRunning && scenarioResult && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'slideDown 0.4s ease' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CheckCircle2 size={16} color="#a78bfa" />
+                        <h3 style={{ fontSize: 12, fontWeight: 900, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Scenario Results</h3>
+                      </div>
+                      <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '12px 16px' }}>
+                        <p style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', margin: 0 }}>{scenarioResult.headline}</p>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        {scenarioResult.impacts.map((impact, i) => (
+                          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, padding: '14px 16px' }}>
+                            <p style={{ fontSize: 9, color: '#64748b', margin: 0, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{impact.label}</p>
+                            <p style={{ fontSize: 20, fontWeight: 900, color: impact.color, margin: '6px 0 0', letterSpacing: '-0.5px' }}>{impact.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: '14px 16px', borderLeft: '3px solid #a78bfa' }}>
+                        <p style={{ fontSize: 10, color: '#64748b', margin: 0, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>ORCA Recommendation</p>
+                        <p style={{ fontSize: 11, color: '#cbd5e1', lineHeight: 1.6, margin: 0 }}>{scenarioResult.summary}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB CONTENT 6: COLLABORATION HUB ─────────────────────────────────── */}
+          {activeSidebarTab === 'collab' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+              {/* Hero Header */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(96,165,250,0.12) 0%, rgba(52,211,153,0.06) 100%)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: 20, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: '#60a5fa', fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 20, marginBottom: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    <MessageSquare size={12} />
+                    Cross-Subsidiary
+                  </div>
+                  <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.5px' }}>Cross-Departmental Collaboration</h2>
+                  <p style={{ fontSize: 13, color: '#94a3b8', margin: '8px 0 0', lineHeight: 1.5 }}>Introduce a feature that allows for direct communication and file sharing between departments on specific projects or tasks, fostering better teamwork and reducing information silos.</p>
+                </div>
+                <div style={{ width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, rgba(96,165,250,0.2), rgba(52,211,153,0.12))', border: '1px solid rgba(96,165,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 24 }}>
+                  <MessageSquare size={36} color="#60a5fa" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20 }}>
+
+                {/* Channel Sidebar */}
+                <div style={{ background: '#0e121e', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden' }}>
+                  <div style={{ padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <h3 style={{ fontSize: 10, color: '#475569', fontWeight: 800, margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Channels</h3>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 8 }}>
+                    {[
+                      { id: 'general', label: 'Group-Wide', desc: 'All subsidiaries', color: '#d4a017', dot: '#34d399' },
+                      { id: 'hogl', label: 'HOGL Energy', desc: 'Energy & Logistics', color: '#f97316', dot: '#34d399' },
+                      { id: 'ikeja', label: 'Ikeja Hotel', desc: 'Hospitality', color: '#a78bfa', dot: '#34d399' },
+                      { id: 'realestate', label: 'Real Estate', desc: 'Infrastructure', color: '#34d399', dot: '#64748b' },
+                    ].map(ch => (
+                      <button key={ch.id} onClick={() => setCollabChannel(ch.id as any)} style={{ background: collabChannel === ch.id ? 'rgba(255,255,255,0.05)' : 'transparent', border: collabChannel === ch.id ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', transition: 'all 0.15s' }}>
+                        <span style={{ fontSize: 13 }}>#</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: collabChannel === ch.id ? '#fff' : '#94a3b8' }}>{ch.label}</div>
+                          <div style={{ fontSize: 9, color: '#475569', marginTop: 2 }}>{ch.desc}</div>
+                        </div>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: ch.dot, display: 'inline-block', flexShrink: 0 }} />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Shared Files Section */}
+                  <div style={{ margin: '8px 8px 0', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <p style={{ fontSize: 9, color: '#475569', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Paperclip size={10} color="#475569" /> Pinned Files
+                    </p>
+                    {[
+                      { name: 'Q2_Group_Financials.pdf', size: '2.4 MB' },
+                      { name: 'HOGL_TankFarm_Report.xlsx', size: '840 KB' },
+                      { name: 'RE_Valuation_2026.pdf', size: '1.1 MB' },
+                    ].map((file, i) => (
+                      <div key={i} onClick={() => showToast(`Downloading ${file.name}...`)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer' }}>
+                        <Paperclip size={10} color="#60a5fa" />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 9, color: '#94a3b8', margin: 0, fontWeight: 600, wordBreak: 'break-all' }}>{file.name}</p>
+                          <p style={{ fontSize: 8, color: '#475569', margin: 0 }}>{file.size}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Message Area */}
+                <div style={{ background: '#0e121e', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+                  {/* Channel Header */}
+                  <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Hash size={16} color="#60a5fa" />
+                    <h3 style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0 }}>
+                      {{ general: 'Group-Wide', hogl: 'HOGL Energy', ikeja: 'Ikeja Hotel Plc', realestate: 'Real Estate' }[collabChannel]}
+                    </h3>
+                    <span style={{ marginLeft: 'auto', fontSize: 9, color: '#34d399', fontWeight: 800, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 20 }}>4 members online</span>
+                  </div>
+
+                  {/* Messages */}
+                  <div style={{ flex: 1, padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, minHeight: 300, maxHeight: 400 }}>
+                    {collabMessages.map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 12, animation: 'slideDown 0.3s ease' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, rgba(96,165,250,0.2), rgba(52,211,153,0.15))', border: '1px solid rgba(96,165,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 900, color: '#60a5fa' }}>
+                          {msg.author.charAt(0)}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{msg.author}</span>
+                            <span style={{ fontSize: 9, color: '#475569', background: 'rgba(255,255,255,0.04)', padding: '1px 8px', borderRadius: 10 }}>{msg.company}</span>
+                            <span style={{ fontSize: 9, color: '#475569', marginLeft: 'auto' }}>{msg.time}</span>
+                          </div>
+                          {msg.type === 'file' ? (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }} onClick={() => showToast('Opening shared file...')}>
+                              <Paperclip size={14} color="#60a5fa" />
+                              <span style={{ fontSize: 11, color: '#60a5fa', fontWeight: 700 }}>{msg.text}</span>
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>{msg.text}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Message Input */}
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <form onSubmit={e => {
+                      e.preventDefault();
+                      if (!collabInput.trim()) return;
+                      const now = new Date();
+                      const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                      setCollabMessages(prev => [{ author: 'Group Admin', company: 'Honeywell Group HQ', time, text: collabInput.trim(), type: 'text' }, ...prev]);
+                      setCollabInput('');
+                    }} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '0 12px', gap: 10 }}>
+                        <input type="text" value={collabInput} onChange={e => setCollabInput(e.target.value)} placeholder={`Message #{{ general: 'group-wide', hogl: 'hogl-energy', ikeja: 'ikeja-hotel', realestate: 'real-estate' }[collabChannel]}...`} style={{ flex: 1, background: 'none', border: 'none', color: '#fff', fontSize: 12, padding: '12px 0', outline: 'none' }} />
+                        <button type="button" onClick={() => showToast('File sharing: Attach files from subsidiary document stores.')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', padding: 0, transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.color='#fff'} onMouseOut={e => e.currentTarget.style.color='#64748b'}>
+                          <Paperclip size={16} />
+                        </button>
+                      </div>
+                      <button type="submit" disabled={!collabInput.trim()} style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)', border: 'none', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: collabInput.trim() ? 'pointer' : 'not-allowed', opacity: collabInput.trim() ? 1 : 0.5, transition: 'all 0.2s', flexShrink: 0 }}>
+                        <Send size={16} color="#fff" />
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
           {/* ── TAB CONTENT 4: COMPLIANCE LOGS ────────────────────────────────────── */}
           {activeSidebarTab === 'compliance' && (
             <div style={{ background: '#0e121e', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
@@ -1298,6 +1592,10 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
