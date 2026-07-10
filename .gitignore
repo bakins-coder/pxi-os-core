@@ -30,6 +30,8 @@ Archive/
 !tailwind.config.js
 !package.json
 !package-lock.json
+!run_gemma2b_it.bat
+!stop_gemma2b_it.bat
 
 # Supabase
 supabase_schema.sql
