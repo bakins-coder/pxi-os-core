@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ParadigmWorkspace } from './components/ParadigmWorkspace';
+import { HoneywellGroupWorkspace } from './components/HoneywellGroupWorkspace';
 import { Dashboard } from './components/Dashboard';
 import { CRM } from './components/CRM';
 import { Finance } from './components/Finance';
@@ -139,6 +140,10 @@ function AppContent() {
   const [isInitializing, setIsInitializing] = useState(true);
   const location = useLocation();
 
+  useEffect(() => {
+    console.log('[AppContent] Active User state:', user);
+  }, [user]);
+
   // ... (Keep existing effects for hydration/online status - no changes needed here)
   useEffect(() => {
     const handleOnline = () => {
@@ -253,6 +258,13 @@ function AppContent() {
       setTimeout(() => { window.location.hash = '/'; window.location.reload(); }, 100);
     };
     return <ParadigmWorkspace onSwitchWorkspace={handleSwitchToXquisite} adminEmail={user.email || ''} />;
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // ─── HONEYWELL GROUP WORKSPACE INTERCEPT ───────────────────────────────────
+  const HONEYWELL_ORG_ID = 'd4a01700-0000-4000-a000-000000000000';
+  if (user?.companyId === HONEYWELL_ORG_ID) {
+    return <HoneywellGroupWorkspace adminEmail={user.email || ''} staffId={user.staffId || 'HWG-001'} />;
   }
   // ────────────────────────────────────────────────────────────────────────────
 
