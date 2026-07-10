@@ -242,14 +242,40 @@ const SYSTEM_TOOLS = {
             status: "Systems operational. Data synced."
         };
     },
-    get_financial_summary: () => {
+    get_financial_summary: (args?: { month?: string }) => {
         const dataStore = useDataStore.getState();
-        const invoices = dataStore.invoices;
+        let invoices = dataStore.invoices;
+        let bookkeeping = dataStore.bookkeeping;
+
+        if (args?.month) {
+            const m = args.month.toLowerCase();
+            const monthMap: Record<string, number> = {
+                january: 0, jan: 0, '1': 0,
+                february: 1, feb: 1, '2': 1,
+                march: 2, mar: 2, '3': 2,
+                april: 3, apr: 3, '4': 3,
+                may: 4, '5': 4,
+                june: 5, jun: 5, '6': 5, jine: 5,
+                july: 6, jul: 6, '7': 6,
+                august: 7, aug: 7, '8': 7,
+                september: 8, sep: 8, '9': 8,
+                october: 9, oct: 9, '10': 9,
+                november: 10, nov: 10, '11': 10,
+                december: 11, dec: 11, '12': 11
+            };
+            const targetMonth = monthMap[m];
+            if (targetMonth !== undefined) {
+                invoices = invoices.filter(i => i.date && new Date(i.date).getMonth() === targetMonth);
+                bookkeeping = bookkeeping.filter(e => e.date && new Date(e.date).getMonth() === targetMonth);
+            }
+        }
+
         const totalRevenue = invoices.filter(i => (i.status as string) === 'Paid').reduce((sum, i) => sum + i.totalCents, 0);
         const totalPending = invoices.filter(i => (i.status as string) !== 'Paid' && (i.status as string) !== 'Draft').reduce((sum, i) => sum + (i.totalCents - i.paidAmountCents), 0);
-        const totalExpenses = dataStore.bookkeeping.filter(e => e.type === 'Outflow').reduce((sum, e) => sum + e.amountCents, 0);
+        const totalExpenses = bookkeeping.filter(e => e.type === 'Outflow').reduce((sum, e) => sum + e.amountCents, 0);
 
         return {
+            month_filtered: args?.month || "All Time",
             revenue_paid: totalRevenue / 100,
             pending_receivables: totalPending / 100,
             recorded_expenses: totalExpenses / 100,
@@ -317,12 +343,33 @@ const SYSTEM_TOOLS = {
             tasks: tasks.map(t => ({ title: t.title, status: t.status, priority: t.priority }))
         };
     },
-    get_bookkeeping_entries: (args: { limit?: number; type?: 'Inflow' | 'Outflow'; category?: string }) => {
-        const { limit = 20, type, category } = args || {};
+    get_bookkeeping_entries: (args: { limit?: number; type?: 'Inflow' | 'Outflow'; category?: string; month?: string }) => {
+        const { limit = 20, type, category, month } = args || {};
         const dataStore = useDataStore.getState();
         let entries = dataStore.bookkeeping;
         if (type) entries = entries.filter(e => e.type === type);
         if (category) entries = entries.filter(e => e.category.toLowerCase().includes(category.toLowerCase()));
+        if (month) {
+            const m = month.toLowerCase();
+            const monthMap: Record<string, number> = {
+                january: 0, jan: 0, '1': 0,
+                february: 1, feb: 1, '2': 1,
+                march: 2, mar: 2, '3': 2,
+                april: 3, apr: 3, '4': 3,
+                may: 4, '5': 4,
+                june: 5, jun: 5, '6': 5, jine: 5,
+                july: 6, jul: 6, '7': 6,
+                august: 7, aug: 7, '8': 7,
+                september: 8, sep: 8, '9': 8,
+                october: 9, oct: 9, '10': 9,
+                november: 10, nov: 10, '11': 10,
+                december: 11, dec: 11, '12': 11
+            };
+            const targetMonth = monthMap[m];
+            if (targetMonth !== undefined) {
+                entries = entries.filter(e => e.date && new Date(e.date).getMonth() === targetMonth);
+            }
+        }
         
         return {
             entries: entries.slice(0, limit).map(e => ({
@@ -351,12 +398,33 @@ const SYSTEM_TOOLS = {
             }))
         };
     },
-    get_all_invoices: (args: { limit?: number; contact_id?: string }) => {
-        const { limit = 20, contact_id } = args || {};
+    get_all_invoices: (args: { limit?: number; contact_id?: string; month?: string }) => {
+        const { limit = 20, contact_id, month } = args || {};
         const dataStore = useDataStore.getState();
         let invoices = dataStore.invoices;
         if (contact_id) {
             invoices = invoices.filter(i => i.contactId === contact_id);
+        }
+        if (month) {
+            const m = month.toLowerCase();
+            const monthMap: Record<string, number> = {
+                january: 0, jan: 0, '1': 0,
+                february: 1, feb: 1, '2': 1,
+                march: 2, mar: 2, '3': 2,
+                april: 3, apr: 3, '4': 3,
+                may: 4, '5': 4,
+                june: 5, jun: 5, '6': 5, jine: 5,
+                july: 6, jul: 6, '7': 6,
+                august: 7, aug: 7, '8': 7,
+                september: 8, sep: 8, '9': 8,
+                october: 9, oct: 9, '10': 9,
+                november: 10, nov: 10, '11': 10,
+                december: 11, dec: 11, '12': 11
+            };
+            const targetMonth = monthMap[m];
+            if (targetMonth !== undefined) {
+                invoices = invoices.filter(i => i.date && new Date(i.date).getMonth() === targetMonth);
+            }
         }
         return {
             invoices: invoices.slice(0, limit).map(i => ({
@@ -603,8 +671,13 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "get_financial_summary",
-        description: "Get a summary of revenue, expenses, and pending payments.",
-        parameters: { type: SchemaType.OBJECT, properties: {} }
+        description: "Get a summary of revenue, expenses, and pending payments. Supports filtering by a specific month (e.g. 'June').",
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                month: { type: SchemaType.STRING, description: "Optional month to filter by, e.g. 'June' or 'July'." }
+            }
+        }
     },
     {
         name: "get_recipe_analysis",
@@ -631,13 +704,14 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "get_bookkeeping_entries",
-        description: "Fetch list of transactions (Inflow/Outflow) from the financial ledger. Use this to find expenses by category (e.g., 'vehicle maintenance').",
+        description: "Fetch list of transactions (Inflow/Outflow) from the financial ledger. Use this to find expenses by category or filter by month.",
         parameters: {
             type: SchemaType.OBJECT,
             properties: {
                 limit: { type: SchemaType.NUMBER },
                 category: { type: SchemaType.STRING, description: "Category name to filter by" },
-                type: { type: SchemaType.STRING, enum: ["Inflow", "Outflow"] }
+                type: { type: SchemaType.STRING, enum: ["Inflow", "Outflow"] },
+                month: { type: SchemaType.STRING, description: "Optional month to filter by, e.g. 'June' or 'July'." }
             }
         }
     },
@@ -702,12 +776,13 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "get_all_invoices",
-        description: "Get all invoices regardless of status. Use this to see history or specific invoice details.",
+        description: "Get all invoices regardless of status. Use this to see history, filter by month, or specific invoice details.",
         parameters: {
             type: SchemaType.OBJECT,
             properties: {
                 contact_id: { type: SchemaType.STRING, description: "Optional contact ID filter" },
-                limit: { type: SchemaType.NUMBER, description: "Max count" }
+                limit: { type: SchemaType.NUMBER, description: "Max count" },
+                month: { type: SchemaType.STRING, description: "Optional month to filter by, e.g. 'June' or 'July'." }
             }
         }
     },
