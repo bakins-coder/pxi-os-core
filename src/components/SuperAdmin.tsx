@@ -30,7 +30,7 @@ const revenueData = [
 ];
 
 export const SuperAdmin = () => {
-    const { settings, setBrandColor, strictMode, toggleStrictMode } = useSettingsStore();
+    const { settings, setBrandColor, strictMode, toggleStrictMode, useLocalLLM, toggleLocalLLM } = useSettingsStore();
     const brandColor = settings.brandColor || '#00ff9d';
     const [activeTab, setActiveTab] = useState<'matrix' | 'branding' | 'security'>('matrix');
     const [organizations, setOrganizations] = useState<any[]>([]);
@@ -313,6 +313,25 @@ export const SuperAdmin = () => {
                                 >
                                     <div className={`h-full aspect-square rounded-full transition-all duration-500 flex items-center justify-center ${strictMode ? 'ml-[calc(100%-2.5rem)] bg-white text-rose-500' : 'bg-slate-600 text-slate-400'}`}>
                                         {strictMode ? <Lock size={14} /> : <Unlock size={14} />}
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-950/50 p-8 rounded-[2rem] border border-white/5 mt-6">
+                            <div className="flex justify-between items-center gap-10">
+                                <div className="space-y-2">
+                                    <h3 className="text-lg font-black text-white uppercase tracking-tighter">Local Gemma LLM</h3>
+                                    <p className="text-xs text-slate-500 font-bold leading-relaxed uppercase tracking-tight">
+                                        Route all agent reasoning, chat completion, and document parsing locally to Gemma-2-2B on port 8000. Bypasses remote Google APIs.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={toggleLocalLLM}
+                                    className={`w-28 h-12 rounded-full p-1.5 transition-all duration-500 flex items-center ${useLocalLLM ? 'bg-amber-500' : 'bg-slate-800'}`}
+                                >
+                                    <div className={`h-full aspect-square rounded-full transition-all duration-500 flex items-center justify-center ${useLocalLLM ? 'ml-[calc(100%-2.5rem)] bg-slate-950 text-amber-500' : 'bg-slate-600 text-slate-400'}`}>
+                                        <Zap size={14} />
                                     </div>
                                 </button>
                             </div>

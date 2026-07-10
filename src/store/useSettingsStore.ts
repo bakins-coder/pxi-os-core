@@ -10,10 +10,12 @@ interface SettingsState {
     cloudEnabled: boolean;
     isDemoMode: boolean;
     strictMode: boolean;
+    useLocalLLM: boolean;
     partialSetupData: any | null;
     completeSetup: (settings: Partial<OrganizationSettings>) => void;
     updatePartialSetup: (data: any) => void;
     toggleStrictMode: () => void;
+    toggleLocalLLM: () => void;
     reset: () => void;
     fetchSettings: (orgId: string) => Promise<void>;
 }
@@ -45,6 +47,7 @@ const INITIAL_SYSTEM_FLAGS = {
     cloudEnabled: false,
     isDemoMode: false,
     strictMode: false,
+    useLocalLLM: false,
     partialSetupData: null
 };
 
@@ -101,6 +104,7 @@ export const useSettingsStore = create<SettingsState>()(
                     };
                 }),
             toggleStrictMode: () => set((state) => ({ strictMode: !state.strictMode })),
+            toggleLocalLLM: () => set((state) => ({ useLocalLLM: !state.useLocalLLM })),
             reset: () => set({ settings: DEFAULT_SETTINGS, ...INITIAL_SYSTEM_FLAGS }),
             fetchSettings: async (orgId: string) => {
                 try {

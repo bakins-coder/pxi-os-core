@@ -23,6 +23,38 @@ const getAIInstance = () => {
     return new GoogleGenerativeAI(key);
 };
 
+async function callLocalGemma(
+    messages: Array<{ role: string; content: string }>,
+    jsonMode: boolean = false
+): Promise<string> {
+    try {
+        const payload: any = {
+            model: "gemma-2-2b-it-Q4_K_M",
+            messages,
+            temperature: jsonMode ? 0.1 : 0.7,
+            max_tokens: 1024
+        };
+        if (jsonMode) {
+            payload.response_format = { type: "json_object" };
+        }
+        const resp = await fetch("http://localhost:8000/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+            throw new Error(`Local Gemma API returned HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        return data.choices?.[0]?.message?.content || "";
+    } catch (err: any) {
+        console.error("[Local Gemma] Request failed:", err);
+        throw new Error(`Local Gemma error: ${err.message || err}`);
+    }
+}
+
 /**
  * AI Tools Implementation
  * These functions bridge the AI model to our local data store.
@@ -1469,20 +1501,42 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 }
             } as any;
 
-            // Use executeToolCalls to allow the model to use tools before returning the final JSON
-            // Consolidate contentParts into a single message for SDK compatibility
-            const result = await executeToolCalls(ai, 'gemini-2.5-flash', [{ role: 'user', parts: contentParts }], generationConfig, systemInstructions, filteredDeclarations);
-            
+            const isLocalEnabled = import.meta.env.VITE_USE_LOCAL_LLM === 'true' || useSettingsStore.getState().useLocalLLM;
             let responseText = "";
-            try {
-                // Try .text() first, then fallback to parts access
-                responseText = typeof result.text === 'function' ? result.text() : "";
-                if (!responseText && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    responseText = result.candidates[0].content.parts[0].text;
+
+            if (isLocalEnabled) {
+                console.log("[AI Service] Directing processAgentRequest to local Gemma...");
+                const mappedMessages: Array<{ role: string; content: string }> = [
+                    { role: 'system', content: systemInstructions }
+                ];
+                let userText = input;
+                if (context) {
+                    userText += `\n\nADDITIONAL CONTEXT FROM FILE/HISTORY:\n${context}`;
                 }
-            } catch (textErr) {
-                console.warn("[AI Service] Could not extract text from result:", textErr);
-                responseText = "I encountered an issue processing that information.";
+                mappedMessages.push({ role: 'user', content: userText });
+
+                try {
+                    responseText = await callLocalGemma(mappedMessages, true);
+                } catch (err: any) {
+                    console.error("[AI Service] Local Gemma failed, falling back to Gemini...", err);
+                }
+            }
+
+            if (!responseText) {
+                // Use executeToolCalls to allow the model to use tools before returning the final JSON
+                // Consolidate contentParts into a single message for SDK compatibility
+                const result = await executeToolCalls(ai, 'gemini-2.5-flash', [{ role: 'user', parts: contentParts }], generationConfig, systemInstructions, filteredDeclarations);
+                
+                try {
+                    // Try .text() first, then fallback to parts access
+                    responseText = typeof result.text === 'function' ? result.text() : "";
+                    if (!responseText && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        responseText = result.candidates[0].content.parts[0].text;
+                    }
+                } catch (textErr) {
+                    console.warn("[AI Service] Could not extract text from result:", textErr);
+                    responseText = "I encountered an issue processing that information.";
+                }
             }
 
             let parsed;
@@ -1597,6 +1651,26 @@ export async function generateAIResponse(
         ...history,
         { role: 'user', parts: userParts }
     ];
+
+    const isLocalEnabled = import.meta.env.VITE_USE_LOCAL_LLM === 'true' || useSettingsStore.getState().useLocalLLM;
+    if (isLocalEnabled) {
+        console.log("[AI Service] Directing generateAIResponse to local Gemma...");
+        const mappedMessages: Array<{ role: string; content: string }> = [
+            { role: 'system', content: systemInstruction }
+        ];
+        for (const msg of history) {
+            const role = msg.role === 'model' ? 'assistant' : msg.role;
+            const textPart = msg.parts?.find((p: any) => p.text)?.text || '';
+            mappedMessages.push({ role, content: textPart });
+        }
+        mappedMessages.push({ role: 'user', content: prompt });
+
+        try {
+            return await callLocalGemma(mappedMessages, false);
+        } catch (err: any) {
+            console.error("[AI Service] Local Gemma failed, falling back to Gemini...", err);
+        }
+    }
 
     try {
         const result: any = await executeToolCalls(ai, 'gemini-2.5-flash', currentMessages, {}, systemInstruction, SYSTEM_TOOL_DECLARATIONS);
