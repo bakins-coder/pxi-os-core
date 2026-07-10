@@ -197,7 +197,7 @@ const ORCA_MESSAGES = [
 const COMPANY_TABS = ['Assets', 'HR/Staff', 'CRM', 'Financials'];
 
 export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = ({ adminEmail, staffId }) => {
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'subsidiaries' | 'services' | 'orca' | 'compliance' | 'scenarios' | 'collab'>('subsidiaries');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'home' | 'subsidiaries' | 'services' | 'orca' | 'compliance' | 'scenarios' | 'collab'>('home');
 
   // AI Scenario Planning state
   const [scenarioInputs, setScenarioInputs] = useState({ subsidiary: 'hogl', metric: 'revenue', change: '+15', horizon: '6 months' });
@@ -458,6 +458,7 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
           )}
 
           {[
+            { id: 'home', label: 'Overview', icon: Sparkles },
             { id: 'subsidiaries', label: 'Subsidiaries', icon: LayoutGrid },
             { id: 'services', label: 'Shared Services', icon: Layers },
             { id: 'orca', label: 'Chief AI (ORCA)', icon: Brain },
@@ -629,6 +630,266 @@ export const HoneywellGroupWorkspace: React.FC<HoneywellGroupWorkspaceProps> = (
               </div>
             </div>
           </div>
+
+          {/* ── TAB CONTENT 0: HOME / OVERVIEW DASHBOARD ─────────────────────────────── */}
+          {activeSidebarTab === 'home' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+              {/* ── Futuristic AI Pulse Hero Banner ─────────────────────── */}
+              <div style={{ position: 'relative', background: 'linear-gradient(135deg, #090d16 0%, #0f1a35 40%, #0b1220 100%)', border: '1px solid rgba(212,160,23,0.2)', borderRadius: 24, overflow: 'hidden', padding: '40px 44px' }}>
+                {/* Background grid lines */}
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(212,160,23,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(212,160,23,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
+                {/* Glow orbs */}
+                <div style={{ position: 'absolute', top: -60, right: 80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(212,160,23,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: -80, left: 60, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(96,165,250,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  {/* Status pill */}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', color: '#34d399', fontSize: 10, fontWeight: 800, padding: '5px 14px', borderRadius: 20, marginBottom: 20, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite', boxShadow: '0 0 8px #34d399' }} />
+                    ORCA AI · All Systems Nominal · {lagosTime || '—'} Lagos
+                  </div>
+
+                  <h1 style={{ fontSize: 48, fontWeight: 900, color: '#fff', margin: '0 0 12px', letterSpacing: '-2px', lineHeight: 1.05 }}>
+                    HONEYWELL <span style={{ background: 'linear-gradient(135deg, #d4a017, #f5c842)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>GROUP</span>
+                    <br />
+                    <span style={{ fontSize: 28, fontWeight: 400, color: '#475569', letterSpacing: '-0.5px' }}>HQ Intelligence Console</span>
+                  </h1>
+
+                  <p style={{ fontSize: 14, color: '#94a3b8', maxWidth: 560, lineHeight: 1.65, margin: '0 0 28px' }}>
+                    A vertically integrated Nigerian conglomerate operating across <strong style={{ color: '#d4a017' }}>Energy & Logistics</strong>, <strong style={{ color: '#a78bfa' }}>Hospitality</strong>, <strong style={{ color: '#34d399' }}>Real Estate</strong>, and <strong style={{ color: '#eab308' }}>Agribusiness</strong>. Powered by ORCA, your Chief AI Agent with cross-subsidiary intelligence.
+                  </p>
+
+                  {/* Live ORCA Pulse strip */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(212,160,23,0.12)', borderRadius: 12, padding: '10px 16px', maxWidth: 640 }}>
+                    <Brain size={14} color="#d4a017" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: '#d4a017', fontWeight: 800, letterSpacing: '0.05em', flexShrink: 0 }}>ORCA LIVE:</span>
+                    <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {orcaLogs[0] || '[ORCA] Group dashboard initialised. Monitoring all 4 entities.'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Animated KPI Row ──────────────────────────────────────── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+                {[
+                  { label: 'GROUP NET ASSETS', value: '₦485B', sub: 'Audited IFRS', color: '#d4a017', icon: TrendingUp, glow: 'rgba(212,160,23,0.15)' },
+                  { label: 'PORTFOLIO VALUE', value: '₦127B', sub: '+33.7% YTD', color: '#34d399', icon: BarChart3, glow: 'rgba(52,211,153,0.12)' },
+                  { label: 'ACTIVE SUBSIDIARIES', value: '4', sub: '3 of 4 active', color: '#60a5fa', icon: Building2, glow: 'rgba(96,165,250,0.12)' },
+                  { label: 'GROUP WORKFORCE', value: '2,847', sub: 'HMO covered', color: '#a78bfa', icon: Users, glow: 'rgba(167,139,250,0.12)' },
+                  { label: 'GROUP IRR', value: '19.2%', sub: '↑ above 18% target', color: '#f97316', icon: Zap, glow: 'rgba(249,115,22,0.12)' },
+                ].map((kpi, i) => (
+                  <div key={i} style={{ background: '#0e121e', border: `1px solid ${kpi.color}20`, borderRadius: 16, padding: '20px', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }}
+                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 30px ${kpi.glow}`; }}
+                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${kpi.color}, transparent)` }} />
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: `${kpi.color}14`, border: `1px solid ${kpi.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                      <kpi.icon size={15} color={kpi.color} />
+                    </div>
+                    <p style={{ fontSize: 9, color: '#475569', margin: 0, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{kpi.label}</p>
+                    <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: '6px 0 2px', letterSpacing: '-0.5px' }}>{kpi.value}</p>
+                    <p style={{ fontSize: 10, color: kpi.color, margin: 0, fontWeight: 700 }}>{kpi.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Quick Navigation Cards + Mini Live Feed ──────────────── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+
+                {/* Quick Nav Cards Grid */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <h3 style={{ fontSize: 11, color: '#475569', margin: 0, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Quick Access</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+                    {[
+                      {
+                        id: 'subsidiaries',
+                        label: 'Subsidiaries',
+                        desc: 'View all 4 operating companies, ownership stakes, and live financials.',
+                        icon: LayoutGrid,
+                        color: '#d4a017',
+                        gradient: 'linear-gradient(135deg, rgba(212,160,23,0.12), rgba(212,160,23,0.04))',
+                        badge: '4 Active'
+                      },
+                      {
+                        id: 'orca',
+                        label: 'Chief AI (ORCA)',
+                        desc: 'Open ORCA\'s full console for group-wide AI queries and audit logs.',
+                        icon: Brain,
+                        color: '#34d399',
+                        gradient: 'linear-gradient(135deg, rgba(52,211,153,0.1), rgba(52,211,153,0.03))',
+                        badge: 'Online'
+                      },
+                      {
+                        id: 'services',
+                        label: 'Shared Services',
+                        desc: 'Access centralised Asset, HR, Tax, CRM, and Portfolio modules.',
+                        icon: Layers,
+                        color: '#60a5fa',
+                        gradient: 'linear-gradient(135deg, rgba(96,165,250,0.1), rgba(96,165,250,0.03))',
+                        badge: '6 Modules'
+                      },
+                      {
+                        id: 'scenarios',
+                        label: 'AI Scenario Planner',
+                        desc: 'Run ORCA-powered what-if simulations across subsidiaries.',
+                        icon: FlaskConical,
+                        color: '#a78bfa',
+                        gradient: 'linear-gradient(135deg, rgba(167,139,250,0.1), rgba(167,139,250,0.03))',
+                        badge: 'ORCA AI'
+                      },
+                      {
+                        id: 'collab',
+                        label: 'Collaboration Hub',
+                        desc: 'Cross-subsidiary messaging, file sharing, and project channels.',
+                        icon: MessageSquare,
+                        color: '#38bdf8',
+                        gradient: 'linear-gradient(135deg, rgba(56,189,248,0.1), rgba(56,189,248,0.03))',
+                        badge: '4 Online'
+                      },
+                      {
+                        id: 'compliance',
+                        label: 'Compliance Logs',
+                        desc: 'IFRS, FIRS and environmental compliance audit checkpoints.',
+                        icon: ShieldCheck,
+                        color: '#f59e0b',
+                        gradient: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.03))',
+                        badge: '3 Alerts'
+                      },
+                    ].map(card => (
+                      <div
+                        key={card.id}
+                        onClick={() => setActiveSidebarTab(card.id as any)}
+                        style={{ background: card.gradient, border: `1px solid ${card.color}20`, borderRadius: 16, padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12, transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.border = `1px solid ${card.color}45`;
+                          e.currentTarget.style.transform = 'translateY(-3px)';
+                          e.currentTarget.style.boxShadow = `0 10px 30px ${card.color}18`;
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.border = `1px solid ${card.color}20`;
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        {/* Top accent */}
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${card.color}, transparent)` }} />
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${card.color}14`, border: `1px solid ${card.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <card.icon size={17} color={card.color} />
+                          </div>
+                          <span style={{ fontSize: 9, color: card.color, background: `${card.color}12`, border: `1px solid ${card.color}25`, padding: '3px 9px', borderRadius: 20, fontWeight: 800, letterSpacing: '0.05em' }}>
+                            {card.badge}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: '0 0 6px' }}>{card.label}</h4>
+                          <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.5 }}>{card.desc}</p>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: card.color, fontSize: 10, fontWeight: 700 }}>
+                          Open <ChevronRight size={12} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Column: Org Summary + ORCA Live Feed */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                  {/* Organisation Summary Card */}
+                  <div style={{ background: '#0e121e', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Globe size={14} color="#d4a017" />
+                      <h3 style={{ fontSize: 10, color: '#475569', margin: 0, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Group Overview</h3>
+                    </div>
+
+                    {[
+                      { label: 'Founded', value: '1972', icon: '🏛️' },
+                      { label: 'Headquarters', value: 'Ikoyi, Lagos', icon: '📍' },
+                      { label: 'Group MD', value: 'Mr. Oba Otudeko', icon: '👤' },
+                      { label: 'Subsidiaries', value: '4 Operating Entities', icon: '🏢' },
+                      { label: 'Group IRR', value: '19.2% (above target)', icon: '📈' },
+                      { label: 'Effective Tax Rate', value: '28.4% (FY2025)', icon: '🧾' },
+                      { label: 'Markets', value: 'Nigeria · West Africa', icon: '🌍' },
+                    ].map((row, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < 6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                        <span style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{row.icon}</span> {row.label}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1' }}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ORCA Live Activity Mini Feed */}
+                  <div style={{ background: '#0e121e', border: '1px solid rgba(212,160,23,0.15)', borderRadius: 16, overflow: 'hidden', flex: 1 }}>
+                    <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, rgba(212,160,23,0.06), transparent)' }}>
+                      <Brain size={13} color="#d4a017" />
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.05em', textTransform: 'uppercase' }}>ORCA Live Feed</span>
+                      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                        <span style={{ fontSize: 8, color: '#34d399', fontWeight: 800 }}>LIVE</span>
+                      </span>
+                    </div>
+                    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 230, overflowY: 'auto' }}>
+                      {orcaLogs.slice(0, 6).map((log, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, paddingBottom: 8, borderBottom: i < 5 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                          <span style={{ color: '#d4a017', fontSize: 10, flexShrink: 0, fontWeight: 700 }}>›</span>
+                          <span style={{ fontSize: 10, color: i === 0 ? '#e2e8f0' : '#475569', lineHeight: 1.4, fontFamily: 'monospace' }}>{log}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <button onClick={() => setActiveSidebarTab('orca')} style={{ background: 'none', border: 'none', color: '#d4a017', fontSize: 10, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, padding: 0, letterSpacing: '0.05em' }}>
+                        Open Full ORCA Console <ChevronRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* ── Subsidiary Quick-Status Row ───────────────────────────── */}
+              <div>
+                <h3 style={{ fontSize: 11, color: '#475569', margin: '0 0 14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Subsidiary Status</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+                  {companies.map(co => (
+                    <div
+                      key={co.id}
+                      onClick={() => setActiveSidebarTab('subsidiaries')}
+                      style={{ background: '#0e121e', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseOver={e => { e.currentTarget.style.border = '1px solid rgba(212,160,23,0.3)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                      onMouseOut={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      <div style={{ height: 80, position: 'relative', overflow: 'hidden' }}>
+                        <img src={co.image} alt={co.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 20%, rgba(14,18,30,0.95))' }} />
+                        <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                          <span style={{ fontSize: 8, fontWeight: 900, color: co.status === 'ACTIVE' ? '#34d399' : '#f87171', background: co.status === 'ACTIVE' ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)', border: `1px solid ${co.status === 'ACTIVE' ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)'}`, padding: '2px 7px', borderRadius: 10 }}>
+                            {co.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ padding: '12px 14px' }}>
+                        <h4 style={{ fontSize: 11, fontWeight: 800, color: '#fff', margin: '0 0 3px' }}>{co.name}</h4>
+                        <p style={{ fontSize: 9, color: '#475569', margin: '0 0 10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{co.sector}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, fontWeight: 900, color: '#d4a017' }}>{co.marketCap}</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#34d399' }}>{co.profitMargin}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
 
           {/* ── TAB CONTENT 1: SUBSIDIARIES PORTFOLIO (APEXGROUP STYLE) ────────────────── */}
           {activeSidebarTab === 'subsidiaries' && (
