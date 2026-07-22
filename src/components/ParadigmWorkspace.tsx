@@ -240,7 +240,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   const dbLeads = useDataStore(state => state.leads).filter(l => (l as any).companyId === '4376c123-01c9-4a92-9675-8123456789ab' || l.organizationId === '4376c123-01c9-4a92-9675-8123456789ab');
   const leads = dbLeads.map(mapDbLeadToLocal);
   const dbInvoices = useDataStore(state => state.invoices).filter(i => !i.companyId || i.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
-  const dbBookkeeping = useDataStore(state => state.bookkeepingEntries);
+  const dbBookkeeping = useDataStore(state => state.bookkeeping || []);
   
   // Default to July (6) or current month
   const [selectedRevenueMonth, setSelectedRevenueMonth] = useState<string>("6"); 
@@ -475,7 +475,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         }
       }
 
-      const storeBookkeeping = useDataStore.getState().bookkeepingEntries;
+      const storeBookkeeping = useDataStore.getState().bookkeeping || [];
       const hasAjapaJuneBookkeeping = storeBookkeeping.some(b => b.id === 'b-1' || b.id === 'b-2');
       if (!hasAjapaJuneBookkeeping) {
         // Seed Bookkeeping Entries
