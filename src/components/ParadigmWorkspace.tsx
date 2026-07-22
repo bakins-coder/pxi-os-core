@@ -222,9 +222,9 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   ]);
 
   // Zustand state bindings
-  const dbLeads = useDataStore(state => state.leads);
+  const dbLeads = useDataStore(state => state.leads).filter(l => (l as any).companyId === '4376c123-01c9-4a92-9675-8123456789ab' || l.organizationId === '4376c123-01c9-4a92-9675-8123456789ab');
   const leads = dbLeads.map(mapDbLeadToLocal);
-  const dbInvoices = useDataStore(state => state.invoices);
+  const dbInvoices = useDataStore(state => state.invoices).filter(i => i.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
   
   const [selectedRevenueMonth, setSelectedRevenueMonth] = useState<string>("5"); // Default to June (5)
   
@@ -250,7 +250,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
   // Product pricing optimization state
   const [optimizedPrices, setOptimizedPrices] = useState<Record<string, number>>({});
-  const dbInventory = useDataStore(state => state.inventory);
+   const dbInventory = useDataStore(state => state.inventory).filter(i => i.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
   const products = dbInventory.filter(i => i.type === 'product').map(item => {
     const currentPrice = (item.priceCents || 0) / 100;
     const demandFactor = getDemandFactor(item.name);
@@ -291,7 +291,8 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
   // AI Staff Communication Desk state
   const employees = useDataStore(state => state.employees);
-  const displayEmployees = employees.length > 0 ? employees : defaultEmployees;
+  const ajapaEmployees = employees.filter(e => e.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
+  const displayEmployees = ajapaEmployees.length > 0 ? ajapaEmployees : defaultEmployees;
   const [selectedStaff, setSelectedStaff] = useState<any>(defaultEmployees[0]);
   const [staffInput, setStaffInput] = useState("");
   const [isStaffRecording, setIsStaffRecording] = useState(false);
