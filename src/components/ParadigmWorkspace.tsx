@@ -224,22 +224,50 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     "[Kiki] 16:09:20 - Auto-generated email template for Tunde Bakare."
   ]);
 
+  // Helper for timezone-safe month parsing (0-indexed: 0=Jan, 6=Jul)
+  const getMonthFromDateString = (dateStr?: string): number => {
+    if (!dateStr) return -1;
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      const monthNum = parseInt(parts[1], 10);
+      if (!isNaN(monthNum)) return monthNum - 1;
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? -1 : d.getMonth();
+  };
+
   // Zustand state bindings
   const dbLeads = useDataStore(state => state.leads).filter(l => (l as any).companyId === '4376c123-01c9-4a92-9675-8123456789ab' || l.organizationId === '4376c123-01c9-4a92-9675-8123456789ab');
   const leads = dbLeads.map(mapDbLeadToLocal);
-  const dbInvoices = useDataStore(state => state.invoices).filter(i => i.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
+  const dbInvoices = useDataStore(state => state.invoices).filter(i => !i.companyId || i.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
+  const dbBookkeeping = useDataStore(state => state.bookkeepingEntries);
   
-  const [selectedRevenueMonth, setSelectedRevenueMonth] = useState<string>("5"); // Default to June (5)
+  // Default to July (6) or current month
+  const [selectedRevenueMonth, setSelectedRevenueMonth] = useState<string>("6"); 
   
-  const revenueTotal = dbInvoices
-    .filter(inv => {
-      if (inv.status !== 'Paid') return false;
-      if (!inv.date) return false;
-      if (selectedRevenueMonth === "All") return true;
-      const dateObj = new Date(inv.date);
-      return dateObj.getMonth() === parseInt(selectedRevenueMonth);
-    })
-    .reduce((sum, inv) => sum + (inv.totalCents || 0), 0) / 100;
+  const revenueTotal = (() => {
+    const invoiceRevenue = dbInvoices
+      .filter(inv => {
+        const isPaid = inv.status === 'Paid' || (inv as any).status === 'paid' || (inv.paidAmountCents && inv.paidAmountCents > 0);
+        if (!isPaid) return false;
+        if (!inv.date) return false;
+        if (selectedRevenueMonth === "All") return true;
+        return getMonthFromDateString(inv.date) === parseInt(selectedRevenueMonth, 10);
+      })
+      .reduce((sum, inv) => sum + (inv.totalCents || inv.paidAmountCents || 0), 0);
+
+    const bookkeepingRevenue = dbBookkeeping
+      .filter(entry => {
+        if (entry.type !== 'Inflow') return false;
+        if (!entry.date) return false;
+        if (entry.referenceId && dbInvoices.some(inv => inv.id === entry.referenceId)) return false;
+        if (selectedRevenueMonth === "All") return true;
+        return getMonthFromDateString(entry.date) === parseInt(selectedRevenueMonth, 10);
+      })
+      .reduce((sum, entry) => sum + (entry.amountCents || 0), 0);
+
+    return (invoiceRevenue + bookkeepingRevenue) / 100;
+  })();
   
   const revenueFormatted = new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -784,7 +812,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
   // Save / Record Invoice to Zustand Store as Paid & Add Bookkeeping Inflow
   const handleSaveInvoice = async () => {
-    const companyId = useAuthStore.getState().user?.companyId || '';
+    const companyId = useAuthStore.getState().user?.companyId || '4376c123-01c9-4a92-9675-8123456789ab';
     const newInvoiceId = `inv-${Date.now()}`;
     
     const lines = invoiceItems.map((item, idx) => ({
@@ -827,10 +855,9 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
     // 3. Automatically switch Revenue Month Filter to the month of the invoice
     if (invoiceMeta.issueDate) {
-      const issueDateObj = new Date(invoiceMeta.issueDate);
-      if (!isNaN(issueDateObj.getTime())) {
-        const monthIdx = issueDateObj.getMonth();
-        setSelectedRevenueMonth(monthIdx.toString());
+      const mIdx = getMonthFromDateString(invoiceMeta.issueDate);
+      if (mIdx >= 0) {
+        setSelectedRevenueMonth(mIdx.toString());
       }
     }
 
