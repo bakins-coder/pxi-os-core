@@ -284,6 +284,14 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     { description: "Onsite Interactive Money Math Workshop Facilitation", qty: 1, price: 400.00 },
   ]);
   const [newItem, setNewItem] = useState<InvoiceItem>({ description: "", qty: 1, price: 0 });
+  const [invoiceDiscount, setInvoiceDiscount] = useState<number>(0);
+  const [invoiceDiscountReason, setInvoiceDiscountReason] = useState<string>("");
+  const [invoiceTax, setInvoiceTax] = useState<number>(0);
+  const [invoicePaymentDetails, setInvoicePaymentDetails] = useState({
+    accountName: 'Konsulid8 Ltd',
+    bankName: 'First Bank',
+    accountNumber: '2048951533'
+  });
 
   // Moneewise activities folders expand/collapse states
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
@@ -667,8 +675,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
   // Calculate Invoice Math
   const invoiceSubtotal = invoiceItems.reduce((acc, item) => acc + (item.qty * item.price), 0);
-  const invoiceTax = invoiceSubtotal * 0.055; // 5.5% VAT or TAX
-  const invoiceTotal = invoiceSubtotal + invoiceTax;
+  const invoiceTotal = Math.max(0, invoiceSubtotal - invoiceDiscount + invoiceTax);
 
   // Toggle folder expansion
   const toggleFolder = (folderKey: string) => {
@@ -743,6 +750,18 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
           if (Array.isArray(parsed.items) && parsed.items.length > 0) {
             setInvoiceItems(parsed.items);
+          }
+
+          setInvoiceDiscount(typeof parsed.discount === 'number' ? Math.abs(parsed.discount) : 0);
+          setInvoiceDiscountReason(parsed.discountReason || "");
+          setInvoiceTax(typeof parsed.tax === 'number' ? Math.abs(parsed.tax) : 0);
+
+          if (parsed.accountName || parsed.bankName || parsed.accountNumber) {
+            setInvoicePaymentDetails(prev => ({
+              accountName: parsed.accountName || prev.accountName,
+              bankName: parsed.bankName || prev.bankName,
+              accountNumber: parsed.accountNumber || prev.accountNumber
+            }));
           }
 
           addAgentLog(`Yanribo scanned document '${file.name}' and extracted details for ${parsed.clientName || 'client'}.`);
@@ -1989,6 +2008,43 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                       >
                         Insert Item Line
                       </button>
+
+                      <div className="mt-4 border-t border-slate-800 pt-3 space-y-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Discount & Tax Adjustments</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[9px] text-slate-500 font-medium block mb-1">Discount (₦)</label>
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={invoiceDiscount || ""} 
+                              onChange={(e) => setInvoiceDiscount(parseFloat(e.target.value) || 0)} 
+                              className="w-full h-8 px-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs focus:outline-none" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-slate-500 font-medium block mb-1">Discount Reason</label>
+                            <input 
+                              placeholder="2 for the price of 1" 
+                              value={invoiceDiscountReason} 
+                              onChange={(e) => setInvoiceDiscountReason(e.target.value)} 
+                              className="w-full h-8 px-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs focus:outline-none" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-slate-500 font-medium block mb-1">VAT / Tax (₦)</label>
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={invoiceTax || ""} 
+                              onChange={(e) => setInvoiceTax(parseFloat(e.target.value) || 0)} 
+                              className="w-full h-8 px-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs focus:outline-none" 
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2207,10 +2263,18 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                             <span className="text-slate-500">Subtotal</span>
                             <span className="font-bold text-slate-800 font-mono">₦{invoiceSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           </div>
-                          <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
-                            <span className="text-slate-500">VAT (5.5%)</span>
-                            <span className="font-bold text-slate-800 font-mono">₦{invoiceTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
+                          {invoiceDiscount > 0 && (
+                            <div className="flex justify-between py-1 border-b border-dashed border-slate-100 text-rose-600 font-semibold">
+                              <span>Discount {invoiceDiscountReason ? `(${invoiceDiscountReason})` : ''}</span>
+                              <span className="font-bold font-mono">- ₦{invoiceDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                          {invoiceTax > 0 && (
+                            <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                              <span>VAT / Tax</span>
+                              <span className="font-bold text-slate-800 font-mono">₦{invoiceTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between py-2 px-3 font-extrabold text-white text-sm bg-purple-950 rounded-lg shadow-sm">
                             <span>TOTAL AMOUNT DUE</span>
                             <span className="font-mono">₦{invoiceTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -2220,20 +2284,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                         {/* Remittance Details Card */}
                         <div className="p-4 rounded-xl text-white border-b-4 border-yellow-500 shadow-md relative overflow-hidden bg-gradient-to-br from-indigo-950 to-purple-950">
                           <h4 className="text-[9px] font-black tracking-widest text-yellow-400 uppercase mb-2">
-                            PAYMENT DETAILS (LOTUS BANK)
+                            PAYMENT TO: {invoicePaymentDetails.bankName ? invoicePaymentDetails.bankName.toUpperCase() : 'FIRST BANK'}
                           </h4>
                           <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[9px]">
                             <div>
                               <span className="text-[8px] text-indigo-300 uppercase block font-semibold">Account Name</span>
-                              <span className="font-bold text-indigo-50">Data Clinic</span>
+                              <span className="font-bold text-indigo-50">{invoicePaymentDetails.accountName || 'Konsulid8 Ltd'}</span>
                             </div>
                             <div>
                               <span className="text-[8px] text-indigo-300 uppercase block font-semibold">Bank Name</span>
-                              <span className="font-bold text-indigo-50">Lotus Bank</span>
+                              <span className="font-bold text-indigo-50">{invoicePaymentDetails.bankName || 'First Bank'}</span>
                             </div>
                             <div className="col-span-2">
                               <span className="text-[8px] text-indigo-300 uppercase block font-semibold">Account Number</span>
-                              <span className="font-black text-yellow-400 font-mono text-[11px]">1010386319</span>
+                              <span className="font-black text-yellow-400 font-mono text-[11px]">{invoicePaymentDetails.accountNumber || '2048951533'}</span>
                             </div>
                           </div>
                         </div>

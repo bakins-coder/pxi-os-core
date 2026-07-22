@@ -2032,8 +2032,13 @@ export interface ParsedInvoiceDetails {
         price: number;
     }>;
     subtotal?: number;
+    discount?: number;
+    discountReason?: string;
     tax?: number;
     total: number;
+    accountName?: string;
+    bankName?: string;
+    accountNumber?: string;
 }
 
 export async function parseInvoiceDocument(base64Data: string, mimeType: string): Promise<ParsedInvoiceDetails> {
@@ -2075,8 +2080,13 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
                         }
                     },
                     subtotal: { type: SchemaType.NUMBER },
+                    discount: { type: SchemaType.NUMBER },
+                    discountReason: { type: SchemaType.STRING },
                     tax: { type: SchemaType.NUMBER },
-                    total: { type: SchemaType.NUMBER }
+                    total: { type: SchemaType.NUMBER },
+                    accountName: { type: SchemaType.STRING },
+                    bankName: { type: SchemaType.STRING },
+                    accountNumber: { type: SchemaType.STRING }
                 },
                 required: ["invoiceNumber", "issueDate", "clientName", "items", "total"]
             }
@@ -2086,7 +2096,7 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
     try {
         const result = await model.generateContent([
             { inlineData: { data: base64Data, mimeType } },
-            { text: "Analyze this attached invoice document carefully. Extract: invoice number, issue date (YYYY-MM-DD), due date (YYYY-MM-DD), client/bill-to name, client email, client address if present, list of line items (description, quantity as 'qty', unit price as 'price'), subtotal, tax, and total amount. If any field is missing or unreadable, estimate or provide a reasonable fallback. Return JSON strictly adhering to the schema." }
+            { text: "Analyze this attached invoice document carefully. Extract: invoice number, issue date (YYYY-MM-DD), due date (YYYY-MM-DD), client/bill-to name, client email, client address if present, list of line items (description, quantity as 'qty', unit price as 'price'), subtotal, discount amount (e.g. 7500 if there is a discount line like '2 for the price of 1'), discountReason (e.g. '2 for the price of 1'), tax/VAT amount (ONLY if explicitly listed on the document, otherwise 0), total amount due, payment accountName, bankName, and accountNumber. If any field is missing or unreadable, estimate or provide a reasonable fallback. Return JSON strictly adhering to the schema." }
         ]);
         const response = await result.response;
         const parsed = JSON.parse(response.text() || "{}");
@@ -2099,8 +2109,13 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
             clientAddress: parsed.clientAddress || "",
             items: Array.isArray(parsed.items) && parsed.items.length > 0 ? parsed.items : [{ description: "Invoice Item", qty: 1, price: parsed.total || 0 }],
             subtotal: parsed.subtotal,
-            tax: parsed.tax,
-            total: parsed.total || 0
+            discount: typeof parsed.discount === 'number' ? Math.abs(parsed.discount) : 0,
+            discountReason: parsed.discountReason || "",
+            tax: typeof parsed.tax === 'number' ? Math.abs(parsed.tax) : 0,
+            total: parsed.total || 0,
+            accountName: parsed.accountName || "",
+            bankName: parsed.bankName || "",
+            accountNumber: parsed.accountNumber || ""
         };
     } catch (err: any) {
         console.error("[parseInvoiceDocument] Error scanning document:", err);
