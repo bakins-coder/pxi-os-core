@@ -2019,6 +2019,95 @@ export async function parseFinancialDocument(base64Data: string, mimeType: strin
     return JSON.parse(response.text() || "{}");
 }
 
+export interface ParsedInvoiceDetails {
+    invoiceNumber: string;
+    issueDate: string; // YYYY-MM-DD
+    dueDate: string;   // YYYY-MM-DD
+    clientName: string;
+    clientEmail: string;
+    clientAddress?: string;
+    items: Array<{
+        description: string;
+        qty: number;
+        price: number;
+    }>;
+    subtotal?: number;
+    tax?: number;
+    total: number;
+}
+
+export async function parseInvoiceDocument(base64Data: string, mimeType: string): Promise<ParsedInvoiceDetails> {
+    if (useSettingsStore.getState().strictMode) {
+        return {
+            invoiceNumber: `INV-${Date.now()}`,
+            issueDate: new Date().toISOString().split('T')[0],
+            dueDate: new Date().toISOString().split('T')[0],
+            clientName: "Scanned Client",
+            clientEmail: "client@scanned.local",
+            items: [{ description: "Scanned Invoice Item", qty: 1, price: 100 }],
+            total: 100
+        };
+    }
+    const ai = getAIInstance();
+    const model = ai.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: SchemaType.OBJECT,
+                properties: {
+                    invoiceNumber: { type: SchemaType.STRING },
+                    issueDate: { type: SchemaType.STRING },
+                    dueDate: { type: SchemaType.STRING },
+                    clientName: { type: SchemaType.STRING },
+                    clientEmail: { type: SchemaType.STRING },
+                    clientAddress: { type: SchemaType.STRING },
+                    items: {
+                        type: SchemaType.ARRAY,
+                        items: {
+                            type: SchemaType.OBJECT,
+                            properties: {
+                                description: { type: SchemaType.STRING },
+                                qty: { type: SchemaType.NUMBER },
+                                price: { type: SchemaType.NUMBER }
+                            },
+                            required: ["description", "qty", "price"]
+                        }
+                    },
+                    subtotal: { type: SchemaType.NUMBER },
+                    tax: { type: SchemaType.NUMBER },
+                    total: { type: SchemaType.NUMBER }
+                },
+                required: ["invoiceNumber", "issueDate", "clientName", "items", "total"]
+            }
+        } as any
+    });
+
+    try {
+        const result = await model.generateContent([
+            { inlineData: { data: base64Data, mimeType } },
+            { text: "Analyze this attached invoice document carefully. Extract: invoice number, issue date (YYYY-MM-DD), due date (YYYY-MM-DD), client/bill-to name, client email, client address if present, list of line items (description, quantity as 'qty', unit price as 'price'), subtotal, tax, and total amount. If any field is missing or unreadable, estimate or provide a reasonable fallback. Return JSON strictly adhering to the schema." }
+        ]);
+        const response = await result.response;
+        const parsed = JSON.parse(response.text() || "{}");
+        return {
+            invoiceNumber: parsed.invoiceNumber || `INV-${Date.now()}`,
+            issueDate: parsed.issueDate || new Date().toISOString().split('T')[0],
+            dueDate: parsed.dueDate || new Date().toISOString().split('T')[0],
+            clientName: parsed.clientName || "Attached Invoice Client",
+            clientEmail: parsed.clientEmail || "billing@client.com",
+            clientAddress: parsed.clientAddress || "",
+            items: Array.isArray(parsed.items) && parsed.items.length > 0 ? parsed.items : [{ description: "Invoice Item", qty: 1, price: parsed.total || 0 }],
+            subtotal: parsed.subtotal,
+            tax: parsed.tax,
+            total: parsed.total || 0
+        };
+    } catch (err: any) {
+        console.error("[parseInvoiceDocument] Error scanning document:", err);
+        throw new Error(`Could not parse invoice document: ${err.message || err}`);
+    }
+}
+
 /**
  * Generates an AI image (sketch/concept) of a cake based on a text prompt.
  * Uses a unique fingerprint for each request to avoid duplicates and ensures 

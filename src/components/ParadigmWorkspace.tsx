@@ -23,7 +23,10 @@ import {
   Mic,
   Square,
   Volume2,
-  LogOut
+  LogOut,
+  Paperclip,
+  Upload,
+  Loader2
 } from "lucide-react";
 import {
   AreaChart,
@@ -36,7 +39,7 @@ import {
 } from "recharts";
 import { useDataStore } from "../store/useDataStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { generateAIResponse, textToSpeech, processVoiceCommand } from "../services/ai";
+import { generateAIResponse, textToSpeech, processVoiceCommand, parseInvoiceDocument } from "../services/ai";
 import { decodeBase64, decodeRawPcmToAudioBuffer } from "../services/audioUtils";
 
 // Mock Data for CRM leads
@@ -709,7 +712,58 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     showToast("Suggestions Calculated", "Click Apply next to each product to confirm.");
   };
 
-  // Save / Record Invoice to Zustand Store
+  const [isScanningInvoice, setIsScanningInvoice] = useState(false);
+
+  const handleAttachInvoiceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsScanningInvoice(true);
+      showToast("Scanning Document...", "Ajapa & Yanribo analyzing attached invoice file...");
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const resultStr = reader.result as string;
+          const base64Clean = resultStr.split(',')[1] || resultStr;
+          const mimeType = file.type || 'image/jpeg';
+
+          const parsed = await parseInvoiceDocument(base64Clean, mimeType);
+
+          setInvoiceMeta(prev => ({
+            ...prev,
+            invoiceNumber: parsed.invoiceNumber || prev.invoiceNumber,
+            clientName: parsed.clientName || prev.clientName,
+            clientEmail: parsed.clientEmail || prev.clientEmail,
+            clientAddress: parsed.clientAddress || prev.clientAddress,
+            issueDate: parsed.issueDate || prev.issueDate,
+            dueDate: parsed.dueDate || prev.dueDate,
+          }));
+
+          if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+            setInvoiceItems(parsed.items);
+          }
+
+          addAgentLog(`Yanribo scanned document '${file.name}' and extracted details for ${parsed.clientName || 'client'}.`);
+          showToast("Invoice Document Parsed!", `Extracted invoice #${parsed.invoiceNumber} (Total: ₦${Number(parsed.total || 0).toLocaleString()}).`);
+        } catch (scanErr: any) {
+          console.error("AI Document OCR Failed:", scanErr);
+          showToast("Scanning Error", scanErr.message || "Failed to parse document. Please check file formatting.");
+        } finally {
+          setIsScanningInvoice(false);
+          e.target.value = "";
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error("File Read Error:", err);
+      showToast("File Error", "Could not read attached document.");
+      setIsScanningInvoice(false);
+    }
+  };
+
+  // Save / Record Invoice to Zustand Store as Paid & Add Bookkeeping Inflow
   const handleSaveInvoice = async () => {
     const companyId = useAuthStore.getState().user?.companyId || '';
     const newInvoiceId = `inv-${Date.now()}`;
@@ -725,6 +779,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
     const taxCents = Math.round(invoiceTax * 100);
     const totalCents = Math.round(invoiceTotal * 100);
 
+    // 1. Add Paid Invoice to Database
     await useDataStore.getState().addInvoice({
       id: newInvoiceId,
       number: invoiceMeta.invoiceNumber,
@@ -732,17 +787,36 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
       customerName: invoiceMeta.clientName,
       date: invoiceMeta.issueDate,
       dueDate: invoiceMeta.dueDate,
-      status: 'Sent' as any,
+      status: 'Paid' as any,
       type: 'Sales',
       lines,
       subtotalCents,
       totalCents,
-      paidAmountCents: 0,
-      description: `Lotus Bank Remittance: A/C 1010386319 (Sort: LTSBNG22)`
+      paidAmountCents: totalCents,
     });
 
-    addAgentLog(`Ajapa recorded invoice ${invoiceMeta.invoiceNumber} in local database.`);
-    showToast("Invoice Recorded", `Invoice ${invoiceMeta.invoiceNumber} saved to database store.`);
+    // 2. Automatically record an Inflow Bookkeeping Entry
+    await useDataStore.getState().addBookkeepingEntry({
+      id: `b-inflow-${Date.now()}`,
+      date: invoiceMeta.issueDate || new Date().toISOString().split('T')[0],
+      type: 'Inflow',
+      category: 'Sales Revenue',
+      description: `Payment received for Invoice ${invoiceMeta.invoiceNumber} (${invoiceMeta.clientName})`,
+      amountCents: totalCents,
+      referenceId: newInvoiceId
+    } as any);
+
+    // 3. Automatically switch Revenue Month Filter to the month of the invoice
+    if (invoiceMeta.issueDate) {
+      const issueDateObj = new Date(invoiceMeta.issueDate);
+      if (!isNaN(issueDateObj.getTime())) {
+        const monthIdx = issueDateObj.getMonth();
+        setSelectedRevenueMonth(monthIdx.toString());
+      }
+    }
+
+    addAgentLog(`Ajapa recorded invoice ${invoiceMeta.invoiceNumber} (₦${invoiceTotal.toLocaleString()}) as Paid in revenue ledger.`);
+    showToast("Invoice & Revenue Recorded!", `Invoice ${invoiceMeta.invoiceNumber} saved as Paid. Added to monthly revenue.`);
   };
 
   // Audio helpers
@@ -1925,6 +1999,17 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-200">Invoice Document Preview</h3>
                   <div className="flex items-center gap-2">
+                    <label className={`bg-indigo-700 hover:bg-indigo-600 text-white gap-2 font-bold text-xs h-9 px-4 rounded-xl flex items-center shadow-lg transition-all cursor-pointer ${isScanningInvoice ? 'opacity-50 cursor-wait' : ''}`}>
+                      {isScanningInvoice ? <Loader2 className="h-4 w-4 animate-spin text-amber-300" /> : <Paperclip className="h-4 w-4" />}
+                      {isScanningInvoice ? 'Scanning Document...' : 'Attach & Scan Invoice'}
+                      <input 
+                        type="file" 
+                        accept="image/*,.pdf" 
+                        className="hidden" 
+                        onChange={handleAttachInvoiceFile}
+                        disabled={isScanningInvoice}
+                      />
+                    </label>
                     <button 
                       onClick={handleSaveInvoice}
                       className="bg-purple-700 hover:bg-purple-600 text-white gap-2 font-bold text-xs h-9 px-4 rounded-xl flex items-center shadow-lg transition-all"
