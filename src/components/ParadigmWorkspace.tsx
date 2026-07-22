@@ -419,11 +419,11 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         }
       }
 
-      // Seed Invoices and Bookkeeping Entries if empty
+      // Seed Invoices and Bookkeeping Entries for Ajapasworld if missing
+      const companyId = '4376c123-01c9-4a92-9675-8123456789ab';
       const storeInvoices = useDataStore.getState().invoices;
-      if (storeInvoices.length === 0) {
-        const companyId = useAuthStore.getState().user?.companyId || '';
-        
+      const hasAjapaJuneInvoices = storeInvoices.some(i => i.id === 'inv-1' || i.id === 'inv-2');
+      if (!hasAjapaJuneInvoices) {
         // Seed Invoices
         const invoicesToSeed = [
           {
@@ -473,7 +473,11 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         for (const inv of invoicesToSeed) {
           await useDataStore.getState().addInvoice(inv as any);
         }
+      }
 
+      const storeBookkeeping = useDataStore.getState().bookkeepingEntries;
+      const hasAjapaJuneBookkeeping = storeBookkeeping.some(b => b.id === 'b-1' || b.id === 'b-2');
+      if (!hasAjapaJuneBookkeeping) {
         // Seed Bookkeeping Entries
         const bookkeepingToSeed = [
           {
