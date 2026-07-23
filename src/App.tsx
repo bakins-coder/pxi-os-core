@@ -177,7 +177,11 @@ function AppContent() {
         
         await new Promise(r => setTimeout(r, 600));
         if (user) {
-          useAuthStore.getState().refreshSession().catch(e => console.warn('[App] Session refresh failed:', e));
+          try {
+            await useAuthStore.getState().refreshSession();
+          } catch (e) {
+            console.warn('[App] Session refresh failed:', e);
+          }
         }
       } catch (err) {
         console.error('[App] Initialization error:', err);
