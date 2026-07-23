@@ -227,20 +227,48 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   // Helper for timezone-safe month parsing (0-indexed: 0=Jan, 6=Jul)
   const getMonthFromDateString = (dateStr?: string): number => {
     if (!dateStr) return -1;
-    const parts = dateStr.split('-');
-    if (parts.length >= 2) {
-      const monthNum = parseInt(parts[1], 10);
-      if (!isNaN(monthNum)) return monthNum - 1;
+    const str = dateStr.trim();
+    
+    // 1. Try ISO YYYY-MM-DD (e.g. 2026-07-22)
+    const isoMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (isoMatch) {
+      return parseInt(isoMatch[2], 10) - 1;
     }
-    const d = new Date(dateStr);
+    
+    // 2. Try DD/MM/YYYY or DD-MM-YYYY (e.g. 22/07/2026)
+    const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (dmyMatch) {
+      return parseInt(dmyMatch[2], 10) - 1;
+    }
+    
+    // 3. Search for English month names (e.g. "22 July 2026", "July 22, 2026")
+    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const lower = str.toLowerCase();
+    for (let i = 0; i < monthNames.length; i++) {
+      if (lower.includes(monthNames[i])) {
+        return i;
+      }
+    }
+
+    // 4. Native JS date fallback
+    const d = new Date(str);
     return isNaN(d.getTime()) ? -1 : d.getMonth();
   };
 
   // Zustand state bindings
+  const userCompanyId = useAuthStore(state => state.user?.companyId);
   const dbLeads = useDataStore(state => state.leads).filter(l => (l as any).companyId === '4376c123-01c9-4a92-9675-8123456789ab' || l.organizationId === '4376c123-01c9-4a92-9675-8123456789ab');
   const leads = dbLeads.map(mapDbLeadToLocal);
-  const dbInvoices = useDataStore(state => state.invoices).filter(i => !i.companyId || i.companyId === '4376c123-01c9-4a92-9675-8123456789ab');
-  const dbBookkeeping = useDataStore(state => state.bookkeeping || []);
+  const dbInvoices = useDataStore(state => state.invoices || []).filter(i => 
+    !i.companyId || 
+    i.companyId === '4376c123-01c9-4a92-9675-8123456789ab' || 
+    (userCompanyId && i.companyId === userCompanyId)
+  );
+  const dbBookkeeping = useDataStore(state => state.bookkeeping || []).filter(entry =>
+    !entry.companyId ||
+    entry.companyId === '4376c123-01c9-4a92-9675-8123456789ab' ||
+    (userCompanyId && entry.companyId === userCompanyId)
+  );
   
   // Default to July (6) or current month
   const [selectedRevenueMonth, setSelectedRevenueMonth] = useState<string>("6"); 
@@ -467,6 +495,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             totalCents: 4500000,
             paidAmountCents: 0,
             lines: [{ id: 'l3', description: 'WiseUp Teens Budgeting Course', quantity: 1, unitPriceCents: 4500000 }]
+          },
+          {
+            id: 'inv-july-1',
+            number: 'AJW-2026-002',
+            companyId,
+            contactId: 'c4',
+            customerName: 'Mr Koyejo',
+            date: '2026-07-22',
+            dueDate: '2026-07-22',
+            status: 'Paid' as any,
+            type: 'Sales' as any,
+            totalCents: 750000,
+            paidAmountCents: 750000,
+            lines: [{ id: 'l-july-1', description: 'Financial Journal x 2 copies (Discounted)', quantity: 2, unitPriceCents: 375000 }]
           }
         ];
 
@@ -497,6 +539,15 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             description: 'Payment for Invoice INV-2026-002 (Tunde Bakare)',
             amountCents: 7750000,
             referenceId: 'inv-2'
+          },
+          {
+            id: 'b-july-1',
+            date: '2026-07-22',
+            type: 'Inflow' as const,
+            category: 'Sales Revenue',
+            description: 'Payment for Invoice AJW-2026-002 (Mr Koyejo)',
+            amountCents: 750000,
+            referenceId: 'inv-july-1'
           },
           {
             id: 'b-3',
@@ -770,15 +821,30 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
           const parsed = await parseInvoiceDocument(base64Clean, mimeType);
 
+          let cleanIssueDate = parsed.issueDate || '2026-07-22';
+          const monthIdx = getMonthFromDateString(cleanIssueDate);
+          if (monthIdx >= 0 && !cleanIssueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const yearMatch = cleanIssueDate.match(/\b(20\d{2})\b/);
+            const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
+            const monthStr = String(monthIdx + 1).padStart(2, '0');
+            const dayMatch = cleanIssueDate.match(/\b(\d{1,2})\b/);
+            const dayStr = dayMatch ? String(parseInt(dayMatch[1], 10)).padStart(2, '0') : '01';
+            cleanIssueDate = `${year}-${monthStr}-${dayStr}`;
+          }
+
           setInvoiceMeta(prev => ({
             ...prev,
             invoiceNumber: parsed.invoiceNumber || prev.invoiceNumber,
             clientName: parsed.clientName || prev.clientName,
             clientEmail: parsed.clientEmail || prev.clientEmail,
             clientAddress: parsed.clientAddress || prev.clientAddress,
-            issueDate: parsed.issueDate || prev.issueDate,
-            dueDate: parsed.dueDate || prev.dueDate,
+            issueDate: cleanIssueDate,
+            dueDate: parsed.dueDate || cleanIssueDate,
           }));
+
+          if (monthIdx >= 0) {
+            setSelectedRevenueMonth(monthIdx.toString());
+          }
 
           if (Array.isArray(parsed.items) && parsed.items.length > 0) {
             setInvoiceItems(parsed.items);
