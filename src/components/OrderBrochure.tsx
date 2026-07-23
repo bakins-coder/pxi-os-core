@@ -376,124 +376,126 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
         <div className="fixed inset-0 z-[150] flex items-start md:items-center justify-center p-0 md:p-8 bg-slate-950/40 backdrop-blur-xl animate-in fade-in duration-500 overflow-y-auto">
             <div onClick={(e) => e.stopPropagation()} className="bg-white md:rounded-[3rem] shadow-2xl w-full max-w-7xl h-[100dvh] md:h-[95vh] md:min-h-0 overflow-hidden flex flex-col md:border border-slate-200">
                 {/* HEADER */}
-                <div className="p-2 md:p-8 border-b border-slate-50 flex flex-col gap-2 md:gap-4 bg-slate-50/50">
+                <div className="p-2 md:py-3 md:px-6 border-b border-slate-50 flex flex-col gap-1.5 bg-slate-50/50">
                     <div className="flex justify-between items-center px-1">
-                        <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                            <div className="w-8 h-8 md:w-12 md:h-12 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={16} className="md:w-5 md:h-5" /></div>
-                            <div><h2 className="text-sm md:text-2xl font-black text-slate-900 uppercase tracking-tighter">{nomenclature.fulfillment.orderTitle}</h2><p className="text-[7px] md:text-[9px] text-slate-500 font-black uppercase mt-0.5">{nomenclature.fulfillment.nodeSubtitle}</p></div>
+                        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                            <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={14} className="md:w-4.5 md:h-4.5" /></div>
+                            <div><h2 className="text-xs md:text-lg font-black text-slate-900 uppercase tracking-tighter">{nomenclature.fulfillment.orderTitle}</h2><p className="text-[6px] md:text-[8px] text-slate-500 font-black uppercase mt-0.5">{nomenclature.fulfillment.nodeSubtitle}</p></div>
                         </div>
-                        <button onClick={onComplete} className="p-1.5 md:p-3 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0"><X size={16} className="md:w-5 md:h-5" /></button>
+                        <button onClick={onComplete} className="p-1 md:p-2 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-lg transition-all shadow-sm shrink-0"><X size={14} className="md:w-4.5 md:h-4.5" /></button>
                     </div>
 
-                    <div className="flex md:hidden bg-slate-200 p-1 rounded-xl">
-                        <button onClick={() => setActiveTab('details')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'details' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}>1. Client & Spec</button>
-                        <button onClick={() => setActiveTab('menu')} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}>2. The Menu</button>
+                    <div className="flex md:hidden bg-slate-200 p-0.5 rounded-lg">
+                        <button onClick={() => setActiveTab('details')} className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'details' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}>1. Client & Spec</button>
+                        <button onClick={() => setActiveTab('menu')} className={`flex-1 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'menu' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'}`}>2. The Menu</button>
                     </div>
 
-                    <div className={`flex-1 flex flex-wrap justify-center items-center gap-1.5 md:gap-4 py-0.5 md:py-2 overflow-x-auto max-w-full no-scrollbar px-1 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
-                        <div className="flex bg-slate-100 p-0.5 md:p-1.5 rounded-lg md:rounded-2xl border-2 border-slate-200 gap-1 md:gap-1 shadow-sm w-max shrink-0">
+                    <div className={`flex-1 flex flex-wrap justify-between items-center gap-2 py-0.5 overflow-x-auto max-w-full no-scrollbar px-1 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
+                        <div className="flex bg-slate-100 p-0.5 md:p-1 rounded-lg md:rounded-xl border border-slate-200 gap-0.5 shadow-sm w-max shrink-0">
                             {["All", ...categoryOrder].map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => setActiveCategory(cat)}
-                                    className={`px-3 py-2 md:px-4 md:py-2 rounded-md md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                                    className={`px-2 py-1 md:px-3 md:py-1.5 rounded-md md:rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap relative ${activeCategory === cat ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
                                 >
                                     {cat}
                                     {(Number(categoryTotals[cat]) || 0) > 0 && (
-                                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-[#00ff9d] text-slate-950 rounded-full text-[7px] md:text-[8px] flex items-center justify-center font-black border-2 border-white">{categoryTotals[cat]}</span>
+                                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#00ff9d] text-slate-950 rounded-full text-[6px] md:text-[7px] flex items-center justify-center font-black border border-white">{categoryTotals[cat]}</span>
                                     )}
                                 </button>
                             ))}
                         </div>
-                        <button onClick={() => setShowCustomModal(true)} className="px-3 py-2 bg-emerald-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md flex items-center gap-1 shrink-0"><Plus size={10} /> Custom</button>
-                        {features.showVisualizer && (
-                            <button onClick={() => setIsDesignerOpen(true)} className="px-3 py-2 bg-indigo-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md flex items-center gap-1 shrink-0">
-                                <Layers size={10} /> 3D Designer
-                                {designUrl && <Check size={10} className="ml-1 text-emerald-300" />}
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setShowCustomModal(true)} className="px-2.5 py-1.5 bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow flex items-center gap-1 shrink-0"><Plus size={10} /> Custom</button>
+                            {features.showVisualizer && (
+                                <button onClick={() => setIsDesignerOpen(true)} className="px-2.5 py-1.5 bg-indigo-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow flex items-center gap-1 shrink-0">
+                                    <Layers size={10} /> 3D Designer
+                                    {designUrl && <Check size={10} className="ml-1 text-emerald-300" />}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-                    <div className={`w-full md:w-[400px] lg:w-[440px] md:border-r-2 border-slate-100 p-6 md:p-10 space-y-8 bg-slate-50/80 overflow-y-auto overflow-x-hidden scrollbar-thin ${activeTab === 'details' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Users size={16} className="text-emerald-600" /><h3 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3></div>
+                    <div className={`w-full md:w-[320px] lg:w-[360px] md:border-r-2 border-slate-100 p-4 md:p-5 space-y-4 bg-slate-50/80 overflow-y-auto overflow-x-hidden scrollbar-thin ${activeTab === 'details' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
+                        <section className="space-y-3">
+                            <div className="flex items-center gap-2.5 border-b border-slate-200 pb-1"><Users size={14} className="text-emerald-600" /><h3 className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3></div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-900 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.clientLabel} *</label>
-                                <input list="contacts-list-b" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xl text-slate-950 outline-none focus:border-emerald-500 shadow-sm" placeholder={nomenclature.fulfillment.clientLabel} value={customerName} onChange={e => handleHostChange(e.target.value)} />
+                                <label className="text-[9px] font-black text-slate-900 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.clientLabel} *</label>
+                                <input list="contacts-list-b" className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-sm text-slate-950 outline-none focus:border-emerald-500 shadow-sm" placeholder={nomenclature.fulfillment.clientLabel} value={customerName} onChange={e => handleHostChange(e.target.value)} />
                                 <datalist id="contacts-list-b">{contacts.map(c => <option key={c.id} value={c.name} />)}</datalist>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{isCuisine ? 'Packaging Info' : 'Packaging / Notes'}</label>
-                                    <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder={isCuisine ? "e.g. Bulk Boxes" : "Specific packaging needs"} value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{isCuisine ? 'Packaging Info' : 'Packaging / Notes'}</label>
+                                    <input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder={isCuisine ? "e.g. Bulk Boxes" : "Specific packaging needs"} value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Phone *</label>
-                                    <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Phone *</label>
+                                    <input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" type="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Email *</label>
-                                <input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Email *</label>
+                                <input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
                             </div>
                         </section>
 
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2"><Palette size={16} className="text-emerald-600" /><h3 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Logistics & Timing' : 'Atmosphere & Coordination'}</h3></div>
+                        <section className="space-y-3">
+                            <div className="flex items-center gap-2.5 border-b border-slate-200 pb-1"><Palette size={14} className="text-emerald-600" /><h3 className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Logistics & Timing' : 'Atmosphere & Coordination'}</h3></div>
                              {features.showCustomFields && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Category</label>
-                                        <select className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Category</label>
+                                        <select className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
                                             {nomenclature.fulfillment.categories.map(c => <option key={c}>{c}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Theme Colour</label>
-                                        <div className="flex items-center gap-3 p-3 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
-                                            <input type="color" className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
-                                            <span className="font-mono text-xs font-black uppercase text-slate-950">{themeColor}</span>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Theme Colour</label>
+                                        <div className="flex items-center gap-2 p-2 bg-white border-2 border-slate-200 rounded-xl shadow-sm">
+                                            <input type="color" className="w-6 h-6 rounded cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => setThemeColor(e.target.value)} />
+                                            <span className="font-mono text-[10px] font-black uppercase text-slate-950">{themeColor}</span>
                                         </div>
                                     </div>
                                 </div>
                              )}
 
-                            {!isCuisine && (
-                                <div className="p-4 bg-slate-950 rounded-2xl border border-white/10 flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-[#00ff9d] overflow-hidden">
-                                            {designUrl ? <img src={designUrl} className="w-full h-full object-cover" alt="S" /> : <Edit3 size={18} />}
+                             {!isCuisine && (
+                                <div className="p-2.5 bg-slate-950 rounded-xl border border-white/10 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-[#00ff9d] overflow-hidden">
+                                            {designUrl ? <img src={designUrl} className="w-full h-full object-cover" alt="S" /> : <Edit3 size={14} />}
                                         </div>
                                         <div>
-                                            <p className="text-white font-black uppercase text-[9px] tracking-tight">Project Sketch</p>
-                                            <p className="text-slate-500 text-[7px] font-bold uppercase tracking-widest">{designUrl ? 'Design Attached' : 'No Design Yet'}</p>
+                                            <p className="text-white font-black uppercase text-[8px] tracking-tight">Project Sketch</p>
+                                            <p className="text-slate-500 text-[6px] font-bold uppercase tracking-widest">{designUrl ? 'Design Attached' : 'No Design Yet'}</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => setIsDesignerOpen(true)} className="px-4 py-2 bg-white/10 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Sketch</button>
+                                    <button onClick={() => setIsDesignerOpen(true)} className="px-3 py-1.5 bg-white/10 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Sketch</button>
                                 </div>
-                            )}
+                             )}
 
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.dateLabel} *</label>
-                                    <input type="date" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.dateLabel} *</label>
+                                    <input type="date" className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.unitsLabel} *</label>
-                                    <input type="number" className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-base md:text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.unitsLabel} *</label>
+                                    <input type="number" className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                                 </div>
                             </div>
                             {!isCuisine && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Lead Co-ordinator</label><input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" placeholder="Co-ordinator Name" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} /></div>
-                                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Co-ordinator Phone</label><input className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone Number" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} /></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    <div><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Lead Co-ordinator</label><input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder="Co-ordinator Name" value={eventPlannerName} onChange={e => setEventPlannerName(e.target.value)} /></div>
+                                    <div><label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Co-ordinator Phone</label><input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" type="tel" placeholder="Phone Number" value={eventPlannerPhone} onChange={e => setEventPlannerPhone(e.target.value)} /></div>
                                 </div>
                             )}
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{nomenclature.fulfillment.locationLabel} *</label>
-                                <textarea className="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold text-base md:text-xs text-slate-950 outline-none resize-none shadow-sm" rows={2} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.locationLabel} *</label>
+                                <textarea className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none resize-none shadow-sm" rows={2} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
                             </div>
                         </section>
                     </div>
