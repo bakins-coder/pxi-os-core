@@ -382,7 +382,9 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                             <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><ShoppingBag size={14} className="md:w-4.5 md:h-4.5" /></div>
                             <div><h2 className="text-xs md:text-lg font-black text-slate-900 uppercase tracking-tighter">{nomenclature.fulfillment.orderTitle}</h2><p className="text-[6px] md:text-[8px] text-slate-500 font-black uppercase mt-0.5">{nomenclature.fulfillment.nodeSubtitle}</p></div>
                         </div>
-                        <button onClick={onComplete} className="p-1 md:p-2 bg-white border border-slate-100 hover:bg-rose-500 hover:text-white rounded-lg transition-all shadow-sm shrink-0"><X size={14} className="md:w-4.5 md:h-4.5" /></button>
+                        <button onClick={onComplete} className="p-2 md:p-3 bg-rose-50 border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm shrink-0">
+                            <X size={18} className="md:w-5 md:h-5 stroke-[3]" />
+                        </button>
                     </div>
 
                     <div className="flex md:hidden bg-slate-200 p-0.5 rounded-lg">
