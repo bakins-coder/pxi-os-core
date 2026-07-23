@@ -48,7 +48,7 @@ vi.mock('lucide-react', () => ({
     ChevronRight: () => <div />, RefreshCw: () => <div />,
     Truck: () => <div />, Package: () => <div />, Utensils: () => <div />, ChefHat: () => <div />,
     UtensilsCrossed: () => <div />, Flame: () => <div />, Box: () => <div />, Grid3X3: () => <div />,
-    Trophy: () => <div />, DollarSign: () => <div />, Calendar: () => <div />
+    Trophy: () => <div />, DollarSign: () => <div />, Calendar: () => <div />, Building2: () => <div />
 }));
 
 // Mock sub-components
