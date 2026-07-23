@@ -615,9 +615,8 @@ const SYSTEM_TOOLS = {
             lines,
             subtotalCents,
             totalCents,
-            paidAmountCents: totalCents,
-            description: `Lotus Bank Remittance: A/C 1010386319 (Sort: LTSBNG22)`
-        });
+            paidAmountCents: totalCents
+        } as any);
 
         // 2. Create Bookkeeping Entry
         const newBookkeepingId = `book-${Date.now()}`;

@@ -2542,8 +2542,8 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
                     <tbody className="divide-y divide-slate-900 text-sm text-slate-300">
                       {dbInvoices.map((inv) => {
                         let statusColor = "bg-amber-500/20 text-amber-400 border-amber-500/30";
-                        if (inv.status === "Paid") statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-                        if (inv.status === "Sent") statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/30";
+                        if ((inv.status as string) === "Paid") statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                        if ((inv.status as string) === "Sent") statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/30";
                         return (
                           <tr key={inv.id} className="hover:bg-slate-900/40 transition-colors duration-200">
                             <td className="p-4 font-mono font-bold text-white">{inv.number}</td>
