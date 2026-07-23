@@ -449,10 +449,10 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
       // Seed Invoices and Bookkeeping Entries for Ajapasworld if missing
       const companyId = '4376c123-01c9-4a92-9675-8123456789ab';
-      const storeInvoices = useDataStore.getState().invoices;
+      const storeInvoices = useDataStore.getState().invoices || [];
       const hasAjapaJuneInvoices = storeInvoices.some(i => i.id === 'inv-1' || i.id === 'inv-2');
       if (!hasAjapaJuneInvoices) {
-        // Seed Invoices
+        // Seed June Invoices
         const invoicesToSeed = [
           {
             id: 'inv-1',
@@ -495,20 +495,6 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             totalCents: 4500000,
             paidAmountCents: 0,
             lines: [{ id: 'l3', description: 'WiseUp Teens Budgeting Course', quantity: 1, unitPriceCents: 4500000 }]
-          },
-          {
-            id: 'inv-july-1',
-            number: 'AJW-2026-002',
-            companyId,
-            contactId: 'c4',
-            customerName: 'Mr Koyejo',
-            date: '2026-07-22',
-            dueDate: '2026-07-22',
-            status: 'Paid' as any,
-            type: 'Sales' as any,
-            totalCents: 750000,
-            paidAmountCents: 750000,
-            lines: [{ id: 'l-july-1', description: 'Financial Journal x 2 copies (Discounted)', quantity: 2, unitPriceCents: 375000 }]
           }
         ];
 
@@ -517,10 +503,30 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         }
       }
 
+      // Independent check for July Invoice
+      const storeInvoicesCurrent = useDataStore.getState().invoices || [];
+      const hasJulyInvoice = storeInvoicesCurrent.some(i => i.id === 'inv-july-1' || i.number === 'AJW-2026-002');
+      if (!hasJulyInvoice) {
+        await useDataStore.getState().addInvoice({
+          id: 'inv-july-1',
+          number: 'AJW-2026-002',
+          companyId,
+          contactId: 'c4',
+          customerName: 'Mr Koyejo',
+          date: '2026-07-22',
+          dueDate: '2026-07-22',
+          status: 'Paid' as any,
+          type: 'Sales' as any,
+          totalCents: 750000,
+          paidAmountCents: 750000,
+          lines: [{ id: 'l-july-1', description: 'Financial Journal x 2 copies (Discounted)', quantity: 2, unitPriceCents: 375000 }]
+        } as any);
+      }
+
       const storeBookkeeping = useDataStore.getState().bookkeeping || [];
       const hasAjapaJuneBookkeeping = storeBookkeeping.some(b => b.id === 'b-1' || b.id === 'b-2');
       if (!hasAjapaJuneBookkeeping) {
-        // Seed Bookkeeping Entries
+        // Seed June Bookkeeping Entries
         const bookkeepingToSeed = [
           {
             id: 'b-1',
@@ -539,15 +545,6 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
             description: 'Payment for Invoice INV-2026-002 (Tunde Bakare)',
             amountCents: 7750000,
             referenceId: 'inv-2'
-          },
-          {
-            id: 'b-july-1',
-            date: '2026-07-22',
-            type: 'Inflow' as const,
-            category: 'Sales Revenue',
-            description: 'Payment for Invoice AJW-2026-002 (Mr Koyejo)',
-            amountCents: 750000,
-            referenceId: 'inv-july-1'
           },
           {
             id: 'b-3',
@@ -570,6 +567,22 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         for (const entry of bookkeepingToSeed) {
           await useDataStore.getState().addBookkeepingEntry(entry as any);
         }
+      }
+
+      // Independent check for July Bookkeeping
+      const storeBookkeepingCurrent = useDataStore.getState().bookkeeping || [];
+      const hasJulyBookkeeping = storeBookkeepingCurrent.some(b => b.id === 'b-july-1');
+      if (!hasJulyBookkeeping) {
+        await useDataStore.getState().addBookkeepingEntry({
+          id: 'b-july-1',
+          date: '2026-07-22',
+          type: 'Inflow' as const,
+          category: 'Sales Revenue',
+          description: 'Payment for Invoice AJW-2026-002 (Mr Koyejo)',
+          amountCents: 750000,
+          referenceId: 'inv-july-1',
+          companyId
+        } as any);
       }
 
       // Auto-migrate old seeded records (e.g. Chameleon to Tortoise)
@@ -864,6 +877,48 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
           addAgentLog(`Yanribo scanned document '${file.name}' and extracted details for ${parsed.clientName || 'client'}.`);
           showToast("Invoice Document Parsed!", `Extracted invoice #${parsed.invoiceNumber} (Total: ₦${Number(parsed.total || 0).toLocaleString()}).`);
+
+          // Auto-record scanned invoice to revenue ledger
+          const autoCompanyId = '4376c123-01c9-4a92-9675-8123456789ab';
+          const newInvoiceId = `inv-${Date.now()}`;
+          const itemsToSave = (Array.isArray(parsed.items) && parsed.items.length > 0) ? parsed.items : invoiceItems;
+          const totalCentsToSave = Math.round((parsed.total || 0) * 100);
+
+          if (totalCentsToSave > 0) {
+            await useDataStore.getState().addInvoice({
+              id: newInvoiceId,
+              number: parsed.invoiceNumber || invoiceMeta.invoiceNumber,
+              companyId: autoCompanyId,
+              customerName: parsed.clientName || invoiceMeta.clientName,
+              date: cleanIssueDate,
+              dueDate: parsed.dueDate || cleanIssueDate,
+              status: 'Paid' as any,
+              type: 'Sales',
+              lines: itemsToSave.map((item, idx) => ({
+                id: `line-${idx}-${Date.now()}`,
+                description: item.description,
+                quantity: item.qty,
+                unitPriceCents: Math.round(item.price * 100)
+              })),
+              subtotalCents: Math.round((parsed.subtotal || parsed.total || 0) * 100),
+              totalCents: totalCentsToSave,
+              paidAmountCents: totalCentsToSave,
+            });
+
+            await useDataStore.getState().addBookkeepingEntry({
+              id: `b-inflow-${Date.now()}`,
+              date: cleanIssueDate,
+              type: 'Inflow',
+              category: 'Sales Revenue',
+              description: `Payment received for Invoice ${parsed.invoiceNumber || invoiceMeta.invoiceNumber} (${parsed.clientName || invoiceMeta.clientName})`,
+              amountCents: totalCentsToSave,
+              referenceId: newInvoiceId,
+              companyId: autoCompanyId
+            } as any);
+
+            addAgentLog(`Ajapa automatically recorded scanned invoice ${parsed.invoiceNumber || invoiceMeta.invoiceNumber} (₦${Number(parsed.total || 0).toLocaleString()}) to July revenue.`);
+            showToast("Revenue Auto-Recorded!", `Added ₦${Number(parsed.total || 0).toLocaleString()} to July Revenue!`);
+          }
         } catch (scanErr: any) {
           console.error("AI Document OCR Failed:", scanErr);
           showToast("Scanning Error", scanErr.message || "Failed to parse document. Please check file formatting.");
