@@ -503,8 +503,27 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
         }
       }
 
-      // Independent check for July Invoice
+      // Independent check for July Invoices (AJW-2026-001 & AJW-2026-002)
       const storeInvoicesCurrent = useDataStore.getState().invoices || [];
+      
+      const hasMayokunInvoice = storeInvoicesCurrent.some(i => i.id === 'inv-july-mayokun' || i.number === 'AJW-2026-001');
+      if (!hasMayokunInvoice) {
+        await useDataStore.getState().addInvoice({
+          id: 'inv-july-mayokun',
+          number: 'AJW-2026-001',
+          companyId,
+          contactId: 'c5',
+          customerName: 'Mayokun John-Adejumo',
+          date: '2026-07-01',
+          dueDate: '2026-07-01',
+          status: 'Paid' as any,
+          type: 'Sales' as any,
+          totalCents: 32500000,
+          paidAmountCents: 32500000,
+          lines: [{ id: 'l-july-mayokun', description: 'Ajapa Story Book x 65 copies', quantity: 65, unitPriceCents: 500000 }]
+        } as any);
+      }
+
       const hasJulyInvoice = storeInvoicesCurrent.some(i => i.id === 'inv-july-1' || i.number === 'AJW-2026-002');
       if (!hasJulyInvoice) {
         await useDataStore.getState().addInvoice({
@@ -571,6 +590,20 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
 
       // Independent check for July Bookkeeping
       const storeBookkeepingCurrent = useDataStore.getState().bookkeeping || [];
+      const hasMayokunBookkeeping = storeBookkeepingCurrent.some(b => b.id === 'b-july-mayokun');
+      if (!hasMayokunBookkeeping) {
+        await useDataStore.getState().addBookkeepingEntry({
+          id: 'b-july-mayokun',
+          date: '2026-07-01',
+          type: 'Inflow' as const,
+          category: 'Sales Revenue',
+          description: 'Payment for Invoice AJW-2026-001 (Mayokun John-Adejumo)',
+          amountCents: 32500000,
+          referenceId: 'inv-july-mayokun',
+          companyId
+        } as any);
+      }
+
       const hasJulyBookkeeping = storeBookkeepingCurrent.some(b => b.id === 'b-july-1');
       if (!hasJulyBookkeeping) {
         await useDataStore.getState().addBookkeepingEntry({

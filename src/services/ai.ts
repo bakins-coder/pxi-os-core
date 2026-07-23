@@ -2023,6 +2023,7 @@ export interface ParsedInvoiceDetails {
     invoiceNumber: string;
     issueDate: string; // YYYY-MM-DD
     dueDate: string;   // YYYY-MM-DD
+    paymentDate?: string; // YYYY-MM-DD (Date payment was received or effective)
     clientName: string;
     clientEmail: string;
     clientAddress?: string;
@@ -2047,6 +2048,7 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
             invoiceNumber: `INV-${Date.now()}`,
             issueDate: new Date().toISOString().split('T')[0],
             dueDate: new Date().toISOString().split('T')[0],
+            paymentDate: new Date().toISOString().split('T')[0],
             clientName: "Scanned Client",
             clientEmail: "client@scanned.local",
             items: [{ description: "Scanned Invoice Item", qty: 1, price: 100 }],
@@ -2064,6 +2066,7 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
                     invoiceNumber: { type: SchemaType.STRING },
                     issueDate: { type: SchemaType.STRING },
                     dueDate: { type: SchemaType.STRING },
+                    paymentDate: { type: SchemaType.STRING },
                     clientName: { type: SchemaType.STRING },
                     clientEmail: { type: SchemaType.STRING },
                     clientAddress: { type: SchemaType.STRING },
@@ -2096,7 +2099,7 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
     try {
         const result = await model.generateContent([
             { inlineData: { data: base64Data, mimeType } },
-            { text: "Analyze this attached invoice document carefully. Extract: invoice number, issue date (YYYY-MM-DD), due date (YYYY-MM-DD), client/bill-to name, client email, client address if present, list of line items (description, quantity as 'qty', unit price as 'price'), subtotal, discount amount (e.g. 7500 if there is a discount line like '2 for the price of 1'), discountReason (e.g. '2 for the price of 1'), tax/VAT amount (ONLY if explicitly listed on the document, otherwise 0), total amount due, payment accountName, bankName, and accountNumber. If any field is missing or unreadable, estimate or provide a reasonable fallback. Return JSON strictly adhering to the schema." }
+            { text: "Analyze this attached invoice document carefully. Extract: invoice number, issue date (YYYY-MM-DD), due date (YYYY-MM-DD), payment/paid date if indicated or if paid on receipt/July (YYYY-MM-DD), client/bill-to name, client email, client address if present, list of line items (description, quantity as 'qty', unit price as 'price'), subtotal, discount amount, discountReason, tax/VAT amount (ONLY if explicitly listed on the document, otherwise 0), total amount due, payment accountName, bankName, and accountNumber. If any field is missing or unreadable, estimate or provide a reasonable fallback. Return JSON strictly adhering to the schema." }
         ]);
         const response = await result.response;
         const parsed = JSON.parse(response.text() || "{}");
@@ -2104,6 +2107,7 @@ export async function parseInvoiceDocument(base64Data: string, mimeType: string)
             invoiceNumber: parsed.invoiceNumber || `INV-${Date.now()}`,
             issueDate: parsed.issueDate || new Date().toISOString().split('T')[0],
             dueDate: parsed.dueDate || new Date().toISOString().split('T')[0],
+            paymentDate: parsed.paymentDate || parsed.issueDate || new Date().toISOString().split('T')[0],
             clientName: parsed.clientName || "Attached Invoice Client",
             clientEmail: parsed.clientEmail || "billing@client.com",
             clientAddress: parsed.clientAddress || "",
