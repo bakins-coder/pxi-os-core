@@ -509,7 +509,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                     const catTotal = categoryTotals[category] || 0;
                                     return (
                                         <div key={category}>
-                                            <div className="flex items-center gap-6 mb-8 sticky top-0 bg-white/95 backdrop-blur z-10 py-2">
+                                            <div className="flex items-center gap-6 mb-8 sticky top-0 bg-white/95 backdrop-blur-md z-20 py-4 -mx-4 px-4 md:-mx-14 md:px-14 border-b border-slate-100">
                                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-[0.5em]">{category}</h3>
                                                 <div className="flex-1"></div>
                                                 <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border ${catTotal === guestCount ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>Units: {catTotal} / {guestCount}</div>
