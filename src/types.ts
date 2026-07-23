@@ -30,7 +30,7 @@ export enum Role {
   CHAIRMAN = 'Chairman',
   CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager'
 }
-export type IndustryType = 'Retail' | 'Catering' | 'Bakery' | 'Aviation' | 'General' | 'Sports Foundation';
+export type IndustryType = 'Retail' | 'Catering' | 'Bakery' | 'Aviation' | 'General' | 'Sports Foundation' | 'Property Development';
 
 export enum AIAgentMode {
   HUMAN_FIRST = 'Human-First',
@@ -118,6 +118,7 @@ export interface Ingredient {
   priceCents: number;
   currentCostCents: number;
   marketPriceCents?: number;
+  previousMarketPriceCents?: number;
   stockLevel: number;
   stockQuantity: number;
   category: string;
@@ -129,6 +130,9 @@ export interface Ingredient {
     marketPriceCents: number;
     groundedSummary: string;
     sources?: { title: string; uri: string }[];
+    quantity?: string;
+    location?: string;
+    timestamp?: string;
   };
   lastPackCount?: number;
   lastPackSize?: number;

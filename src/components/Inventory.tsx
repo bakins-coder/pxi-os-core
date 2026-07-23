@@ -13,6 +13,7 @@ import {
    CheckCircle2, ShoppingBag, Minus, ArrowRight, Flame, ClipboardList, ShieldAlert, RotateCcw, ChevronDown, ChevronUp, Globe, Calculator, ScanLine, Grid, Maximize2, Minimize2, Upload, Coffee
 } from 'lucide-react';
 import { DocumentCapture } from './DocumentCapture';
+import { GroundMarketPriceButton } from './GroundMarketPriceButton';
 import { parseInventoryList } from '../services/ocrService';
 import { NAIRA_SYMBOL } from '../utils/finance';
 
@@ -1777,7 +1778,63 @@ export const Inventory = () => {
                         </>
                      )}
                   </div>
-               </td><td className="p-8"><div className="flex items-center gap-3"><div><span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span> <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{ing.unit || 'units'}</span>{ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}</div></div></td><td className="p-8"><div><p className="font-black text-slate-900 text-xs">{NAIRA_SYMBOL}{(ing.currentCostCents / 100).toLocaleString()}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p></div></td><td className="p-8">{ing.marketPriceCents ? <div className="flex items-center gap-2"><span className="font-black text-indigo-600 text-xs">{NAIRA_SYMBOL}{(ing.marketPriceCents / 100).toLocaleString()}</span>{ing.marketPriceCents > ing.currentCostCents ? <TrendingUp size={14} className="text-rose-500" /> : <TrendingUp size={14} className="text-emerald-500 rotate-180" />}</div> : <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>}</td><td className="p-8 text-right"><div className="flex items-center justify-end gap-2"><button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100"><Trash2 size={16} /></button><button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"><Zap size={16} /></button></div></td></tr>))}</tbody></table></div></div>
+               </td>
+               <td className="p-8">
+                  <div className="flex items-center gap-3">
+                     <div>
+                        <span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter ml-1">{ing.unit || 'units'}</span>
+                        {ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}
+                     </div>
+                  </div>
+               </td>
+               <td className="p-8">
+                  <div>
+                     <p className="font-black text-slate-900 text-xs">{NAIRA_SYMBOL}{(ing.currentCostCents / 100).toLocaleString()}</p>
+                     <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p>
+                  </div>
+               </td>
+               <td className="p-8">
+                  {ing.marketPriceCents ? (
+                     <div className="relative group/price flex items-center gap-2">
+                        <span className="font-black text-indigo-600 text-xs cursor-help border-b border-dashed border-indigo-300">
+                           {NAIRA_SYMBOL}{(ing.marketPriceCents / 100).toLocaleString()}
+                        </span>
+                        
+                        {/* Trend vs previous market price */}
+                        {ing.previousMarketPriceCents && ing.marketPriceCents !== ing.previousMarketPriceCents && (
+                           ing.marketPriceCents > ing.previousMarketPriceCents 
+                              ? <TrendingUp size={14} className="text-rose-500" /> 
+                              : <TrendingUp size={14} className="text-emerald-500 rotate-180" />
+                        )}
+                        
+                        {/* Hover Pop-up */}
+                        <div className="absolute z-50 bottom-full left-0 mb-2 w-64 bg-slate-900 text-white text-xs rounded-xl p-4 shadow-xl opacity-0 group-hover/price:opacity-100 transition-opacity pointer-events-none">
+                           <p className="font-bold text-indigo-300 mb-1">Market Insight</p>
+                           {ing.marketInsight?.quantity && <p><span className="text-slate-400">Qty:</span> {ing.marketInsight.quantity}</p>}
+                           {ing.marketInsight?.location && <p><span className="text-slate-400">Loc:</span> {ing.marketInsight.location}</p>}
+                           {ing.marketInsight?.timestamp && <p><span className="text-slate-400">Time:</span> {new Date(ing.marketInsight.timestamp).toLocaleString()}</p>}
+                           {ing.marketInsight?.groundedSummary && <p className="mt-2 text-slate-300 italic line-clamp-3">{ing.marketInsight.groundedSummary}</p>}
+                        </div>
+                     </div>
+                  ) : (
+                     <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>
+                  )}
+               </td>
+               <td className="p-8 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                     <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100">
+                        <Trash2 size={16} />
+                     </button>
+                     <GroundMarketPriceButton ingredient={ing} />
+                  </div>
+               </td>
+            </tr>
+         ))}
+      </tbody>
+   </table>
+</div>
+</div>
             </div>
          )}
 

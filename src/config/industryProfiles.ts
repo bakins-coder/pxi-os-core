@@ -1,7 +1,7 @@
 import {
     Truck, ChefHat, UtensilsCrossed, Flame, Box, Grid3X3,
     Trophy, Users, Activity, DollarSign, Calendar, ShoppingBag,
-    Package, Utensils, Zap, type LucideIcon
+    Package, Utensils, Zap, Building2, type LucideIcon
 } from 'lucide-react';
 import { IndustryType } from '../types';
 export type { IndustryType };
@@ -474,6 +474,74 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
             taxConfig: {
                 serviceChargeRate: 0,
                 vatRate: 0
+            }
+        }
+    },
+    'Property Development': {
+        type: 'Property Development',
+        label: 'Property Development',
+        ui: {
+            productsIcon: Box,
+            fulfillmentIcon: Building2,
+            standardIcon: Grid3X3,
+            customIcon: Building2,
+            cardImageHeight: 'h-96',
+            defaultCategories: ['Residential', 'Commercial', 'Infrastructure', 'Renovation', 'Landscaping']
+        },
+        nomenclature: {
+            inventory: {
+                pipelineLabel: 'Materials Pipeline',
+                pipelineSubtitle: 'Construction material supply chain and project tracking',
+                substanceLabel: { singular: 'Material', plural: 'Materials' },
+                receiveLabel: 'Receive Material',
+                releaseLabel: 'Site Release',
+                stockLabel: 'In-Store / On-Site',
+                priceLabel: 'Unit Cost',
+                ingredientsLabel: 'Raw Materials',
+                productsLabel: 'Project Assets',
+                recipeLabel: 'Construction BOQ',
+                boqLabel: 'Analyze Bill of Quantities'
+            },
+            fulfillment: {
+                orderTitle: 'Project Contract',
+                nodeSubtitle: 'Site Operations',
+                clientLabel: 'Client Name',
+                contactLabel: 'Project Type',
+                logisticsLabel: 'Site Logistics',
+                dateLabel: 'Start Date',
+                unitsLabel: 'Project Scale',
+                locationLabel: 'Site Address',
+                finalizeLabel: 'Close Phase',
+                navLabel: 'Site Operations',
+                standardOrdersLabel: 'Standard Projects',
+                customOrdersLabel: 'Custom Developments',
+                fulfillmentHub: 'Operations Hub',
+                productionLabel: 'Construction',
+                standardOrders: 'Standard Projects',
+                customOrders: 'Custom Developments',
+                categories: ['Residential', 'Commercial', 'Infrastructure', 'Renovation', 'General'],
+                categoryMap: {
+                    "Housing": "Residential",
+                    "Office": "Commercial",
+                    "Road": "Infrastructure"
+                },
+                staffLabel: 'Site Workers',
+                logisticsUnitLabel: 'Heavy Equipment',
+                portalSlogan: 'Building the future, one foundation at a time.',
+                fulfillmentTerm: 'project'
+            }
+        },
+        features: {
+            showFulfillment: true,
+            showVisualizer: true,
+            showCustomFields: true,
+            showBOQ: true,
+            showRequisitions: true,
+            showProjections: true,
+            showStaffProcurement: true,
+            taxConfig: {
+                serviceChargeRate: 0.05,
+                vatRate: 0.075
             }
         }
     }

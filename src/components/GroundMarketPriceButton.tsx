@@ -16,7 +16,10 @@ export const GroundMarketPriceButton = ({ ingredient }: { ingredient: Ingredient
       updateIngredientPrice(ingredient.id, result.marketPriceCents, {
         marketPriceCents: result.marketPriceCents,
         groundedSummary: result.groundedSummary,
-        sources: result.sources || []
+        sources: result.sources || [],
+        quantity: result.quantity,
+        location: result.location,
+        timestamp: result.timestamp
       });
     } catch (e) {
       console.error('Market price grounding failed:', e);

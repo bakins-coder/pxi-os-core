@@ -33,9 +33,30 @@ export const ChatWidget = () => {
   const strictMode = useSettingsStore(s => s.strictMode);
   const [isOpen, setIsOpen] = useState(false);
 
+  // [SECURITY] Scope chat sessions to the signed-in organisation to prevent cross-tenant
+  // chat history from leaking between users on the same browser.
+  // user.companyId is the frontend alias for the DB's organization_id (loaded from Supabase profiles).
+  const orgId = useAuthStore.getState().user?.companyId || '';
+  const SESSION_STORAGE_KEY = orgId ? `ai_chat_sessions_${orgId}` : null;
+
   // Session State
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    const saved = localStorage.getItem('ai_chat_sessions');
+    // [SECURITY] One-time migration: remove the old unscoped key to purge any cross-tenant contamination.
+    try {
+      localStorage.removeItem('ai_chat_sessions');
+    } catch (_) {}
+
+    // If no org context (e.g. unauthenticated), don't load any persisted sessions.
+    if (!SESSION_STORAGE_KEY) {
+      return [{
+        id: 'default',
+        title: 'New Chat',
+        messages: [{ id: '0', text: 'Hi! I can help you navigate or answer questions about your data.', sender: 'bot' }],
+        createdAt: Date.now()
+      }];
+    }
+
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : [{
       id: 'default',
       title: 'New Chat',
@@ -69,8 +90,11 @@ export const ChatWidget = () => {
   }, [isMagenta]);
 
   useEffect(() => {
-    localStorage.setItem('ai_chat_sessions', JSON.stringify(sessions));
-  }, [sessions]);
+    // [SECURITY] Only persist to the org-scoped key. Skip if no org context.
+    if (SESSION_STORAGE_KEY) {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+    }
+  }, [sessions, SESSION_STORAGE_KEY]);
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);

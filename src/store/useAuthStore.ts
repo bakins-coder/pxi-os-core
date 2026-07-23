@@ -239,6 +239,26 @@ export const useAuthStore = create<AuthState>()(
 
                 set({ user });
 
+                // [SECURITY DIAGNOSTIC] Log the resolved org context to detect profile DB corruption.
+                // If the browser console shows the WRONG org name here, the issue is in the
+                // Supabase `profiles` table: the user's `organization_id` column points to
+                // the wrong organisation. Fix it directly in the Supabase dashboard.
+                console.warn(`[Auth][SECURITY DIAGNOSTIC] Login resolved:\n  User: ${user.email}\n  Resolved companyId (= profiles.organization_id): ${user.companyId || 'EMPTY - NO ORG ASSIGNED'}\n  Role: ${user.role}\n  isSuperAdmin: ${user.isSuperAdmin}`);
+
+                // [SECURITY] Purge stale localStorage data from any previous tenant session
+                // BEFORE fetching settings. Both stores persist to localStorage by default;
+                // if a Honeywell user was previously logged in, their data and org name
+                // (useDataStore -> 'data-storage-v4', useSettingsStore -> 'settings-storage')
+                // would survive and be restored by Zustand's onRehydrateStorage, poisoning
+                // the AI context with cross-tenant data.
+                try {
+                    localStorage.removeItem('data-storage-v4');
+                    localStorage.removeItem('settings-storage');
+                    console.log('[Auth][Security] Cleared tenant localStorage stores on login.');
+                } catch (e) {
+                    console.warn('[Auth][Security] Could not clear localStorage stores on login:', e);
+                }
+
                 // 5. Fetch Organization Settings
                 if (targetOrgId) {
                     await useSettingsStore.getState().fetchSettings(targetOrgId);
@@ -253,6 +273,29 @@ export const useAuthStore = create<AuthState>()(
                     await logAuditEvent('LOGOUT', 'SUCCESS', {}, current?.id, current?.companyId);
                     await supabase.auth.signOut();
                 }
+
+                // [SECURITY] Purge all in-memory tenant data to prevent cross-tenant leakage
+                // for the next user who logs in on the same browser tab.
+                try {
+                    const { useDataStore } = await import('./useDataStore');
+                    useDataStore.getState().clearAllData();
+                } catch (e) {
+                    console.warn('[Auth][Security] Could not purge data store on logout:', e);
+                }
+
+                // [SECURITY] Remove all tenant-scoped AI chat session keys from localStorage.
+                // Pattern: 'ai_chat_sessions_<orgId>' and the legacy unscoped key.
+                // Also purge the two cross-tenant Zustand persist stores.
+                try {
+                    const keysToRemove = Object.keys(localStorage).filter(
+                        k => k.startsWith('ai_chat_sessions') || k === 'data-storage-v4' || k === 'settings-storage'
+                    );
+                    keysToRemove.forEach(k => localStorage.removeItem(k));
+                    console.log(`[Auth][Security] Cleared ${keysToRemove.length} storage key(s) from localStorage on logout.`);
+                } catch (e) {
+                    console.warn('[Auth][Security] Could not clear localStorage on logout:', e);
+                }
+
                 set({ user: null });
                 useSettingsStore.getState().reset();
             },

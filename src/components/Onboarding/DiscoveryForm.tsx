@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './DiscoveryForm.css';
-import { ShoppingBag, Stethoscope, Scale, Truck, BookOpen, Users, Calculator, ShieldCheck, Zap } from 'lucide-react';
+import { ShoppingBag, Stethoscope, Scale, Truck, BookOpen, Users, Calculator, ShieldCheck, Zap, Building2, Edit3 } from 'lucide-react';
 
 const INDUSTRIES = [
   { id: 'Retail', name: 'Retail', icon: <ShoppingBag /> },
@@ -9,7 +9,9 @@ const INDUSTRIES = [
   { id: 'Logistics', name: 'Logistics', icon: <Truck /> },
   { id: 'Accounting Firm', name: 'Accounting Firm', icon: <Calculator /> },
   { id: 'Consulting Firm', name: 'Consulting Firm', icon: <Zap /> },
-  { id: 'Optician', name: 'Optician', icon: <ShieldCheck /> }
+  { id: 'Property Development', name: 'Property Development', icon: <Building2 /> },
+  { id: 'Optician', name: 'Optician', icon: <ShieldCheck /> },
+  { id: 'Other', name: 'Other (write in)', icon: <Edit3 /> }
 ];
 
 const QUESTIONS = [
@@ -134,17 +136,36 @@ export const DiscoveryForm: React.FC<DiscoveryFormProps> = ({ onComplete }) => {
 
         <div className="discovery-body">
           {currentQuestion.id === 'type' ? (
-            <div className="industry-grid">
-              {INDUSTRIES.map(ind => (
-                <div 
-                  key={ind.id}
-                  className={`industry-option ${answers.type === ind.id ? 'selected' : ''}`}
-                  onClick={() => updateAnswer('type', ind.id)}
-                >
-                  <div className="industry-icon">{ind.icon}</div>
-                  <div className="industry-name">{ind.name}</div>
+            <div>
+              <div className="industry-grid">
+                {INDUSTRIES.map(ind => {
+                  const isOtherSelected = ind.id === 'Other' && answers.type !== '' && !INDUSTRIES.some(i => i.id === answers.type && i.id !== 'Other');
+                  const isSelected = answers.type === ind.id || isOtherSelected;
+                  
+                  return (
+                    <div 
+                      key={ind.id}
+                      className={`industry-option ${isSelected ? 'selected' : ''}`}
+                      onClick={() => updateAnswer('type', ind.id === 'Other' ? 'Other' : ind.id)}
+                    >
+                      <div className="industry-icon">{ind.icon}</div>
+                      <div className="industry-name">{ind.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              {answers.type !== '' && !INDUSTRIES.some(i => i.id === answers.type && i.id !== 'Other') && (
+                <div style={{ marginTop: '20px' }}>
+                  <input 
+                    type="text"
+                    className="input-field"
+                    placeholder="Please specify your industry"
+                    value={answers.type === 'Other' ? '' : answers.type}
+                    onChange={(e) => updateAnswer('type', e.target.value)}
+                    autoFocus
+                  />
                 </div>
-              ))}
+              )}
             </div>
           ) : currentQuestion.type === 'choice' ? (
             <div className="industry-grid">

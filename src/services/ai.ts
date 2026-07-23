@@ -229,7 +229,14 @@ const SYSTEM_TOOLS = {
                 stock: i.stockLevel,
                 unit: i.unit,
                 category: i.category,
-                price_naira: (i.currentCostCents || 0) / 100
+                price_naira: (i.currentCostCents || 0) / 100,
+                market_price_naira: i.marketPriceCents ? (i.marketPriceCents / 100) : undefined,
+                market_insight: i.marketInsight ? {
+                    summary: i.marketInsight.groundedSummary,
+                    quantity: i.marketInsight.quantity,
+                    location: i.marketInsight.location,
+                    timestamp: i.marketInsight.timestamp
+                } : undefined
             })),
             total_unique_count: results.length
         };
@@ -681,7 +688,7 @@ const SYSTEM_TOOL_DECLARATIONS = [
     },
     {
         name: "get_ingredient_list",
-        description: "Fetch a list of raw ingredients/materials. Use this for 'how many unique ingredients' or stock level queries for raw goods.",
+        description: "Fetch a list of raw ingredients/materials. Use this for 'how many unique ingredients', stock level queries, and obtaining real-time market prices, market insights, and market trends for raw goods.",
         parameters: {
             type: SchemaType.OBJECT,
             properties: {
@@ -1122,26 +1129,49 @@ export async function performAgenticMarketResearch(itemName: string): Promise<an
     const ai = getAIInstance();
     const model = ai.getGenerativeModel({
         model: 'gemini-2.5-flash',
-        tools: [{ googleSearch: {} } as any]
+        tools: [{ googleSearch: {} } as any],
+        generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+                type: "object" as any,
+                properties: {
+                    priceNGN: { type: "number" as any, description: "The wholesale market price in Naira" },
+                    quantity: { type: "string" as any, description: "The specific quantity the price is for e.g. 50kg bag, 1 carton, etc." },
+                    location: { type: "string" as any, description: "The market location e.g. Mile 12, Lagos" },
+                    summary: { type: "string" as any, description: "Brief summary of current market trends" }
+                },
+                required: ["priceNGN", "quantity", "location", "summary"]
+            }
+        }
     });
 
-    const result = await model.generateContent(`Determine current commercial wholesale price in NGN(Naira) for "${itemName}" in major Nigerian food markets(e.g.Mile 12, Lagos, or Abuja Wuse).Provide a brief summary of current trends.Return the market price(as a number representing Naira) and a summary.`);
+    const result = await model.generateContent(`Determine current commercial wholesale price in NGN(Naira) for "${itemName}" in major Nigerian food markets (e.g. Mile 12, Lagos). Identify the specific quantity this price is for, and the market location. Provide a brief summary of current trends.`);
     const response = await result.response;
-    const text = response.text() || "";
-    // Improved regex
-    const priceMatch = text.match(/(?:₦|Naira|NGN)\s?(\d{1,3}(?:,\d{3})*(?:\.\d+)?)|(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s?(?:₦|Naira|NGN)|\b(\d+(?:\.\d{2})?)\b/i);
-    let extractedPrice = 0;
-    if (priceMatch) {
-        const val = priceMatch[1] || priceMatch[2] || priceMatch[3];
-        extractedPrice = parseFloat(val.replace(/,/g, ''));
+    const text = response.text() || "{}";
+    
+    let parsed: any = {};
+    try {
+        parsed = JSON.parse(text);
+    } catch(e) {
+        console.error("Failed to parse market JSON", e);
     }
-    const marketPriceCents = extractedPrice * 100;
+
+    const marketPriceCents = (parsed.priceNGN || 0) * 100;
 
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
         ?.map((chunk: any) => chunk.web ? { title: chunk.web.title, uri: chunk.web.uri } : null)
         .filter(Boolean) || [];
+        
+    const timestamp = new Date().toISOString();
 
-    return { marketPriceCents, groundedSummary: text, sources };
+    return { 
+        marketPriceCents, 
+        groundedSummary: parsed.summary || "", 
+        sources,
+        quantity: parsed.quantity || "Unknown",
+        location: parsed.location || "Unknown",
+        timestamp
+    };
 }
 
 export async function runInventoryReconciliation(event: CateringEvent): Promise<any> {
@@ -1292,6 +1322,18 @@ export async function processAgentRequest(input: string, context: string, mode: 
             };
         }
 
+        // [SECURITY] Session Guard: Refuse to serve AI responses if the tenant context is missing.
+        // This prevents stale data from a previous tenant session from reaching the AI model
+        // during the hydration race window (between logout and hydrateFromCloud completion).
+        const sessionUser = useAuthStore.getState().user;
+        if (!sessionUser?.companyId) {
+            console.warn('[AI Service][Security] processAgentRequest blocked: No tenant context (companyId is empty).');
+            return {
+                response: "⚠️ Your session context is unavailable. Please refresh the page and sign in again.",
+                intent: 'GENERAL_QUERY'
+            };
+        }
+
         if (useSettingsStore.getState().strictMode) return { response: "Strict Mode Enabled", intent: 'GENERAL_QUERY' };
         const ai = getAIInstance();
 
@@ -1406,7 +1448,7 @@ export async function processAgentRequest(input: string, context: string, mode: 
                 - get_catering_events: Access the calendar/list of all catering events. Use this for 'Next event', 'What events do we have', etc.
                 - get_system_overview: Core KPI node. Use this IMMEDIATELY for 'How many...' or 'Overview' questions. NEVER ask for permission; JUST CALL IT.
                 - get_financial_summary: High-level money overview (Revenue, Expenses).
-                - get_ingredient_list: Raw material details and counts.
+                - get_ingredient_list: Raw material details, stock counts, and real-time market prices / market insights.
                 - get_project_summary: Project tracking and progress.
                 - get_outstanding_invoices: Financial debtors list.
                 - search_contacts: CRM lookups.
@@ -1621,6 +1663,14 @@ export async function generateAIResponse(
     history: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = []
 ): Promise<string> {
     if (useSettingsStore.getState().strictMode) return "I am currently in Strict Mode. AI services are disabled.";
+
+    // [SECURITY] Session Guard: Refuse to serve AI responses if the tenant context is missing.
+    const sessionUser = useAuthStore.getState().user;
+    if (!sessionUser?.companyId) {
+        console.warn('[AI Service][Security] generateAIResponse blocked: No tenant context (companyId is empty).');
+        return "⚠️ Session context unavailable. Please refresh and sign in again.";
+    }
+
     const ai = getAIInstance();
     const dataStore = useDataStore.getState();
     const { settings } = useSettingsStore.getState();
@@ -1646,7 +1696,7 @@ export async function generateAIResponse(
         - search_ledger: Search transactions by keyword.
         - get_catering_events: Access the calendar/list of all catering events.
         - get_system_overview: Core KPI node. Use this IMMEDIATELY for 'How many...' or 'Overview' questions. NEVER ask for permission; JUST CALL IT.
-        - get_ingredient_list: Raw material details and counts.
+        - get_ingredient_list: Raw material details, stock counts, and real-time market prices / market insights.
         - get_project_summary: Project tracking and progress.
         - get_project_details: Specific project task breakdown.
         - get_outstanding_invoices: Financial debtors.

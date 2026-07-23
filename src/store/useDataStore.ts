@@ -173,6 +173,7 @@ interface DataState {
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
     subscribeToRealtimeUpdates: () => void;
+    clearAllData: () => void;
     unsubscribeFromRealtimeUpdates: () => void;
     // Portion Monitor Actions
     initializePortionMonitor: (eventId: string, tableCount: number, guestsPerTable: number) => void;
@@ -252,6 +253,22 @@ export const useDataStore = create<DataState>()(
                     socialInteractions: [], agenticLogs: [], performanceReviews: [], departmentMatrix: [],
                     interactionLogs: [], messages: [], entityMedia: [], leads: [], knowledgeBases: [], cashAtHandCents: 0,
                     syncStatus: 'Synced', lastSyncError: null, isSyncing: false, realtimeStatus: 'Disconnected', isSyncPending: false
+                });
+            },
+
+            // [SECURITY] Clears all tenant-scoped data from the in-memory store.
+            // Call this on logout or before hydrating a new tenant to prevent cross-tenant data leakage.
+            clearAllData: () => {
+                console.log('[DataStore] clearAllData: Purging in-memory tenant data.');
+                set({
+                    inventory: [], recipes: [], contacts: [], cateringEvents: [], invoices: [], tasks: [],
+                    bookkeeping: [], projects: [], aiAgents: [], ingredients: [], suppliers: [], marketingPosts: [],
+                    workflows: [], tickets: [], employees: [], deals: [], requisitions: [], rentalLedger: [],
+                    chartOfAccounts: [], bankTransactions: [], bankStatementLines: [], bankAccounts: [],
+                    leaveRequests: [], calendarEvents: [], socialInteractions: [], agenticLogs: [],
+                    performanceReviews: [], departmentMatrix: [], interactionLogs: [], messages: [],
+                    entityMedia: [], leads: [], knowledgeBases: [], cashAtHandCents: 0,
+                    syncStatus: 'Synced', lastSyncError: null, isSyncing: false, isSyncPending: false
                 });
             },
 
@@ -1513,6 +1530,7 @@ export const useDataStore = create<DataState>()(
                         ing.id === id
                             ? {
                                 ...ing,
+                                previousMarketPriceCents: ing.marketPriceCents,
                                 marketPriceCents,
                                 marketInsight: insight,
                                 lastUpdated: new Date().toISOString(),
@@ -2917,8 +2935,22 @@ export const useDataStore = create<DataState>()(
                 }
 
                 const user = useAuthStore.getState().user;
-                const companyId = user?.isSuperAdmin ? 'omni' : user?.companyId;
+                // FIX: Super Admins should still only load data for the currently active workspace to avoid cross-tenant data leaks.
+                // If they need to view omni data, it should be through a separate mechanism.
+                const companyId = user?.companyId;
                 if (!companyId) return;
+
+                // [SECURITY] Tenant Guard: If there is cached data from a different organisation,
+                // purge it before loading the new tenant's data to prevent cross-tenant leakage
+                // in the AI context window during the hydration window.
+                const cachedContacts = get().contacts;
+                if (cachedContacts.length > 0) {
+                    const cachedOrgId = (cachedContacts[0] as any)?.companyId;
+                    if (cachedOrgId && cachedOrgId !== companyId) {
+                        console.warn(`[DataStore][SECURITY] Tenant mismatch detected! Cached: ${cachedOrgId}, Loading: ${companyId}. Purging stale data.`);
+                        get().clearAllData();
+                    }
+                }
 
                 set({ isSyncing: true, syncStatus: 'Syncing' });
 
@@ -2929,6 +2961,11 @@ export const useDataStore = create<DataState>()(
                     if (orgError) console.warn('[Hydration] org fetch error:', orgError);
 
                     if (orgData) {
+                        // [SECURITY DIAGNOSTIC] This log exposes the org name fetched for this companyId.
+                        // If it shows 'Honeywell Group' while you are signed in as Xquisite,
+                        // the companyId in auth store is WRONG — the profiles.organization_id in Supabase
+                        // is pointing to Honeywell's org. Fix it in the Supabase Dashboard.
+                        console.warn(`[DataStore][SECURITY DIAGNOSTIC] hydrateFromCloud:\n  Querying ALL tables with companyId: ${companyId}\n  Organization name returned: ${orgData.name}\n  If this shows WRONG org name → fix profiles.organization_id in Supabase for this user.`);
                         useSettingsStore.getState().updateSettings({
                             name: orgData.name,
                             type: orgData.type as any,
@@ -3065,7 +3102,7 @@ export const useDataStore = create<DataState>()(
                                 kpis: r.kpis || []
                             }))
                         }));
-                        if (constructedMatrix.length > 0) {
+                        if (constructedMatrix.length >= 0) {
                             set({ departmentMatrix: constructedMatrix });
                         }
                     }
@@ -3269,9 +3306,9 @@ export const useDataStore = create<DataState>()(
                         lastSyncError: null
                     };
 
-                    if (combinedInventory.length > 0) newState.inventory = combinedInventory;
-                    if (processedIngredients.length > 0) newState.ingredients = processedIngredients;
-                    if (processedRecipes.length > 0) newState.recipes = processedRecipes;
+                    if (combinedInventory.length >= 0) newState.inventory = combinedInventory;
+                    if (processedIngredients.length >= 0) newState.ingredients = processedIngredients;
+                    if (processedRecipes.length >= 0) newState.recipes = processedRecipes;
 
                     if (contacts !== null) newState.contacts = contacts;
                     if (invoices !== null) newState.invoices = invoices;
@@ -3785,7 +3822,20 @@ export const useDataStore = create<DataState>()(
                 return rest;
             },
             onRehydrateStorage: () => (state) => {
-                state?.hydrateFromCloud();
+                if (!state) return;
+                // [SECURITY] On page refresh, Zustand restores all data from localStorage before
+                // hydrateFromCloud runs. Check for a tenant mismatch and purge stale data
+                // immediately to prevent cross-tenant data reaching the AI during this window.
+                const currentOrgId = useAuthStore.getState().user?.companyId;
+                const cachedEmployees = state.employees || [];
+                if (currentOrgId && cachedEmployees.length > 0) {
+                    const cachedOrgId = (cachedEmployees[0] as any)?.companyId;
+                    if (cachedOrgId && cachedOrgId !== currentOrgId) {
+                        console.warn(`[DataStore][SECURITY] onRehydrateStorage: Stale tenant data detected (${cachedOrgId} vs ${currentOrgId}). Purging before hydration.`);
+                        state.clearAllData();
+                    }
+                }
+                state.hydrateFromCloud();
             }
         }
     )
