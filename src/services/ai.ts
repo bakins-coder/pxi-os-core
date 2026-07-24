@@ -1624,25 +1624,8 @@ export async function processAgentRequest(input: string, context: string, mode: 
                              String(error).includes('Quota');
 
         if (isQuotaError) {
-            const query = input.toLowerCase();
-            let matchedResponse = "";
-            
-            if (query.includes("how many active companies") || query.includes("how many companies") || query.includes("what companies") || query.includes("companies we own") || query.includes("active companies")) {
-                matchedResponse = "We currently operate **3 active branches**: Victoria Island HQ, Lekki Phase 1, and the Ikoyi fulfillment hub.";
-            } else if (query.includes("how many staff") || query.includes("headcount") || query.includes("employee") || query.includes("staff member") || query.includes("how many people")) {
-                matchedResponse = "Xquisite Catering has a total staff headcount of **142 employees** across all branches. This includes 45 culinary staff, 60 service staff, and 37 logistics & management personnel.";
-            } else if (query.includes("portfolio value") || query.includes("how much is the portfolio") || query.includes("investment portfolio") || query.includes("value of portfolio")) {
-                matchedResponse = "The total revenue generated this year stands at **₦1.2B**, representing a strong growth of **+18.4% YTD**.";
-            } else if (query.includes("total assets") || query.includes("asset value") || query.includes("how many assets") || query.includes("value of assets")) {
-                matchedResponse = "Xquisite's total operational assets are valued at **₦450M**.";
-            } else if (query.includes("hi") || query.includes("hello") || query.includes("hey") || query.includes("ready")) {
-                matchedResponse = "Hello! I am ORCA, your Chief AI. My primary API quota is currently exhausted, but my local database router is active! You can ask me about our staff headcount, operational assets, or branches.";
-            } else {
-                matchedResponse = "⚠️ **Note:** The Google Gemini API quota has been temporarily reached (429 Rate Limit).\n\nHowever, I can still answer basic questions locally! Try asking me:\n- *'How many active branches do we have?'*\n- *'What is our total staff headcount?'*\n- *'What are our total assets?'*";
-            }
-            
             return {
-                response: matchedResponse,
+                response: "I'm sorry, but I am currently unable to process your request because the AI service has temporarily reached its API quota limit. Please try again later.",
                 intent: 'GENERAL_QUERY'
             };
         }
