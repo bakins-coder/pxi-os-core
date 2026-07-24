@@ -4,7 +4,7 @@ import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Ingredient, CateringEvent, Recipe, AIAgentMode } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
-
+import { useApiUsageStore } from '../store/useApiUsageStore';
 
 const getAIInstance = () => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -20,7 +20,39 @@ const getAIInstance = () => {
 
     const key = apiKey || legacyKey || '';
     if (!key) throw new Error("MISSING_API_KEY");
-    return new GoogleGenerativeAI(key);
+    
+    const ai = new GoogleGenerativeAI(key);
+    
+    // Intercept getGenerativeModel to track API usage globally
+    const originalGetModel = ai.getGenerativeModel.bind(ai);
+    ai.getGenerativeModel = (modelParams: any) => {
+        const model = originalGetModel(modelParams);
+        const originalGenerateContent = model.generateContent.bind(model);
+        model.generateContent = async (...args: any[]) => {
+            try {
+                const result = await originalGenerateContent(...args);
+                const response = result.response;
+                // Safely extract tokens depending on response structure
+                let tokens = 0;
+                if (response?.usageMetadata?.totalTokenCount) {
+                    tokens = response.usageMetadata.totalTokenCount;
+                } else if ((result as any)?.usageMetadata?.totalTokenCount) {
+                    tokens = (result as any).usageMetadata.totalTokenCount;
+                }
+                useApiUsageStore.getState().logRequest(tokens);
+                return result;
+            } catch (e: any) {
+                // Log the request even if it failed due to rate limits
+                if (e?.status === 429 || e?.message?.includes('429') || e?.message?.includes('RESOURCE_EXHAUSTED')) {
+                    useApiUsageStore.getState().logRequest(0);
+                }
+                throw e;
+            }
+        };
+        return model;
+    };
+    
+    return ai;
 };
 
 async function callLocalGemma(

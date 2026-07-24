@@ -18,6 +18,7 @@ import { getTerm } from '../utils/terminology';
 import { IndustryType } from '../types';
 import { ChatWidget } from './ChatWidget';
 import { ParadigmWorkspace } from './ParadigmWorkspace';
+import { ApiUsageMonitor } from './ApiUsageMonitor';
 
 const SyncIndicator = () => {
   const { syncStatus, lastSyncError, isSyncing, syncWithCloud, realtimeStatus } = useDataStore();
@@ -622,6 +623,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
         </main>
       </div>
     </div>
+    <ApiUsageMonitor />
     <ChatWidget />
   </div>
 );
