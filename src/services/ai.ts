@@ -1628,17 +1628,17 @@ export async function processAgentRequest(input: string, context: string, mode: 
             let matchedResponse = "";
             
             if (query.includes("how many active companies") || query.includes("how many companies") || query.includes("what companies") || query.includes("companies we own") || query.includes("active companies")) {
-                matchedResponse = "We currently own and invest in **4 active companies**:\n\n1. **HOGL Energy Limited** — Downstream oil & gas, tank farms, and lubricant blending.\n2. **Ikeja Hotel Plc** — 14.12% stake in a premier hospitality institution.\n3. **Honeywell Flour Mills** — Legacy portfolio (now divested/acquired by FMN Plc).\n4. **Honeywell Real Estate** — Premium developments and infrastructure arm.\n\nYou can click on any card under the **Our Companies** section to see specific tabs for Assets, HR, CRM, and Financials.";
+                matchedResponse = "We currently operate **3 active branches**: Victoria Island HQ, Lekki Phase 1, and the Ikoyi fulfillment hub.";
             } else if (query.includes("how many staff") || query.includes("headcount") || query.includes("employee") || query.includes("staff member") || query.includes("how many people")) {
-                matchedResponse = "Honeywell Group has a total staff headcount of **2,847 employees** across all entities. This includes 438 at HOGL Energy, 312 at Honeywell Real Estate, and 229 at Ikeja Hotel Plc.";
+                matchedResponse = "Xquisite Catering has a total staff headcount of **142 employees** across all branches. This includes 45 culinary staff, 60 service staff, and 37 logistics & management personnel.";
             } else if (query.includes("portfolio value") || query.includes("how much is the portfolio") || query.includes("investment portfolio") || query.includes("value of portfolio")) {
-                matchedResponse = "The total Investment Portfolio Value stands at **₦127B** (June 2026), representing a strong growth of **+33.7% YTD**.";
+                matchedResponse = "The total revenue generated this year stands at **₦1.2B**, representing a strong growth of **+18.4% YTD**.";
             } else if (query.includes("total assets") || query.includes("asset value") || query.includes("how many assets") || query.includes("value of assets")) {
-                matchedResponse = "Honeywell Group's consolidated assets are valued at **₦485B**.";
+                matchedResponse = "Xquisite's total operational assets are valued at **₦450M**.";
             } else if (query.includes("hi") || query.includes("hello") || query.includes("hey") || query.includes("ready")) {
-                matchedResponse = "Hello! I am ORCA, your Chief AI. My primary API quota is currently exhausted, but my local database router is active! You can ask me about Honeywell Group subsidiaries, headcount, total assets, or portfolio value.";
+                matchedResponse = "Hello! I am ORCA, your Chief AI. My primary API quota is currently exhausted, but my local database router is active! You can ask me about our staff headcount, operational assets, or branches.";
             } else {
-                matchedResponse = "⚠️ **Note:** The Google Gemini API quota has been temporarily reached (429 Rate Limit).\n\nHowever, I can still answer Honeywell Group workspace questions locally! Try asking me:\n- *'How many active companies do we have?'*\n- *'What is our total staff headcount?'*\n- *'What is our investment portfolio value?'*\n- *'What are our total assets?'*";
+                matchedResponse = "⚠️ **Note:** The Google Gemini API quota has been temporarily reached (429 Rate Limit).\n\nHowever, I can still answer basic questions locally! Try asking me:\n- *'How many active branches do we have?'*\n- *'What is our total staff headcount?'*\n- *'What are our total assets?'*";
             }
             
             return {
