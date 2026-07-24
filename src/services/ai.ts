@@ -941,9 +941,132 @@ const SYSTEM_TOOL_DECLARATIONS = [
 ];
 
 /**
+ * Converts Gemini tool declarations to OpenAI JSON Schema tool format.
+ */
+function convertGeminiToOpenAITools(declarations: any[]) {
+    return declarations.map(decl => ({
+        type: "function",
+        function: {
+            name: decl.name,
+            description: decl.description,
+            parameters: decl.parameters ? {
+                type: "object",
+                properties: decl.parameters.properties || {},
+                required: decl.parameters.required || []
+            } : { type: "object", properties: {} }
+        }
+    }));
+}
+
+/**
+ * Handles the Loop for Tool Calling using OpenRouter (OpenAI-compatible) API
+ */
+async function executeOpenRouterToolCalls(modelId: string, apiKey: string, initialMessages: any[], generationConfig?: any, systemInstruction?: string, toolDeclarations: any[] = SYSTEM_TOOL_DECLARATIONS) {
+    const tools = convertGeminiToOpenAITools(toolDeclarations);
+    
+    let currentMessages = [];
+    if (systemInstruction) {
+        currentMessages.push({ role: "system", content: systemInstruction });
+    }
+    for (const msg of initialMessages) {
+        let textContent = "";
+        if (msg.parts) {
+             textContent = msg.parts.map((p:any) => p.text || "").join("");
+        }
+        currentMessages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textContent || msg.content || "" });
+    }
+
+    const calledTools = new Set<string>();
+    console.log(`[AI Tools] Starting OpenRouter loop for model: ${modelId}`);
+
+    for (let i = 0; i < 10; i++) {
+        console.log(`[AI Tools] OpenRouter Turn ${i + 1}...`);
+        const payload: any = {
+            model: modelId,
+            messages: currentMessages,
+            tools,
+            tool_choice: "auto"
+        };
+        
+        if (generationConfig?.temperature !== undefined) payload.temperature = generationConfig.temperature;
+
+        if (i > 0) await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`OpenRouter API error: ${response.status} - ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        const message = data.choices?.[0]?.message;
+
+        if (!message) {
+            throw new Error("No message returned from OpenRouter.");
+        }
+
+        currentMessages.push(message);
+
+        if (!message.tool_calls || message.tool_calls.length === 0) {
+            return {
+                text: () => message.content || "",
+                response: { text: () => message.content || "" }
+            };
+        }
+
+        for (const toolCall of message.tool_calls) {
+            if (toolCall.type !== "function") continue;
+            const name = toolCall.function.name;
+            const args = JSON.parse(toolCall.function.arguments || "{}");
+            
+            const toolCallKey = `${name}:${JSON.stringify(args)}`;
+            if (calledTools.has(toolCallKey)) {
+                throw new Error(`Infinite loop detected calling tool: ${name}`);
+            }
+            calledTools.add(toolCallKey);
+
+            const handler = (SYSTEM_TOOLS as any)[name];
+            let resultData;
+            
+            if (handler) {
+                try {
+                    resultData = await handler(args);
+                } catch (e: any) {
+                    resultData = { error: e.message };
+                }
+            } else {
+                resultData = { error: `Tool ${name} not found.` };
+            }
+
+            currentMessages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                name: name,
+                content: JSON.stringify(resultData)
+            });
+        }
+    }
+    
+    throw new Error("Max tool iterations reached with OpenRouter.");
+}
+
+/**
  * Handles the Loop for Tool Calling
  */
 async function executeToolCalls(ai: any, modelId: string, initialMessages: any[], generationConfig?: any, systemInstruction?: string, toolDeclarations: any[] = SYSTEM_TOOL_DECLARATIONS) {
+    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    const openRouterModel = import.meta.env.VITE_OPENROUTER_MODEL;
+    if (openRouterKey && openRouterKey !== 'sk-or-v1-placeholder' && openRouterModel) {
+        return executeOpenRouterToolCalls(openRouterModel, openRouterKey, initialMessages, generationConfig, systemInstruction, toolDeclarations);
+    }
+
     const targetModel = modelId;
 
     const genModel = ai.getGenerativeModel({
