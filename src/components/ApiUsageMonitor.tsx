@@ -8,8 +8,8 @@ export const ApiUsageMonitor: React.FC = () => {
     const { getMetrics, cleanup } = useApiUsageStore();
     const [metrics, setMetrics] = useState({ rpm: 0, rpd: 0, tpm: 0 });
 
-    // Only show for super admin
-    const isSuperAdmin = user?.role?.toLowerCase() === 'super admin' || user?.role?.toLowerCase() === 'system_admin';
+    // Show for super admin and admin roles so the user can see it
+    const isSuperAdmin = user?.role?.toLowerCase() === 'super admin' || user?.role?.toLowerCase() === 'system_admin' || user?.role?.toLowerCase() === 'admin';
 
     useEffect(() => {
         if (!isSuperAdmin) return;
