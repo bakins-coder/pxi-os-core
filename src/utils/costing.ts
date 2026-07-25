@@ -25,7 +25,10 @@ export const calculateItemCosting = (
         return null;
     }
     let totalCost = 0;
-    const recipe = recipes.find(r => r.id === item.recipeId);
+    let recipe = recipes.find(r => r.id === item.recipeId);
+    if (!recipe && item.name) {
+        recipe = recipes.find(r => r.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+    }
 
     const standardize = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
@@ -110,6 +113,14 @@ export const calculateItemCosting = (
             subRecipeGroup: ri.subRecipeGroup
         };
     }) : [];
+
+    if (totalCost === 0) {
+        if (item.costPriceCents && item.costPriceCents > 0) {
+            totalCost = item.costPriceCents * qty;
+        } else {
+            totalCost = Math.round(item.priceCents * 0.4) * qty;
+        }
+    }
 
     const revenue = item.priceCents * qty;
     const grossMarginCents = revenue - totalCost;
