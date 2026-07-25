@@ -273,16 +273,22 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
             <Link
               key={`${item.path}-${item.label}`}
               to={item.path}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isActive
+              className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group relative ${isActive
                 ? 'bg-white/5 border-l-2'
                 : 'text-slate-500 hover:bg-white/5 hover:text-white'
                 }`}
               style={isActive ? { borderColor: brandColor, color: brandColor } : {}}
+              title={isCollapsed ? displayLabel : undefined}
             >
               <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3 min-w-0'}`}>
                 <DisplayIcon size={18} className={isActive ? 'shrink-0' : 'text-slate-600 group-hover:text-white shrink-0'} />
                 {!isCollapsed && (
                   <span className={`text-[10px] uppercase tracking-widest truncate animate-in fade-in ${isActive ? 'font-black' : 'font-bold'}`}>{displayLabel}</span>
+                )}
+                {isCollapsed && (
+                  <span className="absolute left-full ml-4 px-3 py-2 bg-slate-900 border border-white/10 text-white text-[10px] uppercase tracking-widest font-black rounded-xl opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none transition-all duration-200 whitespace-nowrap z-[9999] shadow-2xl shadow-black/80">
+                    {displayLabel}
+                  </span>
                 )}
               </div>
 
