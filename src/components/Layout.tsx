@@ -74,11 +74,11 @@ const ParadigmLogo = ({ brandColor, orgName, isCollapsed, logo }: { brandColor: 
         </div>
       </div>
       {!isCollapsed && (
-        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300 overflow-visible">
-          <span className="font-black text-lg text-white tracking-tighter leading-none mb-1 uppercase whitespace-nowrap">
+        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300 overflow-hidden max-w-[130px] sm:max-w-[150px]">
+          <span className="font-black text-base md:text-lg text-white tracking-tighter leading-none mb-1 uppercase truncate" title={orgName}>
             {orgName}
           </span>
-          <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70" style={{ color: brandColor }}>
+          <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70 truncate" style={{ color: brandColor }}>
             Smart Platform
           </span>
         </div>
@@ -234,10 +234,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
         {!isCollapsed && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-all shrink-0 ml-2"
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all shrink-0 ml-3 shadow-lg flex items-center justify-center"
             title="Collapse Sidebar"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={18} />
           </button>
         )}
       </div>
@@ -303,10 +303,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
         {isCollapsed && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="w-full flex items-center justify-center p-3 rounded-xl border border-white/5 text-slate-500 hover:bg-white/10 hover:text-white transition-all group shrink-0 mb-2"
+            className="w-full flex items-center justify-center p-3 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all group shrink-0 mb-4 shadow-lg"
             title="Expand Sidebar"
           >
-            <ChevronRight size={18} className="text-slate-600 group-hover:text-white" />
+            <ChevronRight size={18} className="text-slate-300 group-hover:text-white" />
           </button>
         )}
         <button
