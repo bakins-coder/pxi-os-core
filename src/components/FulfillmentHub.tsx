@@ -116,29 +116,29 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
                <button onClick={onClose} className="p-3 md:p-4 bg-slate-100 hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 md:p-12 space-y-8 md:space-y-12 pb-32 md:pb-12">
-               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-slate-50 p-5 md:p-8 rounded-2xl md:rounded-[2rem] border border-slate-100">
+               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-slate-50 p-5 md:p-8 rounded-2xl md:rounded-[2rem] border border-slate-300">
                   {features.showStaffProcurement && (
                      <>
                         <div className="space-y-1.5 md:space-y-2">
                            <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.staffLabel} Ratio</label>
-                           <select className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold outline-none text-slate-950 text-xs md:text-base" value={staffRatio} onChange={e => setStaffRatio(parseInt(e.target.value) as 10 | 20)}>
+                           <select className="w-full p-2.5 md:p-3 bg-white border border-slate-300 rounded-lg md:rounded-xl font-bold outline-none text-slate-950 text-xs md:text-base" value={staffRatio} onChange={e => setStaffRatio(parseInt(e.target.value) as 10 | 20)}>
                               <option value={10}>1 {terms.staffLabel} : 10 {terms.unitsLabel}</option>
                               <option value={20}>1 {terms.staffLabel} : 20 {terms.unitsLabel}</option>
                            </select>
                         </div>
                         <div className="space-y-1.5 md:space-y-2">
                            <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.staffLabel} Rate ({NAIRA_SYMBOL})</label>
-                           <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={staffRate} onChange={e => setStaffRate(parseInt(e.target.value) || 0)} />
+                           <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-300 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={staffRate} onChange={e => setStaffRate(parseInt(e.target.value) || 0)} />
                         </div>
                      </>
                   )}
                   <div className="space-y-1.5 md:space-y-2">
                      <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.logisticsUnitLabel} Rental ({NAIRA_SYMBOL})</label>
-                     <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanRate} onChange={e => setVanRate(parseInt(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-300 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanRate} onChange={e => setVanRate(parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-1.5 md:space-y-2">
                      <label className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 block mb-0.5 md:mb-1">{terms.logisticsUnitLabel} Count</label>
-                     <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-200 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanCount} onChange={e => setVanCount(parseInt(e.target.value) || 0)} />
+                     <input type="number" className="w-full p-2.5 md:p-3 bg-white border border-slate-300 rounded-lg md:rounded-xl font-bold text-slate-950 text-xs md:text-base" value={vanCount} onChange={e => setVanCount(parseInt(e.target.value) || 0)} />
                   </div>
                </div>
                <div className="space-y-6">
@@ -148,7 +148,7 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
                   </div>
                   <div className="space-y-4">
                      {requisitions.map((req, idx) => (
-                        <div key={idx} className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-5 md:p-6 bg-white border border-slate-100 rounded-2xl shadow-sm group hover:border-indigo-200 transition-all relative">
+                        <div key={idx} className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-5 md:p-6 bg-white border border-slate-300 rounded-2xl shadow-sm group hover:border-indigo-200 transition-all relative">
                            <div className="flex-1 space-y-1">
                               <input className="w-full bg-transparent font-black text-slate-800 uppercase outline-none focus:text-indigo-600 text-sm md:text-base" value={req.itemName} onChange={e => updateReq(idx, { itemName: e.target.value })} />
                               <div className="flex items-center gap-4">
@@ -158,11 +158,11 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
                            <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-50">
                               <div className="space-y-1">
                                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Quantity</p>
-                                 <input type="number" className="w-full md:w-20 p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-center text-slate-950" value={req.quantity} onChange={e => updateReq(idx, { quantity: parseInt(e.target.value) || 0 })} />
+                                 <input type="number" className="w-full md:w-20 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-center text-slate-950" value={req.quantity} onChange={e => updateReq(idx, { quantity: parseInt(e.target.value) || 0 })} />
                               </div>
                               <div className="space-y-1">
                                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Price ({NAIRA_SYMBOL})</p>
-                                 <input type="number" className="w-full md:w-28 p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-right text-slate-950" value={(req.pricePerUnitCents || 0) / 100} onChange={e => updateReq(idx, { pricePerUnitCents: (parseFloat(e.target.value) || 0) * 100 })} />
+                                 <input type="number" className="w-full md:w-28 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-right text-slate-950" value={(req.pricePerUnitCents || 0) / 100} onChange={e => updateReq(idx, { pricePerUnitCents: (parseFloat(e.target.value) || 0) * 100 })} />
                               </div>
                               <div className="col-span-2 md:col-span-1 md:w-32 text-right flex md:block justify-between items-end border-t border-slate-50 pt-3 md:pt-0 md:border-0 mt-2 md:mt-0">
                                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Row Total</p>
@@ -2230,7 +2230,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                            <div className="relative group/search">
                               <input
                                  type="text"
-                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                 className="w-full p-4 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20"
                                  value={searchTerm}
                                  onChange={e => {
                                     setSearchTerm(e.target.value);
@@ -2268,7 +2268,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Delivery Address</label>
                               <input
                                  type="text"
-                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
+                                 className="w-full p-4 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
                                  value={deliveryLocation}
                                  onChange={e => setDeliveryLocation(e.target.value)}
                                  placeholder="e.g. 123 Lagos St"
@@ -2277,7 +2277,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Packaging Info</label>
                               <select
-                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
+                                 className="w-full p-4 bg-slate-50 border border-slate-300 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
                                  value={packaging}
                                  onChange={e => setPackaging(e.target.value)}
                               >
@@ -2314,7 +2314,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                               <input
                                  type="text"
                                  placeholder="Search products to add..."
-                                 className="w-full pl-12 pr-12 py-3 bg-slate-50/50 border border-slate-100 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/50 text-slate-900 transition-all hover:bg-white"
+                                 className="w-full pl-12 pr-12 py-3 bg-slate-50/50 border border-slate-300 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/50 text-slate-900 transition-all hover:bg-white"
                                  value={searchQuery}
                                  onChange={e => { setSearchQuery(e.target.value); setIsDropdownOpen(true); }}
                                  onFocus={() => setIsDropdownOpen(true)}
@@ -2361,7 +2361,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                               <input
                                  type="text"
                                  placeholder="Product Name"
-                                 className="md:col-span-2 w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
+                                 className="md:col-span-2 w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
                                  value={customProductName}
                                  onChange={e => setCustomProductName(e.target.value)}
                               />
@@ -2370,7 +2370,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                  <input
                                     type="number"
                                     placeholder="Price"
-                                    className="w-full p-3 pl-7 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
+                                    className="w-full p-3 pl-7 bg-white border border-slate-300 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
                                     value={customProductPrice || ''}
                                     onChange={e => setCustomProductPrice(parseInt(e.target.value) || 0)}
                                  />
@@ -2380,7 +2380,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                     <input
                                        type="number"
                                        placeholder="Qty"
-                                       className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
+                                       className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all text-slate-900 shadow-sm"
                                        value={customProductQuantity || ''}
                                        onChange={e => setCustomProductQuantity(parseInt(e.target.value) || 0)}
                                     />
@@ -2422,7 +2422,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                        <div className="flex-1 lg:flex-initial">
                                           <input
                                              type="text"
-                                             className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all"
+                                             className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all"
                                              placeholder="Description or Select Item"
                                              value={item.name}
                                              onChange={e => updateName(idx, e.target.value)}
@@ -2442,7 +2442,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                           <div className="relative">
                                              <input
                                                 type="number"
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-2 text-center text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-2 text-center text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
                                                 value={item.quantity}
                                                 onChange={e => updateQty(idx, parseInt(e.target.value) || 0)}
                                              />
@@ -2454,7 +2454,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₦</span>
                                           <input
                                              type="number"
-                                             className="w-full bg-slate-50 border border-slate-100 rounded-lg pl-7 pr-3 py-2 text-right text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
+                                             className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-3 py-2 text-right text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
                                              value={item.priceCents / 100}
                                              onChange={e => updatePrice(idx, Math.round((parseFloat(e.target.value) || 0) * 100))}
                                           />
@@ -2464,7 +2464,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 text-[10px] font-bold">₦</span>
                                           <input
                                              type="number"
-                                             className="w-full bg-orange-50 border border-orange-100 rounded-lg pl-6 pr-3 py-2 text-right text-sm font-bold text-orange-600 placeholder-orange-300 focus:border-orange-300 outline-none"
+                                             className="w-full bg-orange-50 border border-orange-300 rounded-lg pl-6 pr-3 py-2 text-right text-sm font-bold text-orange-600 placeholder-orange-300 focus:border-orange-300 outline-none"
                                              placeholder="Discount"
                                              value={item.discountCents ? item.discountCents / 100 : ''}
                                              onChange={e => updateDiscount(idx, Math.round((parseFloat(e.target.value) || 0) * 100))}
@@ -2497,7 +2497,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Invoice Date</label>
                            <input
                               type="date"
-                              className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
+                              className="w-full p-4 bg-slate-50/50 border border-slate-300 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
                               value={invoiceDate}
                               onChange={e => setInvoiceDate(e.target.value)}
                            />
@@ -2506,7 +2506,7 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Fulfillment Date</label>
                            <input
                               type="date"
-                              className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
+                              className="w-full p-4 bg-slate-50/50 border border-slate-300 rounded-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm transition-all"
                               value={eventDate}
                               onChange={e => setEventDate(e.target.value)}
                            />
@@ -2566,7 +2566,8 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const [showCuisineOrder, setShowCuisineOrder] = useState(false);
    const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
    const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
-   const [activeTab, setActiveTab] = useState<'orders' | 'fulfillment' | 'matrix' | 'cuisine'>(features.showBOQ ? 'fulfillment' : 'orders');
+   const [activeTab, setActiveTab] = useState<'orders' | 'fulfillment' | 'matrix' | 'cuisine' | null>(null);
+   const [isOrdersCollapsed, setIsOrdersCollapsed] = useState(true);
    const [showProcurement, setShowProcurement] = useState(false);
    const [isManualInvoiceModalOpen, setIsManualInvoiceModalOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
@@ -2693,7 +2694,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md gap-2 overflow-x-auto no-scrollbar max-w-full">
                   <button
                      onClick={() => {
-                        const url = `${window.location.origin} /#/brochure`;
+                        const url = `${window.location.origin}/#/brochure`;
                         navigator.clipboard.writeText(url);
                         alert('Brochure Link Copied to Clipboard!');
                      }}
@@ -2701,24 +2702,73 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                   >
                      <Share2 size={14} /> <span className="hidden md:inline">Share Booking Link</span><span className="md:hidden">Share</span>
                   </button>
-                  <div className="w-px bg-white/10 my-2 shrink-0"></div>
 
-                  {[
-                     { id: 'cuisine', label: terms.standardOrdersLabel, icon: industryConfig.ui.standardIcon || UtensilsCrossed },
-                     { id: 'orders', label: terms.customOrdersLabel, icon: industryConfig.ui.customIcon || ShoppingBag },
-                     { id: 'matrix', label: 'Matrix', icon: Grid3X3 }
-                  ].map(tab => (
-                     <button
-                        key={tab.id}
-                        onClick={() => { setActiveTab(tab.id as any); setSelectedEventId(null); }}
-                        className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#ff6b6b] text-white shadow-lg' : 'text-white/50 hover:text-white'} `}
-                     >
-                        <tab.icon size={14} /> {tab.label}
-                     </button>
-                  ))}
+                  {activeTab && (
+                     <>
+                        <div className="w-px bg-white/10 my-2 shrink-0"></div>
+                        <button
+                           onClick={() => { setActiveTab(null); setSelectedEventId(null); }}
+                           className="whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 text-white hover:bg-white/5 bg-[#ff6b6b]/20 border border-[#ff6b6b]/30"
+                        >
+                           ← Back to Hub
+                        </button>
+                     </>
+                  )}
                </div>
             </div>
          </div>
+
+         {activeTab === null && (
+            <div className="space-y-6">
+               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Select an Action</h2>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                     {
+                        id: 'cuisine',
+                        label: terms.standardOrdersLabel,
+                        desc: `Manage standard menu packages, bookings, and cuisine events.`,
+                        icon: industryConfig.ui.standardIcon || UtensilsCrossed,
+                        color: 'from-[#ff6b6b]/10 to-[#ff6b6b]/5 border-[#ff6b6b]/20 hover:border-[#ff6b6b]/50 text-[#ff6b6b]'
+                     },
+                     {
+                        id: 'orders',
+                        label: terms.customOrdersLabel,
+                        desc: `Create and manage custom, tailored catering bookings.`,
+                        icon: industryConfig.ui.customIcon || ShoppingBag,
+                        color: 'from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/50 text-blue-400'
+                     },
+                     {
+                        id: 'matrix',
+                        label: 'Costing Matrix',
+                        desc: `View ingredient costs, recipes, and margin calculations.`,
+                        icon: Grid3X3,
+                        color: 'from-[#00ff9d]/10 to-[#00ff9d]/5 border-[#00ff9d]/20 hover:border-[#00ff9d]/50 text-[#00ff9d]'
+                     }
+                  ].map(card => {
+                     const CardIcon = card.icon;
+                     return (
+                        <div
+                           key={card.id}
+                           onClick={() => setActiveTab(card.id as any)}
+                           className={`group relative rounded-[2.5rem] p-8 border-2 bg-gradient-to-br ${card.color} transition-all duration-300 cursor-pointer hover:shadow-2xl hover:-translate-y-1 flex flex-col justify-between h-64 overflow-hidden`}
+                        >
+                           <div className="absolute inset-0 opacity-10 bg-grid-white/10"></div>
+                           <div className="relative z-10 flex justify-between items-start">
+                              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform">
+                                 <CardIcon size={28} />
+                              </div>
+                              <ArrowRight size={20} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                           </div>
+                           <div className="relative z-10 mt-auto">
+                              <h3 className="text-xl font-black uppercase tracking-tight text-white mb-2">{card.label}</h3>
+                              <p className="text-xs text-slate-400 font-medium leading-relaxed uppercase tracking-wider">{card.desc}</p>
+                           </div>
+                        </div>
+                     );
+                  })}
+               </div>
+            </div>
+         )}
 
          {(activeTab === 'orders' || activeTab === 'cuisine') && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
@@ -2730,6 +2780,14 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                            {viewMode} {activeTab === 'orders' ? terms.customOrders : terms.standardOrders} ({filteredEvents.length})
                         </h2>
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                           {viewMode === 'active' && (
+                              <button
+                                 onClick={() => setIsOrdersCollapsed(!isOrdersCollapsed)}
+                                 className="px-4 py-2.5 bg-slate-900 border border-white/10 hover:bg-slate-800 text-white rounded-xl font-bold uppercase tracking-widest text-[9px] transition-all flex items-center gap-2"
+                              >
+                                 {isOrdersCollapsed ? 'Expand Orders' : 'Collapse Orders'}
+                              </button>
+                           )}
                            {activeTab === 'orders' ? (
                               <button onClick={() => setOrderBrochureEvent({} as CateringEvent)} className="flex-1 md:flex-none px-4 md:px-6 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-slate-800 transition-all"><Plus size={16} /> New {terms.customOrders}</button>
                            ) : (
@@ -2753,58 +2811,72 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                      </div>
                   </div>
 
-                  {filteredEvents.length === 0 && (
-                     <div className={`p-8 text-center border-2 border-dashed border-slate-100 rounded-[2rem] ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'} `}>
-                        <p className="text-xs font-black uppercase text-slate-300 tracking-widest">No {viewMode} records found</p>
+                  {viewMode === 'active' && isOrdersCollapsed ? (
+                     <div
+                        onClick={() => setIsOrdersCollapsed(false)}
+                        className={`p-8 text-center border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white/5 hover:border-blue-500 hover:bg-white/10 transition-all cursor-pointer ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}
+                     >
+                        <p className="text-xs font-black uppercase text-slate-400 tracking-widest mb-3">Active Orders are Collapsed</p>
+                        <span className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-md">
+                           Click to Expand ({filteredEvents.length} Orders)
+                        </span>
                      </div>
+                  ) : (
+                     <>
+                        {filteredEvents.length === 0 && (
+                           <div className={`p-8 text-center border-2 border-dashed border-slate-100 rounded-[2rem] ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'} `}>
+                              <p className="text-xs font-black uppercase text-slate-300 tracking-widest">No {viewMode} records found</p>
+                           </div>
+                        )}
+
+                        {filteredEvents?.map(ev => {
+                           const { revenue: displayRevenue } = getEventFinancials(ev, invoices);
+                           const isSelected = selectedEventId === ev.id;
+
+                           return (
+                              <div
+                                 key={ev.id}
+                                 onClick={() => {
+                                    console.log('CLICKED CARD:', ev.id);
+                                    setSelectedEventId(ev.id);
+                                 }}
+                                 className={`rounded-[3rem] p-6 border-2 transition-all cursor-pointer shadow-sm hover:shadow-md h-full flex flex-col justify-between overflow-hidden ${isSelected
+                                    ? 'bg-slate-900 border-blue-600 ring-4 ring-blue-500/20 text-white'
+                                    : 'bg-white border-slate-100 hover:border-blue-400 text-slate-800'
+                                    } `}
+                              >
+                                 <div className="flex justify-between items-start mb-4 gap-2">
+                                    <h3 className={`font-black text-sm md:text-base uppercase break-words tracking-tighter leading-tight flex-1 ${isSelected ? 'text-white' : 'text-slate-900'} `}>
+                                       {ev.customerName || 'No Name'}
+                                    </h3>
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 whitespace-nowrap ${ev.status === 'Confirmed'
+                                       ? (isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')
+                                       : (isSelected ? 'bg-green-500/20 text-green-400' : 'bg-green-50 text-green-600')
+                                       } `}>
+                                       {ev.status}
+                                    </span>
+                                 </div>
+
+                                 <div className="flex justify-between items-end mt-auto">
+                                    <div className="flex flex-col gap-1">
+                                       <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Guests</p>
+                                       <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'} `}>{ev.guestCount || 0}</p>
+                                    </div>
+                                    <div className="text-right flex flex-col gap-1">
+                                       <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Revenue</p>
+                                       <p className={`text-lg font-black ${displayRevenue > 0
+                                          ? 'text-emerald-500'
+                                          : (isSelected ? 'text-slate-500' : 'text-rose-400')
+                                          } `}>
+                                          <span className="opacity-70 mr-0.5">{NAIRA_SYMBOL}</span>{(displayRevenue / 100).toLocaleString()}
+                                       </p>
+                                    </div>
+                                 </div>
+                              </div>
+                           );
+                        })}
+                     </>
                   )}
-
-                  {filteredEvents?.map(ev => {
-                     const { revenue: displayRevenue } = getEventFinancials(ev, invoices);
-                     const isSelected = selectedEventId === ev.id;
-
-                     return (
-                        <div
-                           key={ev.id}
-                           onClick={() => {
-                              console.log('CLICKED CARD:', ev.id);
-                              setSelectedEventId(ev.id);
-                           }}
-                           className={`rounded-[3rem] p-6 border-2 transition-all cursor-pointer shadow-sm hover:shadow-md h-full flex flex-col justify-between overflow-hidden ${isSelected
-                              ? 'bg-slate-900 border-blue-600 ring-4 ring-blue-500/20 text-white'
-                              : 'bg-white border-slate-100 hover:border-blue-400 text-slate-800'
-                              } `}
-                        >
-                           <div className="flex justify-between items-start mb-4 gap-2">
-                              <h3 className={`font-black text-sm md:text-base uppercase break-words tracking-tighter leading-tight flex-1 ${isSelected ? 'text-white' : 'text-slate-900'} `}>
-                                 {ev.customerName || 'No Name'}
-                              </h3>
-                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 whitespace-nowrap ${ev.status === 'Confirmed'
-                                 ? (isSelected ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')
-                                 : (isSelected ? 'bg-green-500/20 text-green-400' : 'bg-green-50 text-green-600')
-                                 } `}>
-                                 {ev.status}
-                              </span>
-                           </div>
-
-                           <div className="flex justify-between items-end mt-auto">
-                              <div className="flex flex-col gap-1">
-                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Guests</p>
-                                 <p className={`text-lg font-black ${isSelected ? 'text-white' : 'text-slate-800'} `}>{ev.guestCount || 0}</p>
-                              </div>
-                              <div className="text-right flex flex-col gap-1">
-                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Revenue</p>
-                                 <p className={`text-lg font-black ${displayRevenue > 0
-                                    ? 'text-emerald-500'
-                                    : (isSelected ? 'text-slate-500' : 'text-rose-400')
-                                    } `}>
-                                    <span className="opacity-70 mr-0.5">{NAIRA_SYMBOL}</span>{(displayRevenue / 100).toLocaleString()}
-                                 </p>
-                              </div>
-                           </div>
-                        </div>
-                     );
-                  })}
                </div>
 
                {

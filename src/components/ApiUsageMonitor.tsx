@@ -42,7 +42,7 @@ export const ApiUsageMonitor: React.FC = () => {
     const isTpmCritical = tpm >= 1000000;
 
     return (
-        <div className="fixed bottom-4 left-4 z-[9999] bg-slate-900 text-slate-300 text-xs rounded-lg shadow-xl border border-slate-700 p-3 flex flex-col gap-2 w-48 font-mono opacity-90 hover:opacity-100 transition-opacity backdrop-blur-sm">
+        <div className="fixed bottom-4 left-4 md:left-[304px] z-[9999] bg-slate-900 text-slate-300 text-xs rounded-lg shadow-xl border border-slate-700 p-3 flex flex-col gap-2 w-48 font-mono opacity-90 hover:opacity-100 transition-all duration-300 backdrop-blur-sm">
             <div className="flex items-center gap-2 border-b border-slate-700 pb-2 mb-1">
                 <Activity size={14} className="text-emerald-400" />
                 <span className="font-semibold text-slate-100 uppercase tracking-wider text-[10px]">API Diagnostics</span>

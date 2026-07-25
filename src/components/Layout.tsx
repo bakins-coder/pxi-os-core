@@ -168,6 +168,64 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     window.dispatchEvent(new CustomEvent('open-assistant'));
   };
 
+  const isMD = ['toksyyb@yahoo.co.uk', 'toxsyyb@yahoo.co.uk'].includes(currentUser?.email?.toLowerCase() || '') ||
+    ['SQ-0001', 'XQ-0001'].includes(currentUser?.staffId?.toUpperCase() || '');
+
+  const [hiddenItems, setHiddenItems] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`hidden-menu-items-${currentUser?.email || 'default'}`);
+      if (saved) return JSON.parse(saved);
+      if (isMD) {
+        return ['Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub', 'Reporting'];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [isCustomizing, setIsCustomizing] = useState(false);
+
+  const availableItems = useMemo(() => {
+    const items = NAV_ITEMS.flatMap(item => {
+      if (item.label === 'Orders & Invoicing') {
+        return industryProfiles.map(profile => ({
+          ...item,
+          label: profile.nomenclature.fulfillment.navLabel,
+          icon: profile.ui.fulfillmentIcon || item.icon,
+          path: profile.type === 'Catering' ? '/catering' : (profile.type === 'Bakery' ? '/bakery' : (profile.type === 'Retail' ? '/retail' : item.path)),
+          profile
+        }));
+      }
+      return [item];
+    }).filter(i => {
+      // Dynamic Feature Check
+      if (i.label === 'Flight Ops' && settings.type !== 'Aviation') return false;
+
+      // Role Check
+      if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
+
+      return true;
+    });
+
+    // Add API Diagnostics to customization if user is admin/superadmin
+    const isAdmin = currentUser?.role?.toLowerCase() === 'super admin' || currentUser?.role?.toLowerCase() === 'system_admin' || currentUser?.role?.toLowerCase() === 'admin';
+    if (isAdmin) {
+      items.push({
+        label: 'API Diagnostics',
+        icon: Activity,
+        path: '#',
+        allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN]
+      });
+    }
+
+    return items;
+  }, [industryProfiles, settings.type, userRole, currentUser]);
+
+  const visibleItems = useMemo(() => {
+    return availableItems.filter(item => !hiddenItems.includes(item.label));
+  }, [availableItems, hiddenItems]);
+
   return (
     <div className="flex flex-col h-full bg-[#020617]">
       <div className={`p-8 mb-4 flex ${isCollapsed ? 'justify-center px-4' : ''}`}>
@@ -189,36 +247,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       )}
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
-        {NAV_ITEMS.flatMap(item => {
-          // If it's an industry-specific item (like Orders & Invoicing), expand it for all active verticals
-          if (item.label === 'Orders & Invoicing') {
-            return industryProfiles.map(profile => ({
-              ...item,
-              label: profile.nomenclature.fulfillment.navLabel,
-              icon: profile.ui.fulfillmentIcon || item.icon,
-              path: profile.type === 'Catering' ? '/catering' : (profile.type === 'Bakery' ? '/bakery' : (profile.type === 'Retail' ? '/retail' : item.path)),
-              profile // Attach profile for easier rendering
-            }));
-          }
-          return [item];
-        }).filter(i => {
-          // Simplify View for MD - PRIORITY CHECK
-          const isMD = ['toksyyb@yahoo.co.uk', 'toxsyyb@yahoo.co.uk'].includes(currentUser?.email?.toLowerCase() || '') ||
-            ['SQ-0001', 'XQ-0001'].includes(currentUser?.staffId?.toUpperCase() || '');
-
-          if (isMD) {
-            const hiddenForMD = ['Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub', 'Reporting'];
-            if (hiddenForMD.includes(i.label)) return false;
-          }
-
-          // Dynamic Feature Check
-          if (i.label === 'Flight Ops' && settings.type !== 'Aviation') return false;
-
-          // Role Check
-          if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
-
-          return true;
-        }).map(item => {
+        {visibleItems.filter(item => item.label !== 'API Diagnostics').map(item => {
           const config = getIndustryConfig(settings.type);
           const isActive = currentPath === item.path;
           
@@ -262,6 +291,15 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       </nav>
 
       <div className={`p-4 mt-auto border-t border-white/5 flex ${isCollapsed ? 'flex-col items-center gap-4' : 'flex-col'}`}>
+        <button
+          onClick={() => setIsCustomizing(true)}
+          className={`w-full flex items-center transition-all group border border-dashed border-white/10 text-slate-500 hover:bg-white/5 hover:text-white mb-2 ${isCollapsed ? 'p-3 justify-center rounded-xl w-auto shrink-0' : 'space-x-3 px-4 py-2.5 rounded-xl'}`}
+          title="Customize Menu"
+        >
+          <Settings size={14} className="text-slate-600 group-hover:text-white shrink-0" />
+          {!isCollapsed && <span className="text-[10px] uppercase tracking-widest font-bold">Customize Menu</span>}
+        </button>
+
         {!strictMode && (
           <button
             onClick={handleOpenAssistant}
@@ -297,6 +335,77 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
           {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest animate-in fade-in">Sign Out</span>}
         </button>
       </div>
+
+      {isCustomizing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md p-6 bg-[#090d16] border border-white/10 rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Customize Menu</h3>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">Toggle items to show/hide in your left tab</p>
+              </div>
+              <button
+                onClick={() => setIsCustomizing(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-white/10">
+              {availableItems.map(item => {
+                const isHidden = hiddenItems.includes(item.label);
+                const IconComponent = item.icon;
+                return (
+                  <div
+                    key={item.label}
+                    onClick={() => {
+                      const updated = isHidden
+                        ? hiddenItems.filter(h => h !== item.label)
+                        : [...hiddenItems, item.label];
+                      setHiddenItems(updated);
+                      localStorage.setItem(`hidden-menu-items-${currentUser?.email || 'default'}`, JSON.stringify(updated));
+                      window.dispatchEvent(new Event('hidden-items-changed'));
+                    }}
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer border border-white/5 group"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <IconComponent size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-200 group-hover:text-white transition-colors">{item.label}</span>
+                    </div>
+                    <div 
+                      className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 ${!isHidden ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      style={{ backgroundColor: !isHidden ? brandColor : undefined }}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-md ${!isHidden ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/5">
+              <button
+                onClick={() => {
+                  setHiddenItems([]);
+                  localStorage.removeItem(`hidden-menu-items-${currentUser?.email || 'default'}`);
+                  window.dispatchEvent(new Event('hidden-items-changed'));
+                }}
+                className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-all"
+              >
+                Reset Defaults
+              </button>
+              <button
+                onClick={() => setIsCustomizing(false)}
+                className="px-5 py-2 text-[10px] font-black uppercase tracking-widest text-[#020617] rounded-xl transition-all hover:opacity-90"
+                style={{ backgroundColor: brandColor }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -311,6 +420,23 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   const [activeWorkspace, setActiveWorkspace] = useState<'xquisite' | 'ajapasworld'>(
     isAjapasUser ? 'ajapasworld' : 'xquisite'
   );
+
+  const [showUsageMonitor, setShowUsageMonitor] = useState(true);
+
+  useEffect(() => {
+    const checkMonitorVisibility = () => {
+      try {
+        const saved = localStorage.getItem(`hidden-menu-items-${currentUser?.email || 'default'}`);
+        const hiddenList = saved ? JSON.parse(saved) : [];
+        setShowUsageMonitor(!hiddenList.includes('API Diagnostics'));
+      } catch (e) {
+        setShowUsageMonitor(true);
+      }
+    };
+    checkMonitorVisibility();
+    window.addEventListener('hidden-items-changed', checkMonitorVisibility);
+    return () => window.removeEventListener('hidden-items-changed', checkMonitorVisibility);
+  }, [currentUser]);
 
   // Sync workspace with user context reactively (e.g. after SuperAdmin context switch)
   useEffect(() => {
@@ -623,7 +749,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
         </main>
       </div>
     </div>
-    <ApiUsageMonitor />
+    {showUsageMonitor && <ApiUsageMonitor />}
     <ChatWidget />
   </div>
 );
