@@ -1939,7 +1939,7 @@ const CostingMatrix = () => {
             </div>
             <div className="overflow-x-auto">
                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-100 text-slate-500 font-black uppercase text-[9px] tracking-[0.2em] border-b border-slate-200">
+                  <thead className="bg-slate-100 text-slate-800 font-extrabold uppercase text-[10px] tracking-[0.15em] border-b border-slate-200">
                      <tr>
                         <th className="px-8 py-4">Offering Name</th>
                         <th className="px-8 py-4 text-right">Revenue/100</th>

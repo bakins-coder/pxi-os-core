@@ -28,7 +28,7 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
             className={`
                 w-[82vw] md:w-full snap-center shrink-0
                 group bg-white rounded-xl border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer relative
-                ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-100 shadow-sm'}
+                ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-300 shadow-sm'}
             `}
         >
             {/* Image Area */}
@@ -69,7 +69,7 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
                                 {item.description || 'No detailed description available.'}
                             </p>
                         </div>
-                        <div className="pt-1 mt-0.5 border-t border-slate-100 text-[7px] text-slate-400 font-bold uppercase tracking-widest text-center">
+                        <div className="pt-1 mt-0.5 border-t border-slate-300 text-[7px] text-slate-400 font-bold uppercase tracking-widest text-center">
                             Close
                         </div>
                     </div>
@@ -88,19 +88,19 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
                     {item.description}
                 </p>
 
-                <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-1 p-1.5 md:p-2 bg-slate-50 rounded-lg md:rounded-xl border border-slate-100">
+                <div onClick={(e) => e.stopPropagation()} className="mt-auto space-y-1 p-1.5 md:p-2 bg-slate-50 rounded-lg md:rounded-xl border border-slate-300">
                     <div className="flex justify-between items-center mb-0.5">
                         <p className="text-[10px] md:text-xs font-black text-slate-950">{NAIRA_SYMBOL}{(item.priceCents / 100).toLocaleString()}</p>
                         <input
                             type="number"
-                            className="w-10 md:w-12 bg-white border border-slate-200 rounded-md py-0.5 text-center text-[9px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
+                            className="w-10 md:w-12 bg-white border border-slate-300 rounded-md py-0.5 text-center text-[9px] font-black text-slate-950 outline-none focus:border-indigo-500 shadow-sm"
                             value={qty}
                             max={999}
                             onChange={(e) => updateQty(item.id, parseInt(e.target.value) || 0)}
                         />
                     </div>
                     <div className="flex items-center gap-1">
-                        <div className="p-1 bg-white border border-slate-200 rounded shadow-sm active:scale-95 transition-transform cursor-pointer" onClick={() => updateQty(item.id, Math.max(0, qty - 5))}>
+                        <div className="p-1 bg-white border border-slate-300 rounded shadow-sm active:scale-95 transition-transform cursor-pointer" onClick={() => updateQty(item.id, Math.max(0, qty - 5))}>
                             <Minus size={10} className="text-slate-400" />
                         </div>
 
@@ -113,7 +113,7 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
                             value={qty}
                             onChange={(e) => updateQty(item.id, parseInt(e.target.value))}
                         />
-                        <div className="p-1 bg-white border border-slate-200 rounded shadow-sm active:scale-95 transition-transform cursor-pointer" onClick={() => updateQty(item.id, qty + 5)}>
+                        <div className="p-1 bg-white border border-slate-300 rounded shadow-sm active:scale-95 transition-transform cursor-pointer" onClick={() => updateQty(item.id, qty + 5)}>
                             <Plus size={10} className="text-slate-400" />
                         </div>
                     </div>
