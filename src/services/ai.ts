@@ -27,7 +27,8 @@ const getAIInstance = () => {
     const originalGetModel = ai.getGenerativeModel.bind(ai);
     ai.getGenerativeModel = (modelParams: any) => {
         const model = originalGetModel(modelParams);
-        const originalGenerateContent = model.generateContent.bind(model);
+        // Cast the SDK method to a variadic signature so we can safely forward arbitrary args
+        const originalGenerateContent = model.generateContent.bind(model) as unknown as (...args: any[]) => Promise<any>;
         model.generateContent = async (...args: any[]) => {
             try {
                 const result = await originalGenerateContent(...args);

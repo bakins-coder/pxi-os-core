@@ -6,7 +6,8 @@ import {
   Menu, X, Bell, LogOut, Search, Bot, Zap, Radio,
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, BarChart3, Activity, FileText,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
-  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target, HeartHandshake, Award, Printer, Share2, Triangle, ShoppingBag, UtensilsCrossed
+  ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target, HeartHandshake, Award, Printer, Share2, Triangle, ShoppingBag, UtensilsCrossed,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -114,7 +115,7 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
-const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode, onToggleWorkspace }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean, onToggleWorkspace?: () => void }) => {
+const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode, onToggleWorkspace, onToggleCollapse }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean, onToggleWorkspace?: () => void, onToggleCollapse?: () => void }) => {
   const { settings } = useSettingsStore();
   const { user: currentUser } = useAuthStore();
   const industryProfiles = useMemo(() => {
@@ -228,9 +229,17 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
-      <div className={`p-8 mb-4 flex ${isCollapsed ? 'justify-center px-4' : ''}`}>
-
+      <div className={`p-8 mb-4 flex items-center justify-between ${isCollapsed ? 'justify-center px-4' : ''}`}>
         <ParadigmLogo brandColor={brandColor} orgName={orgName} isCollapsed={isCollapsed} logo={settings.logo} />
+        {!isCollapsed && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-all shrink-0 ml-2"
+            title="Collapse Sidebar"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
       </div>
 
       {(currentUser?.email?.toLowerCase() === 'tomiwab@hotmail.com' || currentUser?.companyId === '4376c123-01c9-4a92-9675-8123456789ab') && onToggleWorkspace && !isCollapsed && (
@@ -291,6 +300,15 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       </nav>
 
       <div className={`p-4 mt-auto border-t border-white/5 flex ${isCollapsed ? 'flex-col items-center gap-4' : 'flex-col'}`}>
+        {isCollapsed && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="w-full flex items-center justify-center p-3 rounded-xl border border-white/5 text-slate-500 hover:bg-white/10 hover:text-white transition-all group shrink-0 mb-2"
+            title="Expand Sidebar"
+          >
+            <ChevronRight size={18} className="text-slate-600 group-hover:text-white" />
+          </button>
+        )}
         <button
           onClick={() => setIsCustomizing(true)}
           className={`w-full flex items-center transition-all group border border-dashed border-white/10 text-slate-500 hover:bg-white/5 hover:text-white mb-2 ${isCollapsed ? 'p-3 justify-center rounded-xl w-auto shrink-0' : 'space-x-3 px-4 py-2.5 rounded-xl'}`}
@@ -564,6 +582,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
               logo={settings.logo}
               strictMode={strictMode}
               onToggleWorkspace={() => handleSwitchWorkspace('ajapasworld')}
+              onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             />
           </aside>
         )}
@@ -749,7 +768,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
         </main>
       </div>
     </div>
-    {showUsageMonitor && <ApiUsageMonitor />}
+    {showUsageMonitor && <ApiUsageMonitor isSidebarCollapsed={isSidebarCollapsed} />}
     <ChatWidget />
   </div>
 );
