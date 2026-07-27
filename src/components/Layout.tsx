@@ -20,6 +20,7 @@ import { IndustryType } from '../types';
 import { ChatWidget } from './ChatWidget';
 import { ParadigmWorkspace } from './ParadigmWorkspace';
 import { ApiUsageMonitor } from './ApiUsageMonitor';
+import { supabase } from '../services/supabase';
 
 const SyncIndicator = () => {
   const { syncStatus, lastSyncError, isSyncing, syncWithCloud, realtimeStatus } = useDataStore();
@@ -174,7 +175,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => {
     try {
-      const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email}` : null;
+      if (currentUser?.hiddenMenuItems) {
+        return currentUser.hiddenMenuItems;
+      }
+      const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email.toLowerCase()}` : null;
       const defaultKey = 'hidden-menu-items-default';
       const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
       if (saved) return JSON.parse(saved);
@@ -190,7 +194,11 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   useEffect(() => {
     const syncHiddenItems = () => {
       try {
-        const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email}` : null;
+        if (currentUser?.hiddenMenuItems) {
+          setHiddenItems(currentUser.hiddenMenuItems);
+          return;
+        }
+        const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email.toLowerCase()}` : null;
         const defaultKey = 'hidden-menu-items-default';
         const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
         if (saved) {
@@ -208,7 +216,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     syncHiddenItems();
     window.addEventListener('hidden-items-changed', syncHiddenItems);
     return () => window.removeEventListener('hidden-items-changed', syncHiddenItems);
-  }, [currentUser?.email, isMD]);
+  }, [currentUser?.email, currentUser?.hiddenMenuItems, isMD]);
 
   const [isCustomizing, setIsCustomizing] = useState(false);
 
@@ -437,9 +445,22 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
                         : [...hiddenItems, item.label];
                       setHiddenItems(updated);
                       if (currentUser?.email) {
-                        localStorage.setItem(`hidden-menu-items-${currentUser.email}`, JSON.stringify(updated));
+                        localStorage.setItem(`hidden-menu-items-${currentUser.email.toLowerCase()}`, JSON.stringify(updated));
                       }
                       localStorage.setItem('hidden-menu-items-default', JSON.stringify(updated));
+                      
+                      if (currentUser) {
+                        useAuthStore.getState().setUser({
+                          ...currentUser,
+                          hiddenMenuItems: updated
+                        });
+                        if (supabase) {
+                          supabase.auth.updateUser({
+                            data: { hidden_menu_items: updated }
+                          }).catch(err => console.error('[Customizer] DB sync failed:', err));
+                        }
+                      }
+                      
                       window.dispatchEvent(new Event('hidden-items-changed'));
                     }}
                     className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer border border-white/5 group"
@@ -464,9 +485,22 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
                 onClick={() => {
                   setHiddenItems([]);
                   if (currentUser?.email) {
-                    localStorage.removeItem(`hidden-menu-items-${currentUser.email}`);
+                    localStorage.removeItem(`hidden-menu-items-${currentUser.email.toLowerCase()}`);
                   }
                   localStorage.removeItem('hidden-menu-items-default');
+                  
+                  if (currentUser) {
+                    useAuthStore.getState().setUser({
+                      ...currentUser,
+                      hiddenMenuItems: []
+                    });
+                    if (supabase) {
+                      supabase.auth.updateUser({
+                        data: { hidden_menu_items: [] }
+                      }).catch(err => console.error('[Customizer] DB sync reset failed:', err));
+                    }
+                  }
+                  
                   window.dispatchEvent(new Event('hidden-items-changed'));
                 }}
                 className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-all"
@@ -504,7 +538,11 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   useEffect(() => {
     const checkMonitorVisibility = () => {
       try {
-        const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email}` : null;
+        if (currentUser?.hiddenMenuItems) {
+          setShowUsageMonitor(!currentUser.hiddenMenuItems.includes('API Diagnostics'));
+          return;
+        }
+        const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email.toLowerCase()}` : null;
         const defaultKey = 'hidden-menu-items-default';
         const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
         const hiddenList = saved ? JSON.parse(saved) : [];

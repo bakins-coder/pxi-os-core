@@ -228,7 +228,8 @@ export const useAuthStore = create<AuthState>()(
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
                     isSuperAdmin: profile?.is_super_admin || (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') || false,
                     permissionTags,
-                    staffId
+                    staffId,
+                    hiddenMenuItems: data.user.user_metadata?.hidden_menu_items || []
                 };
 
                 // FIX: Force correct name for MD if recovery script reset it
@@ -469,7 +470,8 @@ export const useAuthStore = create<AuthState>()(
                         avatar: metadata.avatar || '',
                         permissionTags,
                         isSuperAdmin: profile?.is_super_admin || isKnownAdmin || false,
-                        staffId
+                        staffId,
+                        hiddenMenuItems: metadata.hidden_menu_items || []
                     }
                 });
 

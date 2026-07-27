@@ -2669,20 +2669,20 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                CATERING_BGS.map((bgUrl, idx) => (
                   <div 
                      key={bgUrl}
-                     className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out pointer-events-none scale-105 will-change-transform ${idx === cateringBgIndex ? 'opacity-65' : 'opacity-0'}`}
+                     className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out pointer-events-none scale-105 will-change-transform ${idx === cateringBgIndex ? 'opacity-65' : 'opacity-0'}`}
                      style={{ backgroundImage: `url('${bgUrl}')` }}
                   ></div>
                ))
             ) : (
                <div 
-                  className="absolute inset-0 bg-cover bg-center opacity-55 transition-all duration-700 pointer-events-none scale-105 will-change-transform"
+                  className="absolute inset-0 z-0 bg-cover bg-center opacity-55 transition-all duration-700 pointer-events-none scale-105 will-change-transform"
                   style={{ backgroundImage: `url('${isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}')` }}
                ></div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-950/70 to-slate-950/30 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/75 md:to-slate-950/40 pointer-events-none"></div>
+            <div className="absolute inset-0 z-10 bg-gradient-to-b from-slate-950 via-slate-950/70 to-slate-950/30 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/75 md:to-slate-950/40 pointer-events-none"></div>
 
-            <div className="absolute top-0 right-0 w-96 h-96 bg-[#ff6b6b]/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
-            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+            <div className="absolute top-0 right-0 z-0 w-96 h-96 bg-[#ff6b6b]/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
+            <div className="relative z-20 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
 
                   <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float shrink-0">
@@ -2730,7 +2730,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                {/* Ambient Background Watermark / Automated Carousel for Bakery or Catering Ops */}
                {isBakery && (
                   <div 
-                     className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-screen pointer-events-none will-change-transform"
+                     className="absolute inset-0 z-0 bg-cover bg-center opacity-40 mix-blend-screen pointer-events-none will-change-transform"
                      style={{ backgroundImage: "url('/bakery_cakes.png')" }}
                   ></div>
                )}
@@ -2738,12 +2738,12 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                   CATERING_BGS.map((bgUrl, idx) => (
                      <div 
                         key={bgUrl}
-                        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out mix-blend-screen pointer-events-none will-change-transform ${idx === cateringBgIndex ? 'opacity-40' : 'opacity-0'}`}
+                        className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out mix-blend-screen pointer-events-none will-change-transform ${idx === cateringBgIndex ? 'opacity-40' : 'opacity-0'}`}
                         style={{ backgroundImage: `url('${bgUrl}')` }}
                      ></div>
                   ))
                )}
-               <div className="relative z-10">
+               <div className="relative z-20">
                   <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Select an Action</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                      {[
@@ -2843,14 +2843,14 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                      >
                         {/* Background Image */}
                         <div 
-                           className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 will-change-transform"
+                           className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 will-change-transform"
                            style={{ backgroundImage: `url('${isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}')` }}
                         ></div>
                         {/* Dark Overlay Gradient to ensure contrast */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent"></div>
+                        <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent"></div>
                         
                         {/* Content */}
-                        <div className="relative z-10 flex flex-col items-start gap-2 max-w-xl">
+                        <div className="relative z-20 flex flex-col items-start gap-2 max-w-xl">
                            <span className="px-3 py-1 bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[9px] font-black uppercase tracking-widest rounded-full mb-1">
                               {isBakery ? 'Bakery Operations' : 'Catering Operations'}
                            </span>
