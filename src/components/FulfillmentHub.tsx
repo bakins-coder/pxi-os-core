@@ -2670,17 +2670,19 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
             {/* Background Image Overlay / Automated Carousel for Bakery or Catering Hub Landing Banner */}
             {isCatering ? (
                CATERING_BGS.map((bgUrl, idx) => (
-                  <div 
+                  <img 
                      key={bgUrl}
-                     className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out pointer-events-none scale-105 will-change-transform ${idx === cateringBgIndex ? 'opacity-65' : 'opacity-0'}`}
-                     style={{ backgroundImage: `url('${bgUrl}')` }}
-                  ></div>
+                     src={bgUrl}
+                     alt=""
+                     className={`absolute inset-0 z-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out pointer-events-none scale-105 will-change-transform ${idx === cateringBgIndex ? 'opacity-65' : 'opacity-0'}`}
+                  />
                ))
             ) : (
-               <div 
-                  className="absolute inset-0 z-0 bg-cover bg-center opacity-55 transition-all duration-700 pointer-events-none scale-105 will-change-transform"
-                  style={{ backgroundImage: `url('${isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}')` }}
-               ></div>
+               <img 
+                  src={isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}
+                  alt=""
+                  className="absolute inset-0 z-0 w-full h-full object-cover opacity-55 transition-all duration-700 pointer-events-none scale-105 will-change-transform"
+               />
             )}
             <div className="absolute inset-0 z-10 bg-gradient-to-b from-slate-950 via-slate-950/70 to-slate-950/30 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/75 md:to-slate-950/40 pointer-events-none"></div>
 
@@ -2735,18 +2737,20 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
             >
                {/* Ambient Background Watermark / Automated Carousel for Bakery or Catering Ops */}
                {isBakery && (
-                  <div 
-                     className="absolute inset-0 z-0 bg-cover bg-center opacity-40 mix-blend-screen pointer-events-none will-change-transform"
-                     style={{ backgroundImage: "url('/bakery_cakes.png')" }}
-                  ></div>
+                  <img 
+                     src="/bakery_cakes.png"
+                     alt=""
+                     className="absolute inset-0 z-0 w-full h-full object-cover opacity-40 mix-blend-screen pointer-events-none will-change-transform"
+                  />
                )}
                {isCatering && (
                   CATERING_BGS.map((bgUrl, idx) => (
-                     <div 
+                     <img 
                         key={bgUrl}
-                        className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out mix-blend-screen pointer-events-none will-change-transform ${idx === cateringBgIndex ? 'opacity-40' : 'opacity-0'}`}
-                        style={{ backgroundImage: `url('${bgUrl}')` }}
-                     ></div>
+                        src={bgUrl}
+                        alt=""
+                        className={`absolute inset-0 z-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out mix-blend-screen pointer-events-none will-change-transform ${idx === cateringBgIndex ? 'opacity-40' : 'opacity-0'}`}
+                     />
                   ))
                )}
                <div className="relative z-20">
@@ -2849,10 +2853,11 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                         style={{ transform: 'translate3d(0,0,0)', WebkitTransform: 'translate3d(0,0,0)' }}
                      >
                         {/* Background Image */}
-                        <div 
-                           className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 will-change-transform"
-                           style={{ backgroundImage: `url('${isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}')` }}
-                        ></div>
+                        <img 
+                           src={isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}
+                           alt=""
+                           className="absolute inset-0 z-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 will-change-transform"
+                        />
                         {/* Dark Overlay Gradient to ensure contrast */}
                         <div className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent"></div>
                         
