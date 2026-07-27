@@ -7,7 +7,7 @@ import {
   Package, ChefHat, Briefcase, Settings, Shield, BarChart2, BarChart3, Activity, FileText,
   Layers as ProjectIcon, Sparkles, Box, BookOpen, CloudLightning, RefreshCw, AlertTriangle, Building2, Mic, Square, HelpCircle, Calendar,
   ClipboardList, Plane, Fuel, Smartphone, Laptop, ShoppingCart, Target, HeartHandshake, Award, Printer, Share2, Triangle, ShoppingBag, UtensilsCrossed,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -174,7 +174,9 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem(`hidden-menu-items-${currentUser?.email || 'default'}`);
+      const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email}` : null;
+      const defaultKey = 'hidden-menu-items-default';
+      const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
       if (saved) return JSON.parse(saved);
       if (isMD) {
         return ['Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub', 'Reporting'];
@@ -184,6 +186,29 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       return [];
     }
   });
+
+  useEffect(() => {
+    const syncHiddenItems = () => {
+      try {
+        const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email}` : null;
+        const defaultKey = 'hidden-menu-items-default';
+        const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
+        if (saved) {
+          setHiddenItems(JSON.parse(saved));
+        } else if (isMD) {
+          setHiddenItems(['Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub', 'Reporting']);
+        } else {
+          setHiddenItems([]);
+        }
+      } catch (e) {
+        setHiddenItems([]);
+      }
+    };
+
+    syncHiddenItems();
+    window.addEventListener('hidden-items-changed', syncHiddenItems);
+    return () => window.removeEventListener('hidden-items-changed', syncHiddenItems);
+  }, [currentUser?.email, isMD]);
 
   const [isCustomizing, setIsCustomizing] = useState(false);
 
@@ -209,7 +234,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       return true;
     });
 
-    // Add API Diagnostics to customization if user is admin/superadmin
+    // Add API Diagnostics, Intelligent Assistant, Instant Install, and Reset App options to customization menu
     const isAdmin = currentUser?.role?.toLowerCase() === 'super admin' || currentUser?.role?.toLowerCase() === 'system_admin' || currentUser?.role?.toLowerCase() === 'admin';
     if (isAdmin) {
       items.push({
@@ -219,6 +244,27 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
         allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN]
       });
     }
+
+    items.push({
+      label: 'Intelligent Assistant',
+      icon: Sparkles,
+      path: '#',
+      allowedRoles: Object.values(Role)
+    });
+
+    items.push({
+      label: 'Instant Install',
+      icon: Download,
+      path: '#',
+      allowedRoles: Object.values(Role)
+    });
+
+    items.push({
+      label: 'Reset App',
+      icon: RefreshCw,
+      path: '#',
+      allowedRoles: Object.values(Role)
+    });
 
     return items;
   }, [industryProfiles, settings.type, userRole, currentUser]);
@@ -256,7 +302,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       )}
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto hide-scrollbar">
-        {visibleItems.filter(item => item.label !== 'API Diagnostics').map(item => {
+        {visibleItems.filter(item => !['API Diagnostics', 'Intelligent Assistant', 'Instant Install', 'Reset App'].includes(item.label)).map(item => {
           const config = getIndustryConfig(settings.type);
           const isActive = currentPath === item.path;
           
@@ -324,7 +370,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
           {!isCollapsed && <span className="text-[10px] uppercase tracking-widest font-bold">Customize Menu</span>}
         </button>
 
-        {!strictMode && (
+        {!strictMode && !hiddenItems.includes('Intelligent Assistant') && (
           <button
             onClick={handleOpenAssistant}
             className={`w-full text-left bg-white/5 rounded-2xl border border-white/5 group transition-colors hover:bg-white/10 ${isCollapsed ? 'p-3 flex justify-center items-center shrink-0 w-auto' : 'p-4 mb-4'}`}
@@ -342,14 +388,16 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">Manual Mode Active</p>
           </div>
         )}
-        <button
-          onClick={() => import('../services/clear_cache').then(m => m.clearAllClientCache())}
-          className={`w-full flex items-center transition-all group border border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 ${isCollapsed ? 'p-3 justify-center rounded-2xl w-auto shrink-0 mb-0' : 'space-x-3 px-4 py-3 rounded-xl mb-2'}`}
-          title="Reset App"
-        >
-          <RefreshCw size={18} className="text-rose-500 group-hover:text-rose-400 shrink-0" />
-          {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest animate-in fade-in">Reset App</span>}
-        </button>
+        {!hiddenItems.includes('Reset App') && (
+          <button
+            onClick={() => import('../services/clear_cache').then(m => m.clearAllClientCache())}
+            className={`w-full flex items-center transition-all group border border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 ${isCollapsed ? 'p-3 justify-center rounded-2xl w-auto shrink-0 mb-0' : 'space-x-3 px-4 py-3 rounded-xl mb-2'}`}
+            title="Reset App"
+          >
+            <RefreshCw size={18} className="text-rose-500 group-hover:text-rose-400 shrink-0" />
+            {!isCollapsed && <span className="text-xs font-black uppercase tracking-widest animate-in fade-in">Reset App</span>}
+          </button>
+        )}
         <button
           onClick={handleLogout}
           className={`w-full flex items-center transition-all group text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 ${isCollapsed ? 'p-3 justify-center rounded-2xl w-auto shrink-0' : 'space-x-3 px-4 py-3 rounded-xl'}`}
@@ -388,7 +436,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
                         ? hiddenItems.filter(h => h !== item.label)
                         : [...hiddenItems, item.label];
                       setHiddenItems(updated);
-                      localStorage.setItem(`hidden-menu-items-${currentUser?.email || 'default'}`, JSON.stringify(updated));
+                      if (currentUser?.email) {
+                        localStorage.setItem(`hidden-menu-items-${currentUser.email}`, JSON.stringify(updated));
+                      }
+                      localStorage.setItem('hidden-menu-items-default', JSON.stringify(updated));
                       window.dispatchEvent(new Event('hidden-items-changed'));
                     }}
                     className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer border border-white/5 group"
@@ -412,7 +463,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
               <button
                 onClick={() => {
                   setHiddenItems([]);
-                  localStorage.removeItem(`hidden-menu-items-${currentUser?.email || 'default'}`);
+                  if (currentUser?.email) {
+                    localStorage.removeItem(`hidden-menu-items-${currentUser.email}`);
+                  }
+                  localStorage.removeItem('hidden-menu-items-default');
                   window.dispatchEvent(new Event('hidden-items-changed'));
                 }}
                 className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-all"
@@ -450,7 +504,9 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
   useEffect(() => {
     const checkMonitorVisibility = () => {
       try {
-        const saved = localStorage.getItem(`hidden-menu-items-${currentUser?.email || 'default'}`);
+        const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email}` : null;
+        const defaultKey = 'hidden-menu-items-default';
+        const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
         const hiddenList = saved ? JSON.parse(saved) : [];
         setShowUsageMonitor(!hiddenList.includes('API Diagnostics'));
       } catch (e) {
@@ -658,7 +714,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
-        <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl h-16 md:h-20 flex items-center px-4 md:px-10 justify-between border-b border-white/5 w-full">
+        <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl h-12 md:h-14 flex items-center px-4 md:px-8 justify-between border-b border-white/5 w-full">
           <div className="flex items-center gap-4 md:gap-6 min-w-0">
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 text-slate-500 hover:bg-slate-800 rounded-lg shrink-0"><Menu size={24} /></button>
             <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="hidden md:flex p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Toggle Sidebar"><Menu size={24} /></button>
@@ -769,7 +825,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-10 pb-64 md:pb-10 transition-all duration-300 bg-[#020617] w-full overflow-x-hidden">
+        <main className="flex-1 p-2 md:p-3 pb-8 md:pb-3 transition-all duration-300 bg-[#020617] w-full overflow-x-hidden">
           <div className="max-w-[1600px] mx-auto w-full">{children}</div>
         </main>
       </div>

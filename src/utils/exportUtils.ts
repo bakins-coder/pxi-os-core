@@ -5,6 +5,7 @@ import { Invoice, Contact, Employee, BookkeepingEntry, CateringEvent, PortionMon
 import { useDataStore } from '../store/useDataStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { NAIRA_SYMBOL } from './finance';
+import { getIndustryConfig } from '../config/industryProfiles';
 
 // Helper to convert URL to Base64
 const getBase64FromUrl = async (url: string): Promise<string> => {
@@ -22,6 +23,129 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
         console.error("Failed to load image", url, e);
         return "";
     }
+};
+
+/**
+ * Calculate standard & effective totals for an invoice (subtotal, SC, VAT, total, balance due)
+ */
+export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => {
+    const activeSettings = (settings && Object.keys(settings).length > 0)
+        ? settings
+        : (useSettingsStore.getState().settings || {});
+
+    const industryConfig = getIndustryConfig(activeSettings.type);
+    const taxFeatures = industryConfig?.features?.taxConfig || { serviceChargeRate: 0.15, vatRate: 0.075 };
+    const isCuisine = invoice.category === 'Cuisine' || invoice.category === 'Standard' || invoice.category === 'Standard Orders';
+
+    const isExcludedFromTax = (desc: string) => {
+        if (!desc) return false;
+        const ldesc = desc.toLowerCase();
+        return ldesc.includes('transport') ||
+            ldesc.includes('logistic') ||
+            ldesc.includes('delivery') ||
+            ldesc.includes('menu card') ||
+            ldesc.includes('truck') ||
+            ldesc.includes('rental');
+    };
+
+    const hasSections = invoice.lines?.some(l => l.description?.startsWith('[SECTION] ')) || false;
+
+    // Effective Subtotal
+    const effectiveSubtotalCents = (invoice.lines || []).reduce((acc, l) => {
+        if (hasSections && !l.description?.startsWith('[SECTION] ')) return acc;
+        const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null) ? l.manualPriceCents : l.unitPriceCents;
+        return acc + (l.quantity * price);
+    }, 0);
+
+    const subtotalCents = invoice.subtotalCents !== undefined ? invoice.subtotalCents : effectiveSubtotalCents;
+
+    // Effective Taxable Subtotal
+    const effectiveTaxableSubtotalCents = invoice.taxableSubtotalCents !== undefined
+        ? invoice.taxableSubtotalCents
+        : (invoice.lines || []).reduce((acc, l) => {
+            if (hasSections && !l.description?.startsWith('[SECTION] ')) return acc;
+            if (isExcludedFromTax(l.description)) return acc;
+            const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null) ? l.manualPriceCents : l.unitPriceCents;
+            return acc + (l.quantity * price);
+        }, 0);
+
+    // Service Charge Cents
+    let serviceChargeCents: number;
+    if (invoice.serviceChargeCents !== undefined && (invoice.serviceChargeCents > 0 || isCuisine)) {
+        serviceChargeCents = invoice.serviceChargeCents;
+    } else if (isCuisine) {
+        serviceChargeCents = 0;
+    } else {
+        serviceChargeCents = Math.round(effectiveTaxableSubtotalCents * taxFeatures.serviceChargeRate);
+    }
+
+    // VAT Cents
+    let vatCents: number;
+    if (invoice.vatCents !== undefined && (invoice.vatCents > 0 || isCuisine)) {
+        vatCents = invoice.vatCents;
+    } else if (isCuisine) {
+        vatCents = 0;
+    } else {
+        vatCents = Math.round((effectiveTaxableSubtotalCents + serviceChargeCents) * taxFeatures.vatRate);
+    }
+
+    // Total Cents
+    let totalCents: number;
+    if (invoice.manualSetPriceCents !== undefined) {
+        totalCents = invoice.manualSetPriceCents;
+    } else if (invoice.totalCents !== undefined && (invoice.totalCents > subtotalCents || isCuisine)) {
+        totalCents = invoice.totalCents;
+    } else {
+        totalCents = subtotalCents + serviceChargeCents + vatCents;
+    }
+
+    const paidAmountCents = invoice.paidAmountCents || 0;
+    const balanceDueCents = totalCents - paidAmountCents;
+
+    return {
+        subtotalCents,
+        taxableSubtotalCents: effectiveTaxableSubtotalCents,
+        serviceChargeCents,
+        vatCents,
+        totalCents,
+        paidAmountCents,
+        balanceDueCents,
+        serviceChargeRate: taxFeatures.serviceChargeRate,
+        vatRate: taxFeatures.vatRate,
+        isCuisine
+    };
+};
+
+/**
+ * Get unified bank details for invoices across screen and PDF
+ */
+export const getInvoiceBankDetails = (bankAccountsList: any[] = [], settings: any = {}) => {
+    const activeSettings = (settings && Object.keys(settings).length > 0)
+        ? settings
+        : (useSettingsStore.getState().settings || {});
+    const orgName = activeSettings.name || 'Organization';
+    const storeAccounts = bankAccountsList.length > 0 ? bankAccountsList : (useDataStore.getState().bankAccounts || []);
+
+    if (storeAccounts && storeAccounts.length > 0) {
+        return storeAccounts.map((b: any) => ({
+            name: b.accountName || b.name || orgName,
+            bank: b.bankName || b.institutionName || 'Bank',
+            acc: b.accountNumber
+        }));
+    }
+
+    if (activeSettings.bankInfo && activeSettings.bankInfo.accountNumber) {
+        return [{
+            name: activeSettings.bankInfo.accountName || orgName,
+            bank: activeSettings.bankInfo.bankName || 'Bank',
+            acc: activeSettings.bankInfo.accountNumber
+        }];
+    }
+
+    return [
+        { name: "Xquisite Celebrations", bank: "GTBank", acc: "0396426845" },
+        { name: "Xquisite Celebrations", bank: "Zenith Bank", acc: "1010951007" }
+    ];
 };
 
 /**
@@ -197,27 +321,12 @@ export const generateInvoicePDF = async (
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     let currentY = finalY;
 
-    // Calculate Subtotal First
-    const effectiveSubtotal = invoice.lines.reduce((acc, l) => {
-        const price = l.manualPriceCents !== undefined ? l.manualPriceCents : l.unitPriceCents;
-        return acc + (l.quantity * price);
-    }, 0);
+    const totals = calculateInvoiceTotals(invoice, settings);
 
-    let subtotalCents = invoice.subtotalCents !== undefined ? invoice.subtotalCents : effectiveSubtotal;
-    let scCents = invoice.serviceChargeCents;
-    let vatCents = invoice.vatCents;
-
-    // Calculation checks
-    if (scCents === undefined) scCents = 0;
-    if (vatCents === undefined) vatCents = 0;
-
-    // Recalculate Total based on the (possibly overridden) values
-    const totalCents = subtotalCents + scCents + vatCents;
-
-    const subtotalRef = subtotalCents / 100;
-    const scRef = scCents / 100;
-    const vatRef = vatCents / 100;
-    const totalRef = totalCents / 100;
+    const subtotalRef = totals.subtotalCents / 100;
+    const scRef = totals.serviceChargeCents / 100;
+    const vatRef = totals.vatCents / 100;
+    const totalRef = totals.totalCents / 100;
 
     // Summary Rows (Right Aligned)
     const addSummaryRow = (label: string, value: string) => {
@@ -234,18 +343,11 @@ export const generateInvoicePDF = async (
     // PRINT SUMMARY (CLEAN - No Duplicates)
     addSummaryRow('SUBTOTAL', `N${subtotalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
 
-    // Display 0% lines explicitly as requested previously, or real values if they exist (and weren't overridden)
-    if (scRef > 0) {
-        addSummaryRow('SERVICE CHARGE (15%)', `N${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
-    } else {
-        addSummaryRow('SERVICE CHARGE (0%)', `N0.00`);
-    }
+    const scLabel = totals.isCuisine ? 'SERVICE CHARGE (0%)' : `SERVICE CHARGE (${Math.round(totals.serviceChargeRate * 100)}%)`;
+    addSummaryRow(scLabel, `N${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
 
-    if (vatRef > 0) {
-        addSummaryRow('VAT (7.5%)', `N${vatRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
-    } else {
-        addSummaryRow('VAT (0%)', `N0.00`);
-    }
+    const vatLabel = totals.isCuisine ? 'VAT (0%)' : `VAT (${(totals.vatRate * 100).toFixed(1)}%)`;
+    addSummaryRow(vatLabel, `N${vatRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
 
     currentY += 5;
 
@@ -295,16 +397,7 @@ export const generateInvoicePDF = async (
     leftColY += 6;
 
     // Bank Grid (2x2)
-    const bankAccounts = useDataStore.getState().bankAccounts || [];
-    
-    const banks = bankAccounts.length > 0 ? bankAccounts.map((b: any) => ({
-        name: b.accountName || orgName,
-        bank: b.bankName || b.institutionName,
-        acc: b.accountNumber
-    })) : [
-        { name: "Xquisite Celebrations", bank: "GTBank", acc: "0396426845" },
-        { name: "Xquisite Celebrations", bank: "Zenith Bank", acc: "1010951007" }
-    ];
+    const banks = getInvoiceBankDetails(useDataStore.getState().bankAccounts || [], settings);
 
     const startX = 15;
     const boxW = 55;

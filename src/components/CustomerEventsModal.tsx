@@ -15,7 +15,7 @@ export const CustomerEventsModal: React.FC<CustomerEventsModalProps> = ({ contac
     // Filter events for this customer
     // matching by name is loose, but consistent with current simple schema
     const customerEvents = cateringEvents.filter(e =>
-        e.customerName.toLowerCase() === contact.name.toLowerCase()
+        (e.customerName || '').toLowerCase() === (contact?.name || '').toLowerCase()
     ).sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
     return (

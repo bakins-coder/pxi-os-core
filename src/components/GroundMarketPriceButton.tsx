@@ -13,14 +13,16 @@ export const GroundMarketPriceButton = ({ ingredient }: { ingredient: Ingredient
     setIsGrounding(true);
     try {
       const result = await performAgenticMarketResearch(ingredient.name);
-      updateIngredientPrice(ingredient.id, result.marketPriceCents, {
-        marketPriceCents: result.marketPriceCents,
-        groundedSummary: result.groundedSummary,
-        sources: result.sources || [],
-        quantity: result.quantity,
-        location: result.location,
-        timestamp: result.timestamp
-      });
+      if (result && result.marketPriceCents) {
+        updateIngredientPrice(ingredient.id, result.marketPriceCents, {
+          marketPriceCents: result.marketPriceCents,
+          groundedSummary: result.groundedSummary,
+          sources: result.sources || [],
+          quantity: result.quantity,
+          location: result.location,
+          timestamp: result.timestamp
+        });
+      }
     } catch (e) {
       console.error('Market price grounding failed:', e);
     } finally {
@@ -30,12 +32,12 @@ export const GroundMarketPriceButton = ({ ingredient }: { ingredient: Ingredient
 
   return (
     <button
-      className={`p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 ${isGrounding ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`px-3 py-1.5 bg-indigo-50 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 border border-indigo-100 shadow-sm text-xs whitespace-nowrap ${isGrounding ? 'opacity-50 cursor-not-allowed' : ''}`}
       onClick={handleGroundPrice}
       disabled={isGrounding}
     >
-      {isGrounding ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
-      {isGrounding ? 'Grounding...' : 'Ground Market Price'}
+      {isGrounding ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />}
+      <span>{isGrounding ? 'Grounding...' : 'Ground Market Price'}</span>
     </button>
   );
 };

@@ -694,7 +694,7 @@ const PerformanceCycleModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
       let templateKPIs: PerformanceMetric[] = [];
 
       for (const dept of departmentMatrix) {
-         const foundRole = dept.roles.find(r => r.title.toLowerCase() === roleStr);
+         const foundRole = dept.roles.find(r => (r.title || '').toLowerCase() === roleStr);
          if (foundRole && foundRole.kpis && foundRole.kpis.length > 0) {
             templateKPIs = foundRole.kpis;
             break;
@@ -1188,9 +1188,9 @@ export const HR = () => {
 
       if (!query) return roster;
       return roster.filter(e => {
-         const matchName = `${e.firstName} ${e.lastName}`.toLowerCase().includes(query);
-         const matchEmail = e.email.toLowerCase().includes(query);
-         const matchRole = e.role.toLowerCase().includes(query);
+         const matchName = `${e.firstName || ''} ${e.lastName || ''}`.toLowerCase().includes(query);
+         const matchEmail = (e.email || '').toLowerCase().includes(query);
+         const matchRole = (e.role || '').toLowerCase().includes(query);
          const matchHealth = (e.healthNotes || '').toLowerCase().includes(query);
          return matchName || matchEmail || matchRole || matchHealth;
       });

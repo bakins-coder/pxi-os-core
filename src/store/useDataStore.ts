@@ -16,6 +16,7 @@ import { useSettingsStore } from './useSettingsStore';
 import { getIndustryConfig } from '../config/industryProfiles';
 
 import { calculateItemCosting as utilsCalculateCosting } from '../utils/costing';
+import { inferIngredientCategory } from '../utils/ingredientCategorization';
 
 console.error('[DEBUG] useDataStore.ts LOADING...');
 
@@ -1434,10 +1435,15 @@ export const useDataStore = create<DataState>()(
                 }
 
                 const newIngId = ing.id || crypto.randomUUID();
+                const resolvedCategory = (ing.category && ing.category !== 'Dry Goods')
+                    ? ing.category
+                    : inferIngredientCategory(ing.name || '', ing.category || 'Dry Goods');
+
                 const newIng = {
                     ...ing,
                     id: newIngId,
                     companyId,
+                    category: resolvedCategory,
                     lastUpdated: new Date().toISOString(),
                     stockLevel: ing.stockLevel || 0,
                     currentCostCents: ing.currentCostCents || 0
@@ -1448,7 +1454,7 @@ export const useDataStore = create<DataState>()(
                     id: newIngId,
                     companyId,
                     name: ing.name || 'Unnamed Ingredient',
-                    category: ing.category || 'Dry Goods',
+                    category: resolvedCategory,
                     type: 'ingredient',
                     priceCents: ing.currentCostCents || 0,
                     stockQuantity: ing.stockLevel || 0,
@@ -1474,12 +1480,21 @@ export const useDataStore = create<DataState>()(
                 const emp = state.employees.find(e => e.id === userId);
                 const userName = emp ? `${emp.firstName} ${emp.lastName}` : (user?.name || 'Unknown');
 
+                const finalUpdates = { ...updates };
+                if (finalUpdates.name || finalUpdates.category) {
+                    const existingIng = state.ingredients.find(i => i.id === id);
+                    const targetName = finalUpdates.name || existingIng?.name || '';
+                    if (!finalUpdates.category || finalUpdates.category === 'Dry Goods') {
+                        finalUpdates.category = inferIngredientCategory(targetName, finalUpdates.category || existingIng?.category || 'Dry Goods');
+                    }
+                }
+
                 set((state) => ({
                     ingredients: state.ingredients.map((ing) =>
-                        ing.id === id ? { ...ing, ...updates, lastUpdated: new Date().toISOString(), updatedBy: userId, updatedByName: userName, stockLevel: updates.stockLevel ?? ing.stockLevel } : ing
+                        ing.id === id ? { ...ing, ...finalUpdates, lastUpdated: new Date().toISOString(), updatedBy: userId, updatedByName: userName, stockLevel: finalUpdates.stockLevel ?? ing.stockLevel } : ing
                     ),
                     // Also update inventory if matched, keeping stockQuantity and stockLevel in sync
-                    inventory: state.inventory.map(inv => inv.id === id ? { ...inv, ...updates, stockQuantity: updates.stockLevel ?? inv.stockQuantity } : inv)
+                    inventory: state.inventory.map(inv => inv.id === id ? { ...inv, ...finalUpdates, stockQuantity: finalUpdates.stockLevel ?? inv.stockQuantity } : inv)
                 }));
 
                 // Handle Image Update

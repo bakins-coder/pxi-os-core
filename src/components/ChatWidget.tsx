@@ -66,12 +66,13 @@ export const ChatWidget = () => {
     
     // RETROACTIVE FIX: Sanitize titles from localStorage
     const settings = useSettingsStore.getState().settings;
-    const isClothingBusiness = settings.type === 'Retail' && (settings.name.toLowerCase().includes('clothes') || settings.name.toLowerCase().includes('boutique'));
+    const settingsName = (settings?.name || '').toLowerCase();
+    const isClothingBusiness = settings?.type === 'Retail' && (settingsName.includes('clothes') || settingsName.includes('boutique'));
     
     return parsed.map((s: any) => {
       // ONLY sanitize 'what clothes' if they AREN'T a clothing business (to fix the specific bug reported)
-      if (!isClothingBusiness && (s.title === 'what clothes' || s.title?.toLowerCase().includes('clothes'))) {
-        return { ...s, title: settings.name || 'AI Assistant' };
+      if (!isClothingBusiness && (s.title === 'what clothes' || s.title?.toLowerCase()?.includes('clothes'))) {
+        return { ...s, title: settings?.name || 'AI Assistant' };
       }
       return s;
     });

@@ -56,27 +56,27 @@ export const CustomerStatementModal = ({ contact, onClose }: CustomerStatementMo
     }, [invoices, bookkeeping, contact.id]);
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in zoom-in duration-200">
-            <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-slate-200 max-h-[90vh]">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <div className="flex items-center gap-4">
-                        {org.logo && <img src={org.logo} alt="Organization Logo" className="w-12 h-12 rounded-xl object-contain bg-white p-1 shadow-sm" />}
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-4 bg-slate-900/80 backdrop-blur-md animate-in zoom-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col border border-slate-200 max-h-[92vh]">
+                <div className="p-3 md:p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <div className="flex items-center gap-3">
+                        {org.logo && <img src={org.logo} alt="Organization Logo" className="w-9 h-9 rounded-lg object-contain bg-white p-1 shadow-sm" />}
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none">Customer Statement</h2>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">{contact.name} • {contact.email}</p>
+                            <h2 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-tighter leading-none">Customer Statement</h2>
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">{contact.name} • {contact.email}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => window.print()} className="p-3 hover:bg-slate-100 rounded-xl transition-all text-slate-600"><Printer size={20} /></button>
-                        <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-xl transition-all"><X size={24} /></button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => window.print()} className="p-2 hover:bg-slate-100 rounded-lg transition-all text-slate-600"><Printer size={18} /></button>
+                        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-all"><X size={18} /></button>
                     </div>
                 </div>
 
-                <div className="p-10 overflow-y-auto space-y-8 scrollbar-thin">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Debits</p>
-                            <p className="text-xl font-black text-slate-900">₦{(statementData.totalDebits / 100).toLocaleString()}</p>
+                <div className="p-3 md:p-5 overflow-y-auto space-y-4 scrollbar-thin">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Debits</p>
+                            <p className="text-base font-black text-slate-900">₦{(statementData.totalDebits / 100).toLocaleString()}</p>
                         </div>
                         <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
                             <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Credits</p>

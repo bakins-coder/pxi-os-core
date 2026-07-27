@@ -1,12 +1,32 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Download, RefreshCw } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const PWAInstallPrompt: React.FC = () => {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
     const [showManualInstructions, setShowManualInstructions] = useState(false);
+    const [isHiddenBySettings, setIsHiddenBySettings] = useState(false);
+
+    useEffect(() => {
+        const checkHidden = () => {
+            try {
+                const userEmail = useAuthStore.getState().user?.email;
+                const emailKey = userEmail ? `hidden-menu-items-${userEmail}` : null;
+                const defaultKey = 'hidden-menu-items-default';
+                const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
+                const hiddenList = saved ? JSON.parse(saved) : [];
+                setIsHiddenBySettings(hiddenList.includes('Instant Install') || hiddenList.includes('Install App'));
+            } catch (e) {
+                setIsHiddenBySettings(false);
+            }
+        };
+        checkHidden();
+        window.addEventListener('hidden-items-changed', checkHidden);
+        return () => window.removeEventListener('hidden-items-changed', checkHidden);
+    }, []);
 
     useEffect(() => {
         // Check if already installed
@@ -67,7 +87,7 @@ export const PWAInstallPrompt: React.FC = () => {
         localStorage.setItem('pwa-install-dismissed', Date.now().toString());
     };
 
-    if (isStandalone) return null;
+    if (isStandalone || isHiddenBySettings) return null;
 
     // Manual Instruction Modal
     if (showManualInstructions) {

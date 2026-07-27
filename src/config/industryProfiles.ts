@@ -241,7 +241,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 navLabel: 'Catering Ops',
                 standardOrdersLabel: 'Cuisine Orders',
                 customOrdersLabel: 'Banquet Orders',
-                fulfillmentHub: 'Fulfillment Hub',
+                fulfillmentHub: 'Catering Fulfillment Hub',
                 productionLabel: 'Production',
                 standardOrders: 'Standard Orders',
                 customOrders: 'Custom Orders',

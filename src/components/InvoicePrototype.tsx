@@ -6,7 +6,7 @@ import { getIndustryConfig } from '../config/industryProfiles';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { Invoice, Contact, InvoiceStatus } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
-import { generateInvoicePDF } from '../utils/exportUtils';
+import { generateInvoicePDF, calculateInvoiceTotals, getInvoiceBankDetails } from '../utils/exportUtils';
 import { NAIRA_SYMBOL } from '../utils/finance';
 
 
@@ -61,49 +61,18 @@ export const InvoicePrototype = () => {
         );
     }
 
-    // Calculations
+    // Calculations using unified helper
+    const totals = calculateInvoiceTotals(invoice, settings);
+
     const standardSubtotal = invoice.lines.reduce((acc, l) => acc + (l.quantity * l.unitPriceCents), 0) / 100;
-
-    // Effective subtotal (using manual prices where set)
-    const effectiveSubtotal = invoice.lines.reduce((acc, l) => {
-        const price = l.manualPriceCents !== undefined ? l.manualPriceCents : l.unitPriceCents;
-        return acc + (l.quantity * price);
-    }, 0) / 100;
-
-    const industryConfig = getIndustryConfig(settings.type);
-    const taxFeatures = industryConfig.features.taxConfig;
-    const isCuisine = invoice.category === 'Cuisine' || invoice.category === 'Standard' || invoice.category === 'Standard Orders';
-
-    const isExcludedFromTax = (desc: string) => {
-        if (!desc) return false;
-        const ldesc = desc.toLowerCase();
-        return ldesc.includes('transport') || ldesc.includes('logistic') || ldesc.includes('delivery') || ldesc.includes('menu card') || ldesc.includes('truck') || ldesc.includes('rental');
-    };
-
-    const effectiveTaxableSubtotal = invoice.taxableSubtotalCents !== undefined 
-        ? invoice.taxableSubtotalCents / 100 
-        : invoice.lines.reduce((acc, l) => {
-            if (isExcludedFromTax(l.description)) return acc;
-            const price = l.manualPriceCents !== undefined ? l.manualPriceCents : l.unitPriceCents;
-            return acc + (l.quantity * price);
-        }, 0) / 100;
-
-    let subtotal = invoice.subtotalCents !== undefined ? invoice.subtotalCents / 100 : effectiveSubtotal;
-    
-    let serviceCharge = (invoice.serviceChargeCents !== undefined && (invoice.serviceChargeCents > 0 || isCuisine)) 
-        ? invoice.serviceChargeCents / 100 
-        : effectiveTaxableSubtotal * taxFeatures.serviceChargeRate;
-        
-    let vat = (invoice.vatCents !== undefined && (invoice.vatCents > 0 || isCuisine)) 
-        ? invoice.vatCents / 100 
-        : (effectiveTaxableSubtotal + serviceCharge) * taxFeatures.vatRate;
-        
-    let totalAmount = invoice.totalCents !== undefined && (invoice.totalCents > subtotal || isCuisine) 
-        ? invoice.totalCents / 100 
-        : subtotal + serviceCharge + vat;
-
-    const paidAmount = invoice.paidAmountCents / 100;
-    const balanceDue = totalAmount - paidAmount;
+    const subtotal = totals.subtotalCents / 100;
+    const serviceCharge = totals.serviceChargeCents / 100;
+    const vat = totals.vatCents / 100;
+    const totalAmount = totals.totalCents / 100;
+    const paidAmount = totals.paidAmountCents / 100;
+    const balanceDue = totals.balanceDueCents / 100;
+    const isCuisine = totals.isCuisine;
+    const taxFeatures = { serviceChargeRate: totals.serviceChargeRate, vatRate: totals.vatRate };
 
     // Calculate discount
     const impliedStandardTotal = (standardSubtotal * (1 + taxFeatures.serviceChargeRate) * (1 + taxFeatures.vatRate));
@@ -123,10 +92,8 @@ export const InvoicePrototype = () => {
     const orgLogo = settings.logo || "https://raw.githubusercontent.com/lucide-react/lucide/main/icons/shopping-bag.svg";
     const activeBrandColor = settings.brandColor || BRAND_COLOR;
 
-    const activeBank = bankAccounts.find(a => a.accountName?.toLowerCase().includes('main') || a.name?.toLowerCase().includes('main')) || bankAccounts[0];
-    const bankName = activeBank?.bankName || settings.bankInfo?.bankName;
-    const accName = activeBank?.accountName || settings.bankInfo?.accountName;
-    const accNum = activeBank?.accountNumber || settings.bankInfo?.accountNumber;
+    const banks = getInvoiceBankDetails(bankAccounts, settings);
+    const accName = banks.length > 0 ? banks[0].name : orgName;
 
     const handleDownloadPDF = async () => {
         if (!invoice) return;
@@ -175,7 +142,7 @@ VAT: ₦${vat.toLocaleString()}
 *TOTAL DUE: ₦${totalAmount.toLocaleString()}*
 
 *BANK DETAILS:*
-${bankAccounts.map(a => `${a.bankName} (${a.accountName}): ${a.accountNumber}`).join('\n')}
+${banks.map(a => `${a.bank} (${a.name}): ${a.acc}`).join('\n')}
 
 Link: ${window.location.href}
         `.trim();
@@ -403,19 +370,15 @@ Link: ${window.location.href}
 
                             <p className="font-bold underline mb-2">Bank Details:</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                                {bankAccounts.length > 0 ? bankAccounts.map((acc, idx) => (
+                                {banks.map((acc, idx) => (
                                     <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                        <span className="font-bold block text-slate-800 text-[10px] uppercase mb-1">{acc.name || acc.accountName || 'Bank Account'}</span>
+                                        <span className="font-bold block text-slate-800 text-[10px] uppercase mb-1">{acc.name}</span>
                                         <div className="flex justify-between items-center">
-                                            <span className="text-slate-600 text-[10px] font-medium">{acc.institutionName || acc.bankName || 'Standard Bank'}</span>
-                                            <span className="font-mono font-bold text-slate-900 text-xs">{acc.accountNumber}</span>
+                                            <span className="text-slate-600 text-[10px] font-medium">{acc.bank}</span>
+                                            <span className="font-mono font-bold text-slate-900 text-xs">{acc.acc}</span>
                                         </div>
                                     </div>
-                                )) : (
-                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg col-span-2">
-                                        <p className="text-center text-slate-400 text-xs uppercase font-black">No bank details listed</p>
-                                    </div>
-                                )}
+                                ))}
                             </div>
 
                             <p className="mb-4">All goods remain the property of the vendor until full payment is received. Payment is required within the stated due date.</p>

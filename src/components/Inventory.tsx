@@ -16,6 +16,7 @@ import { DocumentCapture } from './DocumentCapture';
 import { GroundMarketPriceButton } from './GroundMarketPriceButton';
 import { parseInventoryList } from '../services/ocrService';
 import { NAIRA_SYMBOL } from '../utils/finance';
+import { inferIngredientCategory } from '../utils/ingredientCategorization';
 
 const getImageUrl = (path?: string) => {
    if (!path) return null;
@@ -136,231 +137,168 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
    return (
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}>
          <div
-            onClick={e => e.stopPropagation()}
-            className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-4xl rounded-t-[2rem] md:rounded-[3rem] h-full md:max-h-[90vh]'}`}
-         >
-            <div className="p-5 md:p-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
-               <div className="flex items-center gap-3 md:gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
-                  <div>
-                     <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
-                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
-                  </div>
-               </div>
-
-               <div className="flex gap-2">
-                  <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-2 md:p-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl md:rounded-2xl transition-all shadow-sm">
-                     {isMaximized ? <Minimize2 size={18} className="md:w-5 md:h-5" /> : <Maximize2 size={18} className="md:w-5 md:h-5" />}
-                  </button>
-                  <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
-               </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-6 md:space-y-10 no-scrollbar">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 sticky top-0 z-10">
-                  <div className="p-6 md:p-8 bg-indigo-50 rounded-[2rem] border-2 border-indigo-100 shadow-sm flex flex-col justify-center">
-                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Analysis Coverage</p>
-                     <div className="flex items-center gap-4">
-                        <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-rose-500 transition-all shadow-sm"><Minus size={16} /></button>
-                        <input
-                           type="number"
-                           className="flex-1 bg-white border-4 border-white rounded-2xl py-3 text-center text-xl font-black text-slate-900 outline-none shadow-xl focus:border-indigo-200 transition-all"
-                           value={portions}
-                           onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
-                        />
-                        <button onClick={() => onPortionChange(portions + 50)} className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-full flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm"><Plus size={16} /></button>
-                     </div>
-                  </div>
-
-                  <div className="flex items-end">
-                     <button
-                        onClick={handleGroundPrices}
-                        disabled={isGrounding}
-                        className={`w-full py-3.5 md:py-5 rounded-xl md:rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all flex items-center justify-center gap-2 md:gap-3 ${isGrounding ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-[#00ff9d] shadow-xl hover:scale-[1.02] active:scale-95'}`}
-                     >
-                        {isGrounding ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
-                        {isGrounding ? 'Grounding...' : 'Ground Market Prices via AI'}
-                     </button>
-                  </div>
-               </div>
-
-               <div className="bg-white rounded-2xl md:rounded-[2.5rem] border-2 border-indigo-50 shadow-xl overflow-hidden">
-                  <div className="overflow-x-auto no-scrollbar">
-                     <table className="w-full text-left text-[11px] min-w-full">
-                        <thead className="bg-indigo-600 text-white font-black uppercase text-[8px] md:text-[9px] tracking-widest">
-                           <tr>
-                              <th className="px-4 py-3 md:px-8 md:py-5">Ingredient</th>
-                              <th className="px-4 py-3 md:px-8 md:py-5 text-center hidden md:table-cell">MD Scaling</th>
-                              <th className="px-4 py-3 md:px-8 md:py-5 text-center">Net Req.</th>
-                              <th className="px-4 py-3 md:px-8 md:py-5 text-right hidden md:table-cell">Unit Rate</th>
-                              <th className="px-4 py-3 md:px-8 md:py-5 text-right">Value ({NAIRA_SYMBOL})</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-indigo-50">
-                           {Object.entries(groupedBreakdown).map(([groupName, ings]) => (
-                              <React.Fragment key={groupName}>
-                                 <tr className="bg-slate-50/50">
-                                    <td colSpan={5} className="px-8 py-3">
-                                       <div className="flex justify-between items-center">
-                                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{groupName}</span>
-                                          <button
-                                             onClick={() => setShowAddIngredient(groupName)}
-                                             className="text-[9px] font-black text-indigo-600 uppercase hover:text-indigo-800 flex items-center gap-1"
-                                          >
-                                             <Plus size={10} /> Add to Group
-                                          </button>
-                                       </div>
-                                    </td>
-                                 </tr>
-                                 {ings.map((ing: any, idx: number) => (
-                                    <tr key={`${groupName}-${idx}`} className={`hover:bg-indigo-50/30 transition-all border-b border-indigo-50 last:border-0 ${ing.hasError ? 'bg-rose-50/50' : ''}`}>
-                                       <td className="px-4 py-3 md:px-8 md:py-5">
-                                          <div className="flex items-center justify-between">
-                                             <div className="flex items-center gap-1.5 md:gap-2">
-                                                <span className={`font-black uppercase text-[10px] md:text-xs leading-tight ${ing.hasError ? 'text-rose-600' : 'text-slate-800'}`}>{ing.name}</span>
-                                                {ing.isGrounded && <span className="p-1 bg-emerald-100 text-emerald-600 rounded-md" title="Gemini Grounded"><Sparkles size={8} /></span>}
-                                                {ing.hasError && (
-                                                   <div className="flex items-center gap-1 text-[7px] md:text-[8px] font-black text-rose-500 uppercase tracking-tighter bg-rose-100 px-1.5 py-0.5 rounded-full">
-                                                      <AlertTriangle size={8} /> ERROR
-                                                   </div>
-                                                )}
-                                             </div>
-                                             <button
-                                                onClick={() => matchedRecipe && deleteRecipeIngredient(matchedRecipe.id, ing.name)}
-                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-rose-500 transition-all"
-                                             >
-                                                <Trash2 size={12} />
-                                             </button>
-                                          </div>
-                                       </td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-center font-mono hidden md:table-cell">
-                                          <div className="flex items-center justify-center gap-2">
-                                             <input
-                                                type="number"
-                                                step="0.0001"
-                                                className="w-20 md:w-24 bg-indigo-50/50 border-2 border-indigo-100 rounded-lg md:rounded-xl text-center font-black text-indigo-600 outline-none focus:border-indigo-400 focus:bg-white transition-all text-[10px] md:text-[11px] py-1 shadow-inner"
-                                                value={ing.qtyPerPortion}
-                                                onChange={(e) => handleQtyOverride(ing.name, e.target.value)}
-                                             />
-                                             <span className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase tracking-tighter">{ing.unit}</span>
-                                          </div>
-                                       </td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 font-bold text-slate-500 text-[10px] md:text-xs text-center whitespace-nowrap">
-                                          <span className="bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
-                                             {ing.qtyRequired.toFixed(2)} <span className="text-[8px] md:text-[10px] opacity-50">{ing.unit}</span>
-                                          </span>
-                                       </td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-mono text-slate-400 text-[10px] md:text-xs hidden md:table-cell">{NAIRA_SYMBOL}{(ing.unitCostCents / 100).toLocaleString()}</td>
-                                       <td className="px-4 py-3 md:px-8 md:py-5 text-right font-black text-xs md:text-sm">
-                                          <span className={ing.hasError ? 'text-rose-600' : 'text-slate-900'}>
-                                             {NAIRA_SYMBOL}{(ing.totalCostCents / 100).toLocaleString()}
-                                          </span>
-                                       </td>
-                                    </tr>
-                                 ))}
-                                 {showAddIngredient === groupName && (
-                                    <tr className="bg-indigo-50/20">
-                                       <td className="px-8 py-4">
-                                          <input
-                                             placeholder="Ingredient Name..."
-                                          />
-                                       </td>
-                                       <td className="px-8 py-4">
-                                          <div className="flex gap-2">
-                                             <input
-                                                type="number"
-                                                placeholder="Qty..."
-                                                className="w-20 bg-white border border-indigo-100 rounded-lg p-2 text-xs font-bold outline-none"
-                                                value={newIng.qty}
-                                                onChange={e => setNewIng({ ...newIng, qty: parseFloat(e.target.value) || 0 })}
-                                             />
-                                             <select
-                                                className="bg-white border border-indigo-100 rounded-lg p-2 text-[10px] font-bold"
-                                                value={newIng.unit}
-                                                onChange={e => setNewIng({ ...newIng, unit: e.target.value })}
-                                             >
-                                                <option>kg</option><option>g</option><option>litre</option><option>ml</option><option>pcs</option>
-                                             </select>
-                                          </div>
-                                       </td>
-                                       <td colSpan={3} className="px-8 py-4 text-right">
-                                          <div className="flex justify-end gap-2">
-                                             <button onClick={() => setShowAddIngredient(null)} className="px-3 py-1.5 text-[9px] font-black uppercase text-slate-400">Cancel</button>
-                                             <button onClick={() => addIngredientToRecipe(groupName)} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg">Confirm Add</button>
-                                          </div>
-                                       </td>
-                                    </tr>
-                                 )}
-                              </React.Fragment>
-                           ))}
-                           {costing?.ingredientBreakdown.some((ing: any) => ing.hasError) && (
-                              <tr className="bg-rose-500 text-white">
-                                 <td colSpan={5} className="px-8 py-3 text-[9px] font-black uppercase tracking-widest text-center">
-                                    ⚠️ Warning: Some costs are estimated or involve data quality issues.
-                                 </td>
-                              </tr>
-                           )}
-                           <tr className="bg-slate-50 border-t-2 border-slate-100">
-                              <td colSpan={4} className="px-8 py-5 font-black text-slate-500 uppercase text-xs text-right tracking-widest">Total Ingredient Cost ({portions} Portions)</td>
-                              <td className="px-8 py-5 text-right font-black text-indigo-600 text-base">{NAIRA_SYMBOL}{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</td>
-                           </tr>
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
-
-               <div className="bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden">
-                  <div className="px-8 py-4 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
-                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Ingredient Aggregate Summary</span>
-                     <span className="text-[9px] text-slate-500 font-bold">Consolidated Procurement View</span>
-                  </div>
-                  <table className="w-full text-left text-[11px]">
-                     <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest">
-                        <tr>
-                           <th className="px-8 py-4">Total Component</th>
-                           <th className="px-8 py-4 text-center">Combined Guest Need</th>
-                           <th className="px-8 py-4 text-right">Aggregate Cost ({NAIRA_SYMBOL})</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-slate-800">
-                        {aggregates.map((agg, idx) => (
-                           <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
-                              <td className="px-8 py-4 font-black text-slate-200 uppercase">{agg.name}</td>
-                              <td className="px-8 py-4 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
-                              <td className="px-8 py-4 text-right font-black text-emerald-400">{NAIRA_SYMBOL}{(agg.cost / 100).toLocaleString()}</td>
-                           </tr>
-                        ))}
-                     </tbody>
-                  </table>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex justify-between items-center">
-                     <div>
-                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Projected Revenue</p>
-                        <h5 className="text-2xl font-black text-indigo-900">{NAIRA_SYMBOL}{(costing?.revenueCents! / 100).toLocaleString()}</h5>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Gross Margin</p>
-                        <h5 className={`text-2xl font-black ${costing?.grossMarginPercentage! > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                           {costing?.grossMarginPercentage.toFixed(1)}%
-                        </h5>
-                     </div>
-                  </div>
-                  <div className="p-8 bg-slate-950 rounded-[2rem] text-white flex justify-between items-center">
-                     <div>
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Aggregate Cost</p>
-                        <h5 className="text-2xl font-black">{NAIRA_SYMBOL}{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</h5>
-                     </div>
-                     <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center"><TrendingUp size={24} className={costing?.grossMarginPercentage! > 50 ? 'text-emerald-400' : 'text-amber-400'} /></div>
-                  </div>
-               </div>
-            </div>
-
-            <div className="p-4 md:p-8 border-t-2 border-slate-100 bg-slate-50/50 flex justify-end">
-               <button onClick={onClose} className="w-full md:w-auto px-10 py-3.5 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
-            </div>
-         </div>
+             onClick={e => e.stopPropagation()}
+             className={`bg-white shadow-2xl w-full overflow-hidden flex flex-col border border-slate-200 animate-in zoom-in duration-300 ${isMaximized ? 'fixed inset-0 rounded-none h-full max-w-none' : 'max-w-5xl rounded-t-[2rem] md:rounded-[3rem] h-[95vh] md:h-[80vh] md:max-h-[700px]'}`}
+          >
+             <div className="p-3 md:p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-20">
+                <div className="flex items-center gap-2.5">
+                   <div className="w-8 h-8 md:w-9 md:h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg"><Calculator size={16} /></div>
+                   <div>
+                      <h2 className="text-sm md:text-base font-black text-slate-900 uppercase tracking-tighter">Catering Ingredients Cost Analysis</h2>
+                      <p className="text-[7px] md:text-[8px] text-slate-500 font-black uppercase tracking-widest">{item.name} • Costing Node</p>
+                   </div>
+                </div>
+ 
+                <div className="flex gap-2">
+                   <button onClick={() => setIsMaximized(!isMaximized)} className="hidden md:block p-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all shadow-sm">
+                      {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                   </button>
+                   <button onClick={onClose} className="p-1.5 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-lg transition-all shadow-sm"><X size={16} /></button>
+                </div>
+             </div>
+ 
+             <div className="flex-1 p-3 md:p-4 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row gap-4 min-h-0 bg-slate-50/50">
+                {/* Left Column: Controls & Analytics */}
+                <div className="w-full md:w-[280px] flex flex-col gap-3 shrink-0">
+                   {/* Analysis Coverage Card */}
+                   <div className="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100 shadow-sm flex flex-col">
+                      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Analysis Coverage</p>
+                      <div className="flex items-center gap-2">
+                         <button onClick={() => onPortionChange(Math.max(1, portions - 50))} className="w-8 h-8 bg-white rounded-lg flex items-center justify-center hover:text-rose-500 transition-all shadow-sm border border-indigo-100"><Minus size={12} /></button>
+                         <input
+                            type="number"
+                            className="flex-1 bg-white border border-indigo-100 rounded-lg py-1 text-center text-xs font-black text-slate-900 outline-none shadow focus:border-indigo-300 transition-all"
+                            value={portions}
+                            onChange={(e) => onPortionChange(Math.max(1, parseInt(e.target.value) || 0))}
+                         />
+                         <button onClick={() => onPortionChange(portions + 50)} className="w-8 h-8 bg-white rounded-lg flex items-center justify-center hover:text-emerald-500 transition-all shadow-sm border border-indigo-100"><Plus size={12} /></button>
+                      </div>
+                   </div>
+ 
+                   {/* AI Grounding Button */}
+                   <button
+                      onClick={handleGroundPrices}
+                      disabled={isGrounding}
+                      className={`w-full py-2.5 rounded-xl font-black uppercase text-[8px] tracking-widest transition-all flex items-center justify-center gap-2 border ${isGrounding ? 'bg-slate-200 text-slate-400 border-slate-200' : 'bg-slate-900 text-[#00ff9d] border-slate-900 shadow-md hover:scale-[1.02] active:scale-95'}`}
+                   >
+                      {isGrounding ? <Loader2 size={12} className="animate-spin" /> : <Globe size={12} />}
+                      {isGrounding ? 'Grounding...' : 'Ground Market Prices via AI'}
+                   </button>
+ 
+                   {/* Financial Analytics Summary Cards */}
+                   <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2.5">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b pb-1">Financial Metrics</p>
+                      <div className="flex justify-between items-center text-[11px]">
+                         <span className="font-bold text-slate-500">Projected Revenue:</span>
+                         <span className="font-black text-indigo-950">{NAIRA_SYMBOL}{(costing?.revenueCents! / 100).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[11px]">
+                         <span className="font-bold text-slate-500">Aggregate Cost:</span>
+                         <span className="font-black text-slate-900">{NAIRA_SYMBOL}{(costing?.totalIngredientCostCents! / 100).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[11px] border-t pt-1.5">
+                         <span className="font-bold text-slate-500">Gross Margin:</span>
+                         <span className={`font-black ${costing?.grossMarginPercentage! > 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {costing?.grossMarginPercentage.toFixed(1)}%
+                         </span>
+                      </div>
+                   </div>
+                </div>
+ 
+                {/* Right Column: Tables / Details */}
+                <div className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+                   {/* Ingredient breakdown table */}
+                   <div className="bg-white rounded-xl border border-indigo-100 shadow-sm overflow-hidden flex flex-col flex-[3] min-h-0">
+                      <div className="px-3 py-1.5 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
+                         <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Recipe Ingredients Breakdown</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto scrollbar-thin">
+                         <table className="w-full text-left text-[9px] min-w-full">
+                            <thead className="bg-indigo-600 text-white font-black uppercase text-[8px] tracking-widest sticky top-0 z-10">
+                               <tr>
+                                  <th className="px-3 py-1.5">Ingredient</th>
+                                  <th className="px-3 py-1.5 text-center">Scaling</th>
+                                  <th className="px-3 py-1.5 text-center">Net Req.</th>
+                                  <th className="px-3 py-1.5 text-right">Value ({NAIRA_SYMBOL})</th>
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-indigo-50">
+                               {Object.entries(groupedBreakdown).map(([groupName, ings]) => (
+                                  <React.Fragment key={groupName}>
+                                     <tr className="bg-slate-50/50">
+                                        <td colSpan={4} className="px-3 py-1">
+                                           <div className="flex justify-between items-center">
+                                              <span className="text-[8px] font-black text-indigo-400 uppercase tracking-wider">{groupName}</span>
+                                              <button onClick={() => setShowAddIngredient(groupName)} className="text-[8px] font-black text-indigo-600 uppercase hover:text-indigo-800 flex items-center gap-0.5"><Plus size={8} /> Add</button>
+                                           </div>
+                                        </td>
+                                     </tr>
+                                     {ings.map((ing: any, idx: number) => (
+                                        <tr key={`${groupName}-${idx}`} className={`hover:bg-indigo-50/20 transition-all border-b border-indigo-50 last:border-0 ${ing.hasError ? 'bg-rose-50/40' : ''}`}>
+                                           <td className="px-3 py-1.5">
+                                              <div className="flex items-center gap-1.5">
+                                                 <span className={`font-bold uppercase text-[9px] truncate max-w-[120px] ${ing.hasError ? 'text-rose-600' : 'text-slate-800'}`} title={ing.name}>{ing.name}</span>
+                                                 {ing.isGrounded && <span className="p-0.5 bg-emerald-100 text-emerald-600 rounded" title="Gemini Grounded"><Sparkles size={8} /></span>}
+                                              </div>
+                                           </td>
+                                           <td className="px-3 py-1.5 text-center">
+                                              <div className="flex items-center justify-center gap-1">
+                                                 <input
+                                                    type="number"
+                                                    step="0.0001"
+                                                    className="w-14 bg-indigo-50/50 border border-indigo-100 rounded p-0.5 text-center font-bold text-indigo-600 outline-none text-[9px]"
+                                                    value={ing.qtyPerPortion}
+                                                    onChange={(e) => handleQtyOverride(ing.name, e.target.value)}
+                                                 />
+                                                 <span className="text-[8px] text-slate-400 font-bold uppercase">{ing.unit}</span>
+                                              </div>
+                                           </td>
+                                           <td className="px-3 py-1.5 text-center font-bold text-slate-500">
+                                              {ing.qtyRequired.toFixed(2)} <span className="text-[8px] opacity-50">{ing.unit}</span>
+                                           </td>
+                                           <td className="px-3 py-1.5 text-right font-black text-slate-900">{NAIRA_SYMBOL}{(ing.totalCostCents / 100).toLocaleString()}</td>
+                                        </tr>
+                                     ))}
+                                  </React.Fragment>
+                               ))}
+                            </tbody>
+                         </table>
+                      </div>
+                   </div>
+ 
+                   {/* Aggregate Summary Table */}
+                   <div className="bg-slate-900 rounded-xl shadow border border-slate-800 overflow-hidden flex flex-col flex-[2] min-h-0">
+                      <div className="px-3 py-1.5 bg-slate-800/50 border-b border-slate-700 flex justify-between items-center">
+                         <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Consolidated Procurement View</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto scrollbar-thin">
+                         <table className="w-full text-left text-[9px]">
+                            <thead className="bg-slate-800 text-slate-400 font-black uppercase text-[8px] tracking-widest sticky top-0 z-10">
+                               <tr>
+                                  <th className="px-3 py-1.5">Component</th>
+                                  <th className="px-3 py-1.5 text-center">Combined Need</th>
+                                  <th className="px-3 py-1.5 text-right">Aggregate Cost ({NAIRA_SYMBOL})</th>
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                               {aggregates.map((agg, idx) => (
+                                  <tr key={idx} className="hover:bg-slate-800/30 transition-all border-b border-slate-800/50">
+                                     <td className="px-3 py-1.5 font-black text-slate-200 uppercase">{agg.name}</td>
+                                     <td className="px-3 py-1.5 text-center text-slate-400 font-bold">{agg.qty.toFixed(2)} {agg.unit}</td>
+                                     <td className="px-3 py-1.5 text-right font-black text-emerald-400">{NAIRA_SYMBOL}{(agg.cost / 100).toLocaleString()}</td>
+                                  </tr>
+                               ))}
+                            </tbody>
+                         </table>
+                      </div>
+                   </div>
+                </div>
+             </div>
+ 
+             <div className="p-3 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                <button onClick={onClose} className="w-full md:w-auto px-6 py-2 bg-slate-900 text-white rounded-lg font-black uppercase text-[9px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">Close Analysis</button>
+             </div>
+          </div>
       </div>
    );
 };
@@ -721,7 +659,7 @@ const ReceiveStockModal = ({ isOpen, onClose, ingredients }: { isOpen: boolean, 
                unit: newItemUnit as any,
                stockLevel: 0,
                currentCostCents: 0,
-               category: 'Dry Goods',
+               category: inferIngredientCategory(newItemName, 'Dry Goods'),
                lastPackCount: inputStrategy === 'Bulk' ? bulkPackCount : undefined,
                lastPackSize: inputStrategy === 'Bulk' ? bulkPackSize : undefined,
                lastPackType: inputStrategy === 'Bulk' ? bulkPackType : undefined
@@ -1025,36 +963,36 @@ const InventoryCatalog = ({ assets, title, subtitle }: { assets: InventoryItem[]
 
    return (
       <>
-         <div className="space-y-6 animate-in fade-in">
-            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-               <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/20">
-                  <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Layers size={24} /></div>
-                     <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">{title}</h2><p className="text-[10px] text-slate-400 font-black uppercase mt-2 tracking-widest">{subtitle}</p></div>
+         <div className="space-y-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
+               <div className="p-4 md:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                  <div className="flex items-center gap-3">
+                     <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow"><Layers size={18} /></div>
+                     <div><h2 className="text-base md:text-lg font-black text-slate-800 uppercase tracking-tight leading-none">{title}</h2><p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider">{subtitle}</p></div>
                   </div>
                   <div className="flex gap-2">
-                     <button onClick={() => setShowScanModal(true)} className="bg-white border-2 border-indigo-50 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 shadow-sm transition-all">
-                        {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />}
+                     <button onClick={() => setShowScanModal(true)} className="bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider text-[9px] flex items-center gap-1.5 shadow-xs transition-all">
+                        {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <ScanLine size={12} />}
                         {isProcessing ? 'Processing' : 'Scan'}
                      </button>
-                     <button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-2">
-                        <Plus size={16} /> Log New
+                     <button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-wider text-xs shadow-md hover:bg-indigo-700 hover:scale-[1.02] transition-all flex items-center gap-1.5">
+                        <Plus size={14} /> Log New
                      </button>
-                     <button onClick={() => setIsIssueModalOpen(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:scale-105 transition-all flex items-center gap-2">
-                        <Truck size={16} className="text-emerald-400" /> Dispatch
+                     <button onClick={() => setIsIssueModalOpen(true)} className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-wider text-xs shadow-md hover:scale-[1.02] transition-all flex items-center gap-1.5">
+                        <Truck size={14} className="text-emerald-400" /> Dispatch
                      </button>
                   </div>
                </div>
-               <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[9px] tracking-[0.2em] border-b border-slate-100"><tr><th className="px-6 py-6 text-center">S/N</th><th className="px-10 py-6">Reference Picture</th><th className="px-10 py-6">Item Name</th><th className="px-10 py-6">Classification</th><th className="px-10 py-6">Physical Stock</th><th className="px-10 py-6 text-right">Value (Est)</th><th className="px-10 py-6 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">
+               <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[9px] tracking-wider border-b border-slate-200"><tr><th className="px-4 py-3 text-center">S/N</th><th className="px-5 py-3">Reference Picture</th><th className="px-5 py-3">Item Name</th><th className="px-5 py-3">Classification</th><th className="px-5 py-3">Physical Stock</th><th className="px-5 py-3 text-right">Value (Est)</th><th className="px-5 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">
                   {assets.map((asset, index) => (
-                     <tr key={asset.id} className="hover:bg-indigo-50/10 transition-all group">
-                        <td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td>
-                        <td className="px-10 py-4"><div className="w-16 h-16 rounded-xl border-2 border-slate-100 overflow-hidden bg-slate-50 shadow-sm transition-transform group-hover:scale-110">{(asset.image || (asset as any).image_url) ? (<img src={getImageUrl((asset.image || (asset as any).image_url) as string) || undefined} className="w-full h-full object-cover" alt={asset.name} />) : (<div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={20} /></div>)}</div></td>
-                        <td className="px-10 py-6"><div className="font-black text-slate-800 uppercase text-sm tracking-tight leading-tight">{asset.name}</div></td>
-                        <td className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">{asset.category}</td>
-                        <td className="px-10 py-6"><div className="flex items-center gap-3"><span className="font-black text-slate-900 text-xl tracking-tighter">{asset.stockQuantity}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units</span></div></td>
-                        <td className="px-10 py-6 text-right font-black text-slate-900 tracking-tight">{NAIRA_SYMBOL}{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
-                        <td className="px-10 py-6 text-right"><button onClick={() => { setSelectedEditItem(asset); setIsEditModalOpen(true); }} className="p-2.5 bg-indigo-600 text-white rounded-xl hover:scale-110 transition-all shadow-md"><Edit3 size={16} /></button></td>
+                     <tr key={asset.id} className="hover:bg-indigo-50/20 transition-all group">
+                        <td className="px-4 py-3 text-center font-bold text-slate-400 text-[10px]">{index + 1}</td>
+                        <td className="px-5 py-2.5"><div className="w-10 h-10 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 shadow-xs transition-transform group-hover:scale-105">{(asset.image || (asset as any).image_url) ? (<img src={getImageUrl((asset.image || (asset as any).image_url) as string) || undefined} className="w-full h-full object-cover" alt={asset.name} />) : (<div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon size={16} /></div>)}</div></td>
+                        <td className="px-5 py-3"><div className="font-bold text-slate-800 uppercase text-xs tracking-tight leading-tight">{asset.name}</div></td>
+                        <td className="px-5 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-wider">{asset.category}</td>
+                        <td className="px-5 py-3"><div className="flex items-center gap-2"><span className="font-black text-slate-900 text-base tracking-tight">{asset.stockQuantity}</span><span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Units</span></div></td>
+                        <td className="px-5 py-3 text-right font-bold text-slate-900 tracking-tight">{NAIRA_SYMBOL}{(asset.priceCents * asset.stockQuantity / 100).toLocaleString()}</td>
+                        <td className="px-5 py-3 text-right"><button onClick={() => { setSelectedEditItem(asset); setIsEditModalOpen(true); }} className="p-1.5 bg-indigo-600 text-white rounded-lg hover:scale-105 transition-all shadow-xs"><Edit3 size={14} /></button></td>
                      </tr>
                   ))}
                   {assets.length === 0 && (<tr><td colSpan={7} className="p-20 text-center text-slate-200"><Box size={64} className="mx-auto mb-4 opacity-10" /><p className="font-black uppercase tracking-widest text-xs">No items indexed in ledger</p></td></tr>)}
@@ -1093,8 +1031,12 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
 
    useEffect(() => {
       if (isOpen) {
-         setName(editItem?.name || '');
-         setCategory(editItem?.category || 'Dry Goods');
+         const itemName = editItem?.name || '';
+         setName(itemName);
+         const cat = editItem?.category && editItem.category !== 'Dry Goods'
+            ? editItem.category
+            : inferIngredientCategory(itemName, editItem?.category || 'Dry Goods');
+         setCategory(cat);
          setUnit(editItem?.unit || 'kg');
          setStock(editItem?.stockLevel || 0);
          setCost(editItem?.currentCostCents ? editItem.currentCostCents / 100 : 0);
@@ -1150,7 +1092,20 @@ const AddEditIngredientModal = ({ isOpen, onClose, editItem }: { isOpen: boolean
             <div className="p-6 md:p-10 space-y-6 md:space-y-8 flex-1 overflow-y-auto pb-32 md:pb-10">
                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 block mb-2">Item Name</label>
-                  <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Basmati Rice" />
+                  <input 
+                     type="text" 
+                     className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black outline-none focus:border-indigo-500 text-slate-900" 
+                     value={name} 
+                     onChange={e => {
+                        const val = e.target.value;
+                        setName(val);
+                        const autoCat = inferIngredientCategory(val);
+                        if (autoCat !== 'Dry Goods' || category === 'Dry Goods' || !category) {
+                           setCategory(autoCat);
+                        }
+                     }} 
+                     placeholder="e.g. Snails" 
+                  />
                </div>
 
                <div className="grid grid-cols-2 gap-4">
@@ -1516,6 +1471,7 @@ export const Inventory = () => {
    const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
    const [selectedIngredientForEdit, setSelectedIngredientForEdit] = useState<Ingredient | null>(null);
    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
    // BoQ Specific States
    const [selectedBoQItem, setSelectedBoQItem] = useState<InventoryItem | null>(null);
@@ -1571,7 +1527,7 @@ export const Inventory = () => {
                name: item.name,
                stockLevel: item.quantity,
                unit: (item.unit as any) || 'pcs',
-               category: (item.category as any) || 'Dry Goods',
+               category: (item.category as any) || inferIngredientCategory(item.name, 'Dry Goods'),
                currentCostCents: 0
             });
          }
@@ -1648,86 +1604,164 @@ export const Inventory = () => {
    };
 
    return (
-      <div className="space-y-6 animate-in fade-in pb-24">
-         <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl mb-8">
+      <div className="space-y-4 animate-in fade-in pb-24">
+         <div className="bg-slate-950 p-4 md:p-5 rounded-2xl text-white relative overflow-hidden shadow-xl mb-4">
             <div className="absolute top-0 right-0 w-96 h-96 bg-[#00ff9d]/20 rounded-full blur-[100px] -mr-40 -mt-40"></div>
-            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-               <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-[#00ff9d] rounded-3xl flex items-center justify-center shadow-2xl animate-float"><Package size={36} className="text-slate-950" /></div>
+            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+               <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 bg-[#00ff9d] rounded-xl flex items-center justify-center shadow-lg animate-float"><Package size={22} className="text-slate-950" /></div>
                   <div>
-                     <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">Stock Intelligence</h1>
-                     <div className="flex items-center gap-3 mt-1">
-                        <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5">Dynamic Matrix Active</span>
-                        {isAviation && <span className="flex items-center gap-1.5 bg-sky-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-300 border border-sky-500/30">AeroParts Mode</span>}
+                     <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase leading-none">Stock Intelligence</h1>
+                     <div className="flex items-center gap-2 mt-1">
+                        <span className="flex items-center gap-1 bg-white/10 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-[#00ff9d] border border-white/5">Dynamic Matrix Active</span>
+                        {isAviation && <span className="flex items-center gap-1 bg-sky-500/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-sky-300 border border-sky-500/30">AeroParts Mode</span>}
                      </div>
                   </div>
-               </div>
-               <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto max-w-full">
-                  {[
-                     { id: 'products', label: industryConfig.productsLabel, icon: industryConfig.productsIcon, active: true, perm: 'access:inventory_offerings' },
-                     { id: 'ingredients', label: industryConfig.ingredientsLabel, icon: Box, active: isCatering || isRetail || isAviation, perm: 'access:inventory_ingredients' },
-                     { id: 'requisitions', label: 'Spend Ops', icon: ClipboardList, active: true, perm: 'access:inventory_all' },
-                     { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering, perm: 'access:inventory_rentals' },
-                     { id: 'recipes', label: industryConfig.recipeLabel, icon: Coffee, active: !!industryConfig.recipeLabel, perm: 'access:inventory_offerings' },
-                     { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true, perm: 'access:inventory_reusables' },
-                     { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true, perm: 'access:inventory_fixed_assets' },
-                     { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true, perm: 'access:inventory_fixtures' }
-                  ].filter(t => t.active && hasPermission(t.perm)).map(tab => (
-                     <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-[#00ff9d] text-slate-950 shadow-lg' : 'text-white/50 hover:text-white'}`}><tab.icon size={14} /> {tab.label}</button>
-                  ))}
                </div>
             </div>
          </div>
 
-         {activeTab === 'products' && (
-            <div className="space-y-10">
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                  {products.map(p => (
-                     <div
-                        key={p.id}
-                        className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col h-full"
-                     >
-                        <div className={`relative ${industryConfig.cardImageHeight} group overflow-hidden`}>
-                           <img src={p.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={p.name} />
-                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
-                           <div className="absolute top-4 right-4"><button onClick={() => { setSelectedEditItem(p); setIsEditModalOpen(true); }} className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg"><Edit3 size={16} /></button></div>
-                           <div className="absolute bottom-6 left-8"><span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-[9px] font-black uppercase text-white border border-white/10 tracking-widest">{p.category}</span></div>
-                        </div>
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 relative">
+             {[
+                { id: 'products', label: industryConfig.productsLabel, icon: industryConfig.productsIcon, active: true, perm: 'access:inventory_offerings', pastelClass: 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 text-emerald-800 shadow-emerald-200/50 hover:shadow-emerald-300/50' },
+                { id: 'ingredients', label: industryConfig.ingredientsLabel, icon: Box, active: isCatering || isRetail || isAviation, perm: 'access:inventory_ingredients', pastelClass: 'bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-800 shadow-blue-200/50 hover:shadow-blue-300/50' },
+                { id: 'requisitions', label: 'Requisitions', icon: ClipboardList, active: true, perm: 'access:inventory_all', pastelClass: 'bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-800 shadow-amber-200/50 hover:shadow-amber-300/50' }
+             ].filter(t => t.active && hasPermission(t.perm)).map(tab => {
+                const isActive = activeTab === tab.id;
+                const TabIcon = tab.icon;
+                return (
+                   <button
+                      key={tab.id}
+                      onClick={() => { setActiveTab(tab.id as any); setIsDropdownOpen(false); }}
+                      className={`p-3 md:p-3.5 rounded-2xl border transition-all flex flex-col items-center justify-center text-center gap-2 relative overflow-hidden group shadow-sm hover:shadow-md hover:-translate-y-0.5 ${isActive ? 'bg-slate-950 border-slate-950 text-white shadow-slate-950/20' : `${tab.pastelClass}`}`}
+                   >
+                      <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-[#00ff9d] text-slate-950 shadow-md shadow-[#00ff9d]/20' : 'bg-white shadow-xs'}`}>
+                         <TabIcon size={20} />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider leading-tight">{tab.label}</span>
+                      {isActive && (
+                         <div className="absolute bottom-0 inset-x-0 h-1 bg-[#00ff9d]"></div>
+                      )}
+                   </button>
+                );
+             })}
 
-                        <div className="p-8 flex-1 flex flex-col">
-                           <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-3 leading-tight">{p.name}</h3>
-                           <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-8 line-clamp-3 italic">"{p.description}"</p>
+             {/* More Options Dropdown Card */}
+             {(() => {
+                const dropdownTabs = [
+                   { id: 'recipes', label: industryConfig.recipeLabel || 'Neural Recipes', icon: Coffee, active: !!industryConfig.recipeLabel, perm: 'access:inventory_offerings', pastelClass: 'text-orange-600 bg-orange-50 hover:bg-orange-100 border-orange-100' },
+                   { id: 'rentals', label: 'Rental Stock', icon: RotateCcw, active: isCatering, perm: 'access:inventory_rentals', pastelClass: 'text-rose-600 bg-rose-50 hover:bg-rose-100 border-rose-100' },
+                   { id: 'reusable', label: 'Reusable Items', icon: Layers, active: true, perm: 'access:inventory_reusables', pastelClass: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border-indigo-100' },
+                   { id: 'hardware', label: 'Fixed Assets', icon: Hammer, active: true, perm: 'access:inventory_fixed_assets', pastelClass: 'text-slate-600 bg-slate-100 hover:bg-slate-200 border-slate-200' },
+                   { id: 'fixtures', label: 'Fixtures', icon: Grid, active: true, perm: 'access:inventory_fixtures', pastelClass: 'text-cyan-600 bg-cyan-50 hover:bg-cyan-100 border-cyan-100' }
+                ].filter(t => t.active && hasPermission(t.perm));
 
-                           <div className="mt-auto space-y-6">
-                              <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{industryConfig.priceLabel}</span>
-                                    <span className="text-2xl font-black text-indigo-600 tracking-tighter">{NAIRA_SYMBOL}{(p.priceCents / 100).toLocaleString()}</span>
-                                 </div>
-                                 <div className="flex flex-col items-end">
-                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{industryConfig.stockLabel}</span>
-                                    <div className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-900 text-lg">
-                                       {p.stockQuantity}
-                                    </div>
-                                 </div>
-                              </div>
+                if (dropdownTabs.length === 0) return null;
 
-                              {industryConfig.showBOQ && (
-                                 <button
-                                    onClick={() => setSelectedBoQItem(p)}
-                                    className="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group/btn shadow-xl shadow-slate-200"
-                                 >
-                                    <RotateCcw size={14} className="opacity-0 group-hover/btn:opacity-100 transition-all -ml-4 group-hover/btn:ml-0" />
-                                    {industryConfig.boqLabel}
-                                 </button>
-                              )}
-                           </div>
-                        </div>
-                     </div>
-                  ))}
-               </div>
-            </div>
-         )}
+                const activeDropdownTab = dropdownTabs.find(t => t.id === activeTab);
+                const isDropdownActive = !!activeDropdownTab;
+                const DisplayIcon = activeDropdownTab ? activeDropdownTab.icon : Layers;
+                const displayLabel = activeDropdownTab ? activeDropdownTab.label : 'More Sections';
+
+                return (
+                   <div className="relative">
+                      <button
+                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                         className={`w-full h-full p-3 md:p-3.5 rounded-2xl border transition-all flex flex-col items-center justify-center text-center gap-2 relative overflow-hidden group shadow-sm hover:shadow-md hover:-translate-y-0.5 ${isDropdownActive ? 'bg-slate-950 border-slate-950 text-white shadow-slate-950/20' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'}`}
+                      >
+                         <div className={`p-2 rounded-xl transition-all ${isDropdownActive ? 'bg-[#00ff9d] text-slate-950 shadow-md shadow-[#00ff9d]/20' : 'bg-white shadow-xs'} flex items-center justify-center relative`}>
+                            <DisplayIcon size={20} />
+                            <div className="absolute -bottom-1 -right-1 bg-slate-900 text-white rounded-full p-0.5 shadow border border-white/15">
+                               <ChevronDown size={10} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                         </div>
+                         <span className="text-xs font-bold uppercase tracking-wider leading-tight flex items-center gap-1">{displayLabel}</span>
+                         {isDropdownActive && (
+                            <div className="absolute bottom-0 inset-x-0 h-1 bg-[#00ff9d]"></div>
+                         )}
+                      </button>
+
+                      {isDropdownOpen && (
+                         <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-[110] space-y-1 animate-in fade-in slide-in-from-top-2">
+                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest px-2.5 py-1">Select System Section</p>
+                            {dropdownTabs.map(t => {
+                               const isSubActive = activeTab === t.id;
+                               const SubIcon = t.icon;
+                               return (
+                                  <button
+                                     key={t.id}
+                                     onClick={() => {
+                                        setActiveTab(t.id as any);
+                                        setIsDropdownOpen(false);
+                                     }}
+                                     className={`w-full text-left p-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-between transition-all ${isSubActive ? 'bg-slate-900 text-white shadow' : 'text-slate-700 hover:bg-slate-50'}`}
+                                  >
+                                     <div className="flex items-center gap-2.5">
+                                        <div className={`p-1 rounded-lg ${isSubActive ? 'bg-[#00ff9d] text-slate-950' : `${t.pastelClass}`}`}>
+                                           <SubIcon size={14} />
+                                        </div>
+                                        <span>{t.label}</span>
+                                     </div>
+                                     {isSubActive && <Check size={14} className="text-[#00ff9d] stroke-[3]" />}
+                                  </button>
+                               );
+                            })}
+                         </div>
+                      )}
+                   </div>
+                );
+             })()}
+          </div>
+
+          {activeTab === 'products' && (
+             <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                   {products.map(p => (
+                      <div
+                         key={p.id}
+                         className="group bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col h-full"
+                      >
+                         <div className="h-20 md:h-24 w-full relative overflow-hidden bg-slate-50 shrink-0">
+                            <img src={p.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={p.name} />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
+                            <div className="absolute top-2 right-2"><button onClick={() => { setSelectedEditItem(p); setIsEditModalOpen(true); }} className="p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all shadow"><Edit3 size={10} /></button></div>
+                            <div className="absolute bottom-2 left-3"><span className="bg-white/20 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-white border border-white/10 tracking-widest">{p.category}</span></div>
+                         </div>
+
+                         <div className="p-3 flex-1 flex flex-col min-h-0 justify-between">
+                            <div>
+                               <h3 className="text-xs font-black text-slate-800 uppercase tracking-tight mb-0.5 leading-tight truncate">{p.name}</h3>
+                               <p className="text-[10px] text-slate-500 font-medium leading-relaxed mb-2 line-clamp-1 italic">"{p.description}"</p>
+                            </div>
+
+                            <div className="space-y-2">
+                               <div className="flex justify-between items-center text-[10px]">
+                                  <div className="flex items-center gap-1">
+                                     <span className="text-[8px] font-black uppercase text-slate-400">{industryConfig.priceLabel}:</span>
+                                     <span className="font-black text-indigo-600">{NAIRA_SYMBOL}{(p.priceCents / 100).toLocaleString()}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                     <span className="text-[8px] font-black uppercase text-slate-400">{industryConfig.stockLabel}:</span>
+                                     <span className="font-black text-slate-900">{p.stockQuantity}</span>
+                                  </div>
+                               </div>
+
+                               {industryConfig.showBOQ && (
+                                  <button
+                                     onClick={() => setSelectedBoQItem(p)}
+                                     className="w-full py-1.5 bg-slate-900 text-white rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-1 group/btn shadow"
+                                  >
+                                     <RotateCcw size={8} className="opacity-0 group-hover/btn:opacity-100 transition-all -ml-2 group-hover/btn:ml-0" />
+                                     {industryConfig.boqLabel}
+                                  </button>
+                               )}
+                            </div>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          )}
 
          {selectedBoQItem && (
             <BOQModal
@@ -1739,92 +1773,92 @@ export const Inventory = () => {
          )}
 
          {activeTab === 'rentals' && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4">
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Temporary Rental Store</h2>
-                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Non-food items tracked per-event with liability markers</p>
+            <div className="space-y-4 animate-in slide-in-from-bottom-4">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2 bg-white p-4 md:p-5 rounded-2xl border border-slate-200/80 shadow-md">
+                     <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight">Temporary Rental Store</h2>
+                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Non-food items tracked per-event with liability markers</p>
                   </div>
-                  <div className="bg-rose-50 p-8 rounded-[3rem] border border-rose-100 shadow-sm flex flex-col justify-center">
-                     <div className="flex items-center gap-2 mb-1 text-rose-600"><ShieldAlert size={14} /><span className="text-[10px] font-black uppercase tracking-widest">Active Liability</span></div>
-                     <h3 className="text-2xl font-black text-rose-700 leading-none">{NAIRA_SYMBOL}{(totalLiability / 100).toLocaleString()}</h3>
+                  <div className="bg-rose-50 p-4 md:p-5 rounded-2xl border border-rose-100 shadow-xs flex flex-col justify-center">
+                     <div className="flex items-center gap-2 mb-1 text-rose-600"><ShieldAlert size={14} /><span className="text-[9px] font-black uppercase tracking-wider">Active Liability</span></div>
+                     <h3 className="text-xl font-black text-rose-700 leading-none">{NAIRA_SYMBOL}{(totalLiability / 100).toLocaleString()}</h3>
                   </div>
                </div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center">S/N</th><th className="p-8">Item & Event Reference</th><th className="p-8">Qty</th><th className="p-8">Est. Liability</th><th className="p-8">Status</th><th className="p-8 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-50">{rentals.map((rent, index) => (<tr key={rent.id} className="hover:bg-indigo-50/10 transition-all"><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8"><p className="font-black text-slate-800 uppercase text-xs">{rent.itemName}</p><p className="text-[9px] text-indigo-500 font-black uppercase tracking-tighter">Event: {events.find(e => e.id === rent.eventId)?.customerName || 'Project Node'}</p></td><td className="p-8 font-black text-slate-900">{rent.quantity}</td><td className="p-8 font-black text-rose-600">{NAIRA_SYMBOL}{(rent.estimatedReplacementValueCents / 100).toLocaleString()}</td><td className="p-8"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${rent.status === 'Issued' ? 'bg-amber-50 text-amber-700 border-amber-100' : rent.status === 'Returned' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>{rent.status}</span></td><td className="p-8 text-right">{rent.status === 'Issued' && (<button onClick={() => setSelectedRental(rent)} className="p-2.5 bg-slate-900 text-[#00ff9d] rounded-xl hover:scale-110 transition-all shadow-md"><RotateCcw size={16} /></button>)}</td></tr>))}</tbody></table></div></div>
+               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[9px] tracking-wider border-b border-slate-200"><tr><th className="px-4 py-3 text-center">S/N</th><th className="px-5 py-3">Item & Event Reference</th><th className="px-5 py-3">Qty</th><th className="px-5 py-3">Est. Liability</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Ops</th></tr></thead><tbody className="divide-y divide-slate-100">{rentals.map((rent, index) => (<tr key={rent.id} className="hover:bg-indigo-50/20 transition-all"><td className="px-4 py-3 text-center font-bold text-slate-400 text-[10px]">{index + 1}</td><td className="px-5 py-3"><p className="font-bold text-slate-800 uppercase text-xs">{rent.itemName}</p><p className="text-[9px] text-indigo-500 font-bold uppercase tracking-tight">Event: {events.find(e => e.id === rent.eventId)?.customerName || 'Project Node'}</p></td><td className="px-5 py-3 font-bold text-slate-900">{rent.quantity}</td><td className="px-5 py-3 font-bold text-rose-600">{NAIRA_SYMBOL}{(rent.estimatedReplacementValueCents / 100).toLocaleString()}</td><td className="px-5 py-3"><span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border ${rent.status === 'Issued' ? 'bg-amber-50 text-amber-700 border-amber-100' : rent.status === 'Returned' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>{rent.status}</span></td><td className="px-5 py-3 text-right">{rent.status === 'Issued' && (<button onClick={() => setSelectedRental(rent)} className="p-1.5 bg-slate-900 text-[#00ff9d] rounded-lg hover:scale-105 transition-all shadow-xs"><RotateCcw size={14} /></button>)}</td></tr>))}</tbody></table></div></div>
             </div>
          )}
 
          {activeTab === 'ingredients' && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4">
-               <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
+            <div className="space-y-4 animate-in slide-in-from-bottom-4">
+               <div className="flex flex-col md:flex-row justify-between items-center gap-3 bg-white p-4 md:p-5 rounded-2xl border border-slate-200/80 shadow-md">
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{industryConfig.pipelineLabel}</h2>
-                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">{industryConfig.pipelineSubtitle}</p>
+                     <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight">{industryConfig.pipelineLabel}</h2>
+                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{industryConfig.pipelineSubtitle}</p>
                   </div>
-                  <div className="flex gap-4">
-                     <button onClick={() => setIsReleaseModalOpen(true)} className="px-6 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Flame size={16} /> {industryConfig.releaseLabel}</button>
-                     <button onClick={() => setIsPurchaseRequestModalOpen(true)} className="px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ClipboardList size={16} /> Request Purchase</button>
-                     <button onClick={() => setIsReceiveModalOpen(true)} className="px-6 py-4 bg-slate-950 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><ShoppingBag size={16} className="text-[#00ff9d]" /> {industryConfig.receiveLabel}</button>
+                  <div className="flex gap-2.5">
+                     <button onClick={() => setIsReleaseModalOpen(true)} className="px-4 py-2 bg-orange-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider flex items-center gap-1.5 shadow-md hover:bg-orange-700 hover:scale-[1.02] transition-all"><Flame size={14} /> {industryConfig.releaseLabel}</button>
+                     <button onClick={() => setIsPurchaseRequestModalOpen(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider flex items-center gap-1.5 shadow-md hover:bg-indigo-700 hover:scale-[1.02] transition-all"><ClipboardList size={14} /> Request Purchase</button>
+                     <button onClick={() => setIsReceiveModalOpen(true)} className="px-4 py-2 bg-slate-950 text-white rounded-xl font-bold uppercase text-xs tracking-wider flex items-center gap-1.5 shadow-md hover:scale-[1.02] transition-all"><ShoppingBag size={14} className="text-[#00ff9d]" /> {industryConfig.receiveLabel}</button>
                   </div>
                </div>
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest"><tr><th className="px-6 py-6 text-center font-black">S/N</th><th className="p-8">{industryConfig.substanceLabel.singular}</th><th className="p-8">Current Stock</th><th className="p-8">Base Cost</th><th className="p-8">Market Delta</th><th className="p-8 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-6 py-6 text-center font-black text-slate-300 text-[10px]">{index + 1}</td><td className="p-8">
-                  <p className="font-black text-slate-800 uppercase text-xs">{ing.name}</p>
+               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[9px] tracking-wider border-b border-slate-200"><tr><th className="px-4 py-3 text-center font-bold">S/N</th><th className="px-5 py-3">{industryConfig.substanceLabel.singular}</th><th className="px-5 py-3">Current Stock</th><th className="px-5 py-3">Base Cost</th><th className="px-5 py-3">Market Delta</th><th className="px-5 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{rawMaterials.map((ing, index) => (<tr key={ing.id} className="hover:bg-indigo-50/20 transition-all cursor-pointer group/row" onClick={() => { setSelectedIngredientForEdit(ing); setIsIngredientModalOpen(true); }}><td className="px-4 py-3 text-center font-bold text-slate-400 text-[10px]">{index + 1}</td><td className="px-5 py-3">
+                  <p className="font-bold text-slate-800 uppercase text-xs">{ing.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{ing.category}</p>
+                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{ing.category}</p>
                      {ing.updatedByName && (
                         <>
                            <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                           <p className="text-[8px] text-slate-300 font-black uppercase tracking-widest">Edited by {ing.updatedByName}</p>
+                           <p className="text-[8px] text-slate-300 font-bold uppercase tracking-wider">Edited by {ing.updatedByName}</p>
                         </>
                      )}
                   </div>
                </td>
-               <td className="p-8">
-                  <div className="flex items-center gap-3">
+               <td className="px-5 py-3">
+                  <div className="flex items-center gap-2">
                      <div>
-                        <span className={`text-lg font-black tracking-tighter ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter ml-1">{ing.unit || 'units'}</span>
-                        {ing.lastPackCount && <p className="text-[9px] font-black text-indigo-500 uppercase mt-1 tracking-tighter">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}
+                        <span className={`text-base font-black tracking-tight ${ing.stockLevel < 50 ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>{ing.stockLevel.toLocaleString()}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight ml-1">{ing.unit || 'units'}</span>
+                        {ing.lastPackCount && <p className="text-[8px] font-bold text-indigo-500 uppercase mt-0.5 tracking-tight">📦 Latest Batch: {ing.lastPackCount} {ing.lastPackType || 'Packs'} x {ing.lastPackSize} {ing.unit || 'units'}</p>}
                      </div>
                   </div>
                </td>
-               <td className="p-8">
+               <td className="px-5 py-3">
                   <div>
-                     <p className="font-black text-slate-900 text-xs">{NAIRA_SYMBOL}{(ing.currentCostCents / 100).toLocaleString()}</p>
-                     <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Per {ing.unit || 'Unit'}</p>
+                     <p className="font-bold text-slate-900 text-xs">{NAIRA_SYMBOL}{(ing.currentCostCents / 100).toLocaleString()}</p>
+                     <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">Per {ing.unit || 'Unit'}</p>
                   </div>
                </td>
-               <td className="p-8">
+               <td className="px-5 py-3">
                   {ing.marketPriceCents ? (
-                     <div className="relative group/price flex items-center gap-2">
-                        <span className="font-black text-indigo-600 text-xs cursor-help border-b border-dashed border-indigo-300">
+                     <div className="relative group/price flex items-center gap-1.5">
+                        <span className="font-bold text-indigo-600 text-xs cursor-help border-b border-dashed border-indigo-300">
                            {NAIRA_SYMBOL}{(ing.marketPriceCents / 100).toLocaleString()}
                         </span>
                         
                         {/* Trend vs previous market price */}
                         {ing.previousMarketPriceCents && ing.marketPriceCents !== ing.previousMarketPriceCents && (
                            ing.marketPriceCents > ing.previousMarketPriceCents 
-                              ? <TrendingUp size={14} className="text-rose-500" /> 
-                              : <TrendingUp size={14} className="text-emerald-500 rotate-180" />
+                              ? <TrendingUp size={12} className="text-rose-500" /> 
+                              : <TrendingUp size={12} className="text-emerald-500 rotate-180" />
                         )}
                         
                         {/* Hover Pop-up */}
-                        <div className="absolute z-50 bottom-full left-0 mb-2 w-64 bg-slate-900 text-white text-xs rounded-xl p-4 shadow-xl opacity-0 group-hover/price:opacity-100 transition-opacity pointer-events-none">
+                        <div className="absolute z-50 bottom-full left-0 mb-2 w-64 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-xl opacity-0 group-hover/price:opacity-100 transition-opacity pointer-events-none">
                            <p className="font-bold text-indigo-300 mb-1">Market Insight</p>
                            {ing.marketInsight?.quantity && <p><span className="text-slate-400">Qty:</span> {ing.marketInsight.quantity}</p>}
                            {ing.marketInsight?.location && <p><span className="text-slate-400">Loc:</span> {ing.marketInsight.location}</p>}
                            {ing.marketInsight?.timestamp && <p><span className="text-slate-400">Time:</span> {new Date(ing.marketInsight.timestamp).toLocaleString()}</p>}
-                           {ing.marketInsight?.groundedSummary && <p className="mt-2 text-slate-300 italic line-clamp-3">{ing.marketInsight.groundedSummary}</p>}
+                           {ing.marketInsight?.groundedSummary && <p className="mt-1 text-slate-300 italic line-clamp-3">{ing.marketInsight.groundedSummary}</p>}
                         </div>
                      </div>
                   ) : (
-                     <span className="text-[9px] font-black text-slate-300 uppercase">Survey Pending</span>
+                     <span className="text-[9px] font-bold text-slate-300 uppercase">Survey Pending</span>
                   )}
                </td>
-               <td className="p-8 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                     <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100">
-                        <Trash2 size={16} />
+               <td className="px-5 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                     <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this ingredient?')) deleteIngredient(ing.id); }} className="p-1.5 bg-slate-100 text-slate-400 rounded-lg hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover/row:opacity-100">
+                        <Trash2 size={14} />
                      </button>
                      <GroundMarketPriceButton ingredient={ing} />
                   </div>
@@ -1839,78 +1873,78 @@ export const Inventory = () => {
          )}
 
          {activeTab === 'requisitions' && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4">
-               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-                  <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                     <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Active Requisitions Hub</h3>
-                     <div className="flex items-center gap-4">
+            <div className="space-y-4 animate-in slide-in-from-bottom-4">
+               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
+                  <div className="p-4 md:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                     <h3 className="text-base md:text-lg font-black text-slate-800 uppercase tracking-tight">Active Requisitions Hub</h3>
+                     <div className="flex items-center gap-3">
                         <button
                            onClick={() => {
                               const allExpanded = groupedRequisitions.reduce((acc, curr) => ({ ...acc, [curr.refId]: true }), {});
                               setExpandedGroups(allExpanded);
                            }}
-                           className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                           className="text-[9px] font-bold text-slate-400 uppercase tracking-wider hover:text-indigo-600 transition-colors"
                         >
                            Expand All
                         </button>
                         <button
                            onClick={() => setExpandedGroups({})}
-                           className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-colors"
+                           className="text-[9px] font-bold text-slate-400 uppercase tracking-wider hover:text-rose-600 transition-colors"
                         >
                            Collapse All
                         </button>
                      </div>
                   </div>
-                  <div className="p-8 space-y-4">
+                  <div className="p-4 md:p-5 space-y-3">
                      {groupedRequisitions.map(group => {
                         const isExpanded = expandedGroups[group.refId];
                         return (
-                           <div key={group.refId} className="space-y-3">
+                           <div key={group.refId} className="space-y-2">
                               <div
                                  onClick={() => setExpandedGroups(prev => ({ ...prev, [group.refId]: !prev[group.refId] }))}
-                                 className="p-5 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-all group"
+                                 className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 flex items-center justify-between cursor-pointer hover:bg-slate-100/80 transition-all group"
                               >
-                                 <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg">
-                                       <Users size={20} />
+                                 <div className="flex items-center gap-3.5">
+                                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow">
+                                       <Users size={16} />
                                     </div>
                                     <div>
-                                       <p className="font-black text-slate-800 uppercase text-sm">{group.customerName}</p>
-                                       <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">{group.items.length} Pending Requisitions</p>
+                                       <p className="font-bold text-slate-800 uppercase text-xs">{group.customerName}</p>
+                                       <p className="text-[9px] text-indigo-600 font-bold uppercase tracking-wider">{group.items.length} Pending Requisitions</p>
                                     </div>
                                  </div>
-                                 <div className={`p-2 rounded-full border border-slate-200 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                                    <ChevronRight size={18} />
+                                 <div className={`p-1.5 rounded-full border border-slate-200 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                                    <ChevronRight size={14} />
                                  </div>
                               </div>
 
                               {isExpanded && (
-                                 <div className="pl-16 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                 <div className="pl-6 md:pl-10 space-y-2 animate-in fade-in slide-in-from-top-2">
                                     {group.items.map(req => (
-                                       <div key={req.id} className="p-6 bg-white rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:border-indigo-200 transition-all">
-                                          <div className="flex items-center gap-5">
-                                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${req.type === 'Release' ? 'bg-orange-50 text-orange-600' : req.type === 'Rental' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                                {req.type === 'Release' ? <Flame size={20} /> : req.type === 'Rental' ? <RotateCcw size={20} /> : <ShoppingBag size={20} />}
+                                       <div key={req.id} className="p-3 bg-white rounded-xl border border-slate-200/60 flex items-center justify-between group hover:border-indigo-300 transition-all">
+                                          <div className="flex items-center gap-3">
+                                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${req.type === 'Release' ? 'bg-orange-50 text-orange-600' : req.type === 'Rental' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                {req.type === 'Release' ? <Flame size={16} /> : req.type === 'Rental' ? <RotateCcw size={16} /> : <ShoppingBag size={16} />}
                                              </div>
                                              <div>
-                                                <p className="font-black text-slate-800 uppercase text-xs">{req.itemName}</p>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{req.category} • Qty: {req.quantity}</p>
+                                                <p className="font-bold text-slate-800 uppercase text-xs">{req.itemName}</p>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{req.category} • Qty: {req.quantity}</p>
                                              </div>
                                           </div>
-                                          <div className="flex items-center gap-6">
+                                          <div className="flex items-center gap-4">
                                              <div className="text-right">
-                                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{req.status}</span>
+                                                <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{req.status}</span>
                                              </div>
                                              {req.status === 'Pending' && (
                                                 <button
                                                    onClick={() => handleApproveRelease(req.id)}
                                                    disabled={processingIds.has(req.id)}
-                                                   className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
+                                                   className="p-2 bg-emerald-500 text-white rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                                                 >
                                                    {processingIds.has(req.id) ? (
-                                                      <RefreshCw size={18} className="animate-spin" />
+                                                      <RefreshCw size={14} className="animate-spin" />
                                                    ) : (
-                                                      <Check size={18} strokeWidth={3} />
+                                                      <Check size={14} strokeWidth={3} />
                                                    )}
                                                 </button>
                                              )}
@@ -1931,61 +1965,61 @@ export const Inventory = () => {
          {activeTab === 'reusable' && <InventoryCatalog assets={reusableItems} title="Reusable Items Catalog" subtitle="Operational Inventory (Plates, Linens, etc.)" />}
 
          {activeTab === 'recipes' && (
-            <div className="space-y-8 animate-in slide-in-from-bottom-4">
-               <div className="flex justify-between items-center bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl">
+            <div className="space-y-4 animate-in slide-in-from-bottom-4">
+               <div className="flex justify-between items-center bg-white p-4 md:p-5 rounded-2xl border border-slate-200/80 shadow-md">
                   <div>
-                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Recipe Matrix Hub</h2>
-                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Central sanitation for ingredients and scaling definitions</p>
+                     <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight">Recipe Matrix Hub</h2>
+                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Central sanitation for ingredients and scaling definitions</p>
                   </div>
-                  <button onClick={() => addRecipe({ name: 'New Recipe' })} className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all">Add New Recipe</button>
+                  <button onClick={() => addRecipe({ name: 'New Recipe' })} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-md hover:bg-indigo-700 hover:scale-[1.02] transition-all">Add New Recipe</button>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {recipes.map(recipe => (
-                     <div key={recipe.id} className="bg-white rounded-[2.5rem] border-2 border-slate-50 shadow-xl overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
-                        <div className="p-8 border-b border-slate-50 bg-slate-50/30 space-y-4">
+                     <div key={recipe.id} className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden hover:border-indigo-300 transition-all flex flex-col">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/40 space-y-3">
                            <input
-                              className="bg-transparent text-lg font-black text-slate-800 uppercase outline-none focus:text-indigo-600 w-full"
+                              className="bg-transparent text-base font-black text-slate-800 uppercase outline-none focus:text-indigo-600 w-full"
                               value={recipe.name}
                               onChange={e => updateRecipe(recipe.id, { name: e.target.value })}
                            />
 
-                           <div className="flex justify-between items-center p-4 bg-white/50 rounded-2xl border border-slate-100">
+                           <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-200/60 shadow-sm">
                               <div>
-                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Scaling Mode</p>
-                                 <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tight">{recipe.ingredients.length} Components</p>
+                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Scaling Mode</p>
+                                 <p className="text-[9px] font-black text-indigo-600 uppercase tracking-tight">{recipe.ingredients.length} Components</p>
                               </div>
                               <div className="flex flex-col items-end shrink-0">
-                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portions</p>
-                                 <div className="flex items-center gap-2">
-                                    <button onClick={() => updatePortions(recipe.id, Math.max(1, (portionCounts[recipe.id] || 100) - 50))} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:text-rose-500 transition-colors"><Minus size={12} /></button>
+                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Portions</p>
+                                 <div className="flex items-center gap-1.5">
+                                    <button onClick={() => updatePortions(recipe.id, Math.max(1, (portionCounts[recipe.id] || 100) - 50))} className="p-1 bg-white border border-slate-200 rounded-md hover:text-rose-500 transition-colors"><Minus size={11} /></button>
                                     <input
                                        type="number"
-                                       className="w-16 bg-white border-2 border-slate-200 rounded-lg py-1 text-center text-xs font-black text-slate-950 outline-none focus:border-indigo-500 shadow-inner"
+                                       className="w-14 bg-white border border-slate-200 rounded-md py-0.5 text-center text-xs font-black text-slate-950 outline-none focus:border-indigo-500 shadow-inner"
                                        value={portionCounts[recipe.id] || 100}
                                        onChange={(e) => updatePortions(recipe.id, Math.max(1, parseInt(e.target.value) || 0))}
                                     />
-                                    <button onClick={() => updatePortions(recipe.id, (portionCounts[recipe.id] || 100) + 50)} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:text-emerald-500 transition-colors"><Plus size={12} /></button>
+                                    <button onClick={() => updatePortions(recipe.id, (portionCounts[recipe.id] || 100) + 50)} className="p-1 bg-white border border-slate-200 rounded-md hover:text-emerald-500 transition-colors"><Plus size={11} /></button>
                                  </div>
                               </div>
                            </div>
                         </div>
-                        <div className="p-8 flex-1 space-y-4 max-h-64 overflow-y-auto scrollbar-thin">
+                        <div className="p-4 flex-1 space-y-2.5 max-h-52 overflow-y-auto scrollbar-thin">
                            {recipe.ingredients.map((ing, idx) => (
-                              <div key={idx} className="flex justify-between items-center group">
+                              <div key={idx} className="flex justify-between items-center group text-xs">
                                  <div>
-                                    <p className="text-xs font-black text-slate-700 uppercase">{ing.name}</p>
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                                    <p className="text-xs font-bold text-slate-800 uppercase">{ing.name}</p>
+                                    <p className="text-[9px] text-slate-400 font-medium uppercase tracking-tighter">
                                        {((ing.qtyPerPortion || 0) * (portionCounts[recipe.id] || 100)).toLocaleString()} {ing.unit} {ing.subRecipeGroup ? `• ${ing.subRecipeGroup}` : ''}
                                     </p>
                                  </div>
-                                 <button onClick={() => deleteRecipeIngredient(recipe.id, ing.name)} className="opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all"><X size={12} /></button>
+                                 <button onClick={() => deleteRecipeIngredient(recipe.id, ing.name)} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-all p-1"><X size={12} /></button>
                               </div>
                            ))}
                         </div>
-                        <div className="p-6 bg-slate-50/50 border-t border-slate-50 mt-auto flex gap-2">
-                           <button onClick={() => deleteRecipe(recipe.id)} className="flex-1 py-3 text-[9px] font-black uppercase text-rose-400 hover:bg-rose-50 rounded-xl transition-all">Delete</button>
-                           <button onClick={() => setSelectedBoQItem(inventory.find(i => i.recipeId === recipe.id) || null)} className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg">View BOQ</button>
+                        <div className="p-3 bg-slate-50/70 border-t border-slate-100 mt-auto flex gap-2">
+                           <button onClick={() => deleteRecipe(recipe.id)} className="flex-1 py-2 text-[9px] font-bold uppercase text-rose-500 hover:bg-rose-50 rounded-lg transition-all">Delete</button>
+                           <button onClick={() => setSelectedBoQItem(inventory.find(i => i.recipeId === recipe.id) || null)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow">View BOQ</button>
                         </div>
                      </div>
                   ))}

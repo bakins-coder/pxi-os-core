@@ -17,7 +17,7 @@ import {
 import { NAIRA_SYMBOL } from '../utils/finance';
 import { OrderBrochure } from './OrderBrochure';
 import { PortionMonitor } from './PortionMonitor';
-import { generateHandoverReport, generateInvoicePDF } from '../utils/exportUtils';
+import { generateHandoverReport, generateInvoicePDF, getInvoiceBankDetails } from '../utils/exportUtils';
 import { ManualInvoiceModal } from './Finance';
 import { RequisitionTracker } from './RequisitionTracker';
 
@@ -269,8 +269,10 @@ const BOQModal = ({ item, portions, onClose, onPortionChange }: { item: Inventor
                <div className="flex items-center gap-2 md:gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg"><Calculator size={20} className="md:w-6 md:h-6" /></div>
                   <div>
-                     <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">Neural BoQ Analysis</h2>
-                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Intelligence Node</p>
+                     <h2 className="text-lg md:text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                        Catering Ingredients Cost Analysis
+                     </h2>
+                     <p className="text-[8px] md:text-[10px] text-slate-500 font-black uppercase mt-0.5 tracking-widest">{item.name} • Costing Node</p>
                   </div>
                </div>
                <button onClick={onClose} className="p-2 md:p-3 bg-white border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl md:rounded-2xl transition-all shadow-sm"><X size={20} className="md:w-6 md:h-6" /></button>
@@ -432,7 +434,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
    const [isProformaMode, setIsProformaMode] = useState(invoice.status === InvoiceStatus.PROFORMA);
    const [editableLines, setEditableLines] = useState<InvoiceLine[]>(invoice.lines || []);
    const [isCustomMode, setIsCustomMode] = useState(
-      (invoice.lines && (invoice.lines.some(l => l.description.startsWith('[SECTION]')) || (invoice.lines.length > 0 && invoice.lines[0].description.toLowerCase().includes('supply')))) || false
+      (invoice.lines && (invoice.lines.some(l => (l.description || '').startsWith('[SECTION]')) || (invoice.lines.length > 0 && (invoice.lines[0].description || '').toLowerCase().includes('supply')))) || false
    );
    const [showDiscountCol, setShowDiscountCol] = useState(
       (invoice.lines && invoice.lines.some(l => l.manualPriceCents !== undefined && l.manualPriceCents !== null)) || false
@@ -556,9 +558,8 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
       const total = subtotal + sc + vat;
       const finalTotal = manualTotalOverride ?? total;
 
-      const bankDetailsText = bankAccounts.length > 0 
-         ? bankAccounts.map(acc => `${acc.institutionName || acc.bankName}: ${acc.accountNumber}`).join('\n')
-         : "Contact Finance for payment details.";
+      const banks = getInvoiceBankDetails(bankAccounts, org);
+      const bankDetailsText = banks.map(acc => `${acc.bank} (${acc.name}): ${acc.acc}`).join('\n');
 
       const summary = `
 *INVOICE SUMMARY: ${invoice.number}*
@@ -628,9 +629,9 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
       // 1. Bucketize existing items
       (editableLines || []).forEach(line => {
-         if (line.description.startsWith('[SECTION] ')) return; // Skip existing headers
+         if ((line.description || '').startsWith('[SECTION] ')) return; // Skip existing headers
 
-         const desc = line.description.toLowerCase();
+         const desc = (line.description || '').toLowerCase();
          const cat = line.category; // Use the preserved category if available
 
          if (cat === 'Wedding Cakes' || desc.includes('wedding') || desc.includes('tiered') || desc.includes('fondant')) {
@@ -685,8 +686,8 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
             } else {
                // Fallback to single header legacy behavior if they decline or list empty
                let newLines = [...editableLines];
-               if (newLines.length === 0 || !newLines[0].description.toLowerCase().includes('supply')) {
-                  const hasSupplyHeader = newLines.length > 0 && newLines[0].description.toLowerCase().includes('supply');
+               if (newLines.length === 0 || !(newLines[0].description || '').toLowerCase().includes('supply')) {
+                  const hasSupplyHeader = newLines.length > 0 && (newLines[0].description || '').toLowerCase().includes('supply');
                   if (!hasSupplyHeader) {
                      newLines = [{
                         id: `line-${Date.now()}`,
@@ -1001,49 +1002,28 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                            <h3 className="font-bold text-slate-900 mb-2">Payment Information</h3>
 
                            <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(org.name || 'The Organization').toUpperCase()}</span></p>
-                                                  {bankAccounts && bankAccounts.length > 0 ? (
-                              <>
-                                 <p className="text-xs font-bold text-slate-900 underline mb-3">Bank Details:</p>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {bankAccounts.map((acc, bidx) => (
-                                       <div key={bidx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                          <p className="text-[10px] font-black text-slate-800 uppercase">{acc.accountName || org.name}</p>
-                                          <div className="flex justify-between items-center mt-1">
-                                             <span className="text-xs text-slate-500">{acc.bankName}</span>
-                                             <span className="text-xs font-bold text-slate-900 font-mono">{acc.accountNumber}</span>
+                           {(() => {
+                              const banks = getInvoiceBankDetails(bankAccounts, org);
+                              return (
+                                 <>
+                                    <div className="flex justify-between items-center mb-3">
+                                       <p className="text-xs font-bold text-slate-900 underline">Bank Details:</p>
+                                       {org.firs_tin && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded">TIN: {org.firs_tin}</p>}
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       {banks.map((acc, bidx) => (
+                                          <div key={bidx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                             <p className="text-[10px] font-black text-slate-800 uppercase">{acc.name}</p>
+                                             <div className="flex justify-between items-center mt-1">
+                                                <span className="text-xs text-slate-500">{acc.bank}</span>
+                                                <span className="text-xs font-bold text-slate-900 font-mono">{acc.acc}</span>
+                                             </div>
                                           </div>
-                                       </div>
-                                    ))}
-                                 </div>
-                              </>
-                           ) : (
-                              <>
-                                 <div className="flex justify-between items-center mb-3">
-                                    <p className="text-xs font-bold text-slate-900 underline">Bank Details:</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded">TIN: 15313371-0001</p>
-                                 </div>
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                       <p className="text-[9px] font-black text-slate-800 uppercase">GTB A/C</p>
-                                       <div className="flex flex-col mt-1">
-                                          <span className="text-[10px] font-bold text-slate-900 font-mono">0396426845</span>
-                                       </div>
+                                       ))}
                                     </div>
-                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                       <p className="text-[9px] font-black text-slate-800 uppercase">UBA A/C</p>
-                                       <div className="flex flex-col mt-1">
-                                          <span className="text-[10px] font-bold text-slate-900 font-mono">1021135344</span>
-                                       </div>
-                                    </div>
-                                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                       <p className="text-[9px] font-black text-slate-800 uppercase">Zenith A/C</p>
-                                       <div className="flex flex-col mt-1">
-                                          <span className="text-[10px] font-bold text-slate-900 font-mono">1010951007</span>
-                                       </div>
-                                    </div>
-                                 </div>
-                              </>
-                           )}
+                                 </>
+                              );
+                           })()}
                         </div>
  
                         {/* Terms & Disclaimer */}
@@ -1313,7 +1293,7 @@ const AssetDispatchModal = ({ event, onClose }: { event: CateringEvent, onClose:
 
    const filteredDetails = inventory.filter(i =>
       (i.type === 'asset' || i.type === 'reusable' || i.category === 'Hardware') &&
-      i.name.toLowerCase().includes(search.toLowerCase())
+      (i.name || '').toLowerCase().includes((search || '').toLowerCase())
    );
 
    const addToCart = (item: InventoryItem) => {
@@ -2055,16 +2035,16 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
    const filteredProducts = useMemo(() => {
       if (!searchQuery) return currentProducts;
       return currentProducts.filter(p =>
-         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         p.category.toLowerCase().includes(searchQuery.toLowerCase())
+         (p.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
+         (p.category || '').toLowerCase().includes((searchQuery || '').toLowerCase())
       );
    }, [searchQuery, currentProducts]);
 
    const filteredContacts = useMemo(() => {
       if (!searchTerm) return [];
       return contacts.filter(c =>
-         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+         (c.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+         (c.email && c.email.toLowerCase().includes((searchTerm || '').toLowerCase()))
       ).slice(0, 5);
    }, [contacts, searchTerm]);
 
@@ -2551,6 +2531,12 @@ const StandardOrderModal = ({ onClose, onFinalize, vertical, industryConfig }: {
    );
 };
 
+const CATERING_BGS = [
+   '/banquet_table.png',
+   '/catering_delicacies.png',
+   '/catering_banquet.png'
+];
+
 export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const { settings } = useSettingsStore();
    const activeVertical = vertical || (settings.type as IndustryType);
@@ -2573,6 +2559,9 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
    const [searchParams] = useSearchParams();
 
+   // Automated background carousel for Catering Ops
+   const [cateringBgIndex, setCateringBgIndex] = useState(0);
+
    // New states for portalized modals
    const [portionMonitorEventId, setPortionMonitorEventId] = useState<string | null>(null);
    const [assetDispatchEvent, setAssetDispatchEvent] = useState<CateringEvent | null>(null);
@@ -2581,20 +2570,20 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const [procurementWizardEvent, setProcurementWizardEvent] = useState<CateringEvent | null>(null);
    const [orderBrochureEvent, setOrderBrochureEvent] = useState<CateringEvent | null>(null);
 
-
-   useEffect(() => {
-      const id = searchParams.get('id');
-      if (id) {
-         setSelectedEventId(id);
-         console.log('[Catering] Deep-linked Event ID:', id);
-      }
-   }, [searchParams]);
-
    const cateringEvents = useDataStore(state => state.cateringEvents);
    const { user } = useAuthStore();
    const isBakery = activeVertical === 'Bakery' || settings.name?.toLowerCase().includes('wembley');
    const isCatering = (activeVertical === 'Catering' || settings.name?.toLowerCase().includes('xquisite')) && !isBakery;
    const syncStatus = useDataStore(state => state.syncStatus);
+
+   useEffect(() => {
+      if (isCatering) {
+         const interval = setInterval(() => {
+            setCateringBgIndex(prev => (prev + 1) % CATERING_BGS.length);
+         }, 5000);
+         return () => clearInterval(interval);
+      }
+   }, [isCatering]);
    const invoices = useDataStore(state => state.invoices);
    const finalizeProforma = useDataStore(state => state.finalizeProforma);
 
@@ -2674,19 +2663,37 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
 
    return (
       <div className="space-y-8 animate-in fade-in pb-24">
-         <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl">
+         <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/10">
+            {/* Background Image Overlay / Automated Carousel for Bakery or Catering Hub Landing Banner */}
+            {isCatering ? (
+               CATERING_BGS.map((bgUrl, idx) => (
+                  <div 
+                     key={bgUrl}
+                     className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out pointer-events-none scale-105 ${idx === cateringBgIndex ? 'opacity-65' : 'opacity-0'}`}
+                     style={{ backgroundImage: `url('${bgUrl}')` }}
+                  ></div>
+               ))
+            ) : (
+               <div 
+                  className="absolute inset-0 bg-cover bg-center opacity-55 transition-all duration-700 pointer-events-none scale-105"
+                  style={{ backgroundImage: `url('${isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}')` }}
+               ></div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/75 to-slate-950/40 pointer-events-none"></div>
+
             <div className="absolute top-0 right-0 w-96 h-96 bg-[#ff6b6b]/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
             <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
                <div className="flex items-center gap-6">
 
-                  <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float">
+                  <div className="w-16 h-16 bg-[#ff6b6b] rounded-3xl flex items-center justify-center shadow-2xl animate-float shrink-0">
                      <industryConfig.ui.fulfillmentIcon size={36} className="text-white" />
                   </div>
                   <div>
                      <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">
                         {terms.fulfillmentHub}
                      </h1>
-                     <p className="text-[10px] text-slate-500 font-black uppercase mt-1 tracking-widest">
+                     <p className="text-[10px] text-slate-300 font-black uppercase mt-1.5 tracking-widest flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#00ff9d] animate-pulse"></span>
                         {industryConfig.label} Fulfillment & Operations Active
                      </p>
                   </div>
@@ -2719,53 +2726,71 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
          </div>
 
          {activeTab === null && (
-            <div className="space-y-6">
-               <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Select an Action</h2>
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[
-                     {
-                        id: 'cuisine',
-                        label: terms.standardOrdersLabel,
-                        desc: `Manage standard menu packages, bookings, and cuisine events.`,
-                        icon: industryConfig.ui.standardIcon || UtensilsCrossed,
-                        color: 'from-[#ff6b6b]/10 to-[#ff6b6b]/5 border-[#ff6b6b]/20 hover:border-[#ff6b6b]/50 text-[#ff6b6b]'
-                     },
-                     {
-                        id: 'orders',
-                        label: terms.customOrdersLabel,
-                        desc: `Create and manage custom, tailored catering bookings.`,
-                        icon: industryConfig.ui.customIcon || ShoppingBag,
-                        color: 'from-blue-500/10 to-blue-500/5 border-blue-500/20 hover:border-blue-500/50 text-blue-400'
-                     },
-                     {
-                        id: 'matrix',
-                        label: 'Costing Matrix',
-                        desc: `View ingredient costs, recipes, and margin calculations.`,
-                        icon: Grid3X3,
-                        color: 'from-[#00ff9d]/10 to-[#00ff9d]/5 border-[#00ff9d]/20 hover:border-[#00ff9d]/50 text-[#00ff9d]'
-                     }
-                  ].map(card => {
-                     const CardIcon = card.icon;
-                     return (
-                        <div
-                           key={card.id}
-                           onClick={() => setActiveTab(card.id as any)}
-                           className={`group relative rounded-[2.5rem] p-8 border-2 bg-gradient-to-br ${card.color} transition-all duration-300 cursor-pointer hover:shadow-2xl hover:-translate-y-1 flex flex-col justify-between h-64 overflow-hidden`}
-                        >
-                           <div className="absolute inset-0 opacity-10 bg-grid-white/10"></div>
-                           <div className="relative z-10 flex justify-between items-start">
-                              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform">
-                                 <CardIcon size={28} />
+            <div className="space-y-6 relative rounded-[3rem] p-6 md:p-8 bg-slate-950/70 border border-slate-800/80 overflow-hidden backdrop-blur-sm shadow-xl">
+               {/* Ambient Background Watermark / Automated Carousel for Bakery or Catering Ops */}
+               {isBakery && (
+                  <div 
+                     className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-screen pointer-events-none"
+                     style={{ backgroundImage: "url('/bakery_cakes.png')" }}
+                  ></div>
+               )}
+               {isCatering && (
+                  CATERING_BGS.map((bgUrl, idx) => (
+                     <div 
+                        key={bgUrl}
+                        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out mix-blend-screen pointer-events-none ${idx === cateringBgIndex ? 'opacity-40' : 'opacity-0'}`}
+                        style={{ backgroundImage: `url('${bgUrl}')` }}
+                     ></div>
+                  ))
+               )}
+               <div className="relative z-10">
+                  <h2 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Select an Action</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     {[
+                        {
+                           id: 'cuisine',
+                           label: terms.standardOrdersLabel,
+                           desc: `Manage standard menu packages, bookings, and cuisine events.`,
+                           icon: industryConfig.ui.standardIcon || UtensilsCrossed,
+                           color: 'from-[#ff9aa2]/25 to-[#ff9aa2]/10 border-[#ff9aa2]/40 hover:border-[#ff9aa2]/80 text-[#ff9aa2] shadow-[0_8px_30px_rgba(255,154,162,0.2)] hover:shadow-[0_20px_40px_rgba(255,154,162,0.4)]'
+                        },
+                        {
+                           id: 'orders',
+                           label: terms.customOrdersLabel,
+                           desc: `Create and manage custom, tailored catering bookings.`,
+                           icon: industryConfig.ui.customIcon || ShoppingBag,
+                           color: 'from-[#a0c4ff]/25 to-[#a0c4ff]/10 border-[#a0c4ff]/40 hover:border-[#a0c4ff]/80 text-[#a0c4ff] shadow-[0_8px_30px_rgba(160,196,255,0.2)] hover:shadow-[0_20px_40px_rgba(160,196,255,0.4)]'
+                        },
+                        {
+                           id: 'matrix',
+                           label: 'Costing Matrix',
+                           desc: `View ingredient costs, recipes, and margin calculations.`,
+                           icon: Grid3X3,
+                           color: 'from-[#b7e4c7]/25 to-[#b7e4c7]/10 border-[#b7e4c7]/40 hover:border-[#b7e4c7]/80 text-[#b7e4c7] shadow-[0_8px_30px_rgba(183,228,199,0.2)] hover:shadow-[0_20px_40px_rgba(183,228,199,0.4)]'
+                        }
+                     ].map(card => {
+                        const CardIcon = card.icon;
+                        return (
+                           <div
+                              key={card.id}
+                              onClick={() => setActiveTab(card.id as any)}
+                              className={`group relative rounded-[2.5rem] p-8 border-2 bg-gradient-to-br ${card.color} transition-all duration-300 cursor-pointer hover:-translate-y-1 flex flex-col justify-between h-64 overflow-hidden`}
+                           >
+                              <div className="absolute inset-0 opacity-10 bg-grid-white/10"></div>
+                              <div className="relative z-10 flex justify-between items-start">
+                                 <div className="p-4 bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform">
+                                    <CardIcon size={28} />
+                                 </div>
+                                 <ArrowRight size={20} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                               </div>
-                              <ArrowRight size={20} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                              <div className="relative z-10 mt-auto">
+                                 <h3 className="text-xl font-black uppercase tracking-tight text-white mb-2">{card.label}</h3>
+                                 <p className="text-xs text-slate-400 font-medium leading-relaxed uppercase tracking-wider">{card.desc}</p>
+                              </div>
                            </div>
-                           <div className="relative z-10 mt-auto">
-                              <h3 className="text-xl font-black uppercase tracking-tight text-white mb-2">{card.label}</h3>
-                              <p className="text-xs text-slate-400 font-medium leading-relaxed uppercase tracking-wider">{card.desc}</p>
-                           </div>
-                        </div>
-                     );
-                  })}
+                        );
+                     })}
+                  </div>
                </div>
             </div>
          )}
@@ -2814,12 +2839,33 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                   {viewMode === 'active' && isOrdersCollapsed ? (
                      <div
                         onClick={() => setIsOrdersCollapsed(false)}
-                        className={`p-8 text-center border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white/5 hover:border-blue-500 hover:bg-white/10 transition-all cursor-pointer ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}
+                        className={`relative group overflow-hidden rounded-[2.5rem] border-2 border-white/10 hover:border-blue-500/50 hover:shadow-[0_20px_50px_rgba(59,130,246,0.2)] transition-all duration-500 cursor-pointer h-72 flex flex-col justify-end p-8 ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}
                      >
-                        <p className="text-xs font-black uppercase text-slate-400 tracking-widest mb-3">Active Orders are Collapsed</p>
-                        <span className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-md">
-                           Click to Expand ({filteredEvents.length} Orders)
-                        </span>
+                        {/* Background Image */}
+                        <div 
+                           className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                           style={{ backgroundImage: `url('${isBakery ? '/bakery_cakes.png' : '/banquet_table.png'}')` }}
+                        ></div>
+                        {/* Dark Overlay Gradient to ensure contrast */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent"></div>
+                        
+                        {/* Content */}
+                        <div className="relative z-10 flex flex-col items-start gap-2 max-w-xl">
+                           <span className="px-3 py-1 bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[9px] font-black uppercase tracking-widest rounded-full mb-1">
+                              {isBakery ? 'Bakery Operations' : 'Catering Operations'}
+                           </span>
+                           <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-none mb-1">
+                              Active Orders Overview
+                           </h3>
+                           <p className="text-xs text-slate-300 font-medium leading-relaxed mb-4">
+                              {isBakery 
+                                 ? 'Access, manage, and coordinate your active cake orders, custom designs, and delivery schedules from your central operational dashboard.'
+                                 : 'Access, manage, and coordinate your active events, custom menus, and guest logistics from our central operational dashboard.'}
+                           </p>
+                           <span className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                              Expand Active Orders ({filteredEvents.length} Active) →
+                           </span>
+                        </div>
                      </div>
                   ) : (
                      <>

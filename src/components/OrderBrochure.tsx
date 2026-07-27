@@ -6,7 +6,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { INDUSTRY_PROFILES, IndustryType } from '../config/industryProfiles';
 import {
     ShoppingBag, X, RefreshCw, ArrowRight, Trash2, Plus, Minus,
-    Users, Palette, AlertCircle, ShoppingCart, CheckCircle2, Check, Edit3, Layers
+    Users, Palette, AlertCircle, ShoppingCart, CheckCircle2, Check, Edit3, Layers, Info
 } from 'lucide-react';
 import { NAIRA_SYMBOL } from '../utils/finance';
 import { MenuCard } from './MenuCard';
@@ -142,9 +142,28 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
         selected, customItems
     ]);
 
+    const handleCategorySync = (cat: string) => {
+        setActiveCategory(cat);
+        if (cat !== 'All') {
+            setEventType(cat);
+        }
+    };
+
+    const handleEventTypeSync = (cat: string) => {
+        setEventType(cat);
+        setActiveCategory(cat);
+    };
+
+    const handleCancel = () => {
+        setSelected({});
+        setCustomItems({});
+        localStorage.removeItem(`order_draft_${settings.id || 'general'}`);
+        setIsBasketOpen(false);
+    };
+
     useEffect(() => {
-        const products = inventory.filter(i => i.type === 'product' || i.type === 'raw_material');
-        setMenuItems(products);
+        const products = inventory.filter(i => i.type !== 'ingredient' && i.type !== 'asset');
+        setMenuItems(products.length > 0 ? products : inventory);
     }, [inventory]);
 
     const updateQty = (id: string, qty: number) => {
@@ -393,38 +412,81 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                     </div>
 
                     <div className={`flex-1 flex flex-wrap justify-between items-center gap-2 py-0.5 overflow-x-auto max-w-full no-scrollbar px-1 ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
-                        <select
-                            value={activeCategory}
-                            onChange={(e) => setActiveCategory(e.target.value)}
-                            className="bg-slate-100 border border-slate-200 text-emerald-700 font-black uppercase tracking-widest text-[9px] md:text-[10px] rounded-lg md:rounded-xl px-4 py-2 outline-none shadow-sm cursor-pointer shrink-0"
-                        >
-                            {["All", ...categoryOrder].map(cat => {
-                                const count = Number(categoryTotals[cat]) || 0;
-                                return (
-                                    <option key={cat} value={cat} className="font-bold text-slate-900">
-                                        {cat} {count > 0 ? `(${count})` : ''}
-                                    </option>
-                                );
-                            })}
-                        </select>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                Select Menu Category:
+                            </span>
+                            <select
+                                value={activeCategory}
+                                onChange={(e) => handleCategorySync(e.target.value)}
+                                className="bg-slate-100 border border-slate-200 text-emerald-700 font-black uppercase tracking-widest text-[9px] md:text-[10px] rounded-lg md:rounded-xl px-4 py-2 outline-none shadow-sm cursor-pointer shrink-0"
+                            >
+                                {["All", ...categoryOrder].map(cat => {
+                                    const count = Number(categoryTotals[cat]) || 0;
+                                    return (
+                                        <option key={cat} value={cat} className="font-bold text-slate-900">
+                                            {cat} {count > 0 ? `(${count})` : ''}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setShowCustomModal(true)} className="px-2.5 py-1.5 bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow flex items-center gap-1 shrink-0"><Plus size={10} /> Custom</button>
+                            <button 
+                                onClick={() => setShowCustomModal(true)} 
+                                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+                            >
+                                <Plus size={12} /> Custom Item
+                            </button>
                             {features.showVisualizer && (
-                                <button onClick={() => setIsDesignerOpen(true)} className="px-2.5 py-1.5 bg-indigo-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow flex items-center gap-1 shrink-0">
-                                    <Layers size={10} /> 3D Designer
-                                    {designUrl && <Check size={10} className="ml-1 text-emerald-300" />}
+                                <button 
+                                    onClick={() => setIsDesignerOpen(true)} 
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+                                >
+                                    <Layers size={12} /> 3D Visualizer
+                                    {designUrl && <Check size={12} className="ml-0.5 text-emerald-300" />}
                                 </button>
                             )}
+                            <div className="relative group/info cursor-pointer p-1.5 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 rounded-full transition-all shrink-0">
+                                <Info size={16} />
+                                <div className="absolute right-0 top-full mt-3 w-72 p-4 bg-slate-900/95 backdrop-blur-md text-white text-[11px] rounded-2xl shadow-2xl opacity-0 group-hover/info:opacity-100 translate-y-2 group-hover/info:translate-y-0 transition-all duration-200 pointer-events-none z-50 border border-slate-700/80 ring-1 ring-white/10">
+                                    <div className="absolute -top-2 right-3 w-4 h-4 bg-slate-900/95 rotate-45 border-l border-t border-slate-700/80"></div>
+                                    <div className="relative z-10 space-y-2.5">
+                                        <div className="flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                                            <Info size={14} className="text-emerald-400" />
+                                            <span className="font-black uppercase text-[10px] text-emerald-400 tracking-wider">Quick Reference Guide</span>
+                                        </div>
+                                        <div className="space-y-2 font-normal leading-relaxed">
+                                            <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
+                                                <p className="font-black text-emerald-400 uppercase text-[9px] tracking-wider mb-0.5 flex items-center gap-1">
+                                                    <Plus size={10} /> Custom Item
+                                                </p>
+                                                <p className="text-slate-300 text-[10px]">Add unlisted products, bespoke items, or custom-priced lines directly to this order.</p>
+                                            </div>
+                                            <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
+                                                <p className="font-black text-indigo-400 uppercase text-[9px] tracking-wider mb-0.5 flex items-center gap-1">
+                                                    <Layers size={10} /> 3D Visualizer
+                                                </p>
+                                                <p className="text-slate-300 text-[10px]">Launch 3D studio to design custom multi-tier structures, cake designs & visual models.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                     <div className={`w-full md:w-[320px] lg:w-[360px] md:border-r-2 border-slate-100 p-4 md:p-5 space-y-4 bg-slate-50/80 overflow-y-auto overflow-x-hidden scrollbar-thin ${activeTab === 'details' ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
+                        <div className="bg-amber-50 border border-amber-200/80 text-amber-900 px-3.5 py-2.5 rounded-xl text-[10px] font-bold flex items-center gap-2 shadow-sm">
+                            <span className="text-red-500 font-black text-xs leading-none">*</span>
+                            <span>Notice: Fields marked with a red star (<span className="text-red-500 font-black">*</span>) must be filled in.</span>
+                        </div>
                         <section className="space-y-3">
                             <div className="flex items-center gap-2.5 border-b border-slate-200 pb-1"><Users size={14} className="text-emerald-600" /><h3 className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">{isCuisine ? 'Customer Identity' : 'Customer Details'}</h3></div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-900 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.clientLabel} *</label>
+                                <label className="text-[9px] font-black text-slate-900 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.clientLabel} <span className="text-red-500 ml-0.5">*</span></label>
                                 <input list="contacts-list-b" className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-sm text-slate-950 outline-none focus:border-emerald-500 shadow-sm" placeholder={nomenclature.fulfillment.clientLabel} value={customerName} onChange={e => handleHostChange(e.target.value)} />
                                 <datalist id="contacts-list-b">{contacts.map(c => <option key={c.id} value={c.name} />)}</datalist>
                             </div>
@@ -434,12 +496,12 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                     <input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" placeholder={isCuisine ? "e.g. Bulk Boxes" : "Specific packaging needs"} value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Phone *</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Phone <span className="text-red-500 ml-0.5">*</span></label>
                                     <input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" type="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Email *</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Email <span className="text-red-500 ml-0.5">*</span></label>
                                 <input className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none shadow-sm" type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
                             </div>
                         </section>
@@ -450,7 +512,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                     <div>
                                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Category</label>
-                                        <select className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => setEventType(e.target.value)}>
+                                        <select className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 uppercase shadow-sm cursor-pointer" value={eventType} onChange={e => handleEventTypeSync(e.target.value)}>
                                             {nomenclature.fulfillment.categories.map(c => <option key={c}>{c}</option>)}
                                         </select>
                                     </div>
@@ -481,11 +543,11 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
 
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.dateLabel} *</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.dateLabel} <span className="text-red-500 ml-0.5">*</span></label>
                                     <input type="date" className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 shadow-sm" value={eventDate} onChange={e => setEventDate(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.unitsLabel} *</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.unitsLabel} <span className="text-red-500 ml-0.5">*</span></label>
                                     <input type="number" className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-black text-xs text-slate-950 shadow-sm" value={guestCount} onChange={e => setGuestCount(parseInt(e.target.value) || 0)} />
                                 </div>
                             </div>
@@ -496,28 +558,60 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                                 </div>
                             )}
                             <div>
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.locationLabel} *</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{nomenclature.fulfillment.locationLabel} <span className="text-red-500 ml-0.5">*</span></label>
                                 <textarea className="w-full p-2.5 bg-white border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-950 outline-none resize-none shadow-sm" rows={2} value={eventLocation} onChange={e => setEventLocation(e.target.value)} />
                             </div>
                         </section>
                     </div>
 
                     <div className={`flex-1 flex flex-col bg-white overflow-hidden relative ${activeTab === 'menu' ? 'flex' : 'hidden md:flex'}`}>
-                        <div className="flex-1 overflow-y-auto p-4 md:p-14 scrollbar-thin">
-                            <div className="space-y-4 md:space-y-24 pb-64">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
+                            <div className="space-y-4 md:space-y-12 pb-32">
                                 {categoryOrder.filter(c => activeCategory === "All" || c === activeCategory).map(category => {
                                     const items = groupedItems[category];
                                     if (!items || items.length === 0) return null;
-                                    const catTotal = categoryTotals[category] || 0;
                                     return (
-                                        <div key={category}>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        <div key={category} className="space-y-3">
+                                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                                <h3 className="text-xs md:text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    {category}
+                                                    <span className="text-[10px] text-slate-400 font-bold">({items.length} items)</span>
+                                                </h3>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
                                                 {items.map(item => <MenuCard key={item.id} item={item} qty={selected[item.id] || 0} guestCount={guestCount} updateQty={updateQty} />)}
                                             </div>
                                         </div>
                                     );
                                 })}
+
+                                {menuItems.length === 0 && (
+                                    <div className="py-16 px-4 flex flex-col items-center justify-center text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                        <ShoppingCart size={36} className="text-slate-300 mb-3" />
+                                        <h4 className="text-sm font-black uppercase text-slate-800 tracking-tight">No Menu Products Registered</h4>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 mb-4">Use the "+ Custom" button above to add custom baked items directly to this order.</p>
+                                        <button onClick={() => setShowCustomModal(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow flex items-center gap-1.5">
+                                            <Plus size={12} /> Add Custom Product
+                                        </button>
+                                    </div>
+                                )}
+
+                                {menuItems.length > 0 && activeCategory !== "All" && (!groupedItems[activeCategory] || groupedItems[activeCategory].length === 0) && (
+                                    <div className="py-16 px-4 flex flex-col items-center justify-center text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                        <ShoppingCart size={36} className="text-slate-300 mb-3" />
+                                        <h4 className="text-sm font-black uppercase text-slate-800 tracking-tight">No Items Under "{activeCategory}"</h4>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 mb-4">No pre-configured catalog items match this category. Select another category or add custom items.</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleCategorySync("All")} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow">
+                                                View All Products
+                                            </button>
+                                            <button onClick={() => setShowCustomModal(true)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow flex items-center gap-1.5">
+                                                <Plus size={12} /> Add Custom Item
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -580,7 +674,7 @@ export const OrderBrochure = ({ onComplete, onFinalize, initialEvent, orderType:
                         <div className="text-right"><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0">Total</p><span className="text-2xl font-black text-slate-950">{NAIRA_SYMBOL}{(projections.totalRevenue / 100).toLocaleString()}</span></div>
                     </div>
                     <div className="flex gap-4">
-                        <button onClick={onComplete} className="px-6 py-3 font-black uppercase text-xs text-slate-400 hover:text-rose-500 transition-all">Cancel</button>
+                        <button onClick={handleCancel} className="px-6 py-3 font-black uppercase text-xs text-slate-400 hover:text-rose-500 transition-all">Cancel</button>
                         <button onClick={handlePlaceOrder} disabled={!hasSelection || isSubmitting || !customerName} className="px-10 py-4 bg-slate-950 text-white rounded-xl font-black uppercase text-xs shadow-lg transition-all flex items-center gap-2 hover:scale-105 active:scale-95 disabled:opacity-30">
                             {isSubmitting ? <RefreshCw className="animate-spin" size={14} /> : <ArrowRight size={14} />}
                             Finalize Order

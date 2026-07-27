@@ -99,7 +99,7 @@ export const KnowledgeBase = () => {
 
   const filteredGuides = guides.filter(g =>
     (activeCategory === 'All' || g.category === activeCategory) &&
-    (g.title.toLowerCase().includes(searchQuery.toLowerCase()) || g.category.toLowerCase().includes(searchQuery.toLowerCase()))
+    ((g.title || '').toLowerCase().includes((searchQuery || '').toLowerCase()) || (g.category || '').toLowerCase().includes((searchQuery || '').toLowerCase()))
   );
 
   return (

@@ -27,8 +27,8 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
             onClick={handleCardClick}
             className={`
                 w-[82vw] md:w-full snap-center shrink-0
-                group bg-white rounded-xl border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer relative
-                ${isSelected ? 'border-indigo-600 shadow-xl ring-2 ring-indigo-50' : 'border-slate-300 shadow-sm'}
+                group rounded-xl border-2 transition-all overflow-hidden flex flex-col h-full cursor-pointer relative
+                ${isSelected ? 'bg-emerald-50/20 border-emerald-500 shadow-xl ring-4 ring-emerald-500/20 scale-[1.01]' : 'bg-white border-slate-200 shadow-sm hover:border-slate-300'}
             `}
         >
             {/* Image Area */}
@@ -41,8 +41,8 @@ export const MenuCard = ({ item, qty, guestCount, updateQty }: MenuCardProps) =>
 
                 {/* Selection Indicator */}
                 {isSelected && (
-                    <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg animate-in zoom-in z-20">
-                        <CheckCircle2 size={10} />
+                    <div className="absolute top-1.5 right-1.5 px-2 py-0.5 bg-emerald-500 rounded-full flex items-center gap-1 text-white shadow-lg animate-in zoom-in z-20 font-black text-[9px] uppercase tracking-wider">
+                        <CheckCircle2 size={11} /> SELECTED ({qty})
                     </div>
                 )}
 

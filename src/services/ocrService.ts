@@ -75,7 +75,8 @@ export async function parseInventoryList(base64Image: string): Promise<Extracted
     const prompt = `
     Analyze this image of an inventory list (handwritten or printed).
     Extract all items listed with their quantities and units.
-    Infer the category for each item (e.g., Produce, Dairy, Meat, Dry Goods, Beverages).
+    Infer the category for each item (e.g., Produce, Dairy, Proteins, Spices, Dry Goods, Beverages).
+    Note: Snails, seafood, poultry, meats, fish, and eggs MUST be categorized as Proteins.
     If no unit is specified, infer a sensible default (e.g., 'pcs', 'kg', 'pack').
     Return a CONFIDENCE score (0-1) for each extraction.
   `;
