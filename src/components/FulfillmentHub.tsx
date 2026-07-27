@@ -2663,7 +2663,10 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
 
    return (
       <div className="space-y-8 animate-in fade-in pb-24">
-         <div className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/10 isolate">
+         <div 
+            className="bg-slate-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/10 isolate"
+            style={{ transform: 'translate3d(0,0,0)', WebkitTransform: 'translate3d(0,0,0)' }}
+         >
             {/* Background Image Overlay / Automated Carousel for Bakery or Catering Hub Landing Banner */}
             {isCatering ? (
                CATERING_BGS.map((bgUrl, idx) => (
@@ -2726,7 +2729,10 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
          </div>
 
          {activeTab === null && (
-            <div className="space-y-6 relative rounded-[3rem] p-6 md:p-8 bg-slate-950/70 border border-slate-800/80 overflow-hidden backdrop-blur-sm shadow-xl isolate">
+            <div 
+               className="space-y-6 relative rounded-[3rem] p-6 md:p-8 bg-slate-950/70 border border-slate-800/80 overflow-hidden backdrop-blur-sm shadow-xl isolate"
+               style={{ transform: 'translate3d(0,0,0)', WebkitTransform: 'translate3d(0,0,0)' }}
+            >
                {/* Ambient Background Watermark / Automated Carousel for Bakery or Catering Ops */}
                {isBakery && (
                   <div 
@@ -2840,6 +2846,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                      <div
                         onClick={() => setIsOrdersCollapsed(false)}
                         className={`relative group overflow-hidden rounded-[2.5rem] border-2 border-white/10 hover:border-blue-500/50 hover:shadow-[0_20px_50px_rgba(59,130,246,0.2)] transition-all duration-500 cursor-pointer h-72 flex flex-col justify-end p-8 isolate ${selectedEvent ? '' : 'lg:col-span-3 xl:col-span-4'}`}
+                        style={{ transform: 'translate3d(0,0,0)', WebkitTransform: 'translate3d(0,0,0)' }}
                      >
                         {/* Background Image */}
                         <div 
