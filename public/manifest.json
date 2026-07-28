@@ -1,20 +1,30 @@
 {
-  "short_name": "PXI OS",
-  "name": "pxi-os-core",
+  "short_name": "Paradigm-Xi",
+  "name": "Paradigm-Xi OS",
+  "description": "Smart business operations platform",
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/initials/svg?seed=PXI&backgroundColor=4f46e5",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://api.dicebear.com/7.x/initials/svg?seed=PXI&backgroundColor=4f46e5",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#4f46e5",
-  "background_color": "#f8fafc"
+  "orientation": "any",
+  "theme_color": "#00ff9d",
+  "background_color": "#020617"
 }
