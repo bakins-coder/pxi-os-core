@@ -1,3 +1,13 @@
 {
-    "markdown.validate.enabled": true
+    "markdown.validate.enabled": true,
+    "git.scanRepositories": false,
+    "git.ignoredRepositories": [
+        "c:/Users/akinb/pxi-os-core/ajapas_source",
+        "c:/Users/akinb/pxi-os-core/ajapas_source/src/modules/stewardship",
+        "c:/Users/akinb/pxi-os-core/ajapas_july1"
+    ],
+    "files.watcherExclude": {
+        "**/ajapas_source/**": true,
+        "**/ajapas_july1/**": true
+    }
 }

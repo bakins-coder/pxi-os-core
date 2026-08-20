@@ -31,6 +31,8 @@
     "node_modules",
     "gemini-cli",
     "supabase",
+    "ajapas_source",
+    "ajapas_july1",
     "src/test",
     "src/scripts",
     "**/*.config.ts"

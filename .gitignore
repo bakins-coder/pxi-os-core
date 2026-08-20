@@ -2,10 +2,14 @@ node_modules
 dist
 .env
 .env.local
+.env.*
+!.env.example
 .DS_Store
 gemini-cli/
 tmp/
 Archive/
+ajapas_july1/
+ajapas_source/
 *.png
 !public/**
 
