@@ -31,5 +31,10 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd /root/Antigravity_OS/Workspaces/pxi-os-core
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+            npm ci
+            npm run build --if-present
