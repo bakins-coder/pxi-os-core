@@ -3080,6 +3080,8 @@ export const useDataStore = create<DataState>()(
                             { id: 'bank-gtb', companyId, bankName: 'GTB PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
                             { id: 'bank-uba', companyId, bankName: 'UBA PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1021135344', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
                             { id: 'bank-zenith', companyId, bankName: 'Zenith Bank PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                            { id: 'bank-cuisine-first', companyId, bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                            { id: 'bank-cuisine-gtb', companyId, bankName: 'GTBank', accountName: 'Xquisite Cuisine Ltd', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
                         ] as BankAccount[];
 
                         // If it's Xquisite, ensure these 3 accounts exist by account number

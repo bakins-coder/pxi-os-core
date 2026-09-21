@@ -119,7 +119,18 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
 /**
  * Get unified bank details for invoices across screen and PDF
  */
-export const getInvoiceBankDetails = (bankAccountsList: any[] = [], settings: any = {}) => {
+export const getInvoiceBankDetails = (bankAccountsList: any[] = [], settings: any = {}, invoiceOrCategory?: any) => {
+    const isCuisine = (typeof invoiceOrCategory === 'boolean' && invoiceOrCategory) ||
+        (typeof invoiceOrCategory === 'string' && (invoiceOrCategory === 'Cuisine' || invoiceOrCategory === 'Standard' || invoiceOrCategory === 'Standard Orders')) ||
+        (invoiceOrCategory && typeof invoiceOrCategory === 'object' && (invoiceOrCategory.category === 'Cuisine' || invoiceOrCategory.category === 'Standard' || invoiceOrCategory.category === 'Standard Orders'));
+
+    if (isCuisine) {
+        return [
+            { name: "Xquisite Cuisine", bank: "First Bank", acc: "2022655945" },
+            { name: "Xquisite Cuisine Ltd", bank: "GTBank", acc: "0210736266" }
+        ];
+    }
+
     const activeSettings = (settings && Object.keys(settings).length > 0)
         ? settings
         : (useSettingsStore.getState().settings || {});
@@ -404,7 +415,7 @@ export const generateInvoicePDF = async (
     leftColY += 6;
 
     // Bank Grid (2x2)
-    const banks = getInvoiceBankDetails(useDataStore.getState().bankAccounts || [], settings);
+    const banks = getInvoiceBankDetails(useDataStore.getState().bankAccounts || [], settings, invoice);
 
     const startX = 15;
     const boxW = 55;

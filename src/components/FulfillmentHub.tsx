@@ -1033,7 +1033,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                            <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(displayOrgName || 'The Organization').toUpperCase()}</span></p>
                            {(() => {
-                              const banks = getInvoiceBankDetails(bankAccounts, org);
+                              const banks = getInvoiceBankDetails(bankAccounts, org, isCuisineOrder || invoice);
                               return (
                                  <>
                                     <div className="flex justify-between items-center mb-3">
