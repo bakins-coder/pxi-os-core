@@ -163,7 +163,12 @@ export const generateInvoicePDF = async (
     let brandColor = settings.brandColor || '#F47C20';
 
     // Determine organization name from settings or fallback
-    const orgName = settings.name || 'Organization';
+    const isCuisineInvoice = invoice.category === 'Cuisine' || invoice.category === 'Standard' || invoice.category === 'Standard Orders';
+    const rawOrgName = settings.name || 'Organization';
+    const orgName = (isCuisineInvoice && rawOrgName.toLowerCase().includes('xquisite'))
+        ? 'Xquisite Cuisine'
+        : rawOrgName;
+
     const isProforma = invoice.status === InvoiceStatus.PROFORMA;
 
     // ---------------------------------------------------------
@@ -267,9 +272,11 @@ export const generateInvoicePDF = async (
         detailY += 6;
     };
 
+    const fulfillmentDate = (invoice as any).fulfillmentDate || (invoice as any).eventDate || invoice.date;
+
     addDetail('Invoice Number:', invoice.number);
     addDetail('Invoice Date:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
-    // Payment is always due on receipt as per user request
+    addDetail('Fulfillment Date:', new Date(fulfillmentDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
     addDetail('Payment Due:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
 
 

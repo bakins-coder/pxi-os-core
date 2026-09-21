@@ -406,7 +406,7 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
    const { settings: org } = useSettingsStore();
    const { contacts, bankAccounts, finalizeInvoice, updateInvoiceLines, cateringEvents } = useDataStore();
    const contact = contacts.find(c => c.id === invoice.contactId);
-   const event = cateringEvents.find(e => e.id === eventId);
+   const event = cateringEvents.find(e => e.id === eventId || e.financials?.invoiceId === invoice.id || (e.customerName === invoice.customerName && e.eventDate));
 
    // Helper to title case names (e.g. "mrs debanke aderogba" -> "Mrs Debanke Aderogba")
    const toTitleCase = (str: string) => {
@@ -415,7 +415,6 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
    };
 
    // Resolve the display name: Prioritize the specific host identity associated with this order/event
-   // If the order has a specific customerName (e.g. "Mrs. Aderogba"), we use it even if it's linked to a generic contact (e.g. "Temple")
    const rawDisplayName = (event?.customerName && event.customerName !== 'Valued Customer') 
       ? event.customerName 
       : (invoice.customerName || contact?.name || 'Valued Customer');
@@ -424,9 +423,17 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
    
    const displayEmail = (contact?.name === event?.customerName) ? (contact?.email || '') : ''; // Only show email if it matches the current host to prevent data leaks
    const displayAddress = contact?.address || 'Address on file';
-    const effectiveIsStandardFlow = (isStandardFlow || invoice.category === 'Cuisine' || event?.orderType === 'Cuisine') && 
-       !['Banquet', 'Custom', 'Custom Orders'].includes(invoice.category || '') &&
-       !['Banquet', 'Custom', 'Custom Orders'].includes(event?.orderType || '');
+   const effectiveIsStandardFlow = (isStandardFlow || invoice.category === 'Cuisine' || event?.orderType === 'Cuisine') && 
+      !['Banquet', 'Custom', 'Custom Orders'].includes(invoice.category || '') &&
+      !['Banquet', 'Custom', 'Custom Orders'].includes(event?.orderType || '');
+
+   const isCuisineOrder = invoice.category === 'Cuisine' || event?.orderType === 'Cuisine' || effectiveIsStandardFlow;
+   const displayOrgName = isCuisineOrder
+      ? (org.name?.toLowerCase().includes('xquisite') ? 'Xquisite Cuisine' : (org.name || 'Organization'))
+      : (org.name || 'Organization');
+
+   const fulfillmentDate = (invoice as any).fulfillmentDate || (invoice as any).eventDate || event?.eventDate || invoice.date;
+
    const isBanquetMode = org.type === 'Catering' || org.type === 'Bakery';
    const isCustomFlow = !effectiveIsStandardFlow;
    const taxFeatures = industryConfig.features.taxConfig;
@@ -449,34 +456,33 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
 
    const handlePrint = (capturedContent?: string) => {
       const win = window.open('', '_blank');
-      // Ensure the printed document shows "INVOICE" if it's being finalized
-      // Prioritize capturedContent (from finalize) over DOM selector (to avoid race conditions)
+      if (!win) return;
+      win.document.title = `Invoice ${invoice.number}`;
       const content = capturedContent || document.querySelector('.WaveInvoiceContent')?.innerHTML || '';
 
-      win?.document.write(`
-   < html >
-            <head>
-               <title>Invoice ${invoice.number}</title>
-               <base href="${window.location.origin}/" />
-               <script src="https://cdn.tailwindcss.com"></script>
-               <style>
-                  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-                  body { font-family: 'Inter', sans-serif; padding: 40px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                  .invoice-box { transform: rotate(-2deg); border: 2px solid #fb923c; color: #f97316; display: inline-block; padding: 5px 15px; font-weight: 900; letter-spacing: 0.1em; }
-                  @media print {
-                    .no-print { display: none; }
-                  }
-               </style>
-            </head>
-            <body>
-               ${content}
-            </body>
-         </html >
-   `);
+      win.document.write(`<!DOCTYPE html>
+<html>
+   <head>
+      <title>Invoice ${invoice.number}</title>
+      <base href="${window.location.origin}/" />
+      <script src="https://cdn.tailwindcss.com"></script>
+      <style>
+         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+         @page { size: auto; margin: 15mm; }
+         body { font-family: 'Inter', sans-serif; padding: 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+         .invoice-box { transform: rotate(-2deg); border: 2px solid #fb923c; color: #f97316; display: inline-block; padding: 5px 15px; font-weight: 900; letter-spacing: 0.1em; }
+         .no-print, button, .no-print * { display: none !important; }
+         textarea { border: none !important; resize: none !important; background: transparent !important; }
+         input { border: none !important; background: transparent !important; }
+      </style>
+   </head>
+   <body>
+      ${content}
+   </body>
+</html>`);
+      win.document.close();
       setTimeout(() => {
-         win?.print();
-         // Small delay before closure to allow print spooling on some browsers
-         // win?.close(); 
+         win.print();
       }, 500);
    };
 
@@ -747,7 +753,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
    return (
       <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 md:p-4 bg-slate-950/98 backdrop-blur-md animate-in zoom-in duration-200">
          <div className="bg-white rounded-none md:rounded-lg shadow-2xl w-full max-w-3xl flex flex-col h-full md:h-[90vh] overflow-hidden relative">
-            <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-white/80 backdrop-blur-sm border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-lg transition-all shadow-lg"><X size={20} /></button>
+            <button onClick={onClose} className="no-print absolute top-4 right-4 z-20 p-2 bg-white/80 backdrop-blur-sm border border-slate-200 hover:bg-rose-500 hover:text-white text-slate-400 rounded-lg transition-all shadow-lg"><X size={20} /></button>
 
             {/* INVOICE DOCUMENT SCROLLABLE AREA */}
             <div className="flex-1 overflow-y-auto scrollbar-thin bg-white WaveInvoiceContent p-4 md:p-12 relative">
@@ -758,13 +764,13 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                   <div className="w-48">
                      {org.logo ? (
-                        <img src={org.logo} alt={org.name} className="w-full object-contain max-h-20" />
+                        <img src={org.logo} alt={displayOrgName} className="w-full object-contain max-h-20" />
                      ) : (
-                        <h1 className="text-2xl font-black tracking-tighter text-slate-900 italic">{org.name || 'PX-I'}</h1>
+                        <h1 className="text-2xl font-black tracking-tighter text-slate-900 italic">{displayOrgName}</h1>
                      )}
                   </div>
                   <div className="text-right">
-                     <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{org.name || 'Organization'}</h2>
+                     <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{displayOrgName}</h2>
                      <p className="text-[10px] text-slate-400 font-medium">Official Invoice</p>
                   </div>
                </div>
@@ -788,6 +794,27 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                         />
                         <p className="text-sm text-slate-500">{displayEmail}</p>
                         <p className="text-sm text-slate-500 max-w-[200px]">{displayAddress}</p>
+                        {(() => {
+                           const loc = event?.cuisineDetails?.deliveryLocation || event?.location || '';
+                           const isPickup = loc.toLowerCase().includes('pickup') || loc.toLowerCase().includes('self');
+                           return (
+                              <div className="mt-2">
+                                 {isPickup ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs rounded-md">
+                                       🚚 Fulfillment: Pickup (Self Collection)
+                                    </span>
+                                 ) : loc ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-700 font-medium text-xs rounded-md">
+                                       🚚 Delivery Address: {loc}
+                                    </span>
+                                 ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-500 font-medium text-xs rounded-md">
+                                       🚚 Fulfillment: Standard Delivery
+                                    </span>
+                                 )}
+                              </div>
+                           );
+                        })()}
                      </div>
                   </div>
 
@@ -807,6 +834,9 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
                         <span className="text-xs font-bold text-slate-500">Invoice Date:</span>
                         <span className="text-xs font-bold text-slate-900">{invoice.date ? new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</span>
+
+                        <span className="text-xs font-bold text-slate-500">Fulfillment Date:</span>
+                        <span className="text-xs font-bold text-slate-900">{fulfillmentDate ? new Date(fulfillmentDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</span>
 
                         <span className="text-xs font-bold text-slate-500">Payment Due:</span>
                         <span className="text-xs font-bold text-slate-900">
@@ -849,14 +879,14 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                        <div className="flex items-center gap-2 pr-4 flex-1 w-full">
                                           <button
                                              onClick={() => removeLineItem(idx)}
-                                             className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100 flex-shrink-0"
+                                             className="no-print p-1 text-rose-500 hover:bg-rose-50 rounded transition-all md:opacity-0 md:group-hover:opacity-100 flex-shrink-0"
                                           >
                                              <Trash2 size={12} />
                                           </button>
                                           {isCustomFlow && (
                                              <button
                                                 onClick={() => toggleSection(idx)}
-                                                className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all flex-shrink-0 ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
+                                                className={`no-print px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all flex-shrink-0 ${isHeader ? 'bg-orange-400 text-white shadow-sm' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-600'} `}
                                                 title={isHeader ? "Currently Section Header" : "Currently Itemized (No Price)"}
                                              >
                                                 {isHeader ? 'Section' : 'Itemized'}
@@ -983,7 +1013,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                      {isProformaMode && (
                         <button
                            onClick={addLineItem}
-                           className="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-orange-400 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider mt-4"
+                           className="no-print w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-orange-400 hover:text-orange-400 transition-all flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider mt-4"
                         >
                            <Plus size={14} /> Add Line Item
                         </button>
@@ -1001,7 +1031,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                         <div>
                            <h3 className="font-bold text-slate-900 mb-2">Payment Information</h3>
 
-                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(org.name || 'The Organization').toUpperCase()}</span></p>
+                           <p className="text-xs text-slate-500 mb-4">Thank you for your patronage. Please make all payment transfers to: <br /><span className="font-black text-slate-900">{(displayOrgName || 'The Organization').toUpperCase()}</span></p>
                            {(() => {
                               const banks = getInvoiceBankDetails(bankAccounts, org);
                               return (
@@ -1060,6 +1090,19 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  ldesc.includes('rental');
                            };
 
+                           const deliveryCents = editableLines.reduce((acc, l) => {
+                              if (isExcludedFromTax(l.description)) {
+                                 const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                                    ? l.manualPriceCents
+                                    : l.unitPriceCents;
+                                 return acc + (l.quantity * price);
+                              }
+                              return acc;
+                           }, 0);
+
+                           const loc = event?.cuisineDetails?.deliveryLocation || event?.location || '';
+                           const isPickup = loc.toLowerCase().includes('pickup') || loc.toLowerCase().includes('self');
+
                            const hasSections = editableLines.some(l => l.description.startsWith('[SECTION] '));
 
                            // 1. Calculate Standard Totals
@@ -1109,6 +1152,14 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
                                     <span>{formatCurrency(effectiveSubtotal)}</span>
+                                 </div>
+                                 <div className="flex justify-between items-center text-sm font-medium text-slate-500">
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Delivery / Logistics</span>
+                                    <span>
+                                       {deliveryCents > 0 
+                                          ? formatCurrency(deliveryCents) 
+                                          : (isPickup ? <span className="text-emerald-600 font-bold text-xs">₦0.00 (Pickup)</span> : formatCurrency(0))}
+                                    </span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({effectiveIsStandardFlow ? '0%' : `${Math.round(taxFeatures.serviceChargeRate * 100)}%`})</span>
