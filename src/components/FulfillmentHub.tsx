@@ -877,7 +877,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase mb-1">{isHeader ? 'Qty/Guests' : 'Quantity'}</label>
                                              <input
                                                 type="number"
-                                                className="w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center ${isHeader ? 'font-black text-slate-900' : ''}"
+                                                className={`w-full bg-slate-50 border-none focus:ring-1 focus:ring-orange-400 rounded px-2 py-1 text-slate-600 text-center ${isHeader ? 'font-black text-slate-900' : ''}`}
                                                 value={line.quantity}
                                                 onFocus={e => e.target.select()}
                                                 onChange={e => handleLineChange(idx, 'quantity', parseInt(e.target.value) || 0)}
@@ -891,7 +891,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                                    <span className="text-[10px] text-slate-400 mr-1">{NAIRA_SYMBOL}</span>
                                                    <input
                                                       type="number"
-                                                      className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}"
+                                                      className={`w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-right ${line.manualPriceCents !== undefined && line.manualPriceCents !== line.unitPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} ${isHeader ? 'font-black text-slate-900' : ''}`}
                                                       value={line.unitPriceCents / 100}
                                                       onFocus={e => e.target.select()}
                                                       onChange={e => handleLineChange(idx, 'unitPriceCents', Math.round((parseFloat(e.target.value) || 0) * 100))}
@@ -910,7 +910,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                                          type="number"
                                                          className="w-full md:w-20 bg-transparent border-none focus:ring-0 p-0 text-orange-600 font-bold text-right placeholder:text-orange-200/50"
                                                          placeholder="-"
-                                                         value={line.manualPriceCents ? line.manualPriceCents / 100 : ''}
+                                                         value={line.manualPriceCents !== undefined && line.manualPriceCents !== line.unitPriceCents ? line.manualPriceCents / 100 : ''}
                                                          onChange={e => {
                                                             const val = parseFloat(e.target.value);
                                                             handleLineChange(idx, 'manualPriceCents', isNaN(val) ? undefined : Math.round(val * 100));
@@ -948,7 +948,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                           <div className="flex flex-col md:block">
                                              <label className="md:hidden text-[8px] font-black text-slate-400 uppercase">Unit</label>
                                              {showPricing && (
-                                                <span className={`block md: text-right text-xs ${line.manualPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} `}>
+                                                <span className={`block md:text-right text-xs ${line.manualPriceCents !== undefined && line.manualPriceCents !== line.unitPriceCents ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-600'} `}>
                                                    {formatCurrency(line.unitPriceCents)}
                                                 </span>
                                              )}
@@ -958,7 +958,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                                 <label className="md:hidden text-[8px] font-black text-orange-400 uppercase">Discount</label>
                                                 {showPricing && (
                                                    <span className="block md:text-right font-bold text-orange-600 text-xs">
-                                                      {line.manualPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
+                                                      {line.manualPriceCents !== undefined && line.manualPriceCents !== line.unitPriceCents ? formatCurrency(line.manualPriceCents) : '-'}
                                                    </span>
                                                 )}
                                              </div>
