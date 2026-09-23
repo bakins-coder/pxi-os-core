@@ -32,6 +32,14 @@ export const BanquetGuestPortal: React.FC<BanquetGuestPortalProps> = ({
       const hashParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
       if (hashParams.get(key)) return hashParams.get(key);
     }
+
+    const fullUrl = window.location.href;
+    if (fullUrl.includes('?')) {
+      const queryPart = fullUrl.substring(fullUrl.indexOf('?'));
+      const globalParams = new URLSearchParams(queryPart);
+      if (globalParams.get(key)) return globalParams.get(key);
+    }
+
     return null;
   };
 
