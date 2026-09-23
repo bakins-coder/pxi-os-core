@@ -7,7 +7,7 @@ import {
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview, PerformanceMetric,
     RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount, EntityMedia, Lead,
-    KnowledgeBase, KnowledgeSource
+    KnowledgeBase, KnowledgeSource, BanquetGuestOrder
 } from '../types';
 
 import { supabase, syncTableToCloud, pullCloudState, mapIncomingRow, pullInventoryViews, postReusableMovement, postRentalMovement, postIngredientMovement, uploadEntityImage, saveEntityMedia } from '../services/supabase';
@@ -193,6 +193,10 @@ interface DataState {
     dispatchAssets: (eventId: string, assets: DispatchedAsset[]) => void;
     finalizeEventLogistics: (eventId: string, returns: LogisticsReturn[]) => void;
 
+    // Banquet Guest Seat Ordering Actions
+    configureBanquetTables: (eventId: string, totalTables: number, seatsPerTable: number) => void;
+    addBanquetGuestOrder: (order: Omit<BanquetGuestOrder, 'id' | 'createdAt' | 'status'>) => BanquetGuestOrder;
+    updateBanquetGuestOrderStatus: (eventId: string, orderId: string, status: BanquetGuestOrder['status'], claimedBy?: string) => void;
 
     reset: () => void;
     updateCashAtHand: (cents: number) => void;
@@ -2089,6 +2093,56 @@ export const useDataStore = create<DataState>()(
             },
 
             completeCateringEvent: (eventId) => get().completeEvent(eventId),
+
+            configureBanquetTables: (eventId, totalTables, seatsPerTable) => {
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map((e) =>
+                        e.id === eventId ? {
+                            ...e,
+                            tableConfig: { totalTables, seatsPerTable, active: true }
+                        } : e
+                    )
+                }));
+                get().syncWithCloud();
+            },
+
+            addBanquetGuestOrder: (orderData) => {
+                const newOrder: BanquetGuestOrder = {
+                    ...orderData,
+                    id: `bqo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    status: 'Received',
+                    createdAt: new Date().toISOString()
+                };
+
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map((e) =>
+                        e.id === orderData.eventId ? {
+                            ...e,
+                            banquetGuestOrders: [newOrder, ...(e.banquetGuestOrders || [])]
+                        } : e
+                    )
+                }));
+                get().syncWithCloud();
+                return newOrder;
+            },
+
+            updateBanquetGuestOrderStatus: (eventId, orderId, status, claimedBy) => {
+                set((state) => ({
+                    cateringEvents: state.cateringEvents.map((e) =>
+                        e.id === eventId ? {
+                            ...e,
+                            banquetGuestOrders: (e.banquetGuestOrders || []).map((ord) =>
+                                ord.id === orderId ? {
+                                    ...ord,
+                                    status,
+                                    claimedBy: claimedBy !== undefined ? claimedBy : ord.claimedBy
+                                } : ord
+                            )
+                        } : e
+                    )
+                }));
+                get().syncWithCloud();
+            },
 
             dispatchAssets: (eventId, assets) => {
                 set((state) => {

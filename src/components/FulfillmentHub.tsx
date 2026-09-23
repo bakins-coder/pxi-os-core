@@ -12,7 +12,7 @@ import {
    Clock, Users, Palette, AlertCircle, Activity, Box, ChevronDown, Download, Link, MessageSquare,
    ShoppingCart, FileText, Grid3X3, Minus, Banknote, Check, Printer, Share2, Mail, Flag, Search,
    ShoppingBag, User, Flame, UtensilsCrossed, ArrowDownLeft, Info, ClipboardList, SkipForward,
-   ArrowUpRight as LucideArrowUpRight
+   ArrowUpRight as LucideArrowUpRight, QrCode, Settings, Copy, ExternalLink, Send, Utensils
 } from 'lucide-react';
 import { NAIRA_SYMBOL } from '../utils/finance';
 import { OrderBrochure } from './OrderBrochure';
@@ -1595,6 +1595,395 @@ const LogisticsReturnModal = ({ event, onClose, onComplete }: { event: CateringE
    );
 };
 
+const BanquetQrManagementModal = ({ event, onClose }: { event: CateringEvent; onClose: () => void }) => {
+   const { configureBanquetTables, updateBanquetGuestOrderStatus } = useDataStore();
+   const [totalTables, setTotalTables] = useState<number>(event.tableConfig?.totalTables || 20);
+   const [seatsPerTable, setSeatsPerTable] = useState<number>(event.tableConfig?.seatsPerTable || 10);
+   const [activeTab, setActiveTab] = useState<'kds' | 'qr' | 'config'>('kds');
+   const [selectedTable, setSelectedTable] = useState<number>(1);
+   const [copiedLink, setCopiedLink] = useState(false);
+
+   const handleSaveConfig = () => {
+      configureBanquetTables(event.id, totalTables, seatsPerTable);
+      alert(`Banquet QR Seat Ordering configured for ${totalTables} Tables (${seatsPerTable} seats/table).`);
+   };
+
+   // Construct accurate HashRouter URL for guest scanning & testing
+   const getGuestUrl = (tableNo: number, seatNo: string = 'A') => {
+      const origin = window.location.origin;
+      const pathname = window.location.pathname;
+      return `${origin}${pathname}#/?banquetEventId=${event.id}&table=${tableNo}&seat=${seatNo}`;
+   };
+
+   // Real 2D scannable QR code generator API URL
+   const getQrImageUrl = (targetUrl: string) => {
+      return `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(targetUrl)}`;
+   };
+
+   const currentTargetUrl = getGuestUrl(selectedTable, 'A');
+   const currentQrImageUrl = getQrImageUrl(currentTargetUrl);
+
+   const orders = event.banquetGuestOrders || [];
+   const activeOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled');
+
+   const handleDownloadQrImage = async () => {
+      try {
+         const res = await fetch(currentQrImageUrl);
+         const blob = await res.blob();
+         const blobUrl = URL.createObjectURL(blob);
+         const a = document.createElement('a');
+         a.href = blobUrl;
+         a.download = `Xquisite_Banquet_Table_${selectedTable}_QR.png`;
+         document.body.appendChild(a);
+         a.click();
+         document.body.removeChild(a);
+         URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+         window.open(currentQrImageUrl, '_blank');
+      }
+   };
+
+   const handleBatchPrintAll = () => {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+         alert('Please allow popups to print table tent cards.');
+         return;
+      }
+
+      let cardsHtml = '';
+      for (let t = 1; t <= totalTables; t++) {
+         const cardUrl = getGuestUrl(t, 'A');
+         const qrImg = getQrImageUrl(cardUrl);
+         cardsHtml += `
+            <div class="card">
+               <div class="badge">XQUISITE CELEBRATIONS BANQUET</div>
+               <h1 class="title">${event.customerName}</h1>
+               <h2 class="table-num">TABLE ${t}</h2>
+               <div class="qr-box">
+                  <img src="${qrImg}" alt="Table ${t} QR Code" />
+                  <p class="scan-text">SCAN TO ORDER FROM SEAT</p>
+               </div>
+               <p class="instructions">Point your smartphone camera at the QR code to view the complimentary Banquet Menu & order straight to your seat.</p>
+               <div class="footer">Complimentary Guest Service • Powered by Paradigm OS</div>
+            </div>
+         `;
+      }
+
+      printWindow.document.write(`
+         <!DOCTYPE html>
+         <html>
+         <head>
+            <title>Banquet Table QR Tent Cards - ${event.customerName}</title>
+            <style>
+               @page { size: A4; margin: 10mm; }
+               body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #0f172a; margin: 0; padding: 10px; }
+               .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; }
+               .card { border: 2px dashed #cbd5e1; border-radius: 20px; padding: 24px; text-align: center; page-break-inside: avoid; background: #fafafa; }
+               .badge { font-size: 10px; font-weight: 900; letter-spacing: 2px; color: #d97706; background: #fef3c7; padding: 4px 12px; border-radius: 999px; display: inline-block; margin-bottom: 8px; }
+               .title { font-size: 20px; font-weight: 900; margin: 4px 0; color: #0f172a; }
+               .table-num { font-size: 28px; font-weight: 900; color: #d97706; margin: 0 0 12px 0; }
+               .qr-box { background: #fff; border: 3px solid #f59e0b; border-radius: 16px; padding: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+               .qr-box img { width: 180px; height: 180px; display: block; margin: 0 auto; }
+               .scan-text { font-size: 10px; font-weight: 900; letter-spacing: 1.5px; color: #0f172a; margin-top: 8px; margin-bottom: 0; }
+               .instructions { font-size: 11px; color: #64748b; margin-top: 12px; line-height: 1.4; }
+               .footer { font-size: 9px; color: #94a3b8; font-weight: 700; margin-top: 12px; }
+            </style>
+         </head>
+         <body>
+            <div class="grid">
+               ${cardsHtml}
+            </div>
+            <script>
+               window.onload = function() {
+                  setTimeout(function() {
+                     window.print();
+                  }, 1000);
+               };
+            </script>
+         </body>
+         </html>
+      `);
+      printWindow.document.close();
+   };
+
+   return (
+      <div className="fixed inset-0 z-[170] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in zoom-in duration-200">
+         <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[88vh] text-slate-100">
+
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+               <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 bg-amber-500 rounded-2xl flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20">
+                     <QrCode size={22} />
+                  </div>
+                  <div>
+                     <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                           Banquet Guest QR & KDS
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">
+                           {event.customerName}
+                        </span>
+                     </div>
+                     <h2 className="text-lg font-black text-white tracking-tight mt-0.5">
+                        Live Seat Order Dispatch & Table QR Cards
+                     </h2>
+                  </div>
+               </div>
+
+               <div className="flex items-center gap-2">
+                  <button
+                     onClick={() => setActiveTab('kds')}
+                     className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                        activeTab === 'kds' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-white'
+                     }`}
+                  >
+                     <Clock size={14} /> Live KDS Stream ({activeOrders.length})
+                  </button>
+                  <button
+                     onClick={() => setActiveTab('qr')}
+                     className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                        activeTab === 'qr' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-white'
+                     }`}
+                  >
+                     <QrCode size={14} /> Printable QR Cards
+                  </button>
+                  <button
+                     onClick={() => setActiveTab('config')}
+                     className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                        activeTab === 'config' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400 hover:text-white'
+                     }`}
+                  >
+                     <Settings size={14} /> Table Config
+                  </button>
+                  <button onClick={onClose} className="p-2 bg-slate-800 hover:bg-rose-500 hover:text-white text-slate-400 rounded-xl transition-all ml-2">
+                     <X size={20} />
+                  </button>
+               </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+               {/* TAB 1: LIVE KDS STREAM */}
+               {activeTab === 'kds' && (
+                  <div className="space-y-6">
+                     <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <h3 className="text-sm font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                           <ChefHat size={16} className="text-amber-400" /> Active Banquet Guest Orders ({activeOrders.length})
+                        </h3>
+                        <span className="text-xs text-slate-500 font-semibold">Real-time Waiter & Kitchen Queue</span>
+                     </div>
+
+                     {activeOrders.length === 0 ? (
+                        <div className="text-center py-20 bg-slate-950/60 border border-slate-800/80 rounded-3xl p-8">
+                           <Utensils size={48} className="mx-auto text-slate-700 mb-3" />
+                           <h4 className="text-base font-bold text-slate-300">No Pending Banquet Orders</h4>
+                           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                              When guests scan table QR codes and place orders, live tickets will appear here with chime alerts.
+                           </p>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {activeOrders.map((ord) => (
+                              <div key={ord.id} className="bg-slate-950 border border-amber-500/30 rounded-3xl p-5 flex flex-col justify-between space-y-4 shadow-xl">
+                                 <div>
+                                    <div className="flex items-center justify-between">
+                                       <span className="text-xs font-black uppercase text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
+                                          Table {ord.tableNo} • Seat {ord.seatNo}
+                                       </span>
+                                       <span className="text-[10px] font-bold text-slate-400">
+                                          {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                       </span>
+                                    </div>
+
+                                    <h4 className="text-sm font-bold text-white mt-3">
+                                       {ord.guestName || `Guest at Table ${ord.tableNo}`}
+                                    </h4>
+
+                                    <div className="mt-3 space-y-2 bg-slate-900 border border-slate-800 rounded-2xl p-3">
+                                       {ord.items.map((it, idx) => (
+                                          <div key={idx} className="flex justify-between items-start text-xs border-b border-slate-800/60 pb-1 last:border-none last:pb-0">
+                                             <div>
+                                                <span className="font-black text-amber-300 mr-2">{it.quantity}x</span>
+                                                <span className="font-bold text-slate-200">{it.name}</span>
+                                                {it.notes && <p className="text-[10px] text-rose-300 italic">"{it.notes}"</p>}
+                                             </div>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 </div>
+
+                                 {/* Status Action Buttons */}
+                                 <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                                    {ord.status === 'Received' && (
+                                       <button
+                                          onClick={() => updateBanquetGuestOrderStatus(event.id, ord.id, 'Preparing')}
+                                          className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all"
+                                       >
+                                          Mark Preparing
+                                       </button>
+                                    )}
+                                    {ord.status === 'Preparing' && (
+                                       <button
+                                          onClick={() => updateBanquetGuestOrderStatus(event.id, ord.id, 'En Route')}
+                                          className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs transition-all"
+                                       >
+                                          Dispatch (En Route)
+                                       </button>
+                                    )}
+                                    {ord.status === 'En Route' && (
+                                       <button
+                                          onClick={() => updateBanquetGuestOrderStatus(event.id, ord.id, 'Delivered')}
+                                          className="flex-1 py-2 bg-[#00ff9d] hover:bg-[#00ff9d]/80 text-slate-950 font-black rounded-xl text-xs transition-all"
+                                       >
+                                          Mark Delivered
+                                       </button>
+                                    )}
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
+                  </div>
+               )}
+
+               {/* TAB 2: PRINTABLE QR CARDS */}
+               {activeTab === 'qr' && (
+                  <div className="space-y-6">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                        <div>
+                           <h3 className="text-sm font-black uppercase text-slate-300">
+                              Table QR Tent Cards Generator ({totalTables} Tables)
+                           </h3>
+                           <p className="text-xs text-slate-400">
+                              Preview table tent cards, download PNG images, or print all table cards in batch.
+                           </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                           <button
+                              onClick={handleBatchPrintAll}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20"
+                           >
+                              <Printer size={14} /> Print All Table Tent Cards ({totalTables})
+                           </button>
+
+                           <div className="flex items-center gap-1 bg-slate-950 border border-slate-700 rounded-xl p-1">
+                              <select
+                                 value={selectedTable}
+                                 onChange={e => setSelectedTable(Number(e.target.value))}
+                                 className="bg-transparent border-none text-xs font-bold text-amber-400 focus:outline-none px-2 py-1"
+                              >
+                                 {Array.from({ length: totalTables }, (_, i) => i + 1).map(t => (
+                                    <option key={t} value={t} className="bg-slate-900 text-white">Table {t}</option>
+                                 ))}
+                              </select>
+                           </div>
+
+                           <button
+                              onClick={() => window.open(currentTargetUrl, '_blank')}
+                              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-1.5"
+                           >
+                              <ExternalLink size={14} /> Open Portal Test
+                           </button>
+                        </div>
+                     </div>
+
+                     {/* QR Preview Card */}
+                     <div className="max-w-md mx-auto bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/40 border-2 border-amber-500/40 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="space-y-1">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                              Xquisite Celebrations Banquet
+                           </span>
+                           <h3 className="text-2xl font-black text-white pt-2">{event.customerName}</h3>
+                           <div className="text-xl font-black text-amber-300">TABLE {selectedTable}</div>
+                        </div>
+
+                        {/* Real 2D Scannable QR Code Image */}
+                        <div className="bg-white p-5 rounded-3xl w-56 h-56 mx-auto flex flex-col items-center justify-center shadow-2xl border-4 border-amber-400/80">
+                           <img
+                              src={currentQrImageUrl}
+                              alt={`Table ${selectedTable} QR Code`}
+                              className="w-44 h-44 object-contain rounded-lg"
+                           />
+                           <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest mt-2">Scan to Order</span>
+                        </div>
+
+                        <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                           Scan with your smartphone camera to view the host complimentary Banquet menu and order straight to your seat.
+                        </p>
+
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                           <button
+                              onClick={handleDownloadQrImage}
+                              className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-amber-500/20"
+                           >
+                              <Download size={14} /> Download QR PNG
+                           </button>
+                           <button
+                              onClick={() => {
+                                 navigator.clipboard.writeText(currentTargetUrl);
+                                 setCopiedLink(true);
+                                 setTimeout(() => setCopiedLink(false), 2000);
+                              }}
+                              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                           >
+                              <Copy size={14} /> {copiedLink ? 'Link Copied!' : 'Copy Guest Link'}
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               )}
+
+               {/* TAB 3: TABLE CONFIG */}
+               {activeTab === 'config' && (
+                  <div className="max-w-md mx-auto space-y-6 pt-6">
+                     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-5">
+                        <h3 className="text-sm font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                           <Settings size={16} /> Banquet Layout Settings
+                        </h3>
+
+                        <div>
+                           <label className="text-xs font-bold text-slate-400 block mb-1">Total Number of Tables</label>
+                           <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={totalTables}
+                              onChange={e => setTotalTables(Number(e.target.value))}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm font-bold text-white focus:outline-none focus:border-amber-400"
+                           />
+                        </div>
+
+                        <div>
+                           <label className="text-xs font-bold text-slate-400 block mb-1">Seats per Table</label>
+                           <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={seatsPerTable}
+                              onChange={e => setSeatsPerTable(Number(e.target.value))}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm font-bold text-white focus:outline-none focus:border-amber-400"
+                           />
+                        </div>
+
+                        <button
+                           onClick={handleSaveConfig}
+                           className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20"
+                        >
+                           Save Table Layout & Activate QR Ordering
+                        </button>
+                     </div>
+                  </div>
+               )}
+            </div>
+         </div>
+      </div>
+   );
+};
+
 const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
    const { settings } = useSettingsStore.getState();
    // 1. Strict ID Link (Primary Source of Truth)
@@ -1652,7 +2041,7 @@ const getEventFinancials = (ev: CateringEvent, invoices: Invoice[]) => {
    };
 };
 
-const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispatch, onOpenLogistics, onOpenRequisitions, onOpenMonitor }: {
+const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispatch, onOpenLogistics, onOpenRequisitions, onOpenMonitor, onOpenBanquetQr }: {
    event: CateringEvent,
    onAmend: (ev: CateringEvent) => void,
    onViewInvoice: (inv: Invoice) => void,
@@ -1660,7 +2049,8 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
    onOpenDispatch: (event: CateringEvent) => void,
    onOpenLogistics: (event: CateringEvent) => void,
    onOpenRequisitions: (event: CateringEvent) => void,
-   onOpenMonitor: (eventId: string) => void
+   onOpenMonitor: (eventId: string) => void,
+   onOpenBanquetQr?: (event: CateringEvent) => void
 }) => {
    const { settings } = useSettingsStore();
    const industryConfig = getIndustryConfig(settings.type);
@@ -1745,6 +2135,11 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                   {salesInvoice && (
                      <button onClick={() => onViewInvoice(salesInvoice)} className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 scale-110 md:scale-100 origin-left">
                         <Printer size={14} /> <span className="hidden sm:inline">View Invoice</span><span className="sm:hidden">Invoice</span>
+                     </button>
+                  )}
+                  {onOpenBanquetQr && (event.orderType === 'Banquet' || !['Cuisine', 'Standard', 'Package'].includes(event.orderType || '')) && (
+                     <button onClick={() => onOpenBanquetQr(event)} className="px-5 py-2.5 bg-amber-500 text-slate-950 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-400 transition-all shadow-md shadow-amber-500/20 flex items-center gap-2">
+                        <QrCode size={14} /> <span className="hidden sm:inline">Banquet QR & KDS</span><span className="sm:hidden">Guest QR</span>
                      </button>
                   )}
                   {event.currentPhase === 'Execution' && (
@@ -2620,6 +3015,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    const [requisitionTrackerEvent, setRequisitionTrackerEvent] = useState<CateringEvent | null>(null);
    const [procurementWizardEvent, setProcurementWizardEvent] = useState<CateringEvent | null>(null);
    const [orderBrochureEvent, setOrderBrochureEvent] = useState<CateringEvent | null>(null);
+   const [banquetQrEvent, setBanquetQrEvent] = useState<CateringEvent | null>(null);
 
    const cateringEvents = useDataStore(state => state.cateringEvents);
    const { user } = useAuthStore();
@@ -3003,6 +3399,7 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                            onOpenLogistics={(ev) => setLogisticsReturnEvent(ev)}
                            onOpenRequisitions={(ev) => setRequisitionTrackerEvent(ev)}
                            onOpenMonitor={(eventId) => setPortionMonitorEventId(eventId)}
+                           onOpenBanquetQr={(ev) => setBanquetQrEvent(ev)}
                         />
                      </div>
                   )
@@ -3131,6 +3528,16 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
                <ManualInvoiceModal
                   isOpen={isManualInvoiceModalOpen}
                   onClose={() => setIsManualInvoiceModalOpen(false)}
+               />,
+               document.body
+            )
+         }
+
+         {
+            banquetQrEvent && createPortal(
+               <BanquetQrManagementModal
+                  event={banquetQrEvent}
+                  onClose={() => setBanquetQrEvent(null)}
                />,
                document.body
             )

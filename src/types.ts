@@ -267,6 +267,28 @@ export interface CateringEvent {
   banquetDetails?: BanquetDetails;
   cuisineDetails?: CuisineDetails;
   portionMonitor?: PortionMonitor;
+  tableConfig?: { totalTables: number; seatsPerTable: number; active: boolean };
+  banquetGuestOrders?: BanquetGuestOrder[];
+}
+
+export interface BanquetGuestOrderItem {
+  itemId: string;
+  name: string;
+  quantity: number;
+  notes?: string;
+  category?: string;
+}
+
+export interface BanquetGuestOrder {
+  id: string;
+  eventId: string;
+  tableNo: string | number;
+  seatNo: string;
+  guestName?: string;
+  items: BanquetGuestOrderItem[];
+  status: 'Received' | 'Preparing' | 'En Route' | 'Delivered' | 'Cancelled';
+  createdAt: string;
+  claimedBy?: string;
 }
 
 export interface Seat {

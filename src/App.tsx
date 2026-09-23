@@ -37,6 +37,7 @@ import { Presentation } from './components/Presentation';
 import { CustomerAgentStandalone } from './components/CustomerAgentStandalone';
 import { MockupPreview } from './components/MockupPreview';
 import { DiscoveryForm } from './components/Onboarding/DiscoveryForm';
+import { BanquetGuestPortal } from './components/BanquetGuestPortal';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -218,6 +219,21 @@ function AppContent() {
     );
   }
 
+  // Public Banquet Guest QR Order Portal Intercept (HashRouter & Search params supported)
+  const fullUrl = window.location.href;
+  const hash = window.location.hash;
+  const search = window.location.search;
+  if (
+    fullUrl.includes('banquetEventId') ||
+    hash.includes('banquetEventId') ||
+    search.includes('banquetEventId') ||
+    (fullUrl.includes('table=') && fullUrl.includes('seat=')) ||
+    (fullUrl.includes('t=') && fullUrl.includes('s=')) ||
+    hash.includes('/banquet-order')
+  ) {
+    return <BanquetGuestPortal />;
+  }
+
   // [RECOVERY FIX] Allow authenticated users (who just clicked reset link) to see the update password screen
   // instead of being redirected to Dashboard.
   if (user && location.pathname === '/update-password') {
@@ -229,6 +245,7 @@ function AppContent() {
       <Routes>
         <Route path="/login" element={<AuthPage />} />
         <Route path="/update-password" element={<AuthPage initialView="update-password" />} />
+        <Route path="/banquet-order" element={<BanquetGuestPortal />} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="/monitor/:token" element={<ExternalMonitor />} />
