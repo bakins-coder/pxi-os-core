@@ -2251,7 +2251,7 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
             </div>
             <div className="w-full md:w-auto flex flex-col md:flex-row flex-wrap gap-3 md:gap-4 justify-end items-stretch md:items-center">
                {event.currentPhase === 'Procurement' && procurementStatus === 'None' && (
-                  <button onClick={() => window.dispatchEvent(new CustomEvent('open-procurement'))} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+                  <button onClick={() => window.dispatchEvent(new CustomEvent('open-procurement', { detail: event }))} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                      <Truck size={18} /> Plan Fulfillment Execution
                   </button>
                )}

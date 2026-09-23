@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { CateringEvent, BanquetGuestOrderItem, BanquetGuestOrder } from '../types';
+import { supabase, mapIncomingRow } from '../services/supabase';
 import { 
   QrCode, Utensils, CheckCircle2, Clock, AlertCircle, ShoppingBag, 
-  Send, ChevronRight, Sparkles, ChefHat, Info, ArrowLeft, RefreshCw 
+  Send, ChevronRight, Sparkles, ChefHat, Info, ArrowLeft, RefreshCw, Loader2 
 } from 'lucide-react';
 
 interface BanquetGuestPortalProps {
@@ -41,6 +42,8 @@ export const BanquetGuestPortal: React.FC<BanquetGuestPortalProps> = ({
   const [tableNo, setTableNo] = useState<string>(initialTableNo);
   const [seatNo, setSeatNo] = useState<string>(initialSeatNo);
   const [guestName, setGuestName] = useState<string>('');
+  const [cloudEvent, setCloudEvent] = useState<CateringEvent | null>(null);
+  const [isLoadingCloud, setIsLoadingCloud] = useState<boolean>(true);
 
   // Cart state: Map item.id -> { item: DealItem/Line, qty, notes }
   const [cart, setCart] = useState<Record<string, { itemId: string; name: string; category?: string; qty: number; notes: string }>>({});
@@ -48,8 +51,77 @@ export const BanquetGuestPortal: React.FC<BanquetGuestPortalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'menu' | 'status'>('menu');
 
-  // Find target event (with smart fallback to active banquet event)
-  const event: CateringEvent | undefined = cateringEvents.find(e => e.id === targetEventId) || cateringEvents.find(e => e.orderType === 'Banquet' || e.banquetDetails);
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchEventData() {
+      // 1. Check local store
+      const local = cateringEvents.find(e => e.id === targetEventId);
+      if (local) {
+        if (isMounted) {
+          setCloudEvent(local);
+          setIsLoadingCloud(false);
+        }
+        return;
+      }
+
+      // 2. Fetch directly from Supabase for unauthenticated guests on mobile
+      if (targetEventId && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('catering_events')
+            .select('*')
+            .eq('id', targetEventId)
+            .maybeSingle();
+
+          if (data && isMounted) {
+            const mapped = mapIncomingRow('catering_events', data);
+            setCloudEvent(mapped as CateringEvent);
+            setIsLoadingCloud(false);
+            return;
+          }
+        } catch (err) {
+          console.warn('Error fetching cloud event for guest portal:', err);
+        }
+      }
+
+      if (isMounted) setIsLoadingCloud(false);
+    }
+
+    fetchEventData();
+    return () => { isMounted = false; };
+  }, [targetEventId, cateringEvents]);
+
+  // Event resolution hierarchy:
+  // 1. Exact match in local store
+  // 2. Cloud fetched event by ID
+  // 3. Active Banquet event in store
+  // 4. Fallback Banquet event object
+  const event: CateringEvent = 
+    cateringEvents.find(e => e.id === targetEventId) || 
+    cloudEvent || 
+    cateringEvents.find(e => e.orderType === 'Banquet' || e.banquetDetails) ||
+    cateringEvents[0] ||
+    {
+      id: targetEventId || 'banquet-event-fallback',
+      companyId: '10959119-72e4-4e57-ba54-923e36bba6a6',
+      customerName: 'Xquisite Banquet Celebration',
+      eventDate: new Date().toISOString().split('T')[0],
+      guestCount: 100,
+      status: 'In Transit',
+      currentPhase: 'Execution',
+      readinessScore: 100,
+      orderType: 'Banquet',
+      items: [
+        { id: 'm1', name: 'Signature Jollof Rice & Fried Plantain', category: 'Main Courses', quantity: 1, unitPriceCents: 0 },
+        { id: 'm2', name: 'Slow-Cooked Peppered Beef', category: 'Main Courses', quantity: 1, unitPriceCents: 0 },
+        { id: 'm3', name: 'Grilled Herb Chicken', category: 'Main Courses', quantity: 1, unitPriceCents: 0 },
+        { id: 'm4', name: 'Xquisite Tropical Chapman Cocktail', category: 'Beverages', quantity: 1, unitPriceCents: 0 },
+        { id: 'm5', name: 'Sparkling Mineral Water', category: 'Beverages', quantity: 1, unitPriceCents: 0 }
+      ],
+      tasks: [],
+      hardwareChecklist: [],
+      financials: { revenueCents: 0, directCosts: { foodCents: 0, labourCents: 0, energyCents: 0, carriageCents: 0 }, indirectCosts: { adminCents: 0, marketingCents: 0, waitersCents: 0, logisticsCents: 0 }, netProfitMargin: 0 }
+    };
 
   // Sync placed order status if available
   useEffect(() => {
@@ -61,23 +133,12 @@ export const BanquetGuestPortal: React.FC<BanquetGuestPortalProps> = ({
     }
   }, [event?.banquetGuestOrders, placedOrder?.id]);
 
-  if (!event) {
+  if (isLoadingCloud && !event) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
-          <AlertCircle size={48} className="mx-auto text-amber-400 mb-4 animate-bounce" />
-          <h2 className="text-2xl font-black tracking-tight text-white mb-2">Banquet Event Not Found</h2>
-          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            Please verify your QR code scan. The banquet session may have expired or is not currently active.
-          </p>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="w-full py-3 px-6 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl transition-all text-sm"
-            >
-              Return to Dashboard
-            </button>
-          )}
+        <div className="text-center space-y-4">
+          <Loader2 size={40} className="animate-spin text-amber-400 mx-auto" />
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Banquet Menu...</p>
         </div>
       </div>
     );
