@@ -93,12 +93,16 @@ const ProcurementWizard = ({ event, onClose, onFinish, industryConfig }: { event
    const addRequisitionsBulk = useDataStore(state => state.addRequisitionsBulk);
    const createProcurementInvoice = useDataStore(state => state.createProcurementInvoice);
 
-   const handleFinalizePlan = async () => {
-      // 1. Submit Requisitions as Pending
-      addRequisitionsBulk(requisitions.map(r => ({ ...r, referenceId: event.id, status: 'Pending' })));
+   const updateCateringEvent = useDataStore(state => state.updateCateringEvent);
 
-      // 2. Notify UI (No Invoice yet)
-      alert("Requisitions submitted for Finance Approval.");
+   const handleFinalizePlan = async () => {
+      // 1. Submit Requisitions as Approved for instant workflow progression
+      addRequisitionsBulk(requisitions.map(r => ({ ...r, referenceId: event.id, status: 'Approved' })));
+
+      // 2. Advance event to Execution stage & Serving status
+      updateCateringEvent(event.id, { currentPhase: 'Execution', status: 'Serving' });
+
+      alert("Fulfillment Execution Plan confirmed! Event moved to Execution stage.");
       onClose();
    };
 
@@ -2250,8 +2254,15 @@ const EventNodeSummary = ({ event, onAmend, onViewInvoice, onClose, onOpenDispat
                </div>
             </div>
             <div className="w-full md:w-auto flex flex-col md:flex-row flex-wrap gap-3 md:gap-4 justify-end items-stretch md:items-center">
-               {event.currentPhase === 'Procurement' && procurementStatus === 'None' && (
-                  <button onClick={() => window.dispatchEvent(new CustomEvent('open-procurement', { detail: event }))} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+               {event.currentPhase === 'Procurement' && (
+                  <button 
+                     onClick={() => {
+                        updateCateringEvent(event.id, { currentPhase: 'Execution', status: 'Serving' });
+                        window.dispatchEvent(new CustomEvent('open-procurement', { detail: event }));
+                        alert("Fulfillment Execution Plan launched! Order has advanced to Execution stage.");
+                     }} 
+                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all"
+                  >
                      <Truck size={18} /> Plan Fulfillment Execution
                   </button>
                )}
