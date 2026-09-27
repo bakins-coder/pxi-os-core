@@ -167,7 +167,7 @@ interface DataState {
     completeCateringEvent: (eventId: string) => void;
     calculateItemCosting: (id: string, qty: number) => any;
     finalizeProforma: (invoiceId: string) => Promise<void>;
-    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string) => Promise<void>;
+    updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string, manualDeliveryCents?: number, manualServiceChargeCents?: number, manualVatCents?: number, fulfillmentType?: 'delivery' | 'pickup') => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
     finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string) => Promise<void>;
     approveInvoice: (id: string) => void;
@@ -2622,7 +2622,7 @@ export const useDataStore = create<DataState>()(
                 return utilsCalculateCosting(id, qty, state.inventory, state.recipes, state.ingredients);
             },
 
-            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string) => {
+            updateInvoiceLines: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string, manualDeliveryCents?: number, manualServiceChargeCents?: number, manualVatCents?: number, fulfillmentType?: 'delivery' | 'pickup') => {
                 const user = useAuthStore.getState().user;
                 const currentInvoice = get().invoices.find(inv => inv.id === invoiceId);
 
@@ -2702,9 +2702,24 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * taxFeatures.serviceChargeRate);
-                    const effectiveVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * taxFeatures.vatRate);
-                    const effectiveTotal = effectiveTotalSubtotal + effectiveSC + effectiveVAT;
+                    const lineDeliveryCents = lines.reduce((acc, l) => {
+                        if (isExcludedFromTax(l.description)) {
+                            const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                                ? l.manualPriceCents
+                                : l.unitPriceCents;
+                            return acc + (l.quantity * price);
+                        }
+                        return acc;
+                    }, 0);
+
+                    const effectiveDelivery = manualDeliveryCents !== undefined ? manualDeliveryCents : lineDeliveryCents;
+                    const defaultSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * taxFeatures.serviceChargeRate);
+                    const effectiveSC = manualServiceChargeCents !== undefined ? manualServiceChargeCents : defaultSC;
+                    const defaultVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + defaultSC) * taxFeatures.vatRate);
+                    const effectiveVAT = manualVatCents !== undefined ? manualVatCents : defaultVAT;
+
+                    const effectiveSubtotalNonDelivery = effectiveTotalSubtotal - lineDeliveryCents;
+                    const effectiveTotal = effectiveSubtotalNonDelivery + effectiveDelivery + effectiveSC + effectiveVAT;
 
                     // 3. Discount is the difference between what it SHOULD cost vs what it DOES cost
                     const discount = Math.max(0, standardTotal - effectiveTotal);
@@ -2720,6 +2735,10 @@ export const useDataStore = create<DataState>()(
                             taxableSubtotalCents: effectiveTaxableSubtotal,
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
+                            manualDeliveryCents: manualDeliveryCents !== undefined ? manualDeliveryCents : inv.manualDeliveryCents,
+                            manualServiceChargeCents: manualServiceChargeCents !== undefined ? manualServiceChargeCents : inv.manualServiceChargeCents,
+                            manualVatCents: manualVatCents !== undefined ? manualVatCents : inv.manualVatCents,
+                            fulfillmentType: fulfillmentType || inv.fulfillmentType,
                             standardTotalCents: standardTotal,
                             discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
                             totalCents: updatedTotalCents,

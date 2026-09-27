@@ -543,6 +543,10 @@ export interface Invoice {
   manualSetPriceCents?: number;
   discountCents?: number;
   standardTotalCents?: number;
+  manualDeliveryCents?: number;
+  manualServiceChargeCents?: number;
+  manualVatCents?: number;
+  fulfillmentType?: 'delivery' | 'pickup';
 }
 
 export interface InventoryMovement {

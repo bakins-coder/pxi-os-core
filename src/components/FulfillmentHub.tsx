@@ -453,6 +453,15 @@ const WaveInvoiceModal = ({ invoice, onSave, onClose, guestCount = 100, isStanda
 
    const [isFinalizing, setIsFinalizing] = useState(false);
    const [manualTotalOverride, setManualTotalOverride] = useState<number | undefined>(invoice.manualSetPriceCents);
+   const [manualDeliveryCents, setManualDeliveryCents] = useState<number | undefined>(invoice.manualDeliveryCents);
+   const [manualServiceChargeCents, setManualServiceChargeCents] = useState<number | undefined>(invoice.manualServiceChargeCents);
+   const [manualVatCents, setManualVatCents] = useState<number | undefined>(invoice.manualVatCents);
+
+   const initialFulfillmentType = invoice.fulfillmentType || (() => {
+      const loc = event?.cuisineDetails?.deliveryLocation || event?.location || '';
+      return (loc.toLowerCase().includes('pickup') || loc.toLowerCase().includes('self')) ? 'pickup' : 'delivery';
+   })();
+   const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>(initialFulfillmentType);
    const [editableCustomerName, setEditableCustomerName] = useState(displayName);
 
    // Helper for currency formatting
@@ -747,7 +756,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
 
    const handleSaveEdits = async () => {
       try {
-         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, effectiveIsStandardFlow, eventId, editableCustomerName);
+         await updateInvoiceLines(invoice.id, editableLines, manualTotalOverride, effectiveIsStandardFlow, eventId, editableCustomerName, manualDeliveryCents, manualServiceChargeCents, manualVatCents, fulfillmentType);
          onClose();
       } catch (err) {
          console.error("Failed to save edits", err);
@@ -798,27 +807,26 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                         />
                         <p className="text-sm text-slate-500">{displayEmail}</p>
                         <p className="text-sm text-slate-500 max-w-[200px]">{displayAddress}</p>
-                        {(() => {
-                           const loc = event?.cuisineDetails?.deliveryLocation || event?.location || '';
-                           const isPickup = loc.toLowerCase().includes('pickup') || loc.toLowerCase().includes('self');
-                           return (
-                              <div className="mt-2">
-                                 {isPickup ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs rounded-md">
-                                       🚚 Fulfillment: Pickup (Self Collection)
-                                    </span>
-                                 ) : loc ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-700 font-medium text-xs rounded-md">
-                                       🚚 Delivery Address: {loc}
-                                    </span>
-                                 ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-500 font-medium text-xs rounded-md">
-                                       🚚 Fulfillment: Standard Delivery
-                                    </span>
-                                 )}
-                              </div>
-                           );
-                        })()}
+                        <div className="mt-2">
+                           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-semibold rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all">
+                              <span>{fulfillmentType === 'pickup' ? '🛍️' : '🚚'}</span>
+                              <span className="text-slate-500 font-bold">Fulfillment:</span>
+                              <select
+                                 value={fulfillmentType}
+                                 onChange={(e) => {
+                                    const val = e.target.value as 'delivery' | 'pickup';
+                                    setFulfillmentType(val);
+                                    if (val === 'pickup' && manualDeliveryCents === undefined) {
+                                       setManualDeliveryCents(0);
+                                    }
+                                 }}
+                                 className="bg-transparent border-none text-slate-800 font-bold text-xs focus:ring-0 focus:outline-none p-0 cursor-pointer pr-1"
+                              >
+                                 <option value="delivery">Standard Delivery</option>
+                                 <option value="pickup">Pickup (Self Collection)</option>
+                              </select>
+                           </div>
+                        </div>
                      </div>
                   </div>
 
@@ -1104,8 +1112,10 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                               return acc;
                            }, 0);
 
-                           const loc = event?.cuisineDetails?.deliveryLocation || event?.location || '';
-                           const isPickup = loc.toLowerCase().includes('pickup') || loc.toLowerCase().includes('self');
+                           const isPickup = fulfillmentType === 'pickup';
+                           const effectiveDeliveryCents = manualDeliveryCents !== undefined 
+                              ? manualDeliveryCents 
+                              : (isPickup ? 0 : deliveryCents);
 
                            const hasSections = editableLines.some(l => l.description.startsWith('[SECTION] '));
 
@@ -1143,9 +1153,15 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                               return acc + (l.quantity * price);
                            }, 0);
 
-                           const effectiveSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * taxFeatures.serviceChargeRate);
-                           const effectiveVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * taxFeatures.vatRate);
-                           const finalTotal = manualTotalOverride ?? (effectiveSubtotal + effectiveSC + effectiveVAT);
+                           const defaultSC = effectiveIsStandardFlow ? 0 : Math.round(effectiveTaxableSubtotal * taxFeatures.serviceChargeRate);
+                           const effectiveSC = manualServiceChargeCents !== undefined ? manualServiceChargeCents : defaultSC;
+
+                           const defaultVAT = effectiveIsStandardFlow ? 0 : Math.round((effectiveTaxableSubtotal + defaultSC) * taxFeatures.vatRate);
+                           const effectiveVAT = manualVatCents !== undefined ? manualVatCents : defaultVAT;
+
+                           const effectiveSubtotalNonDelivery = effectiveSubtotal - deliveryCents;
+                           const finalCalculatedTotal = effectiveSubtotalNonDelivery + effectiveDeliveryCents + effectiveSC + effectiveVAT;
+                           const finalTotal = manualTotalOverride ?? finalCalculatedTotal;
 
                            const discount = Math.max(0, standardTotal - finalTotal);
                            const discountPercent = standardTotal > 0 ? (discount / standardTotal) * 100 : 0;
@@ -1159,19 +1175,67 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Delivery / Logistics</span>
-                                    <span>
-                                       {deliveryCents > 0 
-                                          ? formatCurrency(deliveryCents) 
-                                          : (isPickup ? <span className="text-emerald-600 font-bold text-xs">₦0.00 (Pickup)</span> : formatCurrency(0))}
-                                    </span>
+                                    {isProformaMode ? (
+                                       <div className="flex items-center bg-slate-50 px-2 py-0.5 rounded border border-slate-200 focus-within:border-orange-400 focus-within:bg-white transition-all">
+                                          <span className="text-slate-400 text-xs mr-1">{NAIRA_SYMBOL}</span>
+                                          <input
+                                             type="number"
+                                             className="w-28 bg-transparent border-none text-right font-bold text-xs focus:ring-0 p-0 text-slate-800"
+                                             placeholder={isPickup ? "0.00 (Pickup)" : "0.00"}
+                                             value={manualDeliveryCents !== undefined ? (manualDeliveryCents / 100) : ''}
+                                             onChange={e => {
+                                                const val = parseFloat(e.target.value);
+                                                setManualDeliveryCents(isNaN(val) ? undefined : Math.round(val * 100));
+                                             }}
+                                          />
+                                       </div>
+                                    ) : (
+                                       <span>
+                                          {effectiveDeliveryCents > 0 
+                                             ? formatCurrency(effectiveDeliveryCents) 
+                                             : (isPickup ? <span className="text-emerald-600 font-bold text-xs">₦0.00 (Pickup)</span> : formatCurrency(0))}
+                                       </span>
+                                    )}
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge ({effectiveIsStandardFlow ? '0%' : `${Math.round(taxFeatures.serviceChargeRate * 100)}%`})</span>
-                                    <span>{formatCurrency(effectiveSC)}</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge {manualServiceChargeCents !== undefined ? '(Custom)' : (effectiveIsStandardFlow ? '(0%)' : `${Math.round(taxFeatures.serviceChargeRate * 100)}%`)}</span>
+                                     {isProformaMode ? (
+                                        <div className="flex items-center bg-slate-50 px-2 py-0.5 rounded border border-slate-200 focus-within:border-orange-400 focus-within:bg-white transition-all">
+                                           <span className="text-slate-400 text-xs mr-1">{NAIRA_SYMBOL}</span>
+                                           <input
+                                              type="number"
+                                              className="w-28 bg-transparent border-none text-right font-bold text-xs focus:ring-0 p-0 text-slate-800"
+                                              placeholder={(defaultSC / 100).toFixed(2)}
+                                              value={manualServiceChargeCents !== undefined ? (manualServiceChargeCents / 100) : ''}
+                                              onChange={e => {
+                                                 const val = parseFloat(e.target.value);
+                                                 setManualServiceChargeCents(isNaN(val) ? undefined : Math.round(val * 100));
+                                              }}
+                                           />
+                                        </div>
+                                     ) : (
+                                        <span>{formatCurrency(effectiveSC)}</span>
+                                     )}
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
-                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT ({effectiveIsStandardFlow ? '0%' : `${(taxFeatures.vatRate * 100).toFixed(1)}%`})</span>
-                                    <span>{formatCurrency(effectiveVAT)}</span>
+                                    <span className="uppercase tracking-widest text-[10px] font-bold">VAT {manualVatCents !== undefined ? '(Custom)' : (effectiveIsStandardFlow ? '(0%)' : `${(taxFeatures.vatRate * 100).toFixed(1)}%`)}</span>
+                                     {isProformaMode ? (
+                                        <div className="flex items-center bg-slate-50 px-2 py-0.5 rounded border border-slate-200 focus-within:border-orange-400 focus-within:bg-white transition-all">
+                                           <span className="text-slate-400 text-xs mr-1">{NAIRA_SYMBOL}</span>
+                                           <input
+                                              type="number"
+                                              className="w-28 bg-transparent border-none text-right font-bold text-xs focus:ring-0 p-0 text-slate-800"
+                                              placeholder={(defaultVAT / 100).toFixed(2)}
+                                              value={manualVatCents !== undefined ? (manualVatCents / 100) : ''}
+                                              onChange={e => {
+                                                 const val = parseFloat(e.target.value);
+                                                 setManualVatCents(isNaN(val) ? undefined : Math.round(val * 100));
+                                              }}
+                                           />
+                                        </div>
+                                     ) : (
+                                        <span>{formatCurrency(effectiveVAT)}</span>
+                                     )}
                                  </div>
 
                                  {hasDiscount && (
@@ -1612,11 +1676,14 @@ const BanquetQrManagementModal = ({ event, onClose }: { event: CateringEvent; on
       alert(`Banquet QR Seat Ordering configured for ${totalTables} Tables (${seatsPerTable} seats/table).`);
    };
 
-   // Construct accurate HashRouter URL for guest scanning & testing
+   // Construct clean, universal URL scannable by all mobile camera apps
    const getGuestUrl = (tableNo: number, seatNo: string = 'A') => {
-      const origin = window.location.origin;
-      const pathname = window.location.pathname;
-      return `${origin}${pathname}#/?banquetEventId=${event.id}&table=${tableNo}&seat=${seatNo}`;
+      let origin = window.location.origin;
+      let pathname = window.location.pathname;
+      if (!pathname.endsWith('/')) {
+         pathname += '/';
+      }
+      return `${origin}${pathname}?banquetEventId=${event.id}&table=${tableNo}&seat=${seatNo}#/banquet-order`;
    };
 
    // Real 2D scannable QR code generator API URL
@@ -1911,6 +1978,9 @@ const BanquetQrManagementModal = ({ event, onClose }: { event: CateringEvent; on
                               src={currentQrImageUrl}
                               alt={`Table ${selectedTable} QR Code`}
                               className="w-44 h-44 object-contain rounded-lg"
+                              onError={(e) => {
+                                 e.currentTarget.src = `https://quickchart.io/qr?size=350&text=${encodeURIComponent(currentTargetUrl)}`;
+                              }}
                            />
                            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest mt-2">Scan to Order</span>
                         </div>

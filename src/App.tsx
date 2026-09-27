@@ -223,13 +223,18 @@ function AppContent() {
   const fullUrl = window.location.href;
   const hash = window.location.hash;
   const search = window.location.search;
+  const pathname = window.location.pathname;
   if (
     fullUrl.includes('banquetEventId') ||
     hash.includes('banquetEventId') ||
     search.includes('banquetEventId') ||
+    fullUrl.includes('eventId=') ||
+    hash.includes('eventId=') ||
+    search.includes('eventId=') ||
     (fullUrl.includes('table=') && fullUrl.includes('seat=')) ||
     (fullUrl.includes('t=') && fullUrl.includes('s=')) ||
-    hash.includes('/banquet-order')
+    hash.includes('/banquet-order') ||
+    pathname.includes('/banquet-order')
   ) {
     return <BanquetGuestPortal />;
   }
