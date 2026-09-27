@@ -169,7 +169,7 @@ interface DataState {
     finalizeProforma: (invoiceId: string) => Promise<void>;
     updateInvoiceLines: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, isCuisine?: boolean, eventId?: string, updatedCustomerName?: string, manualDeliveryCents?: number, manualServiceChargeCents?: number, manualVatCents?: number, fulfillmentType?: 'delivery' | 'pickup') => Promise<void>;
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
-    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string) => Promise<void>;
+    finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string, manualDeliveryCents?: number, manualServiceChargeCents?: number, manualVatCents?: number, fulfillmentType?: 'delivery' | 'pickup') => Promise<void>;
     approveInvoice: (id: string) => void;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
@@ -2780,7 +2780,7 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
 
-            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string) => {
+            finalizeInvoice: async (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string, manualDeliveryCents?: number, manualServiceChargeCents?: number, manualVatCents?: number, fulfillmentType?: 'delivery' | 'pickup') => {
                 const user = useAuthStore.getState().user;
                 const currentInvoice = get().invoices.find(inv => inv.id === invoiceId);
 
@@ -2850,9 +2850,39 @@ export const useDataStore = create<DataState>()(
                         return acc + (l.quantity * price);
                     }, 0);
 
-                    const effectiveSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
-                    const effectiveVAT = effectiveIsCuisine ? 0 : Math.round((effectiveTaxableSubtotal + effectiveSC) * 0.075);
-                    const effectiveTotal = effectiveSubtotal + effectiveSC + effectiveVAT;
+                    const lineDeliveryCents = lines.reduce((acc, l) => {
+                        if (isNonFoodItem(l.description)) {
+                            const price = (l.manualPriceCents !== undefined && l.manualPriceCents !== null)
+                                ? l.manualPriceCents
+                                : l.unitPriceCents;
+                            return acc + (l.quantity * price);
+                        }
+                        return acc;
+                    }, 0);
+
+                    const finalManualDelivery = manualDeliveryCents !== undefined 
+                        ? manualDeliveryCents 
+                        : currentInv?.manualDeliveryCents;
+
+                    const isPickup = (fulfillmentType || currentInv?.fulfillmentType) === 'pickup';
+                    const effectiveDelivery = finalManualDelivery !== undefined 
+                        ? finalManualDelivery 
+                        : (isPickup ? 0 : lineDeliveryCents);
+
+                    const defaultSC = effectiveIsCuisine ? 0 : Math.round(effectiveTaxableSubtotal * 0.15);
+                    const finalManualSC = manualServiceChargeCents !== undefined 
+                        ? manualServiceChargeCents 
+                        : currentInv?.manualServiceChargeCents;
+                    const effectiveSC = finalManualSC !== undefined ? finalManualSC : defaultSC;
+
+                    const defaultVAT = effectiveIsCuisine ? 0 : Math.round((effectiveTaxableSubtotal + defaultSC) * 0.075);
+                    const finalManualVAT = manualVatCents !== undefined 
+                        ? manualVatCents 
+                        : currentInv?.manualVatCents;
+                    const effectiveVAT = finalManualVAT !== undefined ? finalManualVAT : defaultVAT;
+
+                    const effectiveSubtotalNonDelivery = effectiveSubtotal - lineDeliveryCents;
+                    const effectiveTotal = effectiveSubtotalNonDelivery + effectiveDelivery + effectiveSC + effectiveVAT;
                     const discount = Math.max(0, standardTotal - effectiveTotal);
 
                     const updatedTotalCents = overrideTotalCents !== undefined ? overrideTotalCents : effectiveTotal;
@@ -2866,6 +2896,10 @@ export const useDataStore = create<DataState>()(
                             subtotalCents: effectiveSubtotal,
                             serviceChargeCents: effectiveSC,
                             vatCents: effectiveVAT,
+                            manualDeliveryCents: finalManualDelivery,
+                            manualServiceChargeCents: finalManualSC,
+                            manualVatCents: finalManualVAT,
+                            fulfillmentType: fulfillmentType || inv.fulfillmentType,
                             standardTotalCents: standardTotal,
                             discountCents: overrideTotalCents !== undefined ? Math.max(0, standardTotal - overrideTotalCents) : discount,
                             totalCents: updatedTotalCents,

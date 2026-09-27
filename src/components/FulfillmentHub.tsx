@@ -732,7 +732,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
    const handleFinalize = async () => {
       setIsFinalizing(true);
       try {
-         await finalizeInvoice(invoice.id, editableLines, manualTotalOverride, eventId, editableCustomerName);
+         await finalizeInvoice(invoice.id, editableLines, manualTotalOverride, eventId, editableCustomerName, manualDeliveryCents, manualServiceChargeCents, manualVatCents, fulfillmentType);
          setIsFinalizing(false);
 
          // Help the UI reflect the change before the print snapshot
@@ -745,7 +745,15 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
          // Trigger print/PDF generation automatically
          setTimeout(() => handlePrint(capturedContent), 300);
 
-         onSave({ ...invoice, lines: editableLines, status: InvoiceStatus.UNPAID });
+         onSave({
+            ...invoice,
+            lines: editableLines,
+            status: InvoiceStatus.UNPAID,
+            manualDeliveryCents,
+            manualServiceChargeCents,
+            manualVatCents,
+            fulfillmentType
+         });
       } catch (err) {
          console.error("Failed to finalize proforma", err);
          alert("Could not finalize invoice. Please check your internet connection and try again.");
@@ -1175,7 +1183,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Delivery / Logistics</span>
-                                    {isProformaMode ? (
+                                    {true ? (
                                        <div className="flex items-center bg-slate-50 px-2 py-0.5 rounded border border-slate-200 focus-within:border-orange-400 focus-within:bg-white transition-all">
                                           <span className="text-slate-400 text-xs mr-1">{NAIRA_SYMBOL}</span>
                                           <input
@@ -1199,7 +1207,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">Service Charge {manualServiceChargeCents !== undefined ? '(Custom)' : (effectiveIsStandardFlow ? '(0%)' : `${Math.round(taxFeatures.serviceChargeRate * 100)}%`)}</span>
-                                     {isProformaMode ? (
+                                     {true ? (
                                         <div className="flex items-center bg-slate-50 px-2 py-0.5 rounded border border-slate-200 focus-within:border-orange-400 focus-within:bg-white transition-all">
                                            <span className="text-slate-400 text-xs mr-1">{NAIRA_SYMBOL}</span>
                                            <input
@@ -1219,7 +1227,7 @@ Link: ${window.location.origin}/#/invoice/${invoice.id}
                                  </div>
                                  <div className="flex justify-between items-center text-sm font-medium text-slate-500">
                                     <span className="uppercase tracking-widest text-[10px] font-bold">VAT {manualVatCents !== undefined ? '(Custom)' : (effectiveIsStandardFlow ? '(0%)' : `${(taxFeatures.vatRate * 100).toFixed(1)}%`)}</span>
-                                     {isProformaMode ? (
+                                     {true ? (
                                         <div className="flex items-center bg-slate-50 px-2 py-0.5 rounded border border-slate-200 focus-within:border-orange-400 focus-within:bg-white transition-all">
                                            <span className="text-slate-400 text-xs mr-1">{NAIRA_SYMBOL}</span>
                                            <input

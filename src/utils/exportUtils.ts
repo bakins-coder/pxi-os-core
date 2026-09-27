@@ -71,7 +71,9 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
 
     // Service Charge Cents
     let serviceChargeCents: number;
-    if (invoice.serviceChargeCents !== undefined && (invoice.serviceChargeCents > 0 || isCuisine)) {
+    if (invoice.manualServiceChargeCents !== undefined) {
+        serviceChargeCents = invoice.manualServiceChargeCents;
+    } else if (invoice.serviceChargeCents !== undefined && (invoice.serviceChargeCents > 0 || isCuisine)) {
         serviceChargeCents = invoice.serviceChargeCents;
     } else if (isCuisine) {
         serviceChargeCents = 0;
@@ -81,13 +83,20 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
 
     // VAT Cents
     let vatCents: number;
-    if (invoice.vatCents !== undefined && (invoice.vatCents > 0 || isCuisine)) {
+    if (invoice.manualVatCents !== undefined) {
+        vatCents = invoice.manualVatCents;
+    } else if (invoice.vatCents !== undefined && (invoice.vatCents > 0 || isCuisine)) {
         vatCents = invoice.vatCents;
     } else if (isCuisine) {
         vatCents = 0;
     } else {
         vatCents = Math.round((effectiveTaxableSubtotalCents + serviceChargeCents) * taxFeatures.vatRate);
     }
+
+    // Delivery Cents
+    let deliveryCents = invoice.manualDeliveryCents !== undefined
+        ? invoice.manualDeliveryCents
+        : (invoice.fulfillmentType === 'pickup' ? 0 : 0);
 
     // Total Cents
     let totalCents: number;
@@ -96,7 +105,7 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
     } else if (invoice.totalCents !== undefined && (invoice.totalCents > subtotalCents || isCuisine)) {
         totalCents = invoice.totalCents;
     } else {
-        totalCents = subtotalCents + serviceChargeCents + vatCents;
+        totalCents = subtotalCents + deliveryCents + serviceChargeCents + vatCents;
     }
 
     const paidAmountCents = invoice.paidAmountCents || 0;
@@ -360,6 +369,11 @@ export const generateInvoicePDF = async (
 
     // PRINT SUMMARY (CLEAN - No Duplicates)
     addSummaryRow('SUBTOTAL', `N${subtotalRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
+
+    const deliveryRef = invoice.manualDeliveryCents !== undefined ? (invoice.manualDeliveryCents / 100) : 0;
+    if (deliveryRef > 0 || invoice.fulfillmentType === 'pickup') {
+        addSummaryRow('DELIVERY / LOGISTICS', deliveryRef > 0 ? `N${deliveryRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : 'N0.00 (Pickup)');
+    }
 
     const scLabel = totals.isCuisine ? 'SERVICE CHARGE (0%)' : `SERVICE CHARGE (${Math.round(totals.serviceChargeRate * 100)}%)`;
     addSummaryRow(scLabel, `N${scRef.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`);
