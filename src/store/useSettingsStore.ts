@@ -27,7 +27,7 @@ const DEFAULT_SETTINGS: OrganizationSettings = {
     secondaryTypes: [],
     currency: 'NGN',
     setupComplete: false,
-    enabledModules: ['CRM', 'Finance', 'Reports', 'Catering'],
+    enabledModules: ['CRM', 'Finance', 'Reports', 'Logistics'],
     agentMode: AIAgentMode.AI_AGENTIC,
     brandColor: '#f37021',
     integrations: [],
@@ -55,18 +55,30 @@ const BRANDING_OVERRIDES: Record<string, Partial<OrganizationSettings>> = {
     'Xquisite Celebrations Limited': {
         name: 'Xquisite Celebrations Limited',
         brandColor: '#00ff9d',
-        logo: '/xquisite-logo.png'
+        logo: '/xquisite-logo.png',
+        type: 'Catering',
+        enabledModules: ['Catering', 'Inventory', 'Finance', 'CRM', 'Reports']
     },
     'Wembley Cakes': {
         name: 'Wembley Cakes',
         brandColor: '#f37021',
-        logo: '/wembley_logo.jpg'
+        logo: '/wembley_logo.jpg',
+        type: 'Bakery',
+        enabledModules: ['CRM', 'Finance', 'Catering']
     },
     'J Ishola-Williams Sports Foundation': {
         name: 'J Ishola-Williams Sports Foundation',
         brandColor: '#ff6b6b',
         logo: '/jiwsf-logo.png',
-        type: 'Sports Foundation'
+        type: 'Sports Foundation',
+        enabledModules: ['Finance', 'HR', 'Projects', 'Reports']
+    },
+    'KRONHOMES LIMITED': {
+        name: 'KRONHOMES LIMITED',
+        brandColor: '#00ff9d',
+        logo: '',
+        type: 'Services',
+        enabledModules: ['CRM', 'Reports', 'Finance', 'Logistics']
     }
 };
 
@@ -111,6 +123,20 @@ export const useSettingsStore = create<SettingsState>()(
                     console.log('[Settings] Fetching settings for:', orgId);
                     
                     // [MOCK BYPASS] Immediate local override for ID
+                    if ((orgId === 'xquisite-id' || orgId === '10959119-72e4-4e57-ba54-923e36bba6a6') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                        console.log('[Settings] Mock Xquisite ID detected. Loading Xquisite profile...');
+                        const xquisiteProfile = BRANDING_OVERRIDES['Xquisite Celebrations Limited'];
+                        set((state) => ({
+                            settings: {
+                                ...state.settings,
+                                ...xquisiteProfile,
+                                id: orgId,
+                                setupComplete: true
+                            }
+                        }));
+                        return;
+                    }
+
                     if (orgId === 'jiwsf-id' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
                         console.log('[Settings] Mock ID detected. Loading Foundation profile...');
                         const jiwsfProfile = BRANDING_OVERRIDES['J Ishola-Williams Sports Foundation'];

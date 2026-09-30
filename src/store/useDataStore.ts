@@ -171,6 +171,8 @@ interface DataState {
     updateInvoicePricing: (invoiceId: string, setPriceCents: number | undefined) => Promise<void>;
     finalizeInvoice: (invoiceId: string, lines: InvoiceLine[], overrideTotalCents?: number, eventId?: string, updatedCustomerName?: string, manualDeliveryCents?: number, manualServiceChargeCents?: number, manualVatCents?: number, fulfillmentType?: 'delivery' | 'pickup') => Promise<void>;
     approveInvoice: (id: string) => void;
+    recordInvoicePayment: (invoiceId: string, amountCents: number, paymentMethod: string, notes?: string, receiptUrl?: string) => Promise<void>;
+    updateProformaInvoice: (invoiceId: string, updates: Partial<Invoice>) => Promise<void>;
     syncWithCloud: () => Promise<void>;
     hydrateFromCloud: () => Promise<void>;
     subscribeToRealtimeUpdates: () => void;
@@ -2950,6 +2952,62 @@ export const useDataStore = create<DataState>()(
                 await get().syncWithCloud();
             },
 
+            recordInvoicePayment: async (invoiceId: string, amountCents: number, paymentMethod: string, notes?: string, receiptUrl?: string) => {
+                const user = useAuthStore.getState().user;
+                const currentInv = get().invoices.find(i => i.id === invoiceId);
+                if (!currentInv) return;
+
+                const newPaidAmount = (currentInv.paidAmountCents || 0) + amountCents;
+                const isFullyPaid = newPaidAmount >= currentInv.totalCents;
+                const newStatus = isFullyPaid ? InvoiceStatus.PAID : InvoiceStatus.UNPAID;
+
+                get().addInteractionLog({
+                    id: crypto.randomUUID(),
+                    contactId: currentInv.contactId || 'walk-in',
+                    type: 'Note',
+                    summary: `Payment Received (${paymentMethod}): NGN ${(amountCents / 100).toLocaleString()}`,
+                    content: `Payment of NGN ${(amountCents / 100).toLocaleString()} received via ${paymentMethod} for Invoice ${currentInv.number}.${notes ? ` Notes: ${notes}` : ''}`,
+                    createdAt: new Date().toISOString(),
+                    createdBy: user?.id || 'system'
+                });
+
+                set((state) => ({
+                    invoices: state.invoices.map(inv => inv.id === invoiceId ? {
+                        ...inv,
+                        paidAmountCents: newPaidAmount,
+                        status: newStatus,
+                        paymentReceiptUrl: receiptUrl || inv.paymentReceiptUrl,
+                        paymentNotes: notes ? `${inv.paymentNotes ? inv.paymentNotes + ' | ' : ''}${notes}` : inv.paymentNotes
+                    } : inv),
+                    cateringEvents: state.cateringEvents.map(event => {
+                        const eventInvId = event.financials?.invoiceId || (event.financials as any)?.invoice_id;
+                        if (eventInvId === invoiceId || (event.customerName === currentInv.customerName && event.eventDate)) {
+                            return {
+                                ...event,
+                                financials: {
+                                    ...event.financials,
+                                    paidCents: (event.financials?.paidCents || 0) + amountCents,
+                                    paymentStatus: isFullyPaid ? 'Paid' : 'Deposit Paid'
+                                }
+                            };
+                        }
+                        return event;
+                    })
+                }));
+
+                await get().syncWithCloud();
+            },
+
+            updateProformaInvoice: async (invoiceId: string, updates: Partial<Invoice>) => {
+                set((state) => ({
+                    invoices: state.invoices.map(inv => inv.id === invoiceId ? {
+                        ...inv,
+                        ...updates
+                    } : inv)
+                }));
+                await get().syncWithCloud();
+            },
+
             syncWithCloud: async () => {
                 if (!supabase) {
                     set({ syncStatus: 'Offline' });
@@ -3169,9 +3227,43 @@ export const useDataStore = create<DataState>()(
                     if (invoices !== null) set({ invoices });
                     if (cateringEvents !== null) set({ cateringEvents });
                     if (projects !== null) set({ projects: projects as Project[] });
-                    if (tasks !== null) set({ tasks });
-                    if (employees !== null) set({ employees });
-                    if (requisitions !== null) set({ requisitions });
+                    if (employees !== null) {
+                        const isXquisite = companyId === 'xquisite-id' || (useSettingsStore.getState().settings.name || '').toLowerCase().includes('xquisite');
+                        let updatedEmps = [...employees];
+                        const hasObafunke = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'obafunke@xquisite.com' || e.staffId === 'XQ-0013');
+                        if (isXquisite && !hasObafunke) {
+                            updatedEmps.unshift({
+                                id: 'user-obafunke',
+                                companyId: companyId || 'xquisite-id',
+                                name: 'Obafunke Braithwaite',
+                                email: 'obafunke@xquisite.com',
+                                role: 'Catering Operations Officer',
+                                department: 'Catering Operations',
+                                status: 'Active',
+                                joinedDate: new Date().toISOString().split('T')[0],
+                                staffId: 'XQ-0013',
+                                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Obafunke',
+                                salaryCents: 35000000
+                            } as Employee);
+                        }
+                        const hasSarah = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'sarah@xquisite.com' || e.staffId === 'XQ-0012');
+                        if (isXquisite && !hasSarah) {
+                            updatedEmps.unshift({
+                                id: 'user-sarah',
+                                companyId: companyId || 'xquisite-id',
+                                name: 'Sarah',
+                                email: 'sarah@xquisite.com',
+                                role: 'Catering Operations Officer',
+                                department: 'Catering Operations',
+                                status: 'Active',
+                                joinedDate: new Date().toISOString().split('T')[0],
+                                staffId: 'XQ-0012',
+                                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+                                salaryCents: 35000000
+                            } as Employee);
+                        }
+                        set({ employees: updatedEmps });
+                    }
                     if (chartOfAccounts !== null) set({ chartOfAccounts });
                     if (bankTransactions !== null) set({ bankTransactions });
                     if (leaveRequests !== null) set({ leaveRequests });
@@ -3184,11 +3276,8 @@ export const useDataStore = create<DataState>()(
                         const isXquisite = org.type === 'Catering' || org.name?.toLowerCase().includes('xquisite');
                         
                         const defaults = [
-                            { id: 'bank-gtb', companyId, bankName: 'GTB PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '0396426845', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                            { id: 'bank-uba', companyId, bankName: 'UBA PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1021135344', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                            { id: 'bank-zenith', companyId, bankName: 'Zenith Bank PLC', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1010951007', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                            { id: 'bank-cuisine-first', companyId, bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                            { id: 'bank-cuisine-gtb', companyId, bankName: 'GTBank', accountName: 'Xquisite Cuisine Ltd', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                            { id: 'bank-gtb', companyId, bankName: 'GTBank', accountName: 'Xquisite Cuisine Ltd', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
+                            { id: 'bank-firstbank', companyId, bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
                         ] as BankAccount[];
 
                         // If it's Xquisite, ensure these 3 accounts exist by account number

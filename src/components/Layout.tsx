@@ -96,12 +96,12 @@ const NAV_ITEMS = [
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Prospecting', icon: Target, path: '/prospecting', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:contact_center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
-  { label: 'CRM', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'CRM & Client Management', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
 
   // Industry Specific
-  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery', 'General', 'Retail', 'Sports Foundation'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
+  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
   { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -142,24 +142,23 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     // 1. Super Admin Bypass
     if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
 
-    // 2. Operations Manager Bypass for Core Hubs (Ensures visibility if Matrix is stale)
-    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.CATERING_OPERATIONS_MANAGER;
-    if (isOpsManager && required && ['access:dashboard', 'access:catering', 'access:inventory', 'access:crm', 'access:projects'].includes(required)) return true;
+    // 2. Operations / Catering Staff Bypass (Sarah, Obafunke, Olaitan, Mariam)
+    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.CATERING_OPERATIONS_MANAGER || isOlaitanOrSarah;
+    if (isOpsManager && (!required || ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'].includes(required))) return true;
 
     const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
     if (isSuperAdmin) return true;
 
-    // 3. Legacy Role Check (Keep existing logic if no permission tag)
-    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) return false;
-    if (!required) return true;
-
-    // 3. Permission Tag Check (Prioritize explicit tags from DB)
+    // 3. Permission Tag Check (Prioritize explicit tags from DB / User object)
     const userPermissions = useAuthStore.getState().user?.permissionTags || [];
-
     if (required && userPermissions.includes(required)) return true;
     if (userPermissions.includes('*')) return true;
 
-    // 4. Fallback to Matrix (Static Definition)
+    // 4. Legacy Role Check
+    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) return false;
+    if (!required) return true;
+
+    // 5. Fallback to Matrix (Static Definition)
     if (userMatrixRole?.permissions?.includes(required)) return true;
     if (userMatrixRole?.permissions?.includes('*')) return true;
 
@@ -223,7 +222,10 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   const availableItems = useMemo(() => {
     const items = NAV_ITEMS.flatMap(item => {
       if (item.label === 'Orders & Invoicing') {
-        return industryProfiles.map(profile => ({
+        const matchingProfiles = industryProfiles.filter(profile =>
+          ['Catering', 'Bakery'].includes(profile.type) && profile.features?.showFulfillment
+        );
+        return matchingProfiles.map(profile => ({
           ...item,
           label: profile.nomenclature.fulfillment.navLabel,
           icon: profile.ui.fulfillmentIcon || item.icon,
@@ -235,6 +237,9 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     }).filter(i => {
       // Dynamic Feature Check
       if (i.label === 'Flight Ops' && settings.type !== 'Aviation') return false;
+
+      // Industry Check
+      if (i.allowedIndustries && !i.allowedIndustries.includes(settings.type)) return false;
 
       // Role Check
       if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
@@ -277,9 +282,25 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     return items;
   }, [industryProfiles, settings.type, userRole, currentUser]);
 
+  const isOlaitanOrSarah = useMemo(() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    const staffId = (currentUser?.staffId || '').toUpperCase();
+    const name = (currentUser?.name || '').toLowerCase();
+    return email.includes('olaitan') || email.includes('sarah') || email.includes('obafunke') || email.includes('mariam') || email.includes('meekaylarh') ||
+           email.includes('xq-0011') || email.includes('xq-0012') || email.includes('xq-0013') || email.includes('xq-0005') ||
+           staffId === 'XQ-0011' || staffId === 'XQ-0012' || staffId === 'XQ-0013' || staffId === 'XQ-0005' || staffId === 'EW-S003' ||
+           name.includes('olaitan') || name.includes('sarah') || name.includes('obafunke') || name.includes('mariam');
+  }, [currentUser]);
+
   const visibleItems = useMemo(() => {
-    return availableItems.filter(item => !hiddenItems.includes(item.label));
-  }, [availableItems, hiddenItems]);
+    let items = availableItems.filter(item => !hiddenItems.includes(item.label));
+    if (isOlaitanOrSarah) {
+      const restricted = ['Project Hub', 'Inventory', 'Human Resources', 'HR', 'Procurement'];
+      const restrictedPaths = ['/projects', '/inventory', '/hr', '/procurement'];
+      items = items.filter(item => !restricted.includes(item.label) && !restrictedPaths.includes(item.path));
+    }
+    return items;
+  }, [availableItems, hiddenItems, isOlaitanOrSarah]);
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
@@ -539,16 +560,16 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
     const checkMonitorVisibility = () => {
       try {
         if (currentUser?.hiddenMenuItems) {
-          setShowUsageMonitor(!currentUser.hiddenMenuItems.includes('API Diagnostics'));
+          setShowUsageMonitor(currentUser.hiddenMenuItems.includes('Show API Diagnostics'));
           return;
         }
         const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email.toLowerCase()}` : null;
         const defaultKey = 'hidden-menu-items-default';
         const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
         const hiddenList = saved ? JSON.parse(saved) : [];
-        setShowUsageMonitor(!hiddenList.includes('API Diagnostics'));
+        setShowUsageMonitor(hiddenList.includes('Show API Diagnostics'));
       } catch (e) {
-        setShowUsageMonitor(true);
+        setShowUsageMonitor(false);
       }
     };
     checkMonitorVisibility();

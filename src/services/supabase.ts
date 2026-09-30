@@ -429,7 +429,11 @@ export const uploadEntityImage = async (orgId: string, entityType: string, entit
   const binaryStr = atob(base64Clean);
   const bytes = new Uint8Array(binaryStr.length);
   for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-  const { data, error } = await supabase.storage.from('product_media').upload(objectPath, new Blob([bytes], { type: 'image/jpeg' }), { contentType: 'image/jpeg', upsert: true });
+  const { data, error } = await supabase.storage.from('product_media').upload(
+    objectPath,
+    new Blob([bytes], { type: 'image/jpeg' }),
+    { contentType: 'image/jpeg', cacheControl: '31536000', upsert: true }
+  );
   if (error) throw error;
   return { bucket: 'product_media', path: data.path };
 };
@@ -444,7 +448,11 @@ export const uploadEntityDocument = async (orgId: string, entityType: string, en
   if (!supabase) throw new Error("Supabase not initialized");
   const filename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
   const objectPath = `${entityType}/${orgId}/${entityId}/${filename}`;
-  const { data, error } = await supabase.storage.from('product_media').upload(objectPath, file, { contentType: file.type, upsert: true });
+  const { data, error } = await supabase.storage.from('product_media').upload(
+    objectPath,
+    file,
+    { contentType: file.type, cacheControl: '31536000', upsert: true }
+  );
   if (error) throw error;
   return { bucket: 'product_media', path: data.path };
 };

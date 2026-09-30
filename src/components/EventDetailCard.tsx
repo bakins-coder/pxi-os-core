@@ -80,7 +80,7 @@ export const EventDetailCard = ({ item, onClose }: EventDetailCardProps) => {
 
                     <div className="flex items-center gap-2 mb-3">
                         <span className="px-3 py-1 bg-white/20 rounded-full text-[9px] font-black uppercase tracking-widest backdrop-blur-md">
-                            {item.type === 'event' ? 'Banquet Detail' : 'Team Task'}
+                            {item.type === 'event' ? 'Order Detail' : 'Team Task'}
                         </span>
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/30 ${status === 'Confirmed' || status === 'Done' || status === 'Completed' ? 'bg-emerald-400/20 text-emerald-100' : 'bg-amber-400/20 text-amber-100'
                             }`}>

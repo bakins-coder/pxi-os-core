@@ -261,7 +261,7 @@ function AppContent() {
     );
   }
 
-  if (!user.companyId) {
+  if (!user.companyId && !user.isSuperAdmin) {
     return (
       <Routes>
         <Route path="/welcome" element={<Welcome />} />

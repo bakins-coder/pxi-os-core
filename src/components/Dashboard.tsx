@@ -143,6 +143,7 @@ export const Dashboard = () => {
   // IDE layout collapsible state
   const [pipelineExpanded, setPipelineExpanded] = useState(true);
   const [sectionsExpanded, setSectionsExpanded] = useState({
+    orders: true,
     receivables: true,
     payables: true,
     accountsPayable: false,
@@ -163,13 +164,32 @@ export const Dashboard = () => {
   };
 
   const dataState = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const isCurrentMonth = (dateStr?: string) => {
+      if (!dateStr) return true;
+      const d = new Date(dateStr);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    };
+
+    const mtdSalesInvoices = invoices.filter(i => i.type === 'Sales' && isCurrentMonth(i.date));
+    const mtdRevenue = mtdSalesInvoices.reduce((sum, i) => sum + (i.totalCents || 0), 0);
+    const mtdReceivables = mtdSalesInvoices.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + ((i.totalCents || 0) - (i.paidAmountCents || 0)), 0);
+
     const rev = invoices.filter(i => i.type === 'Sales').reduce((sum, i) => sum + (i.totalCents || 0), 0);
     const cash = invoices.filter(i => i.status === 'Paid' && i.type === 'Sales').reduce((sum, i) => sum + (i.totalCents || 0), 0);
     return {
-      financial: { revenue: rev, cash, receivables: rev - cash },
+      financial: { revenue: rev, cash, receivables: rev - cash, mtdRevenue, mtdReceivables },
+      orders: cateringEvents.slice(0, 10).map(evt => ({
+        ...evt,
+        customerName: evt.customerName || 'Client Order',
+        date: evt.eventDate || evt.createdAt || 'Today'
+      })),
       receivables: [...invoices].filter(i => i.status !== 'Paid' && i.type === 'Sales').map(inv => ({
         ...inv,
-        customerName: contacts.find(c => c.id === inv.contactId)?.name || 'Walk-in Client'
+        customerName: contacts.find(c => c.id === inv.contactId)?.name || inv.customerName || 'Walk-in Client'
       })),
       payables: [...requisitions].filter(r => r.status === 'Pending').map(req => ({
         ...req,
@@ -227,9 +247,9 @@ export const Dashboard = () => {
       {isFinancialAuthorized && (
         <div className="col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
           {[
-            { label: isFoundation ? 'Grants & Endowments' : 'Total Revenue', value: formatCurrency(dataState.financial.revenue), icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+12.4%' },
+            { label: isFoundation ? 'Grants & Endowments' : 'Total Revenue (MTD)', value: formatCurrency(dataState.financial.mtdRevenue), icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: 'MTD' },
             { label: isFoundation ? 'Reserved Grants' : 'Cash at Hand', value: formatCurrency(dataState.financial.cash), icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Healthy' },
-            { label: isFoundation ? 'Allocations' : 'Receivables', value: formatCurrency(dataState.financial.receivables), icon: Receipt, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Action Needed' },
+            { label: isFoundation ? 'Allocations' : 'Total Receivables (MTD)', value: formatCurrency(dataState.financial.mtdReceivables), icon: Receipt, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Action Needed' },
             { label: isFoundation ? 'Program Surplus' : 'Net Profit Margin', value: `${calculateNetProfitMargin()}%`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Real-time' },
           ].map((kpi, idx) => (
             <div key={idx} className="bg-white p-2.5 md:p-3 rounded-xl md:rounded-[1.25rem] border-0 shadow-[0_6px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)] flex flex-col justify-between items-center text-center hover:scale-[1.02] transition-all h-[68px] md:h-[76px] relative overflow-hidden group">
@@ -265,12 +285,12 @@ export const Dashboard = () => {
                 {pipelineExpanded ? <ChevronRight className="rotate-90 transition-transform" size={14} /> : <ChevronRight size={14} />}
               </span>
               <h3 className={`text-[9px] md:text-[10px] font-black text-slate-800 uppercase tracking-widest ${!pipelineExpanded ? 'lg:[writing-mode:vertical-lr] lg:rotate-180 lg:my-4' : ''}`}>
-                {getTerm(settings.type, 'event_pipeline', 'OPERATIONAL PIPELINE')}
+                ORDER PIPELINE
               </h3>
             </div>
             {pipelineExpanded && (
               <span className="text-[7px] md:text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100 uppercase tracking-wider">
-                {dataState.upcomingEvents.length} Events
+                {dataState.upcomingEvents.length} Orders
               </span>
             )}
           </div>
@@ -282,10 +302,35 @@ export const Dashboard = () => {
           )}
         </div>
 
-        {/* Right Area: Collapsible lists sidebar (like IDE files explorer) */}
+        {/* Right Area: Collapsible lists sidebar */}
         <div className="flex flex-col flex-1 bg-white rounded-3xl border border-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.05)] overflow-hidden h-full">
-          {/* Awaiting Payments */}
-          <div className={`flex flex-col overflow-hidden transition-all duration-300 ${sectionsExpanded.receivables ? 'flex-1 min-h-[150px]' : 'flex-none h-12'}`}>
+          {/* ORDERS */}
+          <div className={`flex flex-col overflow-hidden transition-all duration-300 ${sectionsExpanded.orders ? 'flex-1 min-h-[140px]' : 'flex-none h-12'}`}>
+            <div 
+              className="flex items-center justify-between p-4 bg-slate-50/50 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors shrink-0"
+              onClick={() => setSectionsExpanded(prev => ({ ...prev, orders: !prev.orders }))}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">
+                  {sectionsExpanded.orders ? <ChevronRight className="rotate-90 transition-transform" size={16} /> : <ChevronRight size={16} />}
+                </span>
+                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
+                  {getTerm(settings.type, 'order_title_plural', 'Orders').toUpperCase()}
+                </h3>
+              </div>
+              <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100">
+                {dataState.orders.length}
+              </span>
+            </div>
+            {sectionsExpanded.orders && (
+              <div className="flex-1 overflow-y-auto p-4 scrollbar-custom">
+                <SummaryList items={dataState.orders} type="order" title="" onItemClick={(evt) => setSelectedItem({ type: 'order', data: evt })} />
+              </div>
+            )}
+          </div>
+
+          {/* RECEIVABLES (CUSTOMERS OWING) */}
+          <div className={`flex flex-col overflow-hidden border-t border-slate-100 transition-all duration-300 ${sectionsExpanded.receivables ? 'flex-1 min-h-[140px]' : 'flex-none h-12'}`}>
             <div 
               className="flex items-center justify-between p-4 bg-slate-50/50 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors shrink-0"
               onClick={() => setSectionsExpanded(prev => ({ ...prev, receivables: !prev.receivables }))}
@@ -294,12 +339,12 @@ export const Dashboard = () => {
                 <span className="text-slate-400">
                   {sectionsExpanded.receivables ? <ChevronRight className="rotate-90 transition-transform" size={16} /> : <ChevronRight size={16} />}
                 </span>
-                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                  {getTerm(settings.type, 'order_title_plural', 'Awaiting Payments')}
+                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                  RECEIVABLES <span className="text-slate-400 text-[8px] font-bold normal-case">(Customers Owing)</span>
                 </h3>
               </div>
-              <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100">
-                {dataState.receivables.length}
+              <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                {dataState.receivables.length} OWING
               </span>
             </div>
             {sectionsExpanded.receivables && (
@@ -309,8 +354,8 @@ export const Dashboard = () => {
             )}
           </div>
 
-          {/* Pending Procurement */}
-          <div className={`flex flex-col overflow-hidden border-t border-slate-100 transition-all duration-300 ${sectionsExpanded.payables ? 'flex-1 min-h-[150px]' : 'flex-none h-12'}`}>
+          {/* PENDING PROCUREMENT / RAW MATERIALS */}
+          <div className={`flex flex-col overflow-hidden border-t border-slate-100 transition-all duration-300 ${sectionsExpanded.payables ? 'flex-1 min-h-[140px]' : 'flex-none h-12'}`}>
             <div 
               className="flex items-center justify-between p-4 bg-slate-50/50 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors shrink-0"
               onClick={() => setSectionsExpanded(prev => ({ ...prev, payables: !prev.payables }))}
@@ -320,7 +365,7 @@ export const Dashboard = () => {
                   {sectionsExpanded.payables ? <ChevronRight className="rotate-90 transition-transform" size={16} /> : <ChevronRight size={16} />}
                 </span>
                 <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                  {getTerm(settings.type, 'procurement', 'Pending Procurement')}
+                  {getTerm(settings.type, 'procurement', 'Pending Procurement').toUpperCase()}
                 </h3>
               </div>
               <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100">
@@ -334,9 +379,9 @@ export const Dashboard = () => {
             )}
           </div>
 
-          {/* Accounts Payable (if authorized) */}
+          {/* ACCOUNTS PAYABLE */}
           {isOpsFinAuthorized && (
-            <div className={`flex flex-col overflow-hidden border-t border-slate-100 transition-all duration-300 ${sectionsExpanded.accountsPayable ? 'flex-1 min-h-[150px]' : 'flex-none h-12'}`}>
+            <div className={`flex flex-col overflow-hidden border-t border-slate-100 transition-all duration-300 ${sectionsExpanded.accountsPayable ? 'flex-1 min-h-[140px]' : 'flex-none h-12'}`}>
               <div 
                 className="flex items-center justify-between p-4 bg-slate-50/50 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors shrink-0"
                 onClick={() => setSectionsExpanded(prev => ({ ...prev, accountsPayable: !prev.accountsPayable }))}
@@ -346,7 +391,7 @@ export const Dashboard = () => {
                     {sectionsExpanded.accountsPayable ? <ChevronRight className="rotate-90 transition-transform" size={16} /> : <ChevronRight size={16} />}
                   </span>
                   <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                    Accounts Payable
+                    ACCOUNTS PAYABLE
                   </h3>
                 </div>
                 <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100">

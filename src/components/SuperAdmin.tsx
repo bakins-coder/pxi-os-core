@@ -29,6 +29,18 @@ const revenueData = [
     { name: 'Sun', revenue: 3490 },
 ];
 
+const DEFAULT_ORGANIZATIONS = [
+    { id: 'd19023bd-87df-449b-83a1-ab832cb9d5c2', name: 'KRONHOMES LIMITED', type: 'Services', size: 'Small (11-50)' },
+    { id: '10959119-72e4-4e57-ba54-923e36bba6a6', name: 'Xquisite Celebrations Limited', type: 'Catering', size: 'Medium (11-50)' },
+    { id: '075f43bf-c708-4cf7-aa02-aa26a82e57d4', name: 'J Ishola-Williams Sports Foundation', type: 'Sports Foundation', size: 'Small (2-10)' },
+    { id: 'cca1ec55-7ec0-4b97-8a50-e062571af250', name: 'Every Woman', type: 'Retail', size: 'Medium (11-50)' },
+    { id: '71ba48c4-87b4-471d-8464-2383d5cbfed1', name: 'Kleen Dental', type: 'Dental Clinic', size: 'Small (2-10)' },
+    { id: 'cac4f4d2-0fa1-46c4-bdef-4bc0431c08d3', name: 'Wembley Cakes', type: 'Bakery', size: 'Small (11-50)' },
+    { id: '31ef4cda-7dd2-4ada-a6fd-a3da33c38896', name: 'LEMON COMPANY', type: 'Services', size: 'Small (2-10)' },
+    { id: '4376c123-01c9-4a92-9675-8123456789ab', name: 'Ajapasworld', type: 'General', size: 'Medium (11-50)' },
+    { id: 'd4a01700-0000-4000-a000-000000000000', name: 'Honeywell Group', type: 'Investment Holding', size: 'Large (201+)' }
+];
+
 export const SuperAdmin = () => {
     const { settings, setBrandColor, strictMode, toggleStrictMode, useLocalLLM, toggleLocalLLM } = useSettingsStore();
     const brandColor = settings.brandColor || '#00ff9d';
@@ -38,11 +50,23 @@ export const SuperAdmin = () => {
 
     React.useEffect(() => {
         const fetchOrgs = async () => {
-            const { supabase } = await import('../services/supabase');
-            if (supabase) {
-                const { data, error } = await supabase.from('organizations').select('*');
-                if (data) setOrganizations(data);
-                if (error) console.error('Failed to fetch orgs:', error);
+            try {
+                const { supabase } = await import('../services/supabase');
+                if (supabase) {
+                    const { data, error } = await supabase.from('organizations').select('*');
+                    if (data && data.length > 0) {
+                        setOrganizations(data);
+                    } else {
+                        console.log('[SuperAdmin] Falling back to system tenant list');
+                        setOrganizations(DEFAULT_ORGANIZATIONS);
+                    }
+                } else {
+                    setOrganizations(DEFAULT_ORGANIZATIONS);
+                }
+            } catch (e) {
+                console.error('Failed to fetch orgs:', e);
+                setOrganizations(DEFAULT_ORGANIZATIONS);
+            } finally {
                 setIsLoading(false);
             }
         };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, Download, ArrowLeft, Loader2, Share2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, Loader2, Share2, CreditCard, ShoppingBag, Truck } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { getIndustryConfig } from '../config/industryProfiles';
@@ -8,6 +8,7 @@ import { Invoice, Contact, InvoiceStatus } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
 import { generateInvoicePDF, calculateInvoiceTotals, getInvoiceBankDetails } from '../utils/exportUtils';
 import { NAIRA_SYMBOL } from '../utils/finance';
+import { ReceivePaymentModal } from './FulfillmentHub';
 
 
 // Brand Colors
@@ -23,18 +24,32 @@ export const InvoicePrototype = () => {
     const [invoice, setInvoice] = useState<Invoice | null>(null);
     const [customer, setCustomer] = useState<Contact | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isReceivePaymentOpen, setIsReceivePaymentOpen] = useState(false);
+    const [fulfillmentType, setFulfillmentType] = useState<'Pickup' | 'Delivery'>('Delivery');
 
     useEffect(() => {
         if (id) {
             const foundInvoice = invoices.find(inv => inv.id === id);
             if (foundInvoice) {
                 setInvoice(foundInvoice);
+                if (foundInvoice.fulfillmentType) {
+                    setFulfillmentType(foundInvoice.fulfillmentType);
+                }
                 const foundCustomer = contacts.find(c => c.id === foundInvoice.contactId);
                 setCustomer(foundCustomer || null);
             }
             setLoading(false);
         }
     }, [id, invoices, contacts]);
+
+    const handleFulfillmentChange = async (newType: 'Pickup' | 'Delivery') => {
+        setFulfillmentType(newType);
+        if (invoice) {
+            const updated = { ...invoice, fulfillmentType: newType };
+            setInvoice(updated);
+            await useDataStore.getState().addInvoice(updated as any);
+        }
+    };
 
     if (loading) {
         return (
@@ -85,26 +100,29 @@ export const InvoicePrototype = () => {
 
     // Organization Data
     const inferredCategory = invoice.category;
-    const orgName = settings.name || 'Organization';
+    const isBanquet = invoice.category === 'Banquet' || invoice.category === 'Banquet Orders';
+    const orgName = (isCuisine || !isBanquet) ? 'Xquisite Cuisine' : (settings.name || 'Organization');
     const orgAddress = settings.address || '';
     const orgPhone = settings.contactPhone || '';
     const orgTin = settings.firs_tin;
     const orgLogo = settings.logo || "https://raw.githubusercontent.com/lucide-react/lucide/main/icons/shopping-bag.svg";
     const activeBrandColor = settings.brandColor || BRAND_COLOR;
 
-    const banks = getInvoiceBankDetails(bankAccounts, settings);
-    const accName = banks.length > 0 ? banks[0].name : orgName;
+    const currentUser = useAuthStore.getState().user;
+    const isInternalStaff = !!currentUser && currentUser.role?.toLowerCase() !== 'customer';
+
+    const banks = getInvoiceBankDetails(bankAccounts, settings, isCuisine || invoice);
 
     const handleDownloadPDF = async () => {
         if (!invoice) return;
-        const pdfInvoice = { ...invoice, category: inferredCategory };
+        const pdfInvoice = { ...invoice, category: inferredCategory, fulfillmentType };
         await generateInvoicePDF(pdfInvoice, customer || undefined, settings, { save: true });
     };
 
     const handleSharePDF = async () => {
         if (!invoice) return;
         try {
-            const pdfInvoice = { ...invoice, category: inferredCategory };
+            const pdfInvoice = { ...invoice, category: inferredCategory, fulfillmentType };
             const doc = await generateInvoicePDF(pdfInvoice, customer || undefined, settings, { save: false, returnDoc: true }) as any;
             const pdfBlob = doc.output('blob');
             const file = new File([pdfBlob], `Invoice-${invoice.number}.pdf`, { type: 'application/pdf' });
@@ -132,6 +150,7 @@ export const InvoicePrototype = () => {
         const summary = `
 *INVOICE SUMMARY: ${invoice.number}*
 Customer: ${customerName}
+Fulfillment: ${fulfillmentType === 'Pickup' ? 'Store Pick Up' : 'Standard Delivery'}
 Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 Due: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 
@@ -142,7 +161,7 @@ VAT: ₦${vat.toLocaleString()}
 *TOTAL DUE: ₦${totalAmount.toLocaleString()}*
 
 *BANK DETAILS:*
-${banks.map(a => `${a.bank} (${a.name}): ${a.acc}`).join('\n')}
+${banks.map(a => `${a.bank} (${orgName}): ${a.acc}`).join('\n')}
 
 Link: ${window.location.href}
         `.trim();
@@ -164,7 +183,15 @@ Link: ${window.location.href}
                         <span className="font-bold">Back</span>
                     </button>
                 )}
-                <div className="flex gap-4">
+                <div className="flex gap-4 items-center">
+                    {balanceDue > 0 && isInternalStaff && (
+                        <button
+                            onClick={() => setIsReceivePaymentOpen(true)}
+                            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-full shadow-md font-bold hover:bg-emerald-700 hover:shadow-lg transition-all"
+                        >
+                            <CreditCard size={18} /> Receive Payment ({NAIRA_SYMBOL}{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })})
+                        </button>
+                    )}
                     <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all">
                         <Printer size={18} /> Print
                     </button>
@@ -224,6 +251,31 @@ Link: ${window.location.href}
 
                         <p className="text-slate-500 text-sm mt-1">{customerEmail}</p>
                         {customer?.address && <p className="text-slate-500 text-sm mt-1">{customer.address}</p>}
+
+                        {/* Fulfillment Option Selector & Badge */}
+                        <div className="mt-6 pt-4 border-t border-slate-100 print:border-none">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Fulfillment Option:</span>
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${fulfillmentType === 'Pickup' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>
+                                    {fulfillmentType === 'Pickup' ? <ShoppingBag size={14} /> : <Truck size={14} />}
+                                    {fulfillmentType === 'Pickup' ? 'Store Pick Up' : 'Standard Delivery'}
+                                </span>
+                            </div>
+                            <div className="flex gap-2 print:hidden">
+                                <button
+                                    onClick={() => handleFulfillmentChange('Pickup')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${fulfillmentType === 'Pickup' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                >
+                                    <ShoppingBag size={14} /> Store Pick Up
+                                </button>
+                                <button
+                                    onClick={() => handleFulfillmentChange('Delivery')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${fulfillmentType === 'Delivery' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                >
+                                    <Truck size={14} /> Standard Delivery
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex flex-col items-end">
@@ -357,6 +409,17 @@ Link: ${window.location.href}
                                 {NAIRA_SYMBOL}{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                             </div>
                         </div>
+
+                        {balanceDue > 0 && isInternalStaff && (
+                            <div className="pt-2 print:hidden w-full">
+                                <button
+                                    onClick={() => setIsReceivePaymentOpen(true)}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-sm"
+                                >
+                                    <CreditCard size={18} /> Receive Payment ({NAIRA_SYMBOL}{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })})
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -366,7 +429,7 @@ Link: ${window.location.href}
                         <h4 className="font-bold text-slate-800 mb-2 text-sm">Payment Information</h4>
                         <div className="text-xs text-slate-600 leading-relaxed">
                             <p className="mb-4">Thank you for your patronage. Please make all payment transfers to:<br />
-                                <span className="font-bold text-slate-800 uppercase">{accName || orgName}</span></p>
+                                <span className="font-bold text-slate-800 uppercase">{orgName}</span></p>
 
                             <p className="font-bold underline mb-2">Bank Details:</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
@@ -397,6 +460,16 @@ Link: ${window.location.href}
                 </div>
 
             </div>
+
+            {/* Receive Payment Modal */}
+            {isReceivePaymentOpen && (
+                <ReceivePaymentModal
+                    invoice={invoice}
+                    totalCents={totals.totalCents}
+                    onClose={() => setIsReceivePaymentOpen(false)}
+                    onSuccess={() => setIsReceivePaymentOpen(false)}
+                />
+            )}
         </div>
     );
 };

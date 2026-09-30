@@ -255,7 +255,7 @@ export const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfile> = {
                 staffLabel: 'Wait Staff',
                 logisticsUnitLabel: 'Logistics Van',
                 portalSlogan: 'Exquisite tastes for unforgettable moments.',
-                fulfillmentTerm: 'event'
+                fulfillmentTerm: 'order'
             }
         },
         features: {

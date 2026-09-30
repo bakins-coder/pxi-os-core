@@ -927,9 +927,8 @@ export const Finance = () => {
       const isX = org.name?.toLowerCase().includes('xquisite') || companyId === 'xquisite-id' || (currentUser?.email || '').includes('xquisite');
       if (!isX) return;
       const defaults = [
-         { id: 'bank-gtb-f', bankName: 'GTB A/C', accountName: 'Xquisite Celebrations Ltd', accountNumber: '0396426845', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId },
-         { id: 'bank-uba-f', bankName: 'UBA A/C', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1021135344', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId },
-         { id: 'bank-zenith-f', bankName: 'ZENITH A/C', accountName: 'Xquisite Celebrations Ltd', accountNumber: '1010951007', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId }
+         { id: 'bank-gtb-f', bankName: 'GTBank', accountName: 'Xquisite Cuisine Ltd', accountNumber: '0210736266', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId },
+         { id: 'bank-firstbank-f', bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN' as const, balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString(), companyId }
       ];
       const accounts = bankAccounts || [];
       const missing = defaults.filter(d => !accounts.some(a => a.accountNumber === d.accountNumber));

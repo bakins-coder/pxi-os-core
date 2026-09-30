@@ -51,9 +51,9 @@ describe('Invoice Totals & Bank Details Consistency', () => {
 
         expect(bankDetails).toHaveLength(2);
         expect(bankDetails[0].bank).toBe('GTBank');
-        expect(bankDetails[0].acc).toBe('0396426845');
-        expect(bankDetails[1].bank).toBe('Zenith Bank');
-        expect(bankDetails[1].acc).toBe('1010951007');
+        expect(bankDetails[0].acc).toBe('0210736266');
+        expect(bankDetails[1].bank).toBe('First Bank');
+        expect(bankDetails[1].acc).toBe('2022655945');
     });
 
     it('returns provided bank accounts when bankAccounts list is present', () => {

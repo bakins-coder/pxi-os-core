@@ -35,7 +35,11 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
 
     const industryConfig = getIndustryConfig(activeSettings.type);
     const taxFeatures = industryConfig?.features?.taxConfig || { serviceChargeRate: 0.15, vatRate: 0.075 };
-    const isCuisine = invoice.category === 'Cuisine' || invoice.category === 'Standard' || invoice.category === 'Standard Orders';
+    const cat = (invoice.category || '').toLowerCase();
+    const isCuisine = cat === 'cuisine' || 
+                      cat.includes('standard') || 
+                      cat.includes('package') || 
+                      cat.includes('retail');
 
     const isExcludedFromTax = (desc: string) => {
         if (!desc) return false;
@@ -131,41 +135,39 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
 export const getInvoiceBankDetails = (bankAccountsList: any[] = [], settings: any = {}, invoiceOrCategory?: any) => {
     const isCuisine = (typeof invoiceOrCategory === 'boolean' && invoiceOrCategory) ||
         (typeof invoiceOrCategory === 'string' && (invoiceOrCategory === 'Cuisine' || invoiceOrCategory === 'Standard' || invoiceOrCategory === 'Standard Orders')) ||
-        (invoiceOrCategory && typeof invoiceOrCategory === 'object' && (invoiceOrCategory.category === 'Cuisine' || invoiceOrCategory.category === 'Standard' || invoiceOrCategory.category === 'Standard Orders'));
-
-    if (isCuisine) {
-        return [
-            { name: "Xquisite Cuisine", bank: "First Bank", acc: "2022655945" },
-            { name: "Xquisite Cuisine Ltd", bank: "GTBank", acc: "0210736266" }
-        ];
-    }
+        (invoiceOrCategory && typeof invoiceOrCategory === 'object' && (invoiceOrCategory.category === 'Cuisine' || invoiceOrCategory.category === 'Standard' || invoiceOrCategory.category === 'Standard Orders')) ||
+        (activeSettings => true);
 
     const activeSettings = (settings && Object.keys(settings).length > 0)
         ? settings
         : (useSettingsStore.getState().settings || {});
-    const orgName = activeSettings.name || 'Organization';
-    const storeAccounts = bankAccountsList.length > 0 ? bankAccountsList : (useDataStore.getState().bankAccounts || []);
+    const orgName = 'Xquisite Cuisine';
 
-    if (storeAccounts && storeAccounts.length > 0) {
-        return storeAccounts.map((b: any) => ({
-            name: b.accountName || b.name || orgName,
-            bank: b.bankName || b.institutionName || 'Bank',
-            acc: b.accountNumber
-        }));
-    }
+    const rawList = (bankAccountsList.length > 0 ? bankAccountsList : (useDataStore.getState().bankAccounts || [])).map((b: any) => ({
+        name: b.accountName || b.name || orgName,
+        bank: b.bankName || b.institutionName || 'Bank',
+        acc: b.accountNumber
+    }));
 
-    if (activeSettings.bankInfo && activeSettings.bankInfo.accountNumber) {
-        return [{
-            name: activeSettings.bankInfo.accountName || orgName,
-            bank: activeSettings.bankInfo.bankName || 'Bank',
-            acc: activeSettings.bankInfo.accountNumber
-        }];
-    }
-
-    return [
-        { name: "Xquisite Celebrations", bank: "GTBank", acc: "0396426845" },
-        { name: "Xquisite Celebrations", bank: "Zenith Bank", acc: "1010951007" }
+    const defaults = [
+        { name: "Xquisite Cuisine", bank: "GTBank", acc: "0210736266" },
+        { name: "Xquisite Cuisine", bank: "First Bank", acc: "2022655945" }
     ];
+
+    const combined = rawList.length > 0 ? rawList : defaults;
+    
+    // Deduplicate by account number
+    const uniqueBanks: any[] = [];
+    const seenAccs = new Set<string>();
+    for (const item of combined) {
+        const key = `${item.bank}-${item.acc}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (item.acc && !seenAccs.has(key)) {
+            seenAccs.add(key);
+            uniqueBanks.push(item);
+        }
+    }
+
+    return uniqueBanks.length > 0 ? uniqueBanks : defaults;
 };
 
 /**
@@ -293,10 +295,12 @@ export const generateInvoicePDF = async (
     };
 
     const fulfillmentDate = (invoice as any).fulfillmentDate || (invoice as any).eventDate || invoice.date;
+    const fulfillmentMode = invoice.fulfillmentType === 'Pickup' ? 'Customer Pick-Up' : 'Standard Delivery';
 
     addDetail('Invoice Number:', invoice.number);
     addDetail('Invoice Date:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
     addDetail('Fulfillment Date:', new Date(fulfillmentDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+    addDetail('Fulfillment Mode:', fulfillmentMode);
     addDetail('Payment Due:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
 
 

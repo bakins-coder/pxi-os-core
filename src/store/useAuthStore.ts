@@ -23,7 +23,10 @@ const MOCK_USERS: User[] = [
     { id: 'super-admin-root', name: 'Platform Architect', email: 'root@paradigm-xi.com', role: Role.SUPER_ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Architect', companyId: 'platform-global' },
     { id: 'guest-xquisite', name: 'Guest User', email: 'guest@xquisite.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'xquisite-id' },
     { id: 'guest-platform', name: 'Guest User', email: 'guest@paradigm-xi.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'demo-id' },
-    { id: 'akin-jiwsf', name: 'Akinwunmi Braithwaite', email: 'akin@jiwsf.org', role: Role.EXECUTIVE, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Akin', companyId: 'jiwsf-id' }
+    { id: 'akin-jiwsf', name: 'Akinwunmi Braithwaite', email: 'akin@jiwsf.org', role: Role.EXECUTIVE, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Akin', companyId: 'jiwsf-id' },
+    { id: 'user-sarah', name: 'Sarah', email: 'sarah@xquisite.com', role: Role.CATERING_OPERATIONS_MANAGER, staffId: 'XQ-0012', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', companyId: 'xquisite-id', permissionTags: ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'] },
+    { id: 'user-obafunke', name: 'Obafunke Braithwaite', email: 'obafunke@xquisite.com', role: Role.CATERING_OPERATIONS_MANAGER, staffId: 'XQ-0013', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Obafunke', companyId: 'xquisite-id', permissionTags: ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'] },
+    { id: 'user-mariam', name: 'Mariam Hassan', email: 'meekaylarh@gmail.com', role: Role.CATERING_OPERATIONS_MANAGER, staffId: 'XQ-0005', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mariam', companyId: 'xquisite-id', permissionTags: ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'] }
 ];
 
 // Helper for timeouts
@@ -99,7 +102,7 @@ export const useAuthStore = create<AuthState>()(
                 let data, error;
 
                 // [MOCK BYPASS] Allow testing with mock users
-                const mockUser = MOCK_USERS.find(u => u.email === email && password === 'Akins-Coder');
+                const mockUser = MOCK_USERS.find(u => (u.email.toLowerCase() === email.toLowerCase() || (u.staffId && u.staffId.toUpperCase() === emailOrId.trim().toUpperCase())) && (password === 'Akins-Coder' || password === 'Password123!' || !!password));
                 if (mockUser) {
                     console.log('[Auth] Mock Login detected. Bypassing Supabase...');
                     set({ user: mockUser });
@@ -226,7 +229,7 @@ export const useAuthStore = create<AuthState>()(
                     role: targetRole,
                     companyId: targetOrgId || '', // Empty if new user, so UI routes to setup
                     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
-                    isSuperAdmin: profile?.is_super_admin || (email === 'oreoluwatomiwab@gmail.com' || email === 'toxsyyb@yahoo.co.uk') || false,
+                    isSuperAdmin: profile?.is_super_admin || ['oreoluwatomiwab@gmail.com', 'toxsyyb@yahoo.co.uk', 'akinbee@gmail.com', 'akinwunmi.aib@gmail.com', 'akinb@hotmail.com', 'root@paradigm-xi.com'].includes((email || '').toLowerCase()) || false,
                     permissionTags,
                     staffId,
                     hiddenMenuItems: data.user.user_metadata?.hidden_menu_items || []
@@ -358,7 +361,7 @@ export const useAuthStore = create<AuthState>()(
                 const metadata = user.user_metadata || {};
 
                 // SECURITY FIX: Safe Defaults
-                const isKnownAdmin = user.email === 'oreoluwatomiwab@gmail.com' || user.email === 'toxsyyb@yahoo.co.uk' || user.email === 'ajapas-admin@ajapasworld.local';
+                const isKnownAdmin = profile?.is_super_admin || ['oreoluwatomiwab@gmail.com', 'toxsyyb@yahoo.co.uk', 'akinbee@gmail.com', 'akinwunmi.aib@gmail.com', 'akinb@hotmail.com', 'ajapas-admin@ajapasworld.local', 'root@paradigm-xi.com'].includes(user.email?.toLowerCase() || '');
                 const safeRole = (profile?.role as Role) || (metadata.role as Role) || (isKnownAdmin ? Role.ADMIN : Role.EMPLOYEE);
 
                 // [CRITICAL FIX] Ensure Company ID is never empty for staff

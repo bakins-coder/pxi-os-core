@@ -197,7 +197,7 @@ export const CRM = () => {
                      <Users className="text-slate-950 w-4 h-4 md:w-5 md:h-5" />
                   </div>
                   <div>
-                     <h1 className="text-base md:text-lg font-black tracking-tighter uppercase leading-none">CRM Command</h1>
+                     <h1 className="text-base md:text-lg font-black tracking-tighter uppercase leading-none">CRM & Client Management</h1>
                      <div className="flex items-center gap-2 mt-0.5">
                         <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full text-[7px] md:text-[9px] font-black uppercase tracking-widest text-[#00ff9d] border border-white/5">
                            <Database size={9} className="text-[#00ff9d]" /> Centralized Ledger Active
