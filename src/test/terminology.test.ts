@@ -6,7 +6,7 @@ describe('Industry Terminology Resolution', () => {
         const terms = getIndustryTerminology('Catering');
         expect(terms.orderTitle).toBe('Custom Order');
         expect(terms.unitsLabel).toBe('Guest Count');
-        expect(terms.event_pipeline).toBe('EVENT PIPELINE');
+        expect(terms.event_pipeline).toBe('ORDER PIPELINE');
         expect(terms.categories).toContain("Starters");
         expect(terms.categories).not.toContain("Wedding Cakes");
     });

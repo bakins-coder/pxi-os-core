@@ -45,7 +45,7 @@ export const checkCloudHealth = async () => {
 // --- Database Schema Whitelists ---
 const SCHEMA_WHITELISTS: Record<string, string[]> = {
   catering_events: ['id', 'company_id', 'organization_id', 'customer_name', 'deal_id', 'event_date', 'guest_count', 'status', 'financials', 'cuisine_details'],
-  invoices: ['id', 'company_id', 'number', 'contact_id', 'date', 'due_date', 'status', 'type', 'total_cents', 'subtotal_cents', 'service_charge_cents', 'vat_cents', 'paid_amount_cents', 'manual_set_price_cents', 'discount_cents', 'standard_total_cents', 'lines'],
+  invoices: ['id', 'company_id', 'number', 'contact_id', 'customer_name', 'category', 'fulfillment_type', 'date', 'due_date', 'status', 'type', 'total_cents', 'subtotal_cents', 'service_charge_cents', 'vat_cents', 'paid_amount_cents', 'manual_set_price_cents', 'manual_delivery_cents', 'manual_service_charge_cents', 'manual_vat_cents', 'discount_cents', 'standard_total_cents', 'lines'],
   requisitions: ['id', 'company_id', 'type', 'category', 'item_name', 'ingredient_id', 'quantity', 'price_per_unit_cents', 'total_amount_cents', 'requestor_id', 'requestor_name', 'status', 'reference_id', 'notes', 'source_account_id', 'unit', 'pack_count', 'pack_size', 'pack_type'],
   projects: ['id', 'company_id', 'name', 'client_contact_id', 'status', 'start_date', 'end_date', 'budget_cents', 'progress', 'reference_id', 'ai_alerts'],
   tasks: ['id', 'company_id', 'project_id', 'title', 'description', 'assignee_id', 'assignee_role', 'due_date', 'priority', 'status', 'created_at'],
@@ -126,6 +126,12 @@ const mapOutgoingRow = (newItem: any) => {
     'preferredSupplierId': 'preferred_supplier_id',
     'requestorName': 'requestor_name',
     'packedUnits': 'packed_units',
+    'fulfillmentType': 'fulfillment_type',
+    'manualDeliveryCents': 'manual_delivery_cents',
+    'manualServiceChargeCents': 'manual_service_charge_cents',
+    'manualVatCents': 'manual_vat_cents',
+    'standardTotalCents': 'standard_total_cents',
+    'manualSetPriceCents': 'manual_set_price_cents',
   };
 
   Object.entries(mappings).forEach(([camel, snake]) => {
@@ -176,11 +182,11 @@ export const syncTableToCloud = async (tableName: string, data: any[]) => {
       ].includes(tableName);
       if (useOrgId) {
         if (!newItem.organization_id) {
-          newItem.organization_id = newItem.organizationId || newItem.companyId || newItem.company_id;
+          newItem.organization_id = newItem.organizationId || newItem.companyId || newItem.company_id || '10959119-72e4-4e57-ba54-923e36bba6a6';
         }
       } else {
-        if (!newItem.company_id) {
-          newItem.company_id = newItem.companyId || newItem.organizationId || newItem.organization_id;
+        if (!newItem.company_id || newItem.company_id === '') {
+          newItem.company_id = newItem.companyId || newItem.organizationId || newItem.organization_id || '10959119-72e4-4e57-ba54-923e36bba6a6';
         }
       }
     }
