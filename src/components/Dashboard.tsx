@@ -315,7 +315,7 @@ export const Dashboard = () => {
                   {sectionsExpanded.orders ? <ChevronRight className="rotate-90 transition-transform" size={16} /> : <ChevronRight size={16} />}
                 </span>
                 <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                  {getTerm(settings.type, 'order_title_plural', 'Orders').toUpperCase()}
+                  ORDERS
                 </h3>
               </div>
               <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100">
@@ -365,7 +365,7 @@ export const Dashboard = () => {
                   {sectionsExpanded.payables ? <ChevronRight className="rotate-90 transition-transform" size={16} /> : <ChevronRight size={16} />}
                 </span>
                 <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                  {getTerm(settings.type, 'procurement', 'Pending Procurement').toUpperCase()}
+                  RAW MATERIALS (PROCUREMENT)
                 </h3>
               </div>
               <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded-lg border border-slate-100">

@@ -3637,3 +3637,104 @@ export const FulfillmentHub = ({ vertical }: { vertical?: IndustryType }) => {
    );
 };
 
+export const ReceivePaymentModal = ({
+   invoice,
+   totalCents,
+   onClose,
+   onSuccess
+}: {
+   invoice: Invoice;
+   totalCents: number;
+   onClose: () => void;
+   onSuccess: () => void;
+}) => {
+   const { updateInvoice, bankAccounts } = useDataStore();
+   const [amountPaid, setAmountPaid] = useState<number>(invoice.amountPaidCents ? invoice.amountPaidCents / 100 : totalCents / 100);
+   const [selectedBank, setSelectedBank] = useState<string>('GTBank 0210736266');
+   const [notes, setNotes] = useState<string>('');
+   const [loading, setLoading] = useState(false);
+
+   const handleConfirmPayment = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      try {
+         const amountCents = Math.round(amountPaid * 100);
+         const isFullyPaid = amountCents >= totalCents;
+         const newStatus: InvoiceStatus = isFullyPaid ? 'Paid' : 'Partial';
+
+         await updateInvoice(invoice.id, {
+            amountPaidCents: amountCents,
+            status: newStatus,
+            paymentNotes: notes,
+            paymentBank: selectedBank
+         });
+
+         onSuccess();
+      } catch (err) {
+         console.error('Error confirming payment:', err);
+      } finally {
+         setLoading(false);
+      }
+   };
+
+   return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 text-slate-900">
+         <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md p-6 text-white shadow-2xl">
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+               <h3 className="text-lg font-black uppercase tracking-wider text-emerald-400">Receive Payment</h3>
+               <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white">
+                  <X size={20} />
+               </button>
+            </div>
+            <form onSubmit={handleConfirmPayment} className="space-y-4">
+               <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Invoice Number</label>
+                  <input type="text" disabled value={invoice.number} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 font-bold text-slate-300" />
+               </div>
+               <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Amount Received (₦)</label>
+                  <input
+                     type="number"
+                     required
+                     step="0.01"
+                     value={amountPaid}
+                     onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
+                     className="w-full bg-white/5 border border-emerald-500/50 rounded-xl p-3 font-bold text-emerald-400 text-lg outline-none focus:border-emerald-400"
+                  />
+               </div>
+               <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Receiving Bank Account</label>
+                  <select
+                     value={selectedBank}
+                     onChange={(e) => setSelectedBank(e.target.value)}
+                     className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 font-bold text-white outline-none"
+                  >
+                     <option value="GTBank 0210736266">GTBank (0210736266 - Xquisite Cuisine)</option>
+                     <option value="First Bank 2022655945">First Bank (2022655945 - Xquisite Cuisine)</option>
+                     <option value="Zenith Bank 1010951007">Zenith Bank (1010951007 - Xquisite)</option>
+                  </select>
+               </div>
+               <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Notes / Ref</label>
+                  <input
+                     type="text"
+                     placeholder="e.g. Bank Transfer Ref / Cheque No"
+                     value={notes}
+                     onChange={(e) => setNotes(e.target.value)}
+                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 font-bold text-white text-sm outline-none focus:border-[#00ff9d]"
+                  />
+               </div>
+               <div className="pt-4 flex gap-3">
+                  <button type="button" onClick={onClose} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl font-black uppercase text-xs">
+                     Cancel
+                  </button>
+                  <button type="submit" disabled={loading} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-black uppercase text-xs shadow-lg">
+                     {loading ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+               </div>
+            </form>
+         </div>
+      </div>
+   );
+};
+
