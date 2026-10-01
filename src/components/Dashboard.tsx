@@ -151,10 +151,10 @@ export const Dashboard = () => {
 
   useEffect(() => {
     const orgId = user?.companyId;
-    if (orgId && (settings.name === 'Smart Platform' || !settings.id)) {
+    if (orgId && (settings.name === 'Smart Platform' || settings.name === 'Paradigm-Xi' || !settings.id || !settings.logo)) {
       fetchSettings(orgId);
     }
-  }, [user, settings.name, fetchSettings]);
+  }, [user, settings.name, settings.logo, fetchSettings]);
 
   const calculateNetProfitMargin = () => {
     const rev = invoices.filter(i => i.status === 'Paid' && i.type === 'Sales').reduce((sum, i) => sum + (i.totalCents || 0), 0);

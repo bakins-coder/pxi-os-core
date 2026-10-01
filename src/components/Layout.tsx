@@ -75,12 +75,12 @@ const ParadigmLogo = ({ brandColor, orgName, isCollapsed, logo }: { brandColor: 
         </div>
       </div>
       {!isCollapsed && (
-        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300 overflow-hidden max-w-[130px] sm:max-w-[150px]">
-          <span className="font-black text-base md:text-lg text-white tracking-tighter leading-none mb-1 uppercase truncate" title={orgName}>
+        <div className="flex flex-col min-w-0 animate-in fade-in zoom-in duration-300 overflow-hidden max-w-[160px] sm:max-w-[185px]">
+          <span className="font-black text-sm md:text-base text-white tracking-tight leading-tight mb-0.5 uppercase truncate" title={orgName}>
             {orgName}
           </span>
-          <span className="text-[9px] uppercase tracking-[0.4em] font-black opacity-70 truncate" style={{ color: brandColor }}>
-            Smart Platform
+          <span className="text-[8px] md:text-[9px] uppercase tracking-[0.25em] font-black opacity-70 truncate" style={{ color: brandColor }}>
+            {orgName.toLowerCase().includes('xquisite') ? 'Celebrations' : 'Smart Platform'}
           </span>
         </div>
       )}
@@ -587,8 +587,23 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
     }
   }, [currentUser?.companyId]);
 
-  const brandColor = settings.brandColor || '#00ff9d';
-  const orgName = settings.name || 'Platform';
+  const isXquisiteOrg = currentUser?.companyId === '10959119-72e4-4e57-ba54-923e36bba6a6' || 
+                        currentUser?.companyId === 'xquisite-id' || 
+                        activeWorkspace === 'xquisite' ||
+                        ['toksyyb@yahoo.co.uk', 'toxsyyb@yahoo.co.uk'].includes(currentUser?.email?.toLowerCase() || '') ||
+                        settings.name?.toLowerCase().includes('xquisite');
+
+  const brandColor = isXquisiteOrg 
+    ? (settings.brandColor && settings.brandColor !== '#f37021' ? settings.brandColor : '#00ff9d')
+    : (settings.brandColor || '#00ff9d');
+
+  const orgName = isXquisiteOrg 
+    ? (settings.name && settings.name !== 'Paradigm-Xi' && settings.name !== 'Platform' ? settings.name : 'Xquisite Celebrations Limited')
+    : (settings.name || 'Platform');
+
+  const effectiveLogo = isXquisiteOrg
+    ? (settings.logo || '/xquisite-logo.png')
+    : settings.logo;
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -701,7 +716,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
               handleLogout={handleLogout}
               currentPath={location.pathname}
               isCollapsed={isSidebarCollapsed}
-              logo={settings.logo}
+              logo={effectiveLogo}
               strictMode={strictMode}
               onToggleWorkspace={() => handleSwitchWorkspace('ajapasworld')}
               onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -770,7 +785,7 @@ export const Layout: React.FC<{ children: React.ReactNode; userRole: Role }> = (
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#020617] transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={settings.logo} strictMode={strictMode} onToggleWorkspace={() => handleSwitchWorkspace('ajapasworld')} />
+        <NavContent userRole={userRole} brandColor={brandColor} orgName={orgName} handleLogout={handleLogout} currentPath={location.pathname} logo={effectiveLogo} strictMode={strictMode} onToggleWorkspace={() => handleSwitchWorkspace('ajapasworld')} />
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>

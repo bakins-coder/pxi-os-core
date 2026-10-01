@@ -122,43 +122,48 @@ export const useSettingsStore = create<SettingsState>()(
                 try {
                     console.log('[Settings] Fetching settings for:', orgId);
                     
-                    // [MOCK BYPASS] Immediate local override for ID
-                    if ((orgId === 'xquisite-id' || orgId === '10959119-72e4-4e57-ba54-923e36bba6a6') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-                        console.log('[Settings] Mock Xquisite ID detected. Loading Xquisite profile...');
+                    // Immediate override for known organizations
+                    if (orgId === 'xquisite-id' || orgId === '10959119-72e4-4e57-ba54-923e36bba6a6') {
+                        console.log('[Settings] Xquisite ID detected. Loading Xquisite profile...');
                         const xquisiteProfile = BRANDING_OVERRIDES['Xquisite Celebrations Limited'];
                         set((state) => ({
                             settings: {
                                 ...state.settings,
                                 ...xquisiteProfile,
                                 id: orgId,
+                                name: 'Xquisite Celebrations Limited',
+                                brandColor: '#00ff9d',
+                                logo: '/xquisite-logo.png',
+                                type: 'Catering',
                                 setupComplete: true
                             }
                         }));
-                        return;
+                        document.documentElement.style.setProperty('--brand-primary', '#00ff9d');
                     }
 
-                    if (orgId === 'jiwsf-id' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-                        console.log('[Settings] Mock ID detected. Loading Foundation profile...');
+                    if (orgId === 'jiwsf-id' || orgId === '075f43bf-c708-4cf7-aa02-aa26a82e57d4') {
+                        console.log('[Settings] Foundation ID detected. Loading Foundation profile...');
                         const jiwsfProfile = BRANDING_OVERRIDES['J Ishola-Williams Sports Foundation'];
                         set((state) => ({
                             settings: {
                                 ...state.settings,
                                 ...jiwsfProfile,
-                                id: 'jiwsf-id',
+                                id: orgId,
                                 setupComplete: true
                             }
                         }));
-                        return;
+                        document.documentElement.style.setProperty('--brand-primary', '#ff6b6b');
                     }
 
                     if (!supabase) return;
                     const { data, error } = await supabase.from('organizations').select('*').eq('id', orgId).single();
                     if (data) {
                         console.log('[Settings] Fetched:', data.name);
-                        const override = BRANDING_OVERRIDES[data.name] || {};
+                        const isXq = data.name?.toLowerCase().includes('xquisite') || orgId === '10959119-72e4-4e57-ba54-923e36bba6a6';
+                        const override = BRANDING_OVERRIDES[data.name] || (isXq ? BRANDING_OVERRIDES['Xquisite Celebrations Limited'] : {}) || {};
 
                         set((state) => {
-                            const brandColor = override.brandColor || data.brand_color || state.settings.brandColor;
+                            const brandColor = override.brandColor || data.brand_color || (isXq ? '#00ff9d' : state.settings.brandColor);
                             if (brandColor) {
                                 document.documentElement.style.setProperty('--brand-primary', brandColor);
                             }
@@ -167,9 +172,9 @@ export const useSettingsStore = create<SettingsState>()(
                                 settings: {
                                     ...state.settings,
                                     id: data.id,
-                                    name: data.name,
+                                    name: isXq ? 'Xquisite Celebrations Limited' : data.name,
                                     brandColor,
-                                    logo: override.logo || data.logo || state.settings.logo,
+                                    logo: override.logo || data.logo || (isXq ? '/xquisite-logo.png' : state.settings.logo),
                                     type: data.type || state.settings.type,
                                     secondaryTypes: data.secondary_types || state.settings.secondaryTypes || [],
                                     setupComplete: true,
