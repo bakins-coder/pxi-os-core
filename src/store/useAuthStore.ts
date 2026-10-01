@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>()(
 
                 // 2. Determine Scope
                 const targetOrgId = profile?.organization_id || data.user.user_metadata?.company_id || null;
-                const targetRole = (profile?.role as Role) || Role.ADMIN;
+                const targetRole = (profile?.role as Role) || Role.EMPLOYEE;
 
                 // 3. Fetch Permissions
                 let permissionTags: string[] = []; // Default to empty if fetch fails for security

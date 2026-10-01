@@ -89,12 +89,12 @@ const ParadigmLogo = ({ brandColor, orgName, isCollapsed, logo }: { brandColor: 
 };
 
 const NAV_ITEMS = [
-  { label: 'Super Admin', icon: Shield, path: '/super-admin', allowedRoles: [Role.SUPER_ADMIN] },
-  { label: 'IT Console', icon: Building2, path: '/admin/settings', allowedRoles: [Role.ADMIN, Role.SUPER_ADMIN] },
+  { label: 'Super Admin', icon: Shield, path: '/super-admin', requiredPermission: 'access:super_admin', allowedRoles: [Role.SUPER_ADMIN] },
+  { label: 'IT Console', icon: Building2, path: '/admin/settings', requiredPermission: 'access:it_console', allowedRoles: [Role.ADMIN, Role.SUPER_ADMIN] },
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role) },
 
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
-  { label: 'Prospecting', icon: Target, path: '/prospecting', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
+  { label: 'Prospecting', icon: Target, path: '/prospecting', requiredPermission: 'access:prospecting', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:contact_center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
   { label: 'CRM & Client Management', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
   { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
@@ -104,12 +104,12 @@ const NAV_ITEMS = [
   { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
-  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
+  { label: 'Procurement', icon: ShoppingCart, path: '/procurement', requiredPermission: 'access:procurement', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.PROCUREMENT, Role.LOGISTICS, Role.FINANCE] },
   { label: 'Finance', icon: Banknote, path: '/finance', requiredPermission: 'access:finance', allowedRoles: [Role.ADMIN, Role.FINANCE, Role.MANAGER] },
-  { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: Object.values(Role) },
-  { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
+  { label: 'Human Resources', icon: Briefcase, path: '/hr', requiredPermission: 'access:hr', allowedRoles: [Role.ADMIN, Role.HR, Role.HR_MANAGER, Role.MANAGER] },
+  { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', requiredPermission: 'access:requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
   { label: 'Automation', icon: Bot, path: '/automation', requiredPermission: 'access:automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
-  { label: 'Analytics', icon: BarChart3, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Analytics', icon: BarChart3, path: '/analytics', requiredPermission: 'access:analytics', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Reports', icon: FileText, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
   { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
   { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -150,26 +150,46 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     .find(r => r.title === userRole);
 
   const hasPermission = (required?: string, allowedRoles?: Role[]) => {
-    // 1. Super Admin Bypass
-    if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
+    // 1. Executive Bypass: Only True Super Admins and C-Suite
+    const isExecutive = userRole === Role.SUPER_ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN || Boolean(currentUser?.isSuperAdmin) || Boolean(useAuthStore.getState().user?.isSuperAdmin);
+    if (isExecutive) return true;
 
-    // 2. Operations / Catering Staff Bypass (Sarah, Obafunke, Olaitan, Mariam)
-    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || userRole === Role.CATERING_OPERATIONS_MANAGER || userRole === Role.BANQUET_MANAGER || isOlaitanOrSarah;
-    if (isOpsManager && required && ['access:dashboard', 'access:catering', 'access:inventory', 'access:inventory_ingredients', 'access:inventory_offerings', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs', 'access:self_hr'].includes(required)) return true;
+    // 2. Strict Role Gate: If allowedRoles is defined and userRole is not in allowedRoles, DENY IMMEDIATELY.
+    // Permissions (e.g. access:reports) must NEVER override an explicit allowedRoles restriction!
+    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+      return false;
+    }
 
-    const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
-    if (isSuperAdmin) return true;
+    // 3. Operational Kitchen & Staff Boundary Guardrail
+    const isKitchenStaff = userRole === Role.KITCHEN_MANAGER || 
+                           userRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
+                           (userRole as string) === 'Kitchen Operations Supervisor' || 
+                           isOlaitanOrSarah;
+    if (isKitchenStaff) {
+      // Forbidden modules for kitchen staff: administrative, IT, executive, financial
+      const forbiddenForKitchenPermissions = [
+        'access:super_admin', 'access:it_console', 'access:analytics', 'access:finance',
+        'access:finance_all', 'access:automation', 'access:contact_center', 'access:requisitions',
+        'access:hr', 'access:projects', 'access:prospecting', 'access:procurement'
+      ];
+      if (required && forbiddenForKitchenPermissions.includes(required)) {
+        return false;
+      }
+      // Operational whitelist
+      if (required && ['access:dashboard', 'access:catering', 'access:inventory', 'access:inventory_ingredients', 'access:inventory_offerings', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs', 'access:self_hr'].includes(required)) {
+        return true;
+      }
+    }
 
-    // 3. Permission Tag Check (Prioritize explicit tags from DB / User object)
+    // 4. Permission Tag Check (Prioritize explicit tags from DB / User object)
     const userPermissions = useAuthStore.getState().user?.permissionTags || [];
-    if (required && userPermissions.includes(required)) return true;
     if (userPermissions.includes('*')) return true;
+    if (required && userPermissions.includes(required)) return true;
 
-    // 4. Legacy Role Check
-    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) return false;
+    // 5. If no specific permission required and role check already passed, allow
     if (!required) return true;
 
-    // 5. Fallback to Matrix (Static Definition)
+    // 6. Fallback to Matrix (Static Definition)
     if (userMatrixRole?.permissions?.includes(required)) return true;
     if (userMatrixRole?.permissions?.includes('*')) return true;
 
@@ -229,7 +249,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   const [isCustomizing, setIsCustomizing] = useState(false);
 
   const availableItems = useMemo(() => {
-    const items = NAV_ITEMS.flatMap(item => {
+    let items = NAV_ITEMS.flatMap(item => {
       if (item.label === 'Orders & Invoicing') {
         const matchingProfiles = industryProfiles.filter(profile =>
           ['Catering', 'Bakery'].includes(profile.type) && profile.features?.showFulfillment
@@ -256,14 +276,14 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       return true;
     });
 
-    // Add API Diagnostics, Intelligent Assistant, Instant Install, and Reset App options to customization menu
-    const isAdmin = currentUser?.role?.toLowerCase() === 'super admin' || currentUser?.role?.toLowerCase() === 'system_admin' || currentUser?.role?.toLowerCase() === 'admin';
-    if (isAdmin) {
+    // Add API Diagnostics only for true Super Admins
+    const isSuperAdminUser = currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.SYSTEM_ADMIN || Boolean(currentUser?.isSuperAdmin);
+    if (isSuperAdminUser) {
       items.push({
         label: 'API Diagnostics',
         icon: Activity,
         path: '#',
-        allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN]
+        allowedRoles: [Role.SUPER_ADMIN]
       });
     }
 
@@ -288,19 +308,39 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       allowedRoles: Object.values(Role)
     });
 
+    const isKitchenStaff = currentUser?.role === Role.KITCHEN_MANAGER || 
+                           currentUser?.role === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
+                           (currentUser?.role as string) === 'Kitchen Operations Supervisor' || 
+                           isOlaitanOrSarah;
+    if (isKitchenStaff) {
+      const forbiddenForKitchen = [
+        'Super Admin', 'IT Console', 'Analytics', 'Prospecting', 'Strategic Hub',
+        'Service Hub', 'Requisitions', 'Automation', 'Finance', 'Human Resources',
+        'HR', 'Project Hub', 'Procurement', 'Flight Ops', 'API Diagnostics'
+      ];
+      items = items.filter(it => !forbiddenForKitchen.includes(it.label));
+    }
+
     return items;
-  }, [industryProfiles, settings.type, userRole, currentUser]);
+  }, [industryProfiles, settings.type, userRole, currentUser, isOlaitanOrSarah]);
 
   const visibleItems = useMemo(() => {
     let items = availableItems.filter(item => !hiddenItems.includes(item.label));
-    if (isOlaitanOrSarah) {
-      const isKitchenStaff = (currentUser?.role === Role.KITCHEN_MANAGER || currentUser?.role === Role.KITCHEN_OPERATIONS_SUPERVISOR || (currentUser?.role as string) === 'Kitchen Operations Supervisor');
-      const restricted = isKitchenStaff
-        ? ['Project Hub', 'Human Resources', 'HR', 'Procurement', 'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Requisitions', 'Automation']
-        : ['Project Hub', 'Inventory', 'Human Resources', 'HR', 'Procurement', 'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Requisitions', 'Automation'];
-      const restrictedPaths = isKitchenStaff
-        ? ['/projects', '/hr', '/procurement', '/super-admin', '/admin/settings', '/executive-hub', '/prospecting', '/contact-center', '/requisitions', '/automation']
-        : ['/projects', '/inventory', '/hr', '/procurement', '/super-admin', '/admin/settings', '/executive-hub', '/prospecting', '/contact-center', '/requisitions', '/automation'];
+    const isKitchenStaff = currentUser?.role === Role.KITCHEN_MANAGER || 
+                           currentUser?.role === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
+                           (currentUser?.role as string) === 'Kitchen Operations Supervisor' || 
+                           isOlaitanOrSarah;
+    if (isKitchenStaff) {
+      const restricted = [
+        'Super Admin', 'IT Console', 'Analytics', 'Prospecting', 'Strategic Hub',
+        'Service Hub', 'Requisitions', 'Automation', 'Finance', 'Human Resources',
+        'HR', 'Project Hub', 'Procurement', 'Flight Ops', 'API Diagnostics'
+      ];
+      const restrictedPaths = [
+        '/super-admin', '/admin/settings', '/analytics', '/prospecting', '/executive-hub',
+        '/contact-center', '/requisitions', '/automation', '/finance', '/hr',
+        '/projects', '/procurement'
+      ];
       items = items.filter(item => !restricted.includes(item.label) && !restrictedPaths.includes(item.path));
     }
     return items;

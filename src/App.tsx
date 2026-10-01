@@ -74,15 +74,8 @@ const ProtectedRoute: React.FC<React.PropsWithChildren<{ allowedRoles?: Role[], 
   if (!user) return <Navigate to="/login" replace />;
   if (user.isSuperAdmin || user.role === Role.CEO || user.role === Role.CHAIRMAN) return <>{children}</>; // Executive Bypass
 
-  // 1. Permission Tag Check (Prioritize)
-  if (requiredPermission && user.permissionTags?.includes(requiredPermission)) {
-    return <>{children}</>;
-  }
-
-  if (user.permissionTags?.includes('*')) return <>{children}</>;
-
-  // 2. Role Check (Legacy)
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // 1. Role Check (Strict Gate - explicit role restrictions always take precedence)
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020617] p-4">
         <div className="max-w-md w-full text-center">
@@ -312,12 +305,12 @@ function AppContent() {
         <Route path="/contact-center" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.AGENT, Role.SUPERVISOR]}><Agent /></ProtectedRoute>} />
         <Route path="/team" element={<TeamCommunication />} />
         <Route path="/docs" element={<KnowledgeBase />} />
-        <Route path="/analytics" element={<ProtectedRoute user={user} requiredPermission="access:reports" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.FINANCE]}><AnalyticsDashboard /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute user={user} requiredPermission="access:analytics" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.FINANCE]}><AnalyticsDashboard /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute user={user} requiredPermission="access:reports" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR]}><Reports /></ProtectedRoute>} />
-        <Route path="/admin/settings" element={<ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.SUPER_ADMIN]}><ITPortal /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute user={user} requiredPermission="access:it_console" allowedRoles={[Role.ADMIN, Role.SUPER_ADMIN]}><ITPortal /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><Settings /></ProtectedRoute>} />
         <Route path="/customer-portal" element={<CustomerPortal />} />
-        <Route path="/procurement" element={<ProtectedRoute user={user} allowedRoles={Object.values(Role).filter(r => r !== Role.CUSTOMER)}><Procurement /></ProtectedRoute>} />
+        <Route path="/procurement" element={<ProtectedRoute user={user} requiredPermission="access:procurement" allowedRoles={[Role.ADMIN, Role.MANAGER, Role.PROCUREMENT, Role.LOGISTICS, Role.FINANCE]}><Procurement /></ProtectedRoute>} />
         <Route path="/brochure" element={<PublicBrochure />} />
         <Route path="/invoice/:id" element={<InvoicePrototype />} />
         <Route path="/monitor/:token" element={<ExternalMonitor />} />
