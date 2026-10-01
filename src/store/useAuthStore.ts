@@ -16,18 +16,6 @@ interface AuthState {
     initializeAuthListener: () => Promise<void>;
 }
 
-// Mock users for now, mirroring the initial logic
-const MOCK_USERS: User[] = [
-    { id: '013253e9-8da4-4594-b8c9-d149b8768d42', name: 'Tokunbo Braithwaite', email: 'toxsyyb@yahoo.co.uk', role: Role.CEO, staffId: 'XQ-0001', avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Tokunbo-Braithwaite', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', isSuperAdmin: true },
-    { id: 'sys-admin-ore', name: 'Ore Braithwaite', email: 'oreoluwatomiwab@gmail.com', role: Role.ADMIN, staffId: 'XQ-0006', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=OreBraithwaite', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', isSuperAdmin: true },
-    { id: 'super-admin-root', name: 'Platform Architect', email: 'root@paradigm-xi.com', role: Role.SUPER_ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Architect', companyId: 'platform-global' },
-    { id: 'guest-xquisite', name: 'Guest User', email: 'guest@xquisite.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'xquisite-id' },
-    { id: 'guest-platform', name: 'Guest User', email: 'guest@paradigm-xi.com', role: Role.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest', companyId: 'demo-id' },
-    { id: 'akin-jiwsf', name: 'Akinwunmi Braithwaite', email: 'akin@jiwsf.org', role: Role.EXECUTIVE, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Akin', companyId: 'jiwsf-id' },
-    { id: 'user-sarah', name: 'Sarah', email: 'sarah@xquisite.com', role: Role.CATERING_OPERATIONS_MANAGER, staffId: 'XQ-0012', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', companyId: 'xquisite-id', permissionTags: ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'] },
-    { id: 'user-obafunke', name: 'Obafunke Braithwaite', email: 'obafunke@xquisite.com', role: Role.BANQUET_MANAGER, staffId: 'XQ-0016', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Obafunke', companyId: '10959119-72e4-4e57-ba54-923e36bba6a6', permissionTags: ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'] },
-    { id: 'user-mariam', name: 'Mariam Hassan', email: 'meekaylarh@gmail.com', role: Role.CATERING_OPERATIONS_MANAGER, staffId: 'XQ-0005', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mariam', companyId: 'xquisite-id', permissionTags: ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'] }
-];
 
 // Helper for timeouts
 const withTimeout = async <T>(promise: PromiseLike<T>, ms: number = 5000, errorMsg: string = 'Operation timed out'): Promise<T> => {
@@ -101,19 +89,6 @@ export const useAuthStore = create<AuthState>()(
                 // Authenticate
                 let data, error;
 
-                // [MOCK BYPASS] Allow testing with mock users or developer bypass passwords
-                const isDevPassword = password === 'Akins-Coder' || password === 'Password123!' || password === 'password123' || password === 'password123!';
-                const isGuestUser = email.toLowerCase().startsWith('guest@');
-                const mockUser = MOCK_USERS.find(u => 
-                    (u.email.toLowerCase() === email.toLowerCase() || (u.staffId && u.staffId.toUpperCase() === emailOrId.trim().toUpperCase())) && 
-                    (isDevPassword || isGuestUser)
-                );
-                if (mockUser && (isDevPassword || isGuestUser)) {
-                    console.log('[Auth] Mock Login detected. Bypassing Supabase...');
-                    set({ user: mockUser });
-                    useSettingsStore.getState().fetchSettings(mockUser.companyId || '');
-                    return;
-                }
 
                 ({ data, error } = await withTimeout(
                     supabase.auth.signInWithPassword({ email, password }),
@@ -326,13 +301,6 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
             resetPassword: async (email: string) => {
-                if (email.trim().toLowerCase() === 'toxsyyb@yahoo.co.uk') {
-                    const legacyUser = MOCK_USERS.find(u => u.email === 'toxsyyb@yahoo.co.uk');
-                    if (legacyUser) {
-                        set({ user: legacyUser });
-                        return { success: true, isBypass: true };
-                    }
-                }
                 if (!supabase) throw new Error('Client missing');
                 const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
                 if (error) throw error;

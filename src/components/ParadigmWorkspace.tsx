@@ -42,7 +42,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { generateAIResponse, textToSpeech, processVoiceCommand, parseInvoiceDocument } from "../services/ai";
 import { decodeBase64, decodeRawPcmToAudioBuffer } from "../services/audioUtils";
 
-// Mock Data for CRM leads
+// Lead interface for CRM
 interface Lead {
   id: string;
   name: string;
@@ -52,14 +52,7 @@ interface Lead {
   source: string;
 }
 
-const initialLeads: Lead[] = [
-  { id: "1", name: "Kola Adebayo", email: "kola@adebayogroup.com", status: "Proposal", value: 4500, source: "Web Signup" },
-  { id: "2", name: "Chidi Nwachukwu", email: "chidi.n@eduplay.ng", status: "Contacted", value: 2200, source: "School Referral" },
-  { id: "3", name: "Fatima Yusuf", email: "fatima.y@wisefoundation.org", status: "Won", value: 12000, source: "Direct Outreach" },
-  { id: "4", name: "Tunde Bakare", email: "tbakare@finlit-kids.com", status: "New", value: 1800, source: "Newsletter" }
-];
-
-// Mock Data for Products
+// Product interface for Store/Catalog
 interface Product {
   id: string;
   name: string;
@@ -69,14 +62,6 @@ interface Product {
   demandFactor: "High" | "Medium" | "Low";
   optimizedPrice?: number;
 }
-
-const initialProducts: Product[] = [
-  { id: "p1", name: "Ajapsi Math & Money Workbook", category: "Workbook", currentPrice: 15.99, stock: 120, demandFactor: "High" },
-  { id: "p2", name: "Coin Counting Board Game", category: "Game", currentPrice: 24.99, stock: 45, demandFactor: "Medium" },
-  { id: "p3", name: "WiseUp Teens Budgeting Course", category: "Course", currentPrice: 49.99, stock: 999, demandFactor: "High" },
-  { id: "p4", name: "Coloring Financial Storybook", category: "Workbook", currentPrice: 9.99, stock: 210, demandFactor: "Low" },
-  { id: "p5", name: "Saves The Day Audio Story", category: "Game", currentPrice: 4.99, stock: 999, demandFactor: "Medium" }
-];
 
 // Avatar overrides: always use local PNG for the Ajapa tortoise characters
 // regardless of what the database or persisted store has stored.
@@ -391,252 +376,7 @@ export const ParadigmWorkspace: React.FC<ParadigmWorkspaceProps> = ({ onSwitchWo
   const staffAudioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Database Seeding Effect for Leads, Products, and Employees
-  useEffect(() => {
-    const seedInitialData = async () => {
-      const storeLeads = useDataStore.getState().leads;
-      if (storeLeads.length === 0) {
-        for (const l of initialLeads) {
-          await useDataStore.getState().addLead({
-            id: l.id,
-            name: l.name,
-            email: l.email,
-            status: mapLocalStatusToDb(l.status),
-            source: l.source,
-            interestLevel: 'High',
-            createdAt: new Date().toISOString()
-          } as any);
-        }
-      }
 
-      const storeProducts = useDataStore.getState().inventory.filter(i => i.type === 'product');
-      if (storeProducts.length === 0) {
-        const companyId = useAuthStore.getState().user?.companyId || '';
-        for (const p of initialProducts) {
-          await useDataStore.getState().addInventoryItem({
-            id: p.id,
-            name: p.name,
-            category: p.category,
-            priceCents: Math.round(p.currentPrice * 100),
-            stockQuantity: p.stock,
-            type: 'product' as any,
-            companyId: companyId
-          });
-        }
-      }
-
-      const storeEmployees = useDataStore.getState().employees;
-      if (storeEmployees.length === 0) {
-        const companyId = useAuthStore.getState().user?.companyId || '';
-        for (const emp of defaultEmployees) {
-          await useDataStore.getState().addEmployee({
-            id: emp.id,
-            firstName: emp.firstName,
-            lastName: emp.lastName,
-            email: `${emp.firstName.toLowerCase()}@ajapasworld.com`,
-            role: emp.role,
-            salaryCents: 15000000,
-            status: 'Active' as any,
-            companyId,
-            dob: new Date(1990, 0, 1).toISOString(),
-            gender: 'Male',
-            dateOfEmployment: new Date().toISOString(),
-            address: 'Lagos, Nigeria',
-            avatar: emp.avatar
-          } as any);
-        }
-      }
-
-      // Seed Invoices and Bookkeeping Entries for Ajapasworld if missing
-      const companyId = '4376c123-01c9-4a92-9675-8123456789ab';
-      const storeInvoices = useDataStore.getState().invoices || [];
-      const hasAjapaJuneInvoices = storeInvoices.some(i => i.id === 'inv-1' || i.id === 'inv-2');
-      if (!hasAjapaJuneInvoices) {
-        // Seed June Invoices
-        const invoicesToSeed = [
-          {
-            id: 'inv-1',
-            number: 'INV-2026-001',
-            companyId,
-            contactId: 'c1',
-            customerName: 'Kola Adebayo',
-            date: '2026-06-15',
-            dueDate: '2026-06-30',
-            status: 'Paid' as any,
-            type: 'Sales' as any,
-            totalCents: 15000000,
-            paidAmountCents: 15000000,
-            lines: [{ id: 'l1', description: 'Ajapsi Math & Money Workbook (Bulk)', quantity: 10, unitPriceCents: 1500000 }]
-          },
-          {
-            id: 'inv-2',
-            number: 'INV-2026-002',
-            companyId,
-            contactId: 'c2',
-            customerName: 'Tunde Bakare',
-            date: '2026-06-20',
-            dueDate: '2026-07-05',
-            status: 'Paid' as any,
-            type: 'Sales' as any,
-            totalCents: 7750000,
-            paidAmountCents: 7750000,
-            lines: [{ id: 'l2', description: 'Coin Counting Board Game (Bulk)', quantity: 5, unitPriceCents: 1550000 }]
-          },
-          {
-            id: 'inv-3',
-            number: 'INV-2026-003',
-            companyId,
-            contactId: 'c3',
-            customerName: 'Funmi Alao',
-            date: '2026-06-25',
-            dueDate: '2026-07-10',
-            status: 'Unpaid' as any,
-            type: 'Sales' as any,
-            totalCents: 4500000,
-            paidAmountCents: 0,
-            lines: [{ id: 'l3', description: 'WiseUp Teens Budgeting Course', quantity: 1, unitPriceCents: 4500000 }]
-          }
-        ];
-
-        for (const inv of invoicesToSeed) {
-          await useDataStore.getState().addInvoice(inv as any);
-        }
-      }
-
-      // Independent check for July Invoices (AJW-2026-001 & AJW-2026-002)
-      const storeInvoicesCurrent = useDataStore.getState().invoices || [];
-      
-      const hasMayokunInvoice = storeInvoicesCurrent.some(i => i.id === 'inv-july-mayokun' || i.number === 'AJW-2026-001');
-      if (!hasMayokunInvoice) {
-        await useDataStore.getState().addInvoice({
-          id: 'inv-july-mayokun',
-          number: 'AJW-2026-001',
-          companyId,
-          contactId: 'c5',
-          customerName: 'Mayokun John-Adejumo',
-          date: '2026-07-01',
-          dueDate: '2026-07-01',
-          status: 'Paid' as any,
-          type: 'Sales' as any,
-          totalCents: 32500000,
-          paidAmountCents: 32500000,
-          lines: [{ id: 'l-july-mayokun', description: 'Ajapa Story Book x 65 copies', quantity: 65, unitPriceCents: 500000 }]
-        } as any);
-      }
-
-      const hasJulyInvoice = storeInvoicesCurrent.some(i => i.id === 'inv-july-1' || i.number === 'AJW-2026-002');
-      if (!hasJulyInvoice) {
-        await useDataStore.getState().addInvoice({
-          id: 'inv-july-1',
-          number: 'AJW-2026-002',
-          companyId,
-          contactId: 'c4',
-          customerName: 'Mr Koyejo',
-          date: '2026-07-22',
-          dueDate: '2026-07-22',
-          status: 'Paid' as any,
-          type: 'Sales' as any,
-          totalCents: 750000,
-          paidAmountCents: 750000,
-          lines: [{ id: 'l-july-1', description: 'Financial Journal x 2 copies (Discounted)', quantity: 2, unitPriceCents: 375000 }]
-        } as any);
-      }
-
-      const storeBookkeeping = useDataStore.getState().bookkeeping || [];
-      const hasAjapaJuneBookkeeping = storeBookkeeping.some(b => b.id === 'b-1' || b.id === 'b-2');
-      if (!hasAjapaJuneBookkeeping) {
-        // Seed June Bookkeeping Entries
-        const bookkeepingToSeed = [
-          {
-            id: 'b-1',
-            date: '2026-06-15',
-            type: 'Inflow' as const,
-            category: 'Sales Revenue',
-            description: 'Payment for Invoice INV-2026-001 (Kola Adebayo)',
-            amountCents: 15000000,
-            referenceId: 'inv-1'
-          },
-          {
-            id: 'b-2',
-            date: '2026-06-20',
-            type: 'Inflow' as const,
-            category: 'Sales Revenue',
-            description: 'Payment for Invoice INV-2026-002 (Tunde Bakare)',
-            amountCents: 7750000,
-            referenceId: 'inv-2'
-          },
-          {
-            id: 'b-3',
-            date: '2026-06-22',
-            type: 'Outflow' as const,
-            category: 'Operating Expense',
-            description: 'Advertising campaign on Facebook and Google',
-            amountCents: 5000000
-          },
-          {
-            id: 'b-4',
-            date: '2026-06-26',
-            type: 'Outflow' as const,
-            category: 'Office Rent',
-            description: 'Monthly co-working space rental payment',
-            amountCents: 8000000
-          }
-        ];
-
-        for (const entry of bookkeepingToSeed) {
-          await useDataStore.getState().addBookkeepingEntry(entry as any);
-        }
-      }
-
-      // Independent check for July Bookkeeping
-      const storeBookkeepingCurrent = useDataStore.getState().bookkeeping || [];
-      const hasMayokunBookkeeping = storeBookkeepingCurrent.some(b => b.id === 'b-july-mayokun');
-      if (!hasMayokunBookkeeping) {
-        await useDataStore.getState().addBookkeepingEntry({
-          id: 'b-july-mayokun',
-          date: '2026-07-01',
-          type: 'Inflow' as const,
-          category: 'Sales Revenue',
-          description: 'Payment for Invoice AJW-2026-001 (Mayokun John-Adejumo)',
-          amountCents: 32500000,
-          referenceId: 'inv-july-mayokun',
-          companyId
-        } as any);
-      }
-
-      const hasJulyBookkeeping = storeBookkeepingCurrent.some(b => b.id === 'b-july-1');
-      if (!hasJulyBookkeeping) {
-        await useDataStore.getState().addBookkeepingEntry({
-          id: 'b-july-1',
-          date: '2026-07-22',
-          type: 'Inflow' as const,
-          category: 'Sales Revenue',
-          description: 'Payment for Invoice AJW-2026-002 (Mr Koyejo)',
-          amountCents: 750000,
-          referenceId: 'inv-july-1',
-          companyId
-        } as any);
-      }
-
-      // Auto-migrate old seeded records (e.g. Chameleon to Tortoise)
-      const storeEmployeesAfter = useDataStore.getState().employees;
-      if (storeEmployeesAfter.length > 0) {
-        // Auto-migrate avatar paths and names for the Ajapa tortoise characters
-        const avatarFixes: Record<string, { lastName: string; avatar: string }> = {
-          'Yanribo': { lastName: 'the Tortoise', avatar: '/assets/yanribo.jpg' },
-          'Ajapsi':  { lastName: 'the Tortoise', avatar: '/assets/ajapsi.jpg' },
-          'Ajapa':   { lastName: 'the Tortoise', avatar: '/assets/ajapa.jpg' },
-        };
-        for (const emp of storeEmployeesAfter) {
-          const fix = avatarFixes[emp.firstName];
-          if (fix && (emp.avatar !== fix.avatar || emp.lastName !== fix.lastName)) {
-            useDataStore.getState().updateEmployee(emp.id, fix as any);
-          }
-        }
-      }
-    };
-    seedInitialData();
-  }, []);
 
   // Update selectedStaff dynamically if displayEmployees changes.
   // Also handles the case where selectedStaff was seeded from defaultEmployees

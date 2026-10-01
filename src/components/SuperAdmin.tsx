@@ -12,12 +12,6 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
-const mockClientBanks = [
-    { id: '1', name: 'Xquisite Celebrations', status: 'Healthy', revenue: 45000000, projects: 12, health: 98 },
-    { id: '2', name: 'Nebula Events', status: 'Warning', revenue: 12000000, projects: 5, health: 72 },
-    { id: '3', name: 'Quantum Catering', status: 'Healthy', revenue: 8500000, projects: 8, health: 91 },
-    { id: '4', name: 'Solaris Hospitality', status: 'Restricted', revenue: 0, projects: 0, health: 15 },
-];
 
 const revenueData = [
     { name: 'Mon', revenue: 4000 },

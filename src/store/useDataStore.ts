@@ -3228,58 +3228,7 @@ export const useDataStore = create<DataState>()(
                     if (cateringEvents !== null) set({ cateringEvents });
                     if (projects !== null) set({ projects: projects as Project[] });
                     if (employees !== null) {
-                        const isXquisite = companyId === 'xquisite-id' || (useSettingsStore.getState().settings.name || '').toLowerCase().includes('xquisite');
-                        let updatedEmps = [...employees];
-                        const hasObafunke = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'obafunke@xquisite.com' || (e.firstName === 'Obafunke' && e.lastName === 'Braithwaite') || e.staffId === 'XQ-0016');
-                        if (isXquisite && !hasObafunke) {
-                            const obafunke: Employee = {
-                                id: 'user-obafunke',
-                                companyId: companyId || 'xquisite-id',
-                                firstName: 'Obafunke',
-                                lastName: 'Braithwaite',
-                                email: 'obafunke@xquisite.com',
-                                role: Role.BANQUET_MANAGER,
-                                status: EmployeeStatus.ACTIVE,
-                                dateOfEmployment: '2025-01-01',
-                                dob: '1990-01-01',
-                                gender: 'Female',
-                                staffId: 'XQ-0016',
-                                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Obafunke',
-                                salaryCents: 35000000,
-                                phoneNumber: '',
-                                kpis: []
-                            };
-                            updatedEmps.unshift(obafunke);
-                        } else if (isXquisite && hasObafunke) {
-                            updatedEmps = updatedEmps.map((e: any) => {
-                                if (e.email?.toLowerCase() === 'obafunke@xquisite.com' || (e.firstName === 'Obafunke' && e.lastName === 'Braithwaite') || e.id === 'user-obafunke') {
-                                    return { ...e, role: Role.BANQUET_MANAGER, staffId: e.staffId === 'XQ-0013' ? 'XQ-0016' : e.staffId };
-                                }
-                                return e;
-                            });
-                        }
-                        const hasSarah = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'sarah@xquisite.com' || e.staffId === 'XQ-0012');
-                        if (isXquisite && !hasSarah) {
-                            const sarah: Employee = {
-                                id: 'user-sarah',
-                                companyId: companyId || 'xquisite-id',
-                                firstName: 'Sarah',
-                                lastName: 'Ade',
-                                email: 'sarah@xquisite.com',
-                                role: Role.CATERING_OPERATIONS_MANAGER,
-                                status: EmployeeStatus.ACTIVE,
-                                dateOfEmployment: new Date().toISOString().split('T')[0],
-                                dob: '1992-01-01',
-                                gender: 'Female',
-                                staffId: 'XQ-0012',
-                                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-                                salaryCents: 35000000,
-                                phoneNumber: '',
-                                kpis: []
-                            };
-                            updatedEmps.unshift(sarah);
-                        }
-                        set({ employees: updatedEmps });
+                        set({ employees });
                     }
                     if (chartOfAccounts !== null) set({ chartOfAccounts });
                     if (bankTransactions !== null) set({ bankTransactions });
@@ -3289,23 +3238,7 @@ export const useDataStore = create<DataState>()(
                     if (messages !== null) set({ messages });
                     if (leads !== null) set({ leads });
                     if (bankAccounts !== null) {
-                        const org = useSettingsStore.getState().settings;
-                        const isXquisite = org.type === 'Catering' || org.name?.toLowerCase().includes('xquisite');
-                        
-                        const defaults = [
-                            { id: 'bank-gtb', companyId, bankName: 'GTBank', accountName: 'Xquisite Cuisine Ltd', accountNumber: '0210736266', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                            { id: 'bank-firstbank', companyId, bankName: 'First Bank', accountName: 'Xquisite Cuisine', accountNumber: '2022655945', currency: 'NGN', balanceCents: 0, isActive: true, lastUpdated: new Date().toISOString() },
-                        ] as BankAccount[];
-
-                        // If it's Xquisite, ensure these 3 accounts exist by account number
-                        let finalBanks = bankAccounts;
-                        if (isXquisite || companyId === 'xquisite-id') {
-                            const existingNumbers = (bankAccounts || []).map(a => a.accountNumber);
-                            const missing = defaults.filter(d => !existingNumbers.includes(d.accountNumber));
-                            finalBanks = [...(bankAccounts || []), ...missing];
-                        }
-                        
-                        set({ bankAccounts: finalBanks });
+                        set({ bankAccounts });
                     }
 
                     console.log(`[Hydration] Sync complete for ${companyId}`);

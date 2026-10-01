@@ -163,7 +163,7 @@ export const useSettingsStore = create<SettingsState>()(
                         const override = BRANDING_OVERRIDES[data.name] || (isXq ? BRANDING_OVERRIDES['Xquisite Celebrations Limited'] : {}) || {};
 
                         set((state) => {
-                            const brandColor = override.brandColor || data.brand_color || (isXq ? '#00ff9d' : state.settings.brandColor);
+                            const brandColor = data.brand_color || override.brandColor || (isXq ? '#00ff9d' : state.settings.brandColor);
                             if (brandColor) {
                                 document.documentElement.style.setProperty('--brand-primary', brandColor);
                             }
@@ -172,9 +172,9 @@ export const useSettingsStore = create<SettingsState>()(
                                 settings: {
                                     ...state.settings,
                                     id: data.id,
-                                    name: isXq ? 'Xquisite Celebrations Limited' : data.name,
+                                    name: data.name || (isXq ? 'Xquisite Celebrations Limited' : state.settings.name),
                                     brandColor,
-                                    logo: override.logo || data.logo || (isXq ? '/xquisite-logo.png' : state.settings.logo),
+                                    logo: data.logo || override.logo || (isXq ? '/xquisite-logo.png' : state.settings.logo),
                                     type: data.type || state.settings.type,
                                     secondaryTypes: data.secondary_types || state.settings.secondaryTypes || [],
                                     setupComplete: true,
