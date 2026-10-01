@@ -22,9 +22,9 @@
 
 ### Login Credentials
 
-- **Sign-In Portal URL**: `http://localhost:3000/#/auth`
-- **Staff ID / Login Identifier**: `XQ-0016` *(or `obafunke@xquisite.com`)*
-- **Password**: `Password123!` *(or dev bypass `Akins-Coder`)*
+- **Sign-In Portal URL**: `https://pxi-os-core.vercel.app/#/auth`
+- **Staff ID / Login Identifier**: `XQ-0016` *(or email `obafunke@xquisite.com`)*
+- **Password**: `password123`
 
 ---
 
