@@ -134,9 +134,8 @@ export const calculateInvoiceTotals = (invoice: Invoice, settings: any = {}) => 
  */
 export const getInvoiceBankDetails = (bankAccountsList: any[] = [], settings: any = {}, invoiceOrCategory?: any) => {
     const isCuisine = (typeof invoiceOrCategory === 'boolean' && invoiceOrCategory) ||
-        (typeof invoiceOrCategory === 'string' && (invoiceOrCategory === 'Cuisine' || invoiceOrCategory === 'Standard' || invoiceOrCategory === 'Standard Orders')) ||
-        (invoiceOrCategory && typeof invoiceOrCategory === 'object' && (invoiceOrCategory.category === 'Cuisine' || invoiceOrCategory.category === 'Standard' || invoiceOrCategory.category === 'Standard Orders')) ||
-        (activeSettings => true);
+        (typeof invoiceOrCategory === 'string' && ['Cuisine', 'Standard', 'Standard Orders'].includes(invoiceOrCategory)) ||
+        (!!invoiceOrCategory && typeof invoiceOrCategory === 'object' && ['Cuisine', 'Standard', 'Standard Orders'].includes(invoiceOrCategory.category));
 
     const activeSettings = (settings && Object.keys(settings).length > 0)
         ? settings
@@ -295,7 +294,7 @@ export const generateInvoicePDF = async (
     };
 
     const fulfillmentDate = (invoice as any).fulfillmentDate || (invoice as any).eventDate || invoice.date;
-    const fulfillmentMode = invoice.fulfillmentType === 'Pickup' ? 'Customer Pick-Up' : 'Standard Delivery';
+    const fulfillmentMode = invoice.fulfillmentType === 'pickup' ? 'Customer Pick-Up' : 'Standard Delivery';
 
     addDetail('Invoice Number:', invoice.number);
     addDetail('Invoice Date:', new Date(invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));

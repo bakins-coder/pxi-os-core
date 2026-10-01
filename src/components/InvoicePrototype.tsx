@@ -25,16 +25,14 @@ export const InvoicePrototype = () => {
     const [customer, setCustomer] = useState<Contact | null>(null);
     const [loading, setLoading] = useState(true);
     const [isReceivePaymentOpen, setIsReceivePaymentOpen] = useState(false);
-    const [fulfillmentType, setFulfillmentType] = useState<'Pickup' | 'Delivery'>('Delivery');
+    const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>('delivery');
 
     useEffect(() => {
         if (id) {
             const foundInvoice = invoices.find(inv => inv.id === id);
             if (foundInvoice) {
                 setInvoice(foundInvoice);
-                if (foundInvoice.fulfillmentType) {
-                    setFulfillmentType(foundInvoice.fulfillmentType);
-                }
+                setFulfillmentType(foundInvoice.fulfillmentType ?? 'delivery');
                 const foundCustomer = contacts.find(c => c.id === foundInvoice.contactId);
                 setCustomer(foundCustomer || null);
             }
@@ -42,12 +40,12 @@ export const InvoicePrototype = () => {
         }
     }, [id, invoices, contacts]);
 
-    const handleFulfillmentChange = async (newType: 'Pickup' | 'Delivery') => {
+    const handleFulfillmentChange = async (newType: 'pickup' | 'delivery') => {
         setFulfillmentType(newType);
         if (invoice) {
             const updated = { ...invoice, fulfillmentType: newType };
             setInvoice(updated);
-            await useDataStore.getState().addInvoice(updated as any);
+            await useDataStore.getState().addInvoice(updated);
         }
     };
 
@@ -150,7 +148,7 @@ export const InvoicePrototype = () => {
         const summary = `
 *INVOICE SUMMARY: ${invoice.number}*
 Customer: ${customerName}
-Fulfillment: ${fulfillmentType === 'Pickup' ? 'Store Pick Up' : 'Standard Delivery'}
+Fulfillment: ${fulfillmentType === 'pickup' ? 'Store Pick Up' : 'Standard Delivery'}
 Date: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 Due: ${new Date(invoice.date).toLocaleDateString('en-GB')}
 
@@ -256,21 +254,21 @@ Link: ${window.location.href}
                         <div className="mt-6 pt-4 border-t border-slate-100 print:border-none">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Fulfillment Option:</span>
-                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${fulfillmentType === 'Pickup' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>
-                                    {fulfillmentType === 'Pickup' ? <ShoppingBag size={14} /> : <Truck size={14} />}
-                                    {fulfillmentType === 'Pickup' ? 'Store Pick Up' : 'Standard Delivery'}
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${fulfillmentType === 'pickup' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>
+                                    {fulfillmentType === 'pickup' ? <ShoppingBag size={14} /> : <Truck size={14} />}
+                                    {fulfillmentType === 'pickup' ? 'Store Pick Up' : 'Standard Delivery'}
                                 </span>
                             </div>
                             <div className="flex gap-2 print:hidden">
                                 <button
-                                    onClick={() => handleFulfillmentChange('Pickup')}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${fulfillmentType === 'Pickup' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                    onClick={() => handleFulfillmentChange('pickup')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${fulfillmentType === 'pickup' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                 >
                                     <ShoppingBag size={14} /> Store Pick Up
                                 </button>
                                 <button
-                                    onClick={() => handleFulfillmentChange('Delivery')}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${fulfillmentType === 'Delivery' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                    onClick={() => handleFulfillmentChange('delivery')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${fulfillmentType === 'delivery' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                 >
                                     <Truck size={14} /> Standard Delivery
                                 </button>

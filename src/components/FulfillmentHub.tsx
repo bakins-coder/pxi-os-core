@@ -3648,8 +3648,8 @@ export const ReceivePaymentModal = ({
    onClose: () => void;
    onSuccess: () => void;
 }) => {
-   const { updateInvoice, bankAccounts } = useDataStore();
-   const [amountPaid, setAmountPaid] = useState<number>(invoice.amountPaidCents ? invoice.amountPaidCents / 100 : totalCents / 100);
+   const { recordInvoicePayment, bankAccounts } = useDataStore();
+   const [amountPaid, setAmountPaid] = useState<number>(totalCents / 100);
    const [selectedBank, setSelectedBank] = useState<string>('GTBank 0210736266');
    const [notes, setNotes] = useState<string>('');
    const [loading, setLoading] = useState(false);
@@ -3659,16 +3659,12 @@ export const ReceivePaymentModal = ({
       setLoading(true);
       try {
          const amountCents = Math.round(amountPaid * 100);
-         const isFullyPaid = amountCents >= totalCents;
-         const newStatus: InvoiceStatus = isFullyPaid ? 'Paid' : 'Partial';
-
-         await updateInvoice(invoice.id, {
-            amountPaidCents: amountCents,
-            status: newStatus,
-            paymentNotes: notes,
-            paymentBank: selectedBank
-         });
-
+         await recordInvoicePayment(
+            invoice.id,
+            amountCents,
+            selectedBank,
+            notes || undefined
+         );
          onSuccess();
       } catch (err) {
          console.error('Error confirming payment:', err);

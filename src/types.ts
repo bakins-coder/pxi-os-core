@@ -263,6 +263,8 @@ export interface CateringEvent {
     indirectCosts: { adminCents: number; marketingCents: number; waitersCents: number; logisticsCents: number };
     netProfitMargin: number;
     invoiceId?: string; // Link to the main sales invoice
+    paidCents?: number;
+    paymentStatus?: 'Paid' | 'Deposit Paid';
   };
   banquetDetails?: BanquetDetails;
   cuisineDetails?: CuisineDetails;
@@ -547,6 +549,9 @@ export interface Invoice {
   manualServiceChargeCents?: number;
   manualVatCents?: number;
   fulfillmentType?: 'delivery' | 'pickup';
+  paymentReceiptUrl?: string;
+  paymentNotes?: string;
+  paymentBank?: string;
 }
 
 export interface InventoryMovement {

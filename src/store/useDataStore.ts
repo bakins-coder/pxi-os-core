@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import {
     InventoryItem, Recipe, CateringEvent, Invoice, InvoiceLine, Contact, Task, Deal,
     BookkeepingEntry, Project, AIAgent, Ingredient, Supplier,
-    MarketingPost, Workflow, Ticket, BankTransaction, Employee,
+    MarketingPost, Workflow, Ticket, BankTransaction, Employee, Role, EmployeeStatus,
     Requisition, RentalRecord, ChartOfAccount, BankStatementLine, InvoiceStatus,
     LeaveRequest, DepartmentMatrix, SocialInteraction, SocialPost, AgenticLog, PerformanceReview, PerformanceMetric,
     RecipeIngredient, InteractionLog, Message, DispatchedAsset, LogisticsReturn, BankAccount, EntityMedia, Lead,
@@ -3232,35 +3232,45 @@ export const useDataStore = create<DataState>()(
                         let updatedEmps = [...employees];
                         const hasObafunke = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'obafunke@xquisite.com' || e.staffId === 'XQ-0013');
                         if (isXquisite && !hasObafunke) {
-                            updatedEmps.unshift({
+                            const obafunke: Employee = {
                                 id: 'user-obafunke',
                                 companyId: companyId || 'xquisite-id',
-                                name: 'Obafunke Braithwaite',
+                                firstName: 'Obafunke',
+                                lastName: 'Braithwaite',
                                 email: 'obafunke@xquisite.com',
-                                role: 'Catering Operations Officer',
-                                department: 'Catering Operations',
-                                status: 'Active',
-                                joinedDate: new Date().toISOString().split('T')[0],
+                                role: Role.CATERING_OPERATIONS_MANAGER,
+                                status: EmployeeStatus.ACTIVE,
+                                dateOfEmployment: new Date().toISOString().split('T')[0],
+                                dob: '1990-01-01',
+                                gender: 'Female',
                                 staffId: 'XQ-0013',
                                 avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Obafunke',
-                                salaryCents: 35000000
-                            } as Employee);
+                                salaryCents: 35000000,
+                                phoneNumber: '',
+                                kpis: []
+                            };
+                            updatedEmps.unshift(obafunke);
                         }
                         const hasSarah = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'sarah@xquisite.com' || e.staffId === 'XQ-0012');
                         if (isXquisite && !hasSarah) {
-                            updatedEmps.unshift({
+                            const sarah: Employee = {
                                 id: 'user-sarah',
                                 companyId: companyId || 'xquisite-id',
-                                name: 'Sarah',
+                                firstName: 'Sarah',
+                                lastName: 'Ade',
                                 email: 'sarah@xquisite.com',
-                                role: 'Catering Operations Officer',
-                                department: 'Catering Operations',
-                                status: 'Active',
-                                joinedDate: new Date().toISOString().split('T')[0],
+                                role: Role.CATERING_OPERATIONS_MANAGER,
+                                status: EmployeeStatus.ACTIVE,
+                                dateOfEmployment: new Date().toISOString().split('T')[0],
+                                dob: '1992-01-01',
+                                gender: 'Female',
                                 staffId: 'XQ-0012',
                                 avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-                                salaryCents: 35000000
-                            } as Employee);
+                                salaryCents: 35000000,
+                                phoneNumber: '',
+                                kpis: []
+                            };
+                            updatedEmps.unshift(sarah);
                         }
                         set({ employees: updatedEmps });
                     }

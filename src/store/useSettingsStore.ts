@@ -71,13 +71,13 @@ const BRANDING_OVERRIDES: Record<string, Partial<OrganizationSettings>> = {
         brandColor: '#ff6b6b',
         logo: '/jiwsf-logo.png',
         type: 'Sports Foundation',
-        enabledModules: ['Finance', 'HR', 'Projects', 'Reports']
+        enabledModules: ['Finance', 'HR', 'CRM', 'Reports']
     },
     'KRONHOMES LIMITED': {
         name: 'KRONHOMES LIMITED',
         brandColor: '#00ff9d',
         logo: '',
-        type: 'Services',
+        type: 'General',
         enabledModules: ['CRM', 'Reports', 'Finance', 'Logistics']
     }
 };

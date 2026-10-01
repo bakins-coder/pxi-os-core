@@ -185,7 +185,7 @@ export const Dashboard = () => {
       orders: cateringEvents.slice(0, 10).map(evt => ({
         ...evt,
         customerName: evt.customerName || 'Client Order',
-        date: evt.eventDate || evt.createdAt || 'Today'
+        date: evt.eventDate || 'Today'
       })),
       receivables: [...invoices].filter(i => i.status !== 'Paid' && i.type === 'Sales').map(inv => ({
         ...inv,
