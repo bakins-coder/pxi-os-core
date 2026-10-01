@@ -119,6 +119,17 @@ const NAV_ITEMS = [
 const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode, onToggleWorkspace, onToggleCollapse }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean, onToggleWorkspace?: () => void, onToggleCollapse?: () => void }) => {
   const { settings } = useSettingsStore();
   const { user: currentUser } = useAuthStore();
+
+  const isOlaitanOrSarah = useMemo(() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    const staffId = (currentUser?.staffId || '').toUpperCase();
+    const name = (currentUser?.name || '').toLowerCase();
+    return email.includes('olaitan') || email.includes('sarah') || email.includes('obafunke') || email.includes('mariam') || email.includes('meekaylarh') ||
+           email.includes('xq-0011') || email.includes('xq-0012') || email.includes('xq-0013') || email.includes('xq-0005') ||
+           staffId === 'XQ-0011' || staffId === 'XQ-0012' || staffId === 'XQ-0013' || staffId === 'XQ-0005' || staffId === 'EW-S003' ||
+           name.includes('olaitan') || name.includes('sarah') || name.includes('obafunke') || name.includes('mariam');
+  }, [currentUser]);
+
   const industryProfiles = useMemo(() => {
     const primary = INDUSTRY_PROFILES[settings.type] || INDUSTRY_PROFILES.General;
     const secondaries = (settings.secondaryTypes || []).map(t => INDUSTRY_PROFILES[t]).filter(Boolean);
@@ -281,16 +292,6 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
     return items;
   }, [industryProfiles, settings.type, userRole, currentUser]);
-
-  const isOlaitanOrSarah = useMemo(() => {
-    const email = (currentUser?.email || '').toLowerCase();
-    const staffId = (currentUser?.staffId || '').toUpperCase();
-    const name = (currentUser?.name || '').toLowerCase();
-    return email.includes('olaitan') || email.includes('sarah') || email.includes('obafunke') || email.includes('mariam') || email.includes('meekaylarh') ||
-           email.includes('xq-0011') || email.includes('xq-0012') || email.includes('xq-0013') || email.includes('xq-0005') ||
-           staffId === 'XQ-0011' || staffId === 'XQ-0012' || staffId === 'XQ-0013' || staffId === 'XQ-0005' || staffId === 'EW-S003' ||
-           name.includes('olaitan') || name.includes('sarah') || name.includes('obafunke') || name.includes('mariam');
-  }, [currentUser]);
 
   const visibleItems = useMemo(() => {
     let items = availableItems.filter(item => !hiddenItems.includes(item.label));
