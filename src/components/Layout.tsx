@@ -88,10 +88,20 @@ const ParadigmLogo = ({ brandColor, orgName, isCollapsed, logo }: { brandColor: 
   );
 };
 
-const NAV_ITEMS = [
+export interface NavItem {
+  label: string;
+  icon: any;
+  path: string;
+  requiredPermission?: string;
+  allowedRoles?: Role[];
+  allowedIndustries?: string[];
+  profile?: any;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: 'Super Admin', icon: Shield, path: '/super-admin', requiredPermission: 'access:super_admin', allowedRoles: [Role.SUPER_ADMIN] },
   { label: 'IT Console', icon: Building2, path: '/admin/settings', requiredPermission: 'access:it_console', allowedRoles: [Role.ADMIN, Role.SUPER_ADMIN] },
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role) },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/', requiredPermission: 'access:dashboard', allowedRoles: Object.values(Role).filter((r): r is Role => r !== Role.CUSTOMER) },
 
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Prospecting', icon: Target, path: '/prospecting', requiredPermission: 'access:prospecting', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
@@ -111,9 +121,9 @@ const NAV_ITEMS = [
   { label: 'Automation', icon: Bot, path: '/automation', requiredPermission: 'access:automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
   { label: 'Analytics', icon: BarChart3, path: '/analytics', requiredPermission: 'access:analytics', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER] },
   { label: 'Reports', icon: FileText, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
-  { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
-  { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
-  { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
+  { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role).filter((r): r is Role => r !== Role.CUSTOMER) },
+  { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter((r): r is Role => r !== Role.CUSTOMER) },
+  { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter((r): r is Role => r !== Role.CUSTOMER) },
 ];
 
 export const BLOCKED_MODULES = [
@@ -309,7 +319,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   const [isCustomizing, setIsCustomizing] = useState(false);
 
   const availableItems = useMemo(() => {
-    let items = NAV_ITEMS.flatMap(item => {
+    let items: NavItem[] = NAV_ITEMS.flatMap(item => {
       if (item.label === 'Orders & Invoicing') {
         const matchingProfiles = industryProfiles.filter(profile =>
           ['Catering', 'Bakery'].includes(profile.type) && profile.features?.showFulfillment
@@ -349,25 +359,27 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       });
     }
 
+    const allStaffRoles: Role[] = Object.values(Role).filter((r): r is Role => r !== Role.CUSTOMER);
+
     items.push({
       label: 'Intelligent Assistant',
       icon: Sparkles,
       path: '#',
-      allowedRoles: Object.values(Role)
+      allowedRoles: allStaffRoles
     });
 
     items.push({
       label: 'Instant Install',
       icon: Download,
       path: '#',
-      allowedRoles: Object.values(Role)
+      allowedRoles: allStaffRoles
     });
 
     items.push({
       label: 'Reset App',
       icon: RefreshCw,
       path: '#',
-      allowedRoles: Object.values(Role)
+      allowedRoles: allStaffRoles
     });
 
     // Universal filter: unconditionally strip any blocked modules for unauthorized personnel
