@@ -3230,7 +3230,7 @@ export const useDataStore = create<DataState>()(
                     if (employees !== null) {
                         const isXquisite = companyId === 'xquisite-id' || (useSettingsStore.getState().settings.name || '').toLowerCase().includes('xquisite');
                         let updatedEmps = [...employees];
-                        const hasObafunke = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'obafunke@xquisite.com' || e.staffId === 'XQ-0013');
+                        const hasObafunke = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'obafunke@xquisite.com' || (e.firstName === 'Obafunke' && e.lastName === 'Braithwaite') || e.staffId === 'XQ-0016');
                         if (isXquisite && !hasObafunke) {
                             const obafunke: Employee = {
                                 id: 'user-obafunke',
@@ -3238,18 +3238,25 @@ export const useDataStore = create<DataState>()(
                                 firstName: 'Obafunke',
                                 lastName: 'Braithwaite',
                                 email: 'obafunke@xquisite.com',
-                                role: Role.CATERING_OPERATIONS_MANAGER,
+                                role: Role.BANQUET_MANAGER,
                                 status: EmployeeStatus.ACTIVE,
-                                dateOfEmployment: new Date().toISOString().split('T')[0],
+                                dateOfEmployment: '2025-01-01',
                                 dob: '1990-01-01',
                                 gender: 'Female',
-                                staffId: 'XQ-0013',
+                                staffId: 'XQ-0016',
                                 avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Obafunke',
                                 salaryCents: 35000000,
                                 phoneNumber: '',
                                 kpis: []
                             };
                             updatedEmps.unshift(obafunke);
+                        } else if (isXquisite && hasObafunke) {
+                            updatedEmps = updatedEmps.map((e: any) => {
+                                if (e.email?.toLowerCase() === 'obafunke@xquisite.com' || (e.firstName === 'Obafunke' && e.lastName === 'Braithwaite') || e.id === 'user-obafunke') {
+                                    return { ...e, role: Role.BANQUET_MANAGER, staffId: e.staffId === 'XQ-0013' ? 'XQ-0016' : e.staffId };
+                                }
+                                return e;
+                            });
                         }
                         const hasSarah = updatedEmps.some((e: any) => e.email?.toLowerCase() === 'sarah@xquisite.com' || e.staffId === 'XQ-0012');
                         if (isXquisite && !hasSarah) {

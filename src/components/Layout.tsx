@@ -125,8 +125,8 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     const staffId = (currentUser?.staffId || '').toUpperCase();
     const name = (currentUser?.name || '').toLowerCase();
     return email.includes('olaitan') || email.includes('sarah') || email.includes('obafunke') || email.includes('mariam') || email.includes('meekaylarh') ||
-           email.includes('xq-0011') || email.includes('xq-0012') || email.includes('xq-0013') || email.includes('xq-0005') ||
-           staffId === 'XQ-0011' || staffId === 'XQ-0012' || staffId === 'XQ-0013' || staffId === 'XQ-0005' || staffId === 'EW-S003' ||
+           email.includes('xq-0011') || email.includes('xq-0012') || email.includes('xq-0013') || email.includes('xq-0015') || email.includes('xq-0016') || email.includes('xq-0005') ||
+           staffId === 'XQ-0011' || staffId === 'XQ-0012' || staffId === 'XQ-0013' || staffId === 'XQ-0015' || staffId === 'XQ-0016' || staffId === 'XQ-0005' || staffId === 'EW-S003' ||
            name.includes('olaitan') || name.includes('sarah') || name.includes('obafunke') || name.includes('mariam');
   }, [currentUser]);
 
@@ -154,7 +154,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
 
     // 2. Operations / Catering Staff Bypass (Sarah, Obafunke, Olaitan, Mariam)
-    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.CATERING_OPERATIONS_MANAGER || isOlaitanOrSarah;
+    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.CATERING_OPERATIONS_MANAGER || userRole === Role.BANQUET_MANAGER || isOlaitanOrSarah;
     if (isOpsManager && (!required || ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'].includes(required))) return true;
 
     const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
