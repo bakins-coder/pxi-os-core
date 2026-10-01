@@ -57,10 +57,17 @@ Whenever user `toxsyyb@yahoo.co.uk` attempted to log in, she was redirected to `
    - **Login Bypass Logic**: Removed `|| !!password` so legitimate passwords authenticate against Supabase, while developer bypass only activates for explicit dev passwords (`Password123!` / `Akins-Coder`) or guest accounts.
    - **MD Overrides**: In both `login()` and `refreshSession()`, ensured `toxsyyb@yahoo.co.uk` guarantees `name = 'Tokunbo Braithwaite'`, `staffId = 'XQ-0001'`, `companyId = '10959119-72e4-4e57-ba54-923e36bba6a6'`, and `isSuperAdmin = true`.
 
-3. **Testing & Build Verification**:
-   - TypeScript compilation (`npx tsc --noEmit`): **0 errors**.
-   - Vitest test suite (`npm test -- run`): **13/13 test files passed (40/40 tests)**.
-   - Production bundle (`npm run build`): **Build completed successfully in 14s**.
+4. **Sidebar Branding & Logo Resolution**:
+   - **Root Cause**:
+     1. In [src/store/useSettingsStore.ts](file:///c:/Users/akinb/pxi-os-core/src/store/useSettingsStore.ts), `fetchSettings()` restricted the Xquisite branding override with `&& (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')`. On Vercel (`pxi-os-core.vercel.app`), this was skipped.
+     2. In Supabase `organizations` table, `logo` and `brand_color` for Xquisite Celebrations were previously `null`.
+     3. When `settings` was unhydrated, the sidebar defaulted to the system fallback (`name: 'Paradigm-Xi'`, orange box icon with `brandColor: '#f37021'`).
+   - **Resolution**:
+     1. Updated Supabase `organizations` table for Xquisite Celebrations (`10959119-72e4-4e57-ba54-923e36bba6a6`) with `logo = '/xquisite-logo.png'` and `brand_color = '#00ff9d'`.
+     2. Removed the localhost hostname restriction from `fetchSettings()` in [src/store/useSettingsStore.ts](file:///c:/Users/akinb/pxi-os-core/src/store/useSettingsStore.ts) so Xquisite branding is applied on all domains.
+     3. Added defensive branding fallbacks in [src/components/Layout.tsx](file:///c:/Users/akinb/pxi-os-core/src/components/Layout.tsx) to ensure Xquisite users and organization contexts always render `Xquisite Celebrations Limited` with `/xquisite-logo.png` and emerald green styling (`#00ff9d`), eliminating the generic `Paradigm-Xi` default.
+     4. Updated [src/components/Dashboard.tsx](file:///c:/Users/akinb/pxi-os-core/src/components/Dashboard.tsx) to automatically hydrate settings if default `Paradigm-Xi` or missing logo is detected.
 
 ---
 *Delivered by Prof (Personal Assistant Orchestrator)*
+
