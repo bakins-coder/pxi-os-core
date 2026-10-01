@@ -5,6 +5,27 @@ This document establishes immutable security boundaries across tenant roles in P
 
 ---
 
+## CRITICAL UNIVERSAL DIRECTIVE: Blocked Modules Invisibility
+The following **9 high-privilege modules** MUST NEVER be visible on the menu of any unauthorized personnel:
+1. **Super Admin** (`/super-admin`) — Authorized: `Super Admin`, `system_admin`, `is_super_admin` ONLY.
+2. **IT Console** (`/admin/settings`) — Authorized: `Admin`, `Super Admin`, `system_admin` ONLY.
+3. **Analytics** (`/analytics`) — Authorized: `Admin`, `Manager`, `Finance`, `Catering Operations Manager` ONLY.
+4. **Prospecting** (`/prospecting`) — Authorized: `Admin`, `Manager`, `Sales` ONLY.
+5. **Strategic Hub** (`/executive-hub`) — Authorized: `Admin`, `Manager`, `Sales`, `CEO`, `Chairman` ONLY.
+6. **Automation** (`/automation`) — Authorized: `Admin`, `Manager` ONLY.
+7. **Finance** (`/finance`) — Authorized: `Admin`, `Finance`, `Finance Officer`, `Manager` ONLY.
+8. **Requisitions** (`/requisitions`) — Authorized: `Super Admin`, `CEO`, `Chairman`, `Admin` ONLY.
+9. **Procurement** (`/procurement`) — Authorized: `Admin`, `Manager`, `Procurement Officer`, `Logistics Manager`, `Finance` ONLY.
+
+### Enforcement Invariant
+For any personnel whose active role is NOT in the authorized list for a module above:
+- The module MUST be unconditionally filtered out from `availableItems` and `visibleItems`.
+- The module MUST NOT appear in the sidebar or mobile navigation.
+- The module MUST NOT appear in the "Customize Menu" modal.
+- Direct URL entry MUST trigger an immediate `Access Denied` via `ProtectedRoute`.
+
+---
+
 ## 1. Role Tiers & Scope
 
 ### Tier 1: C-Suite & System Administration

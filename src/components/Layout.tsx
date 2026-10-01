@@ -116,9 +116,65 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
 ];
 
+export const BLOCKED_MODULES = [
+  'Super Admin',
+  'IT Console',
+  'Analytics',
+  'Prospecting',
+  'Strategic Hub',
+  'Automation',
+  'Finance',
+  'Requisitions',
+  'Procurement'
+] as const;
+
+export const BLOCKED_ITEM_ROLES: Record<string, Role[]> = {
+  'Super Admin': [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'IT Console': [Role.ADMIN, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'Analytics': [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'Prospecting': [Role.ADMIN, Role.MANAGER, Role.SALES, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'Strategic Hub': [Role.ADMIN, Role.MANAGER, Role.SALES, Role.CEO, Role.CHAIRMAN, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'Automation': [Role.ADMIN, Role.MANAGER, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'Finance': [Role.ADMIN, Role.FINANCE, Role.MANAGER, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  'Requisitions': [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN, Role.CEO, Role.CHAIRMAN, Role.ADMIN],
+  'Procurement': [Role.ADMIN, Role.MANAGER, Role.PROCUREMENT, Role.LOGISTICS, Role.FINANCE, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+};
+
+export const BLOCKED_PATH_ROLES: Record<string, Role[]> = {
+  '/super-admin': [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/admin/settings': [Role.ADMIN, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/analytics': [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/prospecting': [Role.ADMIN, Role.MANAGER, Role.SALES, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/executive-hub': [Role.ADMIN, Role.MANAGER, Role.SALES, Role.CEO, Role.CHAIRMAN, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/automation': [Role.ADMIN, Role.MANAGER, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/finance': [Role.ADMIN, Role.FINANCE, Role.MANAGER, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+  '/requisitions': [Role.SUPER_ADMIN, Role.SYSTEM_ADMIN, Role.CEO, Role.CHAIRMAN, Role.ADMIN],
+  '/procurement': [Role.ADMIN, Role.MANAGER, Role.PROCUREMENT, Role.LOGISTICS, Role.FINANCE, Role.SUPER_ADMIN, Role.SYSTEM_ADMIN],
+};
+
+export const isPersonnelAuthorizedForModule = (label: string, path: string, role: Role, isSuperAdmin: boolean): boolean => {
+  if (isSuperAdmin) return true;
+  const allowedRolesForLabel = BLOCKED_ITEM_ROLES[label];
+  if (allowedRolesForLabel && !allowedRolesForLabel.includes(role)) {
+    return false;
+  }
+  const allowedRolesForPath = BLOCKED_PATH_ROLES[path];
+  if (allowedRolesForPath && !allowedRolesForPath.includes(role)) {
+    return false;
+  }
+  return true;
+};
+
 const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, isCollapsed, logo, strictMode, onToggleWorkspace, onToggleCollapse }: { userRole: Role, brandColor: string, orgName: string, handleLogout: () => void, currentPath: string, isCollapsed?: boolean, logo?: string, strictMode: boolean, onToggleWorkspace?: () => void, onToggleCollapse?: () => void }) => {
   const { settings } = useSettingsStore();
   const { user: currentUser } = useAuthStore();
+  const effectiveRole = (currentUser?.role as Role) || userRole;
+  const isSuperAdminUser = effectiveRole === Role.SUPER_ADMIN || 
+                           effectiveRole === Role.SYSTEM_ADMIN || 
+                           effectiveRole === Role.CEO || 
+                           effectiveRole === Role.CHAIRMAN || 
+                           Boolean(currentUser?.isSuperAdmin) || 
+                           Boolean(useAuthStore.getState().user?.isSuperAdmin);
 
   const isOlaitanOrSarah = useMemo(() => {
     const email = (currentUser?.email || '').toLowerCase();
@@ -147,23 +203,27 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   // Find the exact matrix role that matches the user's assigned role string
   const userMatrixRole = departmentMatrix
     .flatMap(d => d.roles)
-    .find(r => r.title === userRole);
+    .find(r => r.title === effectiveRole);
 
-  const hasPermission = (required?: string, allowedRoles?: Role[]) => {
+  const hasPermission = (required?: string, allowedRoles?: Role[], label?: string, path?: string) => {
     // 1. Executive Bypass: Only True Super Admins and C-Suite
-    const isExecutive = userRole === Role.SUPER_ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN || Boolean(currentUser?.isSuperAdmin) || Boolean(useAuthStore.getState().user?.isSuperAdmin);
-    if (isExecutive) return true;
+    if (isSuperAdminUser) return true;
 
-    // 2. Strict Role Gate: If allowedRoles is defined and userRole is not in allowedRoles, DENY IMMEDIATELY.
-    // Permissions (e.g. access:reports) must NEVER override an explicit allowedRoles restriction!
-    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+    // 2. Universal Block Check for High-Privilege Modules
+    if (label && path && !isPersonnelAuthorizedForModule(label, path, effectiveRole, isSuperAdminUser)) {
       return false;
     }
 
-    // 3. Operational Kitchen & Staff Boundary Guardrail
-    const isKitchenStaff = userRole === Role.KITCHEN_MANAGER || 
-                           userRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
-                           (userRole as string) === 'Kitchen Operations Supervisor' || 
+    // 3. Strict Role Gate: If allowedRoles is defined and effectiveRole is not in allowedRoles, DENY IMMEDIATELY.
+    // Permissions (e.g. access:reports) must NEVER override an explicit allowedRoles restriction!
+    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(effectiveRole)) {
+      return false;
+    }
+
+    // 4. Operational Kitchen & Staff Boundary Guardrail
+    const isKitchenStaff = effectiveRole === Role.KITCHEN_MANAGER || 
+                           effectiveRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
+                           (effectiveRole as string) === 'Kitchen Operations Supervisor' || 
                            isOlaitanOrSarah;
     if (isKitchenStaff) {
       // Forbidden modules for kitchen staff: administrative, IT, executive, financial
@@ -181,7 +241,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       }
     }
 
-    // 4. Permission Tag Check (Prioritize explicit tags from DB / User object)
+    // 5. Permission Tag Check (Prioritize explicit tags from DB / User object)
     const userPermissions = useAuthStore.getState().user?.permissionTags || [];
     if (userPermissions.includes('*')) return true;
     if (required && userPermissions.includes(required)) return true;
@@ -271,13 +331,15 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       if (i.allowedIndustries && !i.allowedIndustries.includes(settings.type)) return false;
 
       // Role Check
-      if (!hasPermission(i.requiredPermission, i.allowedRoles)) return false;
+      if (!hasPermission(i.requiredPermission, i.allowedRoles, i.label, i.path)) return false;
+
+      // Universal Block Check for 9 high-privilege items
+      if (!isPersonnelAuthorizedForModule(i.label, i.path, effectiveRole, isSuperAdminUser)) return false;
 
       return true;
     });
 
     // Add API Diagnostics only for true Super Admins
-    const isSuperAdminUser = currentUser?.role === Role.SUPER_ADMIN || currentUser?.role === Role.SYSTEM_ADMIN || Boolean(currentUser?.isSuperAdmin);
     if (isSuperAdminUser) {
       items.push({
         label: 'API Diagnostics',
@@ -308,9 +370,12 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       allowedRoles: Object.values(Role)
     });
 
-    const isKitchenStaff = currentUser?.role === Role.KITCHEN_MANAGER || 
-                           currentUser?.role === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
-                           (currentUser?.role as string) === 'Kitchen Operations Supervisor' || 
+    // Universal filter: unconditionally strip any blocked modules for unauthorized personnel
+    items = items.filter(it => isPersonnelAuthorizedForModule(it.label, it.path, effectiveRole, isSuperAdminUser));
+
+    const isKitchenStaff = effectiveRole === Role.KITCHEN_MANAGER || 
+                           effectiveRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
+                           (effectiveRole as string) === 'Kitchen Operations Supervisor' || 
                            isOlaitanOrSarah;
     if (isKitchenStaff) {
       const forbiddenForKitchen = [
@@ -322,13 +387,17 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     }
 
     return items;
-  }, [industryProfiles, settings.type, userRole, currentUser, isOlaitanOrSarah]);
+  }, [industryProfiles, settings.type, effectiveRole, isSuperAdminUser, currentUser, isOlaitanOrSarah]);
 
   const visibleItems = useMemo(() => {
     let items = availableItems.filter(item => !hiddenItems.includes(item.label));
-    const isKitchenStaff = currentUser?.role === Role.KITCHEN_MANAGER || 
-                           currentUser?.role === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
-                           (currentUser?.role as string) === 'Kitchen Operations Supervisor' || 
+
+    // Universal filter: unconditionally strip any blocked modules for unauthorized personnel
+    items = items.filter(item => isPersonnelAuthorizedForModule(item.label, item.path, effectiveRole, isSuperAdminUser));
+
+    const isKitchenStaff = effectiveRole === Role.KITCHEN_MANAGER || 
+                           effectiveRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || 
+                           (effectiveRole as string) === 'Kitchen Operations Supervisor' || 
                            isOlaitanOrSarah;
     if (isKitchenStaff) {
       const restricted = [
@@ -344,7 +413,7 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
       items = items.filter(item => !restricted.includes(item.label) && !restrictedPaths.includes(item.path));
     }
     return items;
-  }, [availableItems, hiddenItems, isOlaitanOrSarah, currentUser?.role]);
+  }, [availableItems, hiddenItems, isOlaitanOrSarah, effectiveRole, isSuperAdminUser]);
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
