@@ -28,7 +28,8 @@ export enum Role {
   HEAD_WAITER = 'Head Waiter',
   FINANCE_OFFICER = 'Finance Officer',
   CHAIRMAN = 'Chairman',
-  CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager'
+  CATERING_OPERATIONS_MANAGER = 'Catering Operations Manager',
+  KITCHEN_OPERATIONS_SUPERVISOR = 'Kitchen Operations Supervisor'
 }
 export type IndustryType = 'Retail' | 'Catering' | 'Bakery' | 'Aviation' | 'General' | 'Sports Foundation' | 'Property Development';
 

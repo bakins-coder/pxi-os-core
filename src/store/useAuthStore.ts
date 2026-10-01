@@ -241,6 +241,7 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     localStorage.removeItem('data-storage-v4');
                     localStorage.removeItem('settings-storage');
+                    localStorage.removeItem('hidden-menu-items-default');
                     console.log('[Auth][Security] Cleared tenant localStorage stores on login.');
                 } catch (e) {
                     console.warn('[Auth][Security] Could not clear localStorage stores on login:', e);
@@ -275,7 +276,7 @@ export const useAuthStore = create<AuthState>()(
                 // Also purge the two cross-tenant Zustand persist stores.
                 try {
                     const keysToRemove = Object.keys(localStorage).filter(
-                        k => k.startsWith('ai_chat_sessions') || k === 'data-storage-v4' || k === 'settings-storage'
+                        k => k.startsWith('ai_chat_sessions') || k === 'data-storage-v4' || k === 'settings-storage' || k === 'hidden-menu-items-default'
                     );
                     keysToRemove.forEach(k => localStorage.removeItem(k));
                     console.log(`[Auth][Security] Cleared ${keysToRemove.length} storage key(s) from localStorage on logout.`);

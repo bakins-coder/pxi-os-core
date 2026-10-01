@@ -96,12 +96,12 @@ const NAV_ITEMS = [
   { label: 'Strategic Hub', icon: Sparkles, path: '/executive-hub', requiredPermission: 'access:finance_all', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Prospecting', icon: Target, path: '/prospecting', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES] },
   { label: 'Service Hub', icon: Radio, path: '/contact-center', requiredPermission: 'access:contact_center', allowedRoles: [Role.ADMIN, Role.SUPERVISOR, Role.AGENT] },
-  { label: 'CRM & Client Management', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'CRM & Client Management', icon: Users, path: '/crm', requiredPermission: 'access:crm', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.AGENT, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
   { label: 'Project Hub', icon: ProjectIcon, path: '/projects', requiredPermission: 'access:projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.EVENT_MANAGER, Role.LOGISTICS, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER] },
-  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
+  { label: 'Inventory', icon: Package, path: '/inventory', requiredPermission: 'access:inventory', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.LOGISTICS_OFFICER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
 
   // Industry Specific
-  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER] },
+  { label: 'Orders & Invoicing', icon: ChefHat, path: '/catering', requiredPermission: 'access:catering', allowedIndustries: ['Catering', 'Bakery'], allowedRoles: [Role.ADMIN, Role.MANAGER, Role.SALES, Role.EVENT_MANAGER, Role.EVENT_COORDINATOR, Role.BANQUET_MANAGER, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
   { label: 'Flight Ops', icon: Plane, path: '/projects', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.LOGISTICS_OFFICER], allowedIndustries: ['Aviation'] },
 
   { label: 'Procurement', icon: ShoppingCart, path: '/procurement', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -110,7 +110,7 @@ const NAV_ITEMS = [
   { label: 'Requisitions', icon: ClipboardList, path: '/requisitions', allowedRoles: [Role.SUPER_ADMIN, Role.CEO, Role.ADMIN] },
   { label: 'Automation', icon: Bot, path: '/automation', requiredPermission: 'access:automation', allowedRoles: [Role.ADMIN, Role.MANAGER] },
   { label: 'Analytics', icon: BarChart3, path: '/analytics', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.CATERING_OPERATIONS_MANAGER] },
-  { label: 'Reports', icon: FileText, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER] },
+  { label: 'Reports', icon: FileText, path: '/reports', requiredPermission: 'access:reports', allowedRoles: [Role.ADMIN, Role.MANAGER, Role.FINANCE, Role.SUPERVISOR, Role.AGENT, Role.SALES, Role.CATERING_OPERATIONS_MANAGER, Role.KITCHEN_OPERATIONS_SUPERVISOR] },
   { label: 'User Guides', icon: HelpCircle, path: '/docs', requiredPermission: 'access:docs', allowedRoles: Object.values(Role) },
   { label: 'Team Messages', icon: Zap, path: '/team', requiredPermission: 'access:team_chat', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
   { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: Object.values(Role).filter(r => r !== Role.CUSTOMER) },
@@ -154,8 +154,8 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
     if (userRole === Role.SUPER_ADMIN || userRole === Role.ADMIN || userRole === Role.CEO || userRole === Role.CHAIRMAN) return true;
 
     // 2. Operations / Catering Staff Bypass (Sarah, Obafunke, Olaitan, Mariam)
-    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.CATERING_OPERATIONS_MANAGER || userRole === Role.BANQUET_MANAGER || isOlaitanOrSarah;
-    if (isOpsManager && (!required || ['access:dashboard', 'access:catering', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs'].includes(required))) return true;
+    const isOpsManager = userRole === Role.KITCHEN_MANAGER || userRole === Role.KITCHEN_OPERATIONS_SUPERVISOR || userRole === Role.CATERING_OPERATIONS_MANAGER || userRole === Role.BANQUET_MANAGER || isOlaitanOrSarah;
+    if (isOpsManager && required && ['access:dashboard', 'access:catering', 'access:inventory', 'access:inventory_ingredients', 'access:inventory_offerings', 'access:crm', 'access:reports', 'access:team_chat', 'access:docs', 'access:self_hr'].includes(required)) return true;
 
     const isSuperAdmin = useAuthStore.getState().user?.isSuperAdmin;
     if (isSuperAdmin) return true;
@@ -185,12 +185,11 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
 
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => {
     try {
-      if (currentUser?.hiddenMenuItems) {
+      if (currentUser?.hiddenMenuItems && currentUser.hiddenMenuItems.length > 0) {
         return currentUser.hiddenMenuItems;
       }
       const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email.toLowerCase()}` : null;
-      const defaultKey = 'hidden-menu-items-default';
-      const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
+      const saved = emailKey ? localStorage.getItem(emailKey) : null;
       if (saved) return JSON.parse(saved);
       if (isMD) {
         return ['Super Admin', 'IT Console', 'Automation', 'Service Hub', 'Strategic Hub', 'Reporting'];
@@ -204,13 +203,12 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   useEffect(() => {
     const syncHiddenItems = () => {
       try {
-        if (currentUser?.hiddenMenuItems) {
+        if (currentUser?.hiddenMenuItems && currentUser.hiddenMenuItems.length > 0) {
           setHiddenItems(currentUser.hiddenMenuItems);
           return;
         }
         const emailKey = currentUser?.email ? `hidden-menu-items-${currentUser.email.toLowerCase()}` : null;
-        const defaultKey = 'hidden-menu-items-default';
-        const saved = (emailKey && localStorage.getItem(emailKey)) || localStorage.getItem(defaultKey);
+        const saved = emailKey ? localStorage.getItem(emailKey) : null;
         if (saved) {
           setHiddenItems(JSON.parse(saved));
         } else if (isMD) {
@@ -296,12 +294,17 @@ const NavContent = ({ userRole, brandColor, orgName, handleLogout, currentPath, 
   const visibleItems = useMemo(() => {
     let items = availableItems.filter(item => !hiddenItems.includes(item.label));
     if (isOlaitanOrSarah) {
-      const restricted = ['Project Hub', 'Inventory', 'Human Resources', 'HR', 'Procurement'];
-      const restrictedPaths = ['/projects', '/inventory', '/hr', '/procurement'];
+      const isKitchenStaff = (currentUser?.role === Role.KITCHEN_MANAGER || currentUser?.role === Role.KITCHEN_OPERATIONS_SUPERVISOR || (currentUser?.role as string) === 'Kitchen Operations Supervisor');
+      const restricted = isKitchenStaff
+        ? ['Project Hub', 'Human Resources', 'HR', 'Procurement', 'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Requisitions', 'Automation']
+        : ['Project Hub', 'Inventory', 'Human Resources', 'HR', 'Procurement', 'Super Admin', 'IT Console', 'Strategic Hub', 'Prospecting', 'Service Hub', 'Requisitions', 'Automation'];
+      const restrictedPaths = isKitchenStaff
+        ? ['/projects', '/hr', '/procurement', '/super-admin', '/admin/settings', '/executive-hub', '/prospecting', '/contact-center', '/requisitions', '/automation']
+        : ['/projects', '/inventory', '/hr', '/procurement', '/super-admin', '/admin/settings', '/executive-hub', '/prospecting', '/contact-center', '/requisitions', '/automation'];
       items = items.filter(item => !restricted.includes(item.label) && !restrictedPaths.includes(item.path));
     }
     return items;
-  }, [availableItems, hiddenItems, isOlaitanOrSarah]);
+  }, [availableItems, hiddenItems, isOlaitanOrSarah, currentUser?.role]);
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
