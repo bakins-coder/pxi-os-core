@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, Download, ArrowLeft, Loader2, Share2, CreditCard, ShoppingBag, Truck } from 'lucide-react';
+import { Printer, Download, ArrowLeft, Loader2, Share2, CreditCard, ShoppingBag, Truck, ExternalLink, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { getIndustryConfig } from '../config/industryProfiles';
@@ -15,9 +15,16 @@ import { ReceivePaymentModal } from './FulfillmentHub';
 const BRAND_COLOR = '#4F46E5'; // Default Indigo
 const ACCENT_COLOR = '#EEF2FF'; // Light Indigo
 
-export const InvoicePrototype = () => {
+export interface InvoicePrototypeProps {
+    invoiceId?: string;
+    onClose?: () => void;
+    isModal?: boolean;
+}
+
+export const InvoicePrototype: React.FC<InvoicePrototypeProps> = ({ invoiceId, onClose, isModal }) => {
     const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>();
+    const params = useParams<{ id: string }>();
+    const id = invoiceId || params.id;
     const { invoices, contacts, bankAccounts } = useDataStore();
     const { settings } = useSettingsStore();
 
@@ -51,25 +58,37 @@ export const InvoicePrototype = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100">
-                <Loader2 className="animate-spin text-slate-400" size={32} />
+            <div className={isModal ? "fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" : "min-h-screen flex items-center justify-center bg-slate-100"}>
+                <div className={isModal ? "bg-white p-6 rounded-2xl shadow-xl flex items-center gap-3 text-slate-700" : ""}>
+                    <Loader2 className="animate-spin text-indigo-600" size={28} />
+                    {isModal && <span className="font-bold text-sm">Loading invoice...</span>}
+                </div>
             </div>
         );
     }
 
     if (!invoice) {
         return (
-            <div className="min-h-screen p-8 bg-slate-100 flex flex-col items-center justify-center text-center">
-                <h2 className="text-2xl font-black text-slate-800 mb-2">Invoice Not Found</h2>
-                <p className="text-slate-500 mb-6">The requested invoice ID could not be located.</p>
-                {useAuthStore.getState().user && (
-                    <button
-                        onClick={() => navigate('/finance')}
-                        className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
-                    >
-                        <ArrowLeft size={16} /> Return to Finance
-                    </button>
-                )}
+            <div className={isModal ? "fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" : "min-h-screen p-8 bg-slate-100 flex flex-col items-center justify-center text-center"}>
+                <div className={isModal ? "bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl" : "flex flex-col items-center"}>
+                    <h2 className="text-2xl font-black text-slate-800 mb-2">Invoice Not Found</h2>
+                    <p className="text-slate-500 mb-6">The requested invoice ID could not be located.</p>
+                    {isModal ? (
+                        <button
+                            onClick={onClose}
+                            className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all cursor-pointer"
+                        >
+                            Close
+                        </button>
+                    ) : useAuthStore.getState().user && (
+                        <button
+                            onClick={() => navigate('/finance')}
+                            className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-all"
+                        >
+                            <ArrowLeft size={16} /> Return to Finance
+                        </button>
+                    )}
+                </div>
             </div>
         );
     }
@@ -168,54 +187,84 @@ Link: ${window.location.href}
         alert("Invoice summary copied to clipboard!");
     };
 
-    return (
-        <div className="min-h-screen bg-slate-100 p-8 font-sans print:p-0 print:bg-white text-slate-900">
+    const content = (
+        <div className={`font-sans print:p-0 print:bg-white text-slate-900 ${isModal ? 'bg-slate-50 rounded-3xl shadow-2xl overflow-hidden max-w-4xl w-full max-h-[92vh] flex flex-col my-auto border border-slate-200' : 'min-h-screen bg-slate-100 p-8'}`}>
             {/* Control Bar */}
-            <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center print:hidden">
-                {useAuthStore.getState().user && (
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-                    >
-                        <ArrowLeft size={20} />
-                        <span className="font-bold">Back</span>
-                    </button>
-                )}
-                <div className="flex gap-4 items-center">
+            <div className={`max-w-4xl w-full mx-auto ${isModal ? 'p-4 border-b border-slate-200 bg-white/95 sticky top-0 z-20 backdrop-blur-md shadow-sm' : 'mb-8'} flex justify-between items-center print:hidden`}>
+                <div>
+                    {isModal ? (
+                        <button
+                            onClick={onClose}
+                            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-bold text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl cursor-pointer"
+                        >
+                            <ArrowLeft size={18} />
+                            <span>Back</span>
+                        </button>
+                    ) : useAuthStore.getState().user && (
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors font-bold"
+                        >
+                            <ArrowLeft size={20} />
+                            <span className="font-bold">Back</span>
+                        </button>
+                    )}
+                </div>
+                <div className="flex gap-2.5 items-center flex-wrap justify-end">
+                    {isModal && (
+                        <button
+                            onClick={() => window.open(`#/invoice/${id}`, '_blank')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md hover:bg-slate-50 transition-all text-xs cursor-pointer"
+                            title="Open in standalone tab"
+                        >
+                            <ExternalLink size={14} /> Open in Tab
+                        </button>
+                    )}
                     {balanceDue > 0 && isInternalStaff && (
                         <button
                             onClick={() => setIsReceivePaymentOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-full shadow-md font-bold hover:bg-emerald-700 hover:shadow-lg transition-all"
+                            className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white rounded-full shadow-md font-bold hover:bg-emerald-700 hover:shadow-lg transition-all text-xs cursor-pointer"
                         >
-                            <CreditCard size={18} /> Receive Payment ({NAIRA_SYMBOL}{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })})
+                            <CreditCard size={15} /> Receive Payment ({NAIRA_SYMBOL}{balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })})
                         </button>
                     )}
-                    <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all">
-                        <Printer size={18} /> Print
+                    <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all text-xs border border-slate-200 cursor-pointer">
+                        <Printer size={15} /> Print
                     </button>
                     <button
                         onClick={handleDownloadPDF}
-                        className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full shadow-sm text-slate-700 font-bold hover:shadow-md transition-all text-xs border border-slate-200 cursor-pointer"
                     >
-                        <Download size={18} /> PDF
+                        <Download size={15} /> PDF
                     </button>
                     <button
                         onClick={handleSharePDF}
-                        className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all text-xs cursor-pointer"
                     >
-                        <Share2 size={18} /> Share PDF
+                        <Share2 size={15} /> Share PDF
                     </button>
                     <button
                         onClick={handleCopyShareText}
-                        className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-full shadow-md font-bold hover:shadow-lg transition-all text-xs cursor-pointer"
                     >
-                        <Share2 size={18} /> Copy Summary
+                        <Share2 size={15} /> Copy Summary
                     </button>
+                    {isModal && (
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-all ml-1 cursor-pointer"
+                            title="Close"
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Invoice Container */}
-            <div className="max-w-4xl mx-auto bg-white shadow-2xl overflow-hidden print:shadow-none print:max-w-none print:w-full">
+            {/* Scrollable invoice wrapper */}
+            <div className={isModal ? 'overflow-y-auto flex-1 p-6' : ''}>
+                {/* Invoice Container */}
+                <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:max-w-none print:w-full border border-slate-100">
 
                 {/* Header */}
                 <div className="p-12 pb-8">
@@ -458,6 +507,7 @@ Link: ${window.location.href}
                 </div>
 
             </div>
+            </div>
 
             {/* Receive Payment Modal */}
             {isReceivePaymentOpen && (
@@ -470,4 +520,14 @@ Link: ${window.location.href}
             )}
         </div>
     );
+
+    if (isModal) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+                {content}
+            </div>
+        );
+    }
+
+    return content;
 };

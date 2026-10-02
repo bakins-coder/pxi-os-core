@@ -21,13 +21,16 @@ import {
   User,
   Tag,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { ArrowUpRight as LucideArrowUpRight } from 'lucide-react';
 import { Role } from '../types';
 import { EventCalendar } from './EventCalendar';
 import { getTerm, getIndustryTerminology } from '../utils/terminology';
 import { NAIRA_SYMBOL } from '../utils/finance';
+import { InvoicePrototype } from './InvoicePrototype';
 
 // High-Fidelity "Floating Card on Tray" System - Adapted from Executive Reference
 const DashboardCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
@@ -139,6 +142,7 @@ export const Dashboard = () => {
   const { settings, strictMode, fetchSettings } = useSettingsStore();
   const user = useAuthStore((state) => state.user);
   const [selectedItem, setSelectedItem] = useState<{ type: string; data: any } | null>(null);
+  const [activeInvoiceModalId, setActiveInvoiceModalId] = useState<string | null>(null);
 
   // IDE layout collapsible state
   const [pipelineExpanded, setPipelineExpanded] = useState(true);
@@ -412,10 +416,21 @@ export const Dashboard = () => {
         <GenericDetailModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
+          onOpenInvoice={(invId) => {
+            setActiveInvoiceModalId(invId);
+          }}
           onUpdate={async (updates) => {
             if (selectedItem.type === 'payable') await updateRequisition(selectedItem.data.id, updates);
             setSelectedItem(null);
           }}
+        />
+      )}
+
+      {activeInvoiceModalId && (
+        <InvoicePrototype
+          invoiceId={activeInvoiceModalId}
+          isModal={true}
+          onClose={() => setActiveInvoiceModalId(null)}
         />
       )}
 
@@ -439,9 +454,36 @@ export const Dashboard = () => {
   );
 };
 
-const GenericDetailModal = ({ item, onClose, onUpdate }: { item: { type: string; data: any }; onClose: () => void; onUpdate: (updates: any) => Promise<void> }) => {
+const GenericDetailModal = ({ 
+  item, 
+  onClose, 
+  onUpdate,
+  onOpenInvoice
+}: { 
+  item: { type: string; data: any }; 
+  onClose: () => void; 
+  onUpdate: (updates: any) => Promise<void>;
+  onOpenInvoice?: (invoiceId: string) => void;
+}) => {
   const { type, data } = item;
   const isInvoice = type === 'receivable' || type === 'payable-invoice';
+  const invoiceId = isInvoice ? data.id : (data.financials?.invoiceId || (data.financials as any)?.invoice_id);
+
+  const handleOpenInvoice = () => {
+    if (!invoiceId) return;
+    if (onOpenInvoice) {
+      onOpenInvoice(invoiceId);
+    } else {
+      window.open(`#/invoice/${invoiceId}`, '_blank');
+    }
+  };
+
+  const handleOpenNewTab = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!invoiceId) return;
+    window.open(`#/invoice/${invoiceId}`, '_blank');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-300">
@@ -450,10 +492,21 @@ const GenericDetailModal = ({ item, onClose, onUpdate }: { item: { type: string;
             <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
               {isInvoice ? <ReceiptIcon size={26} /> : <Box size={26} />}
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-all text-white"><X size={22} /></button>
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-all text-white cursor-pointer"><X size={22} /></button>
           </div>
           <h3 className="text-2xl font-black uppercase tracking-tight leading-none mb-2 text-white">{isInvoice ? (data.customerName || 'Standard Entry') : (data.itemName || 'Material Request')}</h3>
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/70">{isInvoice ? `Reference: ${data.number || '---'}` : `System ID: ${data.id.slice(0, 8)}`}</p>
+          {invoiceId ? (
+            <button
+              onClick={handleOpenInvoice}
+              className="text-[11px] font-black uppercase tracking-[0.2em] text-white/80 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer group text-left"
+              title="Click to view related invoice"
+            >
+              <span>Reference: {data.number || '---'}</span>
+              <ExternalLink size={12} className="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+            </button>
+          ) : (
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/70">{`System ID: ${data.id?.slice(0, 8) || '---'}`}</p>
+          )}
         </div>
         <div className="p-8 space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -474,8 +527,38 @@ const GenericDetailModal = ({ item, onClose, onUpdate }: { item: { type: string;
               <CalendarIcon size={18} className="text-slate-400 shrink-0" /><div className="flex-1"><p className="text-[11px] font-black uppercase text-slate-400 leading-none mb-1.5">Date</p><p className="text-sm font-bold">{data.date || data.createdAt || 'Standard Entry'}</p></div>
             </div>
             <div className="flex items-center gap-4 text-slate-600">
-              <Tag size={18} className="text-slate-400 shrink-0" /><div className="flex-1"><p className="text-[11px] font-black uppercase text-slate-400 leading-none mb-1.5">System Ref</p><p className="text-sm font-bold font-black">{isInvoice ? (data.id.slice(0, 15)) : data.category}</p></div>
+              <Tag size={18} className="text-slate-400 shrink-0" /><div className="flex-1"><p className="text-[11px] font-black uppercase text-slate-400 leading-none mb-1.5">System Ref</p><p className="text-sm font-bold font-black">{isInvoice ? (data.id?.slice(0, 15)) : data.category}</p></div>
             </div>
+            {isInvoice && data.lines && data.lines.length > 0 && (
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Invoice Items ({data.lines.length})
+                  </p>
+                  <button 
+                    onClick={handleOpenInvoice}
+                    className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-wider flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    View Full <LucideArrowUpRight size={12} />
+                  </button>
+                </div>
+                <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1 text-xs">
+                  {data.lines.slice(0, 4).map((line: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center text-slate-700">
+                      <span className="truncate max-w-[220px] font-medium">{line.description || line.name || `Item ${idx + 1}`}</span>
+                      <span className="font-mono text-[11px] text-slate-500 shrink-0">
+                        {line.quantity || 1} × {NAIRA_SYMBOL}{formatCurrency(line.unitPriceCents || 0)}
+                      </span>
+                    </div>
+                  ))}
+                  {data.lines.length > 4 && (
+                    <p className="text-[10px] text-slate-400 italic pt-0.5">
+                      + {data.lines.length - 4} more items
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
             {data.notes && (
               <div className="p-5 bg-slate-50 rounded-2xl border border-indigo-100/50">
                 <p className="text-xs font-bold text-slate-600 italic leading-relaxed">"{data.notes}"</p>
@@ -483,9 +566,40 @@ const GenericDetailModal = ({ item, onClose, onUpdate }: { item: { type: string;
             )}
           </div>
         </div>
-        <div className="p-6 bg-slate-100/50 border-t border-slate-100 flex gap-4">
-          <button onClick={onClose} className="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-black text-[11px] uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-all shadow-xl">Dismiss</button>
-          {!isInvoice && data.status === 'Pending' && <button onClick={() => onUpdate({ status: 'Approved' })} className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg flex items-center justify-center gap-2">Approve <CheckCircle2 size={16} /></button>}
+        <div className="p-6 bg-slate-100/50 border-t border-slate-100 flex gap-3">
+          <button 
+            onClick={onClose} 
+            className="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-black text-[11px] uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-all shadow-xl cursor-pointer"
+          >
+            Dismiss
+          </button>
+          {invoiceId && (
+            <div className="flex-[1.5] flex gap-2">
+              <button
+                onClick={handleOpenInvoice}
+                className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl hover:shadow-indigo-500/25 flex items-center justify-center gap-2 group cursor-pointer"
+                title="Open related invoice in modal mode"
+              >
+                <FileText size={16} className="group-hover:scale-110 transition-transform" />
+                Open Invoice
+              </button>
+              <button
+                onClick={handleOpenNewTab}
+                className="p-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-2xl transition-all shadow-md flex items-center justify-center cursor-pointer"
+                title="Open invoice in new tab"
+              >
+                <ExternalLink size={16} />
+              </button>
+            </div>
+          )}
+          {!isInvoice && data.status === 'Pending' && (
+            <button 
+              onClick={() => onUpdate({ status: 'Approved' })} 
+              className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Approve <CheckCircle2 size={16} />
+            </button>
+          )}
         </div>
       </div>
     </div>
